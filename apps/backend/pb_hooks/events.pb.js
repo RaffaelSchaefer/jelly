@@ -1,23 +1,7 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-/**
- * @param {core.Record} record
- */
-function validateTimeRange(record) {
-  const startsAt = record.getDateTime("startsAt")
-  const endsAt = record.getDateTime("endsAt")
-
-  if (startsAt.isZero() || endsAt.isZero()) {
-    return
-  }
-
-  if (endsAt.string() <= startsAt.string()) {
-    throw new BadRequestError("'endsAt' muss nach 'startsAt' liegen.")
-  }
-}
-
 onRecordCreateRequest((e) => {
-  if (e.auth) {
+  if (e.auth && e.auth.collection().name === "users") {
     e.record.set("createdBy", e.auth.id)
   }
 
@@ -25,17 +9,21 @@ onRecordCreateRequest((e) => {
 }, "events")
 
 onRecordCreate((e) => {
-  if (e.record.getString("status") === "") {
-    e.record.set("status", "draft")
-  }
+  const { hasInvalidTimeRange } = require(`${__hooks}/events-utils.js`)
 
-  validateTimeRange(e.record)
+  if (hasInvalidTimeRange(e.record)) {
+    throw new BadRequestError("'endsAt' muss nach 'startsAt' liegen.")
+  }
 
   e.next()
 }, "events")
 
 onRecordUpdate((e) => {
-  validateTimeRange(e.record)
+  const { hasInvalidTimeRange } = require(`${__hooks}/events-utils.js`)
+
+  if (hasInvalidTimeRange(e.record)) {
+    throw new BadRequestError("'endsAt' muss nach 'startsAt' liegen.")
+  }
 
   e.next()
 }, "events")

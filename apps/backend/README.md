@@ -57,7 +57,7 @@ scripts/          Download-Skript für das PocketBase-Binary (Version gepinnt)
 | Collection | Zweck |
 | --- | --- |
 | `users` | Auth-Accounts, erweitert um `nickname` und `discordUsername` |
-| `events` | Alles ist ein Event: Ankündigungen, Essen, Giveaways, Turniere … (`status = published` ist öffentlich lesbar) |
+| `events` | Alles ist ein Event: Ankündigungen, Essen, Giveaways, Turniere … (öffentlich lesbar) |
 
 ## Erweitern
 
@@ -73,6 +73,13 @@ der Editor liefert damit Autovervollständigung und Typchecks. Hooks wie
 (Referenz: <https://pocketbase.io/jsvm/>). PocketBase lädt geänderte
 Hooks bei jedem Neustart neu (`dev` einfach erneut starten).
 
+**Achtung (PB ≥ 0.39):** Jeder Hook-Handler läuft in einem isolierten
+Kontext – top-level Funktionen aus derselben Datei sind im Handler **nicht**
+verfügbar (`ReferenceError`). Geteilte Logik gehört in eine eigene Modul-
+Datei (z.B. `pb_hooks/events-utils.js` mit `module.exports`) und wird per
+`require(\`${__hooks}/events-utils.js\`)` **im Handler** geladen – siehe
+`events.pb.js`.
+
 ## Realtime
 
 Alle Collections unterstützen SSE-Realtime unter `/api/realtime` – genau das
@@ -81,5 +88,6 @@ JS SDK: `pb.collection("events").subscribe("*", callback)`.
 
 ## Später geplante Apps
 
-Discord-Bot und Web-Frontend werden eigene Apps im Monorepo
-(`apps/*`) und sprechen über das JS SDK / REST mit diesem Backend.
+Web-Frontend wird eine eigene App im Monorepo (`apps/*`). Der Discord-Bot
+existiert bereits unter `apps/bot` und spricht über das JS SDK mit diesem
+Backend.
