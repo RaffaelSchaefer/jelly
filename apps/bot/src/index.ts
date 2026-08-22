@@ -6,7 +6,7 @@ import { ensureSuperuser, hasSuperuser } from "./pocketbase"
 import { startEventRealtime } from "./realtime"
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildScheduledEvents],
 })
 
 const commandCollection = new Collection<string, Command>()
@@ -29,6 +29,11 @@ client.once(Events.ClientReady, async (ready) => {
   }
 
   await startEventRealtime(client)
+  console.log(
+    env.guildId
+      ? `[joint-bot] Server-Event-Sync aktiv (Guild ${env.guildId})`
+      : "[joint-bot] Server-Event-Sync deaktiviert (kein DISCORD_GUILD_ID)",
+  )
 })
 
 client.on(Events.InteractionCreate, async (interaction) => {

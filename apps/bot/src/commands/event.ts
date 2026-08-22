@@ -15,10 +15,12 @@ import {
   findEventsByTitle,
   getEvent,
   listUpcomingEvents,
+  setDiscordGuildEventId,
   type EventType,
   type JointEvent,
 } from "../events"
 import { eventToEmbed } from "../embeds"
+import { cancelGuildEvent, createGuildEvent, deleteGuildEvent } from "../guild-events"
 import { env } from "../env"
 import type { Command } from "./types"
 
@@ -243,8 +245,15 @@ export const command: Command = {
         discordCreatorId: interaction.user.id,
       })
 
+      const guildEventId = await createGuildEvent(interaction.client, event)
+      if (guildEventId) {
+        await setDiscordGuildEventId(event.id, guildEventId)
+      }
+
       await interaction.editReply({
-        content: `✅ Event angelegt (\`${event.id}\`).`,
+        content: guildEventId
+          ? `✅ Event angelegt (\`${event.id}\`) – 📅 Server-Event erstellt.`
+          : "✅ Event angelegt (Server-Event nicht erstellt – siehe Bot-Log).",
         embeds: [eventToEmbed(event)],
       })
       return
@@ -292,6 +301,10 @@ export const command: Command = {
 
       await cancelEvent(event.id)
 
+      if (event.discordGuildEventId) {
+        await cancelGuildEvent(interaction.client, event.discordGuildEventId)
+      }
+
       if (interaction.options.getBoolean("ankuendigen") ?? true) {
         const channel = await resolveAnnounceChannel(interaction)
         if (channel) {
@@ -318,6 +331,10 @@ export const command: Command = {
           "Nur der Ersteller dieses Events oder Server-Admins können es löschen.",
         )
         return
+      }
+
+      if (event.discordGuildEventId) {
+        await deleteGuildEvent(interaction.client, event.discordGuildEventId)
       }
 
       await deleteEvent(event.id)

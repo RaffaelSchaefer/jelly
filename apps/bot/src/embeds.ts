@@ -20,7 +20,7 @@ const entities: Record<string, string> = {
   "&nbsp;": " ",
 }
 
-function htmlToText(html: string): string {
+export function htmlToText(html: string): string {
   const text = html
     .replaceAll(/<br\s*\/?>/gi, "\n")
     .replaceAll(/<\/(p|div|li|h[1-6])>/gi, "\n")
@@ -28,6 +28,10 @@ function htmlToText(html: string): string {
     .replaceAll(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (match) => entities[match] ?? match)
 
   return text.replaceAll(/[ \t]+/g, " ").replaceAll(/\n{3,}/g, "\n\n").trim()
+}
+
+export function isChannelId(value: string): boolean {
+  return /^\d{15,21}$/.test(value)
 }
 
 function truncate(text: string, max: number): string {

@@ -23,6 +23,7 @@ export interface JointEvent {
   pinned: boolean
   isCanceled: boolean
   discordCreatorId: string
+  discordGuildEventId: string
 }
 
 export function toJointEvent(record: RecordModel): JointEvent {
@@ -37,6 +38,7 @@ export function toJointEvent(record: RecordModel): JointEvent {
     pinned: Boolean(record.pinned),
     isCanceled: Boolean(record.isCanceled),
     discordCreatorId: String(record.discordCreatorId ?? ""),
+    discordGuildEventId: String(record.discordGuildEventId ?? ""),
   }
 }
 
@@ -119,6 +121,17 @@ export async function createEvent(input: {
 export async function cancelEvent(id: string): Promise<void> {
   await ensureSuperuser()
   await pb.collection("events").update(id, { isCanceled: true })
+}
+
+export async function setDiscordGuildEventId(id: string, guildEventId: string): Promise<void> {
+  await ensureSuperuser()
+  await pb.collection("events").update(id, { discordGuildEventId: guildEventId })
+}
+
+export async function listAllEvents(): Promise<JointEvent[]> {
+  await ensureSuperuser()
+  const records = await pb.collection("events").getFullList()
+  return records.map(toJointEvent)
 }
 
 export async function deleteEvent(id: string): Promise<void> {
