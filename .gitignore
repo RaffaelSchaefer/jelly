@@ -1,2 +1,8 @@
 .turbo
 node_modules
+.env
+
+# pocketbase (binary + lokale Daten)
+apps/backend/pocketbase
+apps/backend/pocketbase.exe
+apps/backend/pb_data/
