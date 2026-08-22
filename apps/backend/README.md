@@ -58,9 +58,6 @@ scripts/          Download-Skript für das PocketBase-Binary (Version gepinnt)
 | --- | --- |
 | `users` | Auth-Accounts, erweitert um `nickname` und `discordUsername` |
 | `events` | Alles ist ein Event: Ankündigungen, Essen, Giveaways, Turniere … (`status = published` ist öffentlich lesbar) |
-| `tournaments` | Turniere mit Spiel, Format, Teamgröße, Kapazität und Status (Registration → Running → Finished) |
-| `teams` | Teams pro Turnier; Captain verwaltet sie, `lookingForMembers` für Spieler-Suche |
-| `tournament_participants` | Anmeldungen (unique pro User+Turnier), Check-in-Status |
 
 ## Erweitern
 

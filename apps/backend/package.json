@@ -5,10 +5,6 @@
   "scripts": {
     "setup": "node scripts/download-pocketbase.mjs",
     "dev": "node scripts/download-pocketbase.mjs && ./pocketbase serve --http=127.0.0.1:8090",
-    "db:migrate": "./pocketbase migrate up",
-    "check-types": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "typescript": "5.9.2"
+    "db:migrate": "./pocketbase migrate up"
   }
 }
