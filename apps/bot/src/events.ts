@@ -21,6 +21,8 @@ export interface JointEvent {
   startsAt: string
   endsAt: string
   pinned: boolean
+  isCanceled: boolean
+  discordCreatorId: string
 }
 
 export function toJointEvent(record: RecordModel): JointEvent {
@@ -33,6 +35,8 @@ export function toJointEvent(record: RecordModel): JointEvent {
     startsAt: String(record.startsAt ?? ""),
     endsAt: String(record.endsAt ?? ""),
     pinned: Boolean(record.pinned),
+    isCanceled: Boolean(record.isCanceled),
+    discordCreatorId: String(record.discordCreatorId ?? ""),
   }
 }
 
@@ -41,11 +45,12 @@ function escapeFilter(value: string): string {
 }
 
 export async function listUpcomingEvents(
-  options: { type?: EventType; limit?: number } = {},
+  options: { type?: EventType; limit?: number; includeCanceled?: boolean } = {},
 ): Promise<JointEvent[]> {
   await ensureSuperuser()
 
-  let filter = "startsAt >= @now"
+  let filter = options.includeCanceled ? "" : "isCanceled != true"
+  filter += filter ? " && startsAt >= @now" : "startsAt >= @now"
   if (options.type) {
     filter += ` && type = '${escapeFilter(options.type)}'`
   }
@@ -69,6 +74,17 @@ export async function getEvent(id: string): Promise<JointEvent | null> {
   }
 }
 
+export async function findEventsByTitle(title: string, limit = 25): Promise<JointEvent[]> {
+  await ensureSuperuser()
+
+  const records = await pb.collection("events").getList(1, limit, {
+    filter: `title ~ '${escapeFilter(title.trim())}'`,
+    sort: "+startsAt",
+  })
+
+  return records.items.map(toJointEvent)
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -83,6 +99,7 @@ export async function createEvent(input: {
   endsAt?: Date
   location?: string
   description?: string
+  discordCreatorId?: string
 }): Promise<JointEvent> {
   await ensureSuperuser()
 
@@ -93,7 +110,18 @@ export async function createEvent(input: {
     ...(input.endsAt ? { endsAt: input.endsAt.toISOString() } : {}),
     ...(input.location ? { location: input.location } : {}),
     ...(input.description ? { description: `<p>${escapeHtml(input.description)}</p>` } : {}),
+    ...(input.discordCreatorId ? { discordCreatorId: input.discordCreatorId } : {}),
   })
 
   return toJointEvent(record)
+}
+
+export async function cancelEvent(id: string): Promise<void> {
+  await ensureSuperuser()
+  await pb.collection("events").update(id, { isCanceled: true })
+}
+
+export async function deleteEvent(id: string): Promise<void> {
+  await ensureSuperuser()
+  await pb.collection("events").delete(id)
 }

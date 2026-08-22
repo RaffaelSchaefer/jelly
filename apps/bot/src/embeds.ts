@@ -48,8 +48,8 @@ export function eventToEmbed(event: JointEvent): EmbedBuilder {
   const meta = TYPE_META[event.type] ?? TYPE_META.other
 
   const embed = new EmbedBuilder()
-    .setColor(meta.color)
-    .setTitle(`${meta.emoji} ${event.title}`)
+    .setColor(event.isCanceled ? 0xed4245 : meta.color)
+    .setTitle(`${event.isCanceled ? "❌ " : ""}${meta.emoji} ${event.title}`)
     .setFooter({ text: `UCB LAN Bot · ${meta.label}` })
 
   const start = timestamp(event.startsAt, "f")
@@ -68,6 +68,10 @@ export function eventToEmbed(event: JointEvent): EmbedBuilder {
       value: CHANNEL_ID.test(event.location) ? `<#${event.location}>` : event.location,
       inline: true,
     })
+  }
+
+  if (event.isCanceled) {
+    embed.addFields({ name: "Status", value: "❌ **Abgesagt**" })
   }
 
   const description = htmlToText(event.description)

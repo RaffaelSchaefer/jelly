@@ -1,9 +1,14 @@
 import type { Collection } from "discord.js"
-import type { Command } from "./types"
-import { command as eventCommand } from "./event"
+import { autocomplete as eventAutocomplete, command as eventCommand } from "./event"
 import { command as pingCommand } from "./ping"
+import type { Command } from "./types"
 
-export const commands: Command[] = [eventCommand, pingCommand]
+const eventCommandWithAutocomplete: Command = {
+  ...eventCommand,
+  autocomplete: eventAutocomplete,
+}
+
+export const commands: Command[] = [eventCommandWithAutocomplete, pingCommand]
 
 export function registerCommands(collection: Collection<string, Command>): void {
   for (const command of commands) {

@@ -8,7 +8,12 @@ automatisch per Realtime an.
 
 - `/event list [typ]` – kommende Events als Embeds
 - `/event show <id>` – einzelnes Event anzeigen
-- `/event create` – neues Event anlegen (sofort öffentlich sichtbar)
+- `/event create` – neues Event anlegen (sofort öffentlich sichtbar, Discord-User
+  wird als Ersteller getrackt)
+- `/event cancel <event>` – Event absagen (nur Ersteller oder Server-Admins),
+  optionale Abgesagt-Info in den Announce-Channel
+- `/event delete <event>` – Event endgültig löschen (nur Ersteller oder
+  Server-Admins, unabhängig vom Abgesagt-Status)
 - `/event announce <id> [kanal]` – Event als Embed posten
 - `/ping` – Latenz-Check
 - **Realtime:** neue zukünftige Events werden automatisch in den
