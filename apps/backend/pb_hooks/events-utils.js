@@ -32,12 +32,6 @@ function gameValidationError(record) {
 
   if (!game) return "'game' ist für Game-Events erforderlich."
   if (gameUrl && !/^https:\/\//i.test(gameUrl)) return "'gameUrl' muss HTTPS verwenden."
-  if (!/^\d{15,21}$/.test(record.getString("discordGuildEventId"))) {
-    return "'discordGuildEventId' ist für Game-Events erforderlich."
-  }
-  if (!/^\d{15,21}$/.test(threadId)) {
-    return "'discordThreadId' ist für Game-Events erforderlich."
-  }
 
   return ""
 }

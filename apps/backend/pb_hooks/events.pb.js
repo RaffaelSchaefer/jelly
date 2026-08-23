@@ -2,7 +2,14 @@
 
 onRecordCreateRequest((e) => {
   if (e.auth && e.auth.collection().name === "users") {
+    const discordId = e.auth.getString("discordId")
+    if (!discordId) {
+      throw new BadRequestError(
+        "Dein Konto hat keine verknüpfte Discord-ID. Bitte melde dich erneut mit Discord an.",
+      )
+    }
     e.record.set("createdBy", e.auth.id)
+    e.record.set("discordCreatorId", discordId)
   }
 
   e.next()
@@ -31,3 +38,9 @@ onRecordUpdate((e) => {
 
   e.next()
 }, "events")
+
+// Hinweis: Die Teilnahme an Events wird ausschließlich über Discord verwaltet
+// (Guild Scheduled Events). Der Bot spiegelt die Teilnehmer nach
+// event_attendees; Web-Benutzer haben nur Leserechte (siehe Migration
+// 1787001700_remove_web_event_join.js). Bewusste Verzicht auf eine
+// Kapazitätsprüfung, damit die Bot-Synchronisation nie scheitert.
