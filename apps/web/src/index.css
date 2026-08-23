@@ -1,0 +1,51 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-chrome: #1e1f22;
+  --color-card: #2b2d31;
+  --color-card-hover: #303238;
+  --color-canvas: #313338;
+  --color-blurple: #5865f2;
+  --color-blurple-light: #aeb5ff;
+  --color-success: #23a55a;
+  --color-copy: #dbdee1;
+  --color-muted: #949ba4;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: var(--color-canvas);
+    font-family: var(--font-sans);
+  }
+  button,
+  a,
+  input {
+    font: inherit;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-blurple) 75%, white);
+    outline-offset: 3px;
+  }
+}
+
+@utility text-gradient {
+  background: linear-gradient(120deg, #aeb5ff, #62e6ff 60%, #a6ffcf);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

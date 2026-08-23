@@ -2,7 +2,14 @@
 
 onRecordCreateRequest((e) => {
   if (e.auth && e.auth.collection().name === "users") {
+    const discordId = e.auth.getString("discordId")
+    if (!discordId) {
+      throw new BadRequestError(
+        "Dein Konto hat keine verknüpfte Discord-ID. Bitte melde dich erneut mit Discord an.",
+      )
+    }
     e.record.set("createdBy", e.auth.id)
+    e.record.set("discordCreatorId", discordId)
   }
 
   e.next()
