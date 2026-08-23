@@ -35,7 +35,7 @@ onRecordCreateRequest((e) => {
   if (wanted > 0) {
     const joined = $app.countRecords(
       "lobby_participants",
-      $dbx.eq("lobby", lobbyId),
+      $dbx.hashExp({ lobby: lobbyId }),
     )
     if (joined >= wanted) {
       throw new BadRequestError("Diese Lobby ist leider schon voll.", { reason: "full" })
