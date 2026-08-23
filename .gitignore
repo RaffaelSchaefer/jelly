@@ -6,3 +6,6 @@ node_modules
 apps/backend/pocketbase
 apps/backend/pocketbase.exe
 apps/backend/pb_data/
+
+#AI Agent Stuff
+.superpowers
