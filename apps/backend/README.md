@@ -54,10 +54,11 @@ scripts/          Download-Skript für das PocketBase-Binary (Version gepinnt)
 
 ## Datenmodell
 
-| Collection | Zweck |
-| --- | --- |
-| `users` | Auth-Accounts, erweitert um `nickname` und `discordUsername` |
-| `events` | Alles ist ein Event: Ankündigungen, Essen, Giveaways, Turniere … (öffentlich lesbar) |
+| Collection        | Zweck                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| `users`           | Auth-Accounts, erweitert um `nickname` und `discordUsername`                         |
+| `events`          | Alles ist ein Event: Ankündigungen, Essen, Giveaways, Turniere … (öffentlich lesbar) |
+| `event_attendees` | Private Spiegelung der Discord-Interessierten pro Event                              |
 
 ## Erweitern
 
@@ -77,8 +78,7 @@ Hooks bei jedem Neustart neu (`dev` einfach erneut starten).
 Kontext – top-level Funktionen aus derselben Datei sind im Handler **nicht**
 verfügbar (`ReferenceError`). Geteilte Logik gehört in eine eigene Modul-
 Datei (z.B. `pb_hooks/events-utils.js` mit `module.exports`) und wird per
-`require(\`${__hooks}/events-utils.js\`)` **im Handler** geladen – siehe
-`events.pb.js`.
+`require(\`${__hooks}/events-utils.js\`)`**im Handler** geladen – siehe`events.pb.js`.
 
 ## Realtime
 
