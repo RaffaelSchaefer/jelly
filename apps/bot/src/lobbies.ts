@@ -12,6 +12,7 @@ export interface Lobby {
   discordMessageId: string;
   discordThreadId: string;
   isClosed: boolean;
+  createdBy: string;
 }
 
 export function toLobby(record: RecordModel): Lobby {
@@ -26,6 +27,7 @@ export function toLobby(record: RecordModel): Lobby {
     discordMessageId: String(record.discordMessageId ?? ""),
     discordThreadId: String(record.discordThreadId ?? ""),
     isClosed: Boolean(record.isClosed),
+    createdBy: String(record.createdBy ?? ""),
   };
 }
 
