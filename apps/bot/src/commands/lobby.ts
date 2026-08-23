@@ -15,6 +15,7 @@ import {
 import { parseDateInput } from "../dates";
 import { isChannelId } from "../embeds";
 import { normalizeGameDestination } from "../events";
+import { markHandled, unmarkHandled } from "../lobby-sync";
 import {
   closeLobbyThread,
   createLobbyPost,
@@ -246,7 +247,14 @@ async function handleJoin(interaction: ButtonInteraction, lobby: Lobby): Promise
     return `❌ Die Lobby **${lobby.game}** ist leider schon voll.`;
   }
 
-  await addLobbyParticipant(lobby.id, interaction.user.id);
+  const key = `create:${lobby.id}:${interaction.user.id}`;
+  markHandled(key);
+  try {
+    await addLobbyParticipant(lobby.id, interaction.user.id);
+  } catch (error) {
+    unmarkHandled(key);
+    throw error;
+  }
   await syncLobbyThreadMember(interaction.client, lobby, interaction.user.id, true);
   await refreshLobbyPost(interaction.client, lobby);
   return (
@@ -265,7 +273,14 @@ async function handleLeave(interaction: ButtonInteraction, lobby: Lobby): Promis
     return `Du warst bei **${lobby.game}** nicht angemeldet.`;
   }
 
-  await removeLobbyParticipant(lobby.id, interaction.user.id);
+  const key = `delete:${lobby.id}:${interaction.user.id}`;
+  markHandled(key);
+  try {
+    await removeLobbyParticipant(lobby.id, interaction.user.id);
+  } catch (error) {
+    unmarkHandled(key);
+    throw error;
+  }
   await syncLobbyThreadMember(interaction.client, lobby, interaction.user.id, false);
   await refreshLobbyPost(interaction.client, lobby);
   return `👋 Du bist aus **${lobby.game}** ausgetreten.`;

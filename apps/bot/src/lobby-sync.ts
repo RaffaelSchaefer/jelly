@@ -52,6 +52,10 @@ export function markHandled(key: string, now = Date.now()): void {
   recent.set(key, now);
 }
 
+export function unmarkHandled(key: string): void {
+  recent.delete(key);
+}
+
 const lobbyMarkers = new Map<string, LobbyMarkers>();
 
 function toMarkers(lobby: Lobby): LobbyMarkers {

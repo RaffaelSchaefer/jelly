@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isMarkerOnlyChange, markHandled, shouldPostLobby, wasRecentlyHandled } from "./lobby-sync";
+import {
+  isMarkerOnlyChange,
+  markHandled,
+  shouldPostLobby,
+  unmarkHandled,
+  wasRecentlyHandled,
+} from "./lobby-sync";
 
 test("shouldPostLobby gilt nur für offene, unverlinkte Web-Lobbys", () => {
   assert.equal(
@@ -32,4 +38,10 @@ test("recent-Map verfällt nach TTL", () => {
   assert.equal(wasRecentlyHandled("create:lobby1:user1", now + 1_000), true);
   assert.equal(wasRecentlyHandled("create:lobby1:user1", now + 20_000), false);
   assert.equal(wasRecentlyHandled("create:lobby1:user2", now + 1_000), false);
+});
+
+test("fehlgeschlagene eigene Writes geben den Marker wieder frei", () => {
+  markHandled("create:lobby2:user1");
+  unmarkHandled("create:lobby2:user1");
+  assert.equal(wasRecentlyHandled("create:lobby2:user1"), false);
 });
