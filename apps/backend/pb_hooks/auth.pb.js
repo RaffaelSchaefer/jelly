@@ -65,7 +65,10 @@ onRecordAuthWithOAuth2Request((e) => {
     throw new BadRequestError("Nur Discord-Login ist erlaubt.")
   }
 
-  const profile = /** @type {auth.AuthUser} */ (e.oauth2User || {})
+  // Achtung: PocketBase liefert das Feld als "oAuth2User" (grosses O)
+  const profile = /** @type {auth.AuthUser} */ (
+    e.oAuth2User || /** @type {any} */ (e).oauth2User || {}
+  )
   const fields = {
     discordId: String(profile.id || ""),
     discordUsername: profile.username || profile.name || "",

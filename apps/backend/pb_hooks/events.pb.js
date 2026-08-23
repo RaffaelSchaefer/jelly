@@ -39,29 +39,8 @@ onRecordUpdate((e) => {
   e.next()
 }, "events")
 
-// An einem Event teilnehmen: Event muss existieren, nicht abgesagt und
-// (falls playersWanted gesetzt) nicht voll sein. Duplikate/Rückzug nur
-// für die eigene discordId — das regeln die API-Regeln der Collection.
-onRecordCreateRequest((e) => {
-  const eventId = e.record.getString("event")
-  let event
-  try {
-    event = $app.findRecordById("events", eventId)
-  } catch {
-    throw new BadRequestError("Dieses Event existiert nicht mehr.", { reason: "missing" })
-  }
-  if (event.getBool("isCanceled")) {
-    throw new BadRequestError("Dieses Event wurde abgesagt.", { reason: "closed" })
-  }
-  const wanted = event.getInt("playersWanted")
-  if (wanted > 0) {
-    const joined = $app.countRecords(
-      "event_attendees",
-      $dbx.hashExp({ event: eventId }),
-    )
-    if (joined >= wanted) {
-      throw new BadRequestError("Dieses Event ist leider schon voll.", { reason: "full" })
-    }
-  }
-  e.next()
-}, "event_attendees")
+// Hinweis: Die Teilnahme an Events wird ausschließlich über Discord verwaltet
+// (Guild Scheduled Events). Der Bot spiegelt die Teilnehmer nach
+// event_attendees; Web-Benutzer haben nur Leserechte (siehe Migration
+// 1787001700_remove_web_event_join.js). Bewusste Verzicht auf eine
+// Kapazitätsprüfung, damit die Bot-Synchronisation nie scheitert.

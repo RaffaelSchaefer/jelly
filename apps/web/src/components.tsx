@@ -297,17 +297,15 @@ export function ParticipantAvatars({ ids }: { ids: string[] }) {
 }
 
 export function JoinButton({
-  kind,
   id,
   disabled,
   label = "Teilnehmen",
 }: {
-  kind: "event" | "lobby";
   id: string;
   disabled?: boolean;
   label?: string;
 }) {
-  const membership = useMembership(kind, id);
+  const membership = useMembership(id);
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>

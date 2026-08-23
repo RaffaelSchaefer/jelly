@@ -157,9 +157,6 @@ export function DiscoverPage() {
               <div>
                 <h2 className="mt-1 text-xl font-extrabold text-white">Offene Lobbys</h2>
               </div>
-              <span className="relative flex size-3">
-                <span className="relative inline-flex size-3 rounded-full bg-success" />
-              </span>
             </div>
             {lobbies.isLoading ? (
               <div className="mt-5">
@@ -262,7 +259,6 @@ export function EventDetailPage() {
   const ids = (attendees.data ?? [])
     .filter((item) => item.event === id)
     .map((item) => item.discordUserId);
-  const full = event.playersWanted > 0 && ids.length >= event.playersWanted;
   const creator = user?.id === event.createdBy;
   const cover =
     eventBanner(event) || event.expand?.gameRef?.headerUrl || event.expand?.gameRef?.capsuleUrl;
@@ -352,9 +348,10 @@ export function EventDetailPage() {
             <div className="mt-4">
               <ParticipantAvatars ids={ids} />
             </div>
-            <div className="mt-6">
-              <JoinButton kind="event" id={id} disabled={event.isCanceled || full} />
-            </div>
+            <p className="mt-6 text-sm text-muted">
+              Teilnehmen und Zurückziehen läuft über das Discord-Event – hier siehst du nur den
+              aktuellen Stand.
+            </p>
             {creator && (
               <div className="mt-4 grid gap-2">
                 <button
@@ -729,12 +726,7 @@ export function LobbyDetailPage() {
               <ParticipantAvatars ids={ids} />
             </div>
             <div className="mt-6">
-              <JoinButton
-                kind="lobby"
-                id={id}
-                label="Lobby beitreten"
-                disabled={lobby.isClosed || full}
-              />
+              <JoinButton id={id} label="Lobby beitreten" disabled={lobby.isClosed || full} />
             </div>
             {creator && !lobby.isClosed && (
               <button

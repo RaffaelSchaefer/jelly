@@ -46,7 +46,7 @@ test("Discord OAuth initialisiert Profildaten bei der ersten Anmeldung", () => {
 
   const event = {
     providerName: "discord",
-    oauth2User: {
+    oAuth2User: {
       id: "123456789",
       username: "raff",
       name: "Raffael",
@@ -73,7 +73,7 @@ test("Discord OAuth aktualisiert und speichert Profildaten bei bestehenden Benut
   const record = mockRecord({ nickname: "", discordUsername: "", discordId: "", discordAvatar: "" })
   const event = {
     providerName: "discord",
-    oauth2User: {
+    oAuth2User: {
       id: "987654321",
       username: "raffael",
       avatarURL: "https://cdn.discordapp.com/avatars/987654321/neu.png",
@@ -103,7 +103,7 @@ test("Selbst gesetzter Nickname bleibt beim Login erhalten", () => {
   })
   const event = {
     providerName: "discord",
-    oauth2User: {
+    oAuth2User: {
       id: "123",
       username: "raff",
       name: "Raffael",
@@ -132,7 +132,7 @@ test("Entfernter Discord-Avatar leert das gespeicherte Bild", () => {
   })
   const event = {
     providerName: "discord",
-    oauth2User: { id: "123", username: "raff" },
+    oAuth2User: { id: "123", username: "raff" },
     createData: null,
     isNewRecord: false,
     record,
@@ -155,7 +155,7 @@ test("Ohne Aenderungen wird der Benutzer nicht gespeichert", () => {
   })
   const event = {
     providerName: "discord",
-    oauth2User: {
+    oAuth2User: {
       id: "123",
       username: "raff",
       avatarURL: "https://cdn.discordapp.com/avatars/123/alt.png",
@@ -174,7 +174,7 @@ test("Andere OAuth2-Provider werden abgewiesen", () => {
   const { authHandler } = loadAuthHook()
 
   assert.throws(
-    () => authHandler({ providerName: "google", oauth2User: {}, next() {} }),
+    () => authHandler({ providerName: "google", oAuth2User: {}, next() {} }),
     /Nur Discord-Login ist erlaubt\./,
   )
 })

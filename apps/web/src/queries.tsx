@@ -29,49 +29,47 @@ export const useUsers = () =>
 
 export function optimisticMemberships(
   records: MembershipRecord[],
-  kind: "event" | "lobby",
   parentId: string,
   discordUserId: string,
   join: boolean,
 ): MembershipRecord[] {
   const matches = (record: MembershipRecord) =>
-    record[kind] === parentId && record.discordUserId === discordUserId;
+    record.lobby === parentId && record.discordUserId === discordUserId;
   if (!join) return records.filter((record) => !matches(record));
   if (records.some(matches)) return records;
-  return [...records, { id: `optimistic-${kind}-${parentId}`, [kind]: parentId, discordUserId }];
+  return [...records, { id: `optimistic-lobby-${parentId}`, lobby: parentId, discordUserId }];
 }
 
-export function useMembership(kind: "event" | "lobby", parentId: string) {
-  const collection = kind === "event" ? "event_attendees" : "lobby_participants";
-  const queryKey = kind === "event" ? keys.attendees : keys.participants;
-  const attendees = useAttendees();
+// Teilnahme an Events wird ausschließlich über Discord verwaltet — Join/Leave
+// gibt es im Web nur für Lobbys.
+export function useMembership(parentId: string) {
+  const queryKey = keys.participants;
   const participants = useParticipants();
-  const query = kind === "event" ? attendees : participants;
   const queryClient = useQueryClient();
   const { user, openLogin } = useAuth();
   const toast = useToast();
   const joined = Boolean(
     user?.discordId &&
-    query.data?.some(
-      (record) => record[kind] === parentId && record.discordUserId === user.discordId,
+    participants.data?.some(
+      (record) => record.lobby === parentId && record.discordUserId === user.discordId,
     ),
   );
-  const count = query.data?.filter((record) => record[kind] === parentId).length ?? 0;
+  const count = participants.data?.filter((record) => record.lobby === parentId).length ?? 0;
 
   const mutation = useMutation({
     mutationFn: async (join: boolean) => {
       if (!user?.discordId) throw new Error("Deinem Konto fehlt die Discord-Verknüpfung.");
       if (join) {
-        await pb.collection(collection).create({ [kind]: parentId, discordUserId: user.discordId });
+        await pb.collection("lobby_participants").create({ lobby: parentId, discordUserId: user.discordId });
         return;
       }
       try {
-        const filter = pb.filter(`${kind} = {:parentId} && discordUserId = {:discordUserId}`, {
+        const filter = pb.filter(`lobby = {:parentId} && discordUserId = {:discordUserId}`, {
           parentId,
           discordUserId: user.discordId,
         });
-        const own = await pb.collection(collection).getFirstListItem(filter);
-        await pb.collection(collection).delete(own.id);
+        const own = await pb.collection("lobby_participants").getFirstListItem(filter);
+        await pb.collection("lobby_participants").delete(own.id);
       } catch (error) {
         if (typeof error === "object" && error && "status" in error && error.status === 404) return;
         throw error;
@@ -83,7 +81,7 @@ export function useMembership(kind: "event" | "lobby", parentId: string) {
       const previous = queryClient.getQueryData<MembershipRecord[]>(queryKey) ?? [];
       queryClient.setQueryData(
         queryKey,
-        optimisticMemberships(previous, kind, parentId, user.discordId, join),
+        optimisticMemberships(previous, parentId, user.discordId, join),
       );
       return { previous };
     },
