@@ -16,9 +16,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { discordAvatar, eventBanner, searchGames } from "./api";
+import { avatarUrl, eventBanner, searchGames } from "./api";
 import { useAuth } from "./auth";
-import { useMembership } from "./queries";
+import { useMembership, useUsers } from "./queries";
 import type { EventRecord, GameSuggestion, LobbyRecord } from "./types";
 
 export const inputClass =
@@ -77,7 +77,11 @@ export function AppShell() {
           {user ? (
             <DropdownMenu.Root>
               <DropdownMenu.Trigger className="ml-auto flex items-center gap-2 rounded-xl border border-white/8 bg-card px-2.5 py-2 text-sm font-bold lg:ml-0">
-                <img className="size-7 rounded-full" src={discordAvatar(user.discordId)} alt="" />
+                <img
+                  className="size-7 rounded-full"
+                  src={avatarUrl(user.discordId, user.discordAvatar)}
+                  alt=""
+                />
                 <span className="hidden sm:inline">{user.nickname || user.discordUsername}</span>
                 <ChevronDown size={14} />
               </DropdownMenu.Trigger>
@@ -253,29 +257,36 @@ export function LobbyCard({
 }
 
 export function ParticipantAvatars({ ids }: { ids: string[] }) {
+  const users = useUsers();
   if (!ids.length)
     return <p className="text-sm text-muted">Noch niemand – sei die erste Person.</p>;
   return (
     <div className="flex -space-x-2">
-      {ids.slice(0, 8).map((id) => (
-        <Tooltip.Root key={id}>
-          <Tooltip.Trigger asChild>
-            <img
-              className="size-9 rounded-full border-2 border-card"
-              src={discordAvatar(id)}
-              alt="Discord-Teilnehmer"
-            />
-          </Tooltip.Trigger>
-          <Tooltip.Portal>
-            <Tooltip.Content
-              className="z-50 rounded-lg bg-chrome px-2 py-1 text-xs text-white shadow-xl"
-              sideOffset={5}
-            >
-              Discord-Mitglied #{id.slice(-4)}
-            </Tooltip.Content>
-          </Tooltip.Portal>
-        </Tooltip.Root>
-      ))}
+      {ids.slice(0, 8).map((id) => {
+        const profile = users.data?.get(id);
+        // Ohne Web-Login gibt es kein Profil – dann bleibt der Platzhalter.
+        const label =
+          profile?.nickname || profile?.discordUsername || `Discord-Mitglied #${id.slice(-4)}`;
+        return (
+          <Tooltip.Root key={id}>
+            <Tooltip.Trigger asChild>
+              <img
+                className="size-9 rounded-full border-2 border-card"
+                src={avatarUrl(id, profile?.discordAvatar)}
+                alt={label}
+              />
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content
+                className="z-50 rounded-lg bg-chrome px-2 py-1 text-xs text-white shadow-xl"
+                sideOffset={5}
+              >
+                {label}
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        );
+      })}
       {ids.length > 8 && (
         <span className="grid size-9 place-items-center rounded-full border-2 border-card bg-chrome text-xs font-bold">
           +{ids.length - 8}

@@ -20,6 +20,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => pb.authStore.onChange(() => setUser(currentUser()), true), []);
+  // Holt neue Profilfelder (z. B. discordAvatar) fuer bestehende Sessions nach.
+  useEffect(() => {
+    if (pb.authStore.isValid)
+      void pb
+        .collection("users")
+        .authRefresh()
+        .catch(() => {});
+  }, []);
 
   async function login() {
     setBusy(true);

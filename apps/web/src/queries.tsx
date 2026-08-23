@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { displayError, listEvents, listLobbies, listMemberships, pb } from "./api";
+import { displayError, listEvents, listLobbies, listMemberships, listUsers, pb } from "./api";
 import { useAuth } from "./auth";
 import { useToast } from "./toast";
-import type { MembershipRecord } from "./types";
+import type { MembershipRecord, UserRecord } from "./types";
 
 export const keys = {
   events: ["events"] as const,
   attendees: ["event_attendees"] as const,
   lobbies: ["lobbies"] as const,
   participants: ["lobby_participants"] as const,
+  users: ["users"] as const,
 };
 
 export const useEvents = () => useQuery({ queryKey: keys.events, queryFn: listEvents });
@@ -18,6 +19,13 @@ export const useAttendees = () =>
   useQuery({ queryKey: keys.attendees, queryFn: () => listMemberships("event_attendees") });
 export const useParticipants = () =>
   useQuery({ queryKey: keys.participants, queryFn: () => listMemberships("lobby_participants") });
+// Nachschlagewerk fuer Teilnehmerlisten: Discord-ID -> Profil
+export const useUsers = () =>
+  useQuery({
+    queryKey: keys.users,
+    queryFn: listUsers,
+    select: (users: UserRecord[]) => new Map(users.map((user) => [user.discordId, user])),
+  });
 
 export function optimisticMemberships(
   records: MembershipRecord[],

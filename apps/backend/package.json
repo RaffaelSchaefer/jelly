@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "setup": "node scripts/download-pocketbase.mjs",
-    "dev": "node scripts/download-pocketbase.mjs && ./pocketbase serve --http=127.0.0.1:8090",
-    "db:migrate": "./pocketbase migrate up",
+    "setup": "node --env-file-if-exists=.env scripts/download-pocketbase.mjs",
+    "dev": "node --env-file-if-exists=.env scripts/download-pocketbase.mjs && sh scripts/pb.sh serve --http=127.0.0.1:8090",
+    "db:migrate": "sh scripts/pb.sh migrate up",
     "test": "node --test tests/*.test.mjs"
   }
 }

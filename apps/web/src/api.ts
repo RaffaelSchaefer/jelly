@@ -37,6 +37,14 @@ export async function listMemberships(
   return (await pb.collection(collection).getFullList()).map(as<MembershipRecord>);
 }
 
+export async function listUsers(): Promise<UserRecord[]> {
+  return (
+    await pb.collection("users").getFullList({
+      fields: "id,nickname,discordUsername,discordId,discordAvatar",
+    })
+  ).map(as<UserRecord>);
+}
+
 export async function searchGames(query: string): Promise<GameSuggestion[]> {
   if (query.trim().length < 2) return [];
   const response = await fetch(
@@ -70,7 +78,8 @@ export function countBy(records: MembershipRecord[], key: "event" | "lobby"): Ma
   return counts;
 }
 
-export function discordAvatar(discordId: string): string {
+export function avatarUrl(discordId: string, avatar?: string): string {
+  if (avatar) return `${avatar}?size=128`;
   let index = 0;
   try {
     index = Number((BigInt(discordId) >> 22n) % 6n);

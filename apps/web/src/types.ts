@@ -3,6 +3,7 @@ export interface UserRecord {
   nickname: string;
   discordUsername: string;
   discordId: string;
+  discordAvatar: string;
   email?: string;
 }
 

@@ -13,7 +13,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   countBy,
-  discordAvatar,
+  avatarUrl,
   discordEventUrl,
   discordThreadUrl,
   displayError,
@@ -910,7 +910,7 @@ export function ProfilePage() {
       <section className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <div className="h-fit rounded-3xl border border-white/7 bg-card p-6 text-center">
           <img
-            src={discordAvatar(user.discordId)}
+            src={avatarUrl(user.discordId, user.discordAvatar)}
             className="mx-auto size-24 rounded-full ring-4 ring-blurple/20"
             alt="Discord-Avatar"
           />
