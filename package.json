@@ -7,11 +7,6 @@
     "lint": "turbo run lint",
     "format": "oxfmt --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "db:generate": "turbo run db:generate",
-    "db:migrate": "turbo run db:migrate",
-    "db:deploy": "turbo run db:deploy",
-    "db:studio": "turbo run db:studio",
-    "board": "godot --path apps/board",
     "test": "turbo run test"
   },
   "devDependencies": {
