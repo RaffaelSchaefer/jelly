@@ -3,12 +3,12 @@ import {
   addEventAttendee,
   findEventByDiscordGuildEventId,
   getEventAttendeeCounts,
-  getEvent,
   listAllEvents,
   listAutoStartCandidates,
   listLinkedCurrentEvents,
   reconcileEventAttendees,
   removeEventAttendee,
+  setEventLinks,
   toJointEvent,
   type JointEvent,
 } from "./events";
@@ -16,6 +16,7 @@ import { eventToEmbed } from "./embeds";
 import {
   cancelGuildEvent,
   closeGameThread,
+  createGuildEvent,
   deleteGuildEvent,
   fetchGuildEventSubscriberIds,
   reconcileGameThreadMembers,
@@ -25,11 +26,12 @@ import {
   syncEnabled,
   updateGuildEvent,
 } from "./guild-events";
-import { ensureSuperuser, pb } from "./pocketbase";
+import { ensureSuperuser, hasSuperuser, pb } from "./pocketbase";
 import { Events as DiscordEvents, type Client } from "discord.js";
 
 const announced = new Set<string>();
 const lastCanceled = new Map<string, boolean>();
+const linking = new Set<string>();
 
 async function seedState(): Promise<void> {
   try {
@@ -60,18 +62,39 @@ async function announce(client: Client, event: JointEvent): Promise<void> {
   console.log(`[joint-bot] Event angekündigt: ${event.title}`);
 }
 
-function announceAfterDiscordLink(client: Client, eventId: string): void {
-  setTimeout(() => {
-    void (async () => {
-      if (announced.has(eventId)) return;
-      const event = await getEvent(eventId);
-      if (event && !event.isCanceled && Date.parse(event.startsAt) > Date.now()) {
-        await announce(client, event);
-      }
-    })().catch((error) => {
-      console.error("[joint-bot] Verzögerte Event-Ankündigung fehlgeschlagen:", error);
-    });
-  }, 3_000).unref();
+async function fetchBanner(event: JointEvent): Promise<Buffer | null> {
+  if (!event.bannerUrl) return null;
+
+  try {
+    const response = await fetch(event.bannerUrl);
+    if (!response.ok) return null;
+    return Buffer.from(await response.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+async function linkEventToGuild(client: Client, event: JointEvent): Promise<void> {
+  if (linking.has(event.id)) return;
+  linking.add(event.id);
+
+  try {
+    const guildEventId = await createGuildEvent(client, event, await fetchBanner(event));
+    if (!guildEventId) {
+      await announce(client, event);
+      return;
+    }
+
+    try {
+      await setEventLinks(event.id, { discordGuildEventId: guildEventId });
+    } catch (error) {
+      await deleteGuildEvent(client, guildEventId);
+      throw error;
+    }
+    console.log(`[joint-bot] Web-Event verlinkt: ${event.title}`);
+  } finally {
+    linking.delete(event.id);
+  }
 }
 
 async function handleGuildEventUser(
@@ -141,6 +164,20 @@ export async function startEventRealtime(client: Client): Promise<void> {
   await ensureSuperuser();
   await seedState();
 
+  if (syncEnabled() && hasSuperuser()) {
+    const unlinked = (await listAllEvents()).filter(
+      (event) =>
+        !event.isCanceled && !event.discordGuildEventId && Date.parse(event.startsAt) > Date.now(),
+    );
+    for (const event of unlinked) {
+      try {
+        await linkEventToGuild(client, event);
+      } catch (error) {
+        console.warn(`[joint-bot] Web-Event konnte nicht verlinkt werden: ${event.title}`, error);
+      }
+    }
+  }
+
   if (!syncEnabled()) {
     console.log("[joint-bot] Kein DISCORD_GUILD_ID gesetzt – Server-Event-Sync deaktiviert");
   } else {
@@ -174,8 +211,8 @@ async function handleRecordChange(client: Client, record: JointEvent): Promise<v
   }
 
   if (!record.isCanceled && Date.parse(record.startsAt) > Date.now() && !announced.has(record.id)) {
-    if (syncEnabled() && !record.discordGuildEventId) {
-      announceAfterDiscordLink(client, record.id);
+    if (syncEnabled() && hasSuperuser() && !record.discordGuildEventId) {
+      await linkEventToGuild(client, record);
       return;
     }
     await announce(client, record);

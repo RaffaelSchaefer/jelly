@@ -2,6 +2,7 @@ import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from "dis
 import { registerCommands } from "./commands";
 import type { Command } from "./commands/types";
 import { env } from "./env";
+import { startLobbySync } from "./lobby-sync";
 import { ensureSuperuser, hasSuperuser } from "./pocketbase";
 import { startEventRealtime } from "./realtime";
 
@@ -29,6 +30,9 @@ client.once(Events.ClientReady, async (ready) => {
   }
 
   await startEventRealtime(client);
+  if (hasSuperuser()) {
+    await startLobbySync(client);
+  }
   console.log(
     env.guildId
       ? `[joint-bot] Server-Event-Sync aktiv (Guild ${env.guildId})`
