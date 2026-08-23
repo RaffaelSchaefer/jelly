@@ -8,6 +8,7 @@ const TYPE_META: Record<EventType, { label: string; emoji: string; color: number
   giveaway: { label: "Giveaway", emoji: "🎁", color: 0xfee75c },
   tournament: { label: "Turnier", emoji: "🏆", color: 0xeb459e },
   workshop: { label: "Workshop", emoji: "🛠️", color: 0xf97316 },
+  game: { label: "Game", emoji: "🎮", color: 0x66c0f4 },
   other: { label: "Sonstiges", emoji: "❓", color: 0x95a5a6 },
 };
 
@@ -52,6 +53,18 @@ function timestamp(value: string, style: "f" | "t"): string | null {
 
 const CHANNEL_ID = /^\d{15,21}$/;
 
+function gameFieldValue(event: JointEvent): string {
+  if (!event.gameUrl) return event.game;
+
+  const url = new URL(event.gameUrl);
+  const host = ["store.steampowered.com", "www.store.steampowered.com"].includes(url.hostname)
+    ? "Steam"
+    : url.hostname;
+  const label = event.game.replaceAll("\\", "\\\\").replaceAll("[", "\\[").replaceAll("]", "\\]");
+  const target = event.gameUrl.replaceAll("(", "%28").replaceAll(")", "%29");
+  return `[${label}](${target}) · ${host}`;
+}
+
 export function eventToEmbed(event: JointEvent, attendeeCount = 0): EmbedBuilder {
   const meta = TYPE_META[event.type] ?? TYPE_META.other;
 
@@ -66,6 +79,17 @@ export function eventToEmbed(event: JointEvent, attendeeCount = 0): EmbedBuilder
 
   if (event.bannerUrl) {
     embed.setImage(event.bannerUrl);
+  }
+
+  if (event.type === "game") {
+    embed.addFields({ name: "Spiel", value: gameFieldValue(event), inline: true });
+    if (event.playersWanted) {
+      embed.addFields({
+        name: "Mitspieler gesucht",
+        value: String(event.playersWanted),
+        inline: true,
+      });
+    }
   }
 
   const start = timestamp(event.startsAt, "f");

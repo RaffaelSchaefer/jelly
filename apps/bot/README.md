@@ -10,9 +10,13 @@ automatisch per Realtime an.
 - `/event show <event>` – einzelnes Event anzeigen (Autocomplete nach Name)
 - `/event attendees <event>` – Discord-Interessierte anzeigen (nur Ersteller
   oder Server-Admins)
-- `/event create [... banner]` – neues Event mit optionalem PNG-, JPEG- oder
+- `/event create [... banner spiel ziel mitspieler]` – neues Event mit optionalem PNG-, JPEG- oder
   WebP-Banner bis 5 MiB anlegen; der Discord-User wird als Ersteller getrackt
   und das zugehörige **Discord Server-Event** wird zuerst erstellt
+- **Game-LFG:** Typ `game` verlangt einen Spielnamen und erstellt im
+  Announce-Channel einen öffentlichen Koordinations-Thread. Optional werden
+  Steam-App-ID/-Link oder HTTPS-Web-Link und gesuchte Mitspieler angezeigt;
+  Discord-Interessierte werden automatisch in den Thread aufgenommen
 - `/event cancel <event>` – Event absagen (nur Ersteller oder Server-Admins),
   optionale Abgesagt-Info in den Announce-Channel; Server-Event wird mit gecancelt
 - `/event delete <event>` – Event endgültig löschen (nur Ersteller oder
@@ -41,7 +45,7 @@ ENV-Variablen:
 | `DISCORD_BOT_TOKEN`                   | Bot-Token aus dem Discord Developer Portal                                          |
 | `DISCORD_CLIENT_ID`                   | Application-ID (für Slash-Command-Registrierung)                                    |
 | `DISCORD_GUILD_ID`                    | Dev-Command-Deploy + Ziel-Server für den Server-Event-Sync (ohne: Sync deaktiviert) |
-| `ANNOUNCE_CHANNEL_ID`                 | Optional: Channel für Auto-Ankündigungen                                            |
+| `ANNOUNCE_CHANNEL_ID`                 | Channel für Auto-Ankündigungen; Pflicht und threadfähig für Game-Events             |
 | `POCKETBASE_URL`                      | Standard: `http://127.0.0.1:8090`                                                   |
 | `POCKETBASE_SUPERUSER_EMAIL/PASSWORD` | Superuser-Credentials (Pflicht für Schreib-Commands, Teilnehmerzahlen und Sync)     |
 
@@ -50,7 +54,8 @@ Discord-Seite (<https://discord.com/developers/applications>):
 1. Bot anlegen, Token kopieren, **Message Content Intent nicht nötig**
 2. OAuth2-URL-Generator: Scopes `bot` + `applications.commands`,
    Permissions _View Channels, Send Messages, Embed Links, Connect,
-   Create Events, Manage Events_ (Integer `17600777047040`)
+   Create Events, Manage Events, Create Public Threads, Send Messages in Threads,
+   Manage Threads_ (Integer `17927194561536`)
 3. Bot auf den Server einladen
 
 Server-Event-Sync: Joint-Events werden bei `/event create` automatisch als
@@ -61,6 +66,11 @@ der verlinkte Titel öffnet das Discord Event, wo Nutzer **Interessiert** wähle
 Ohne erreichbaren, über `DISCORD_GUILD_ID` konfigurierten Server wird das Event
 nicht angelegt. Ein optionales Banner erscheint im Server-Event und in allen
 Event-Embeds; empfohlenes Format ist 800×320 Pixel.
+
+Game-Events können nur über `/event create` vollständig angelegt werden. Ohne
+Voice-Channel wird der Ort `Online · <Spiel>` verwendet. Schlägt die Erstellung
+des Server-Events, der Ankündigung oder des Threads fehl, werden alle bereits
+angelegten Discord-Ressourcen wieder entfernt und kein PocketBase-Event gespeichert.
 
 PocketBase-Seite: Backend starten (`pnpm --filter @joint/backend dev`) und
 Superuser-Credentials setzen (`./pocketbase superuser upsert EMAIL PASS`).

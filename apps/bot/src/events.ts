@@ -7,6 +7,7 @@ export const EVENT_TYPES = [
   "giveaway",
   "tournament",
   "workshop",
+  "game",
   "other",
 ] as const;
 
@@ -25,6 +26,10 @@ export interface JointEvent {
   isCanceled: boolean;
   discordCreatorId: string;
   discordGuildEventId: string;
+  game: string;
+  gameUrl: string;
+  playersWanted: number;
+  discordThreadId: string;
 }
 
 export function toJointEvent(record: RecordModel): JointEvent {
@@ -43,7 +48,52 @@ export function toJointEvent(record: RecordModel): JointEvent {
     isCanceled: Boolean(record.isCanceled),
     discordCreatorId: String(record.discordCreatorId ?? ""),
     discordGuildEventId: String(record.discordGuildEventId ?? ""),
+    game: String(record.game ?? ""),
+    gameUrl: String(record.gameUrl ?? ""),
+    playersWanted: Number(record.playersWanted ?? 0),
+    discordThreadId: String(record.discordThreadId ?? ""),
   };
+}
+
+const STEAM_APP_ID_MAX = 4_294_967_295;
+
+function steamUrl(value: string): string | null {
+  const appId = Number(value);
+  if (!Number.isSafeInteger(appId) || appId < 1 || appId > STEAM_APP_ID_MAX) return null;
+  return `https://store.steampowered.com/app/${appId}/`;
+}
+
+export function normalizeGameDestination(input: string): string {
+  const value = input.trim();
+  if (!value) return "";
+  if (/^\d+$/.test(value)) {
+    const url = steamUrl(value);
+    if (!url) throw new Error("Die Steam-App-ID ist ungültig.");
+    return url;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Das Spielziel muss eine Steam-App-ID oder vollständige HTTPS-URL sein.");
+  }
+
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error("Das Spielziel muss eine HTTPS-URL ohne Zugangsdaten sein.");
+  }
+
+  if (
+    ["store.steampowered.com", "www.store.steampowered.com"].includes(url.hostname.toLowerCase())
+  ) {
+    const match = url.pathname.match(/^\/app\/(\d+)(?:\/|$)/);
+    const canonical = match ? steamUrl(match[1]) : null;
+    if (!canonical) throw new Error("Der Steam-Link muss auf eine gültige App-Seite zeigen.");
+    return canonical;
+  }
+
+  if (url.href.length > 500) throw new Error("Das Spielziel darf höchstens 500 Zeichen lang sein.");
+  return url.href;
 }
 
 function escapeFilter(value: string): string {
@@ -155,6 +205,10 @@ export async function createEvent(input: {
   banner?: File;
   discordCreatorId?: string;
   discordGuildEventId?: string;
+  game?: string;
+  gameUrl?: string;
+  playersWanted?: number;
+  discordThreadId?: string;
 }): Promise<JointEvent> {
   await ensureSuperuser();
 
@@ -168,6 +222,10 @@ export async function createEvent(input: {
     ...(input.banner ? { banner: input.banner } : {}),
     ...(input.discordCreatorId ? { discordCreatorId: input.discordCreatorId } : {}),
     ...(input.discordGuildEventId ? { discordGuildEventId: input.discordGuildEventId } : {}),
+    ...(input.game ? { game: input.game } : {}),
+    ...(input.gameUrl ? { gameUrl: input.gameUrl } : {}),
+    ...(input.playersWanted ? { playersWanted: input.playersWanted } : {}),
+    ...(input.discordThreadId ? { discordThreadId: input.discordThreadId } : {}),
   });
 
   return toJointEvent(record);

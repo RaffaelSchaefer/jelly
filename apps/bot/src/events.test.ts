@@ -1,15 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { Client, GuildScheduledEventCreateOptions } from "discord.js";
+import type { Client, GuildScheduledEventCreateOptions, GuildTextBasedChannel } from "discord.js";
 import {
+  command as eventCommand,
+  createGameEventTransaction,
   downloadBanner,
+  parseGameOptions,
   persistEventAfterGuildCreate,
   validateBannerUpload,
 } from "./commands/event";
 import { eventToEmbed } from "./embeds";
 import { env } from "./env";
-import { diffAttendeeIds, type JointEvent } from "./events";
-import { createGuildEvent, shouldAutoStart } from "./guild-events";
+import { diffAttendeeIds, normalizeGameDestination, type JointEvent } from "./events";
+import {
+  closeGameThread,
+  createGameThread,
+  createGuildEvent,
+  reconcileGameThreadMembers,
+  shouldAutoStart,
+  syncGameThreadMember,
+} from "./guild-events";
 
 const event: JointEvent = {
   id: "event",
@@ -24,6 +34,10 @@ const event: JointEvent = {
   isCanceled: false,
   discordCreatorId: "creator",
   discordGuildEventId: "987654321098765432",
+  game: "",
+  gameUrl: "",
+  playersWanted: 0,
+  discordThreadId: "",
 };
 
 test("diffAttendeeIds adds and removes only changed Discord subscribers", () => {
@@ -81,11 +95,22 @@ test("Discord receives the downloaded banner buffer unchanged", async () => {
   env.guildId = "guild";
   try {
     assert.equal(await createGuildEvent(client, event, image), "guild-event");
+    assert.equal(options?.image, image);
+    assert.equal(options?.description, undefined);
+
+    await createGuildEvent(client, {
+      ...event,
+      type: "game",
+      game: "Counter-Strike 2",
+      gameUrl: "https://store.steampowered.com/app/730/",
+      playersWanted: 4,
+      location: "",
+    });
+    assert.equal(options?.entityMetadata?.location, "Online · Counter-Strike 2");
+    assert.match(options?.description ?? "", /4 Mitspieler/);
   } finally {
     env.guildId = previousGuildId;
   }
-  assert.equal(options?.image, image);
-  assert.equal(options?.description, undefined);
 });
 
 test("event embeds include a banner only when one is stored", () => {
@@ -94,6 +119,70 @@ test("event embeds include a banner only when one is stored", () => {
     eventToEmbed({ ...event, bannerUrl: "https://pb.test/banner.png" }).toJSON().image?.url,
     "https://pb.test/banner.png",
   );
+});
+
+test("game destinations normalize Steam IDs and accept safe web URLs", () => {
+  assert.equal(normalizeGameDestination("730"), "https://store.steampowered.com/app/730/");
+  assert.equal(
+    normalizeGameDestination("https://store.steampowered.com/app/730/CounterStrike/?l=german"),
+    "https://store.steampowered.com/app/730/",
+  );
+  assert.equal(
+    normalizeGameDestination("https://example.test/play?room=joint"),
+    "https://example.test/play?room=joint",
+  );
+  assert.throws(() => normalizeGameDestination("steam://run/730"), /HTTPS/);
+  assert.throws(() => normalizeGameDestination("https://user:pass@example.test/play"), /Zugang/);
+  assert.throws(
+    () => normalizeGameDestination("https://store.steampowered.com/search/"),
+    /App-Seite/,
+  );
+});
+
+test("game options are required only for Game events", () => {
+  assert.deepEqual(parseGameOptions("game", "  Counter-Strike 2 ", "730", 4), {
+    game: "Counter-Strike 2",
+    gameUrl: "https://store.steampowered.com/app/730/",
+    playersWanted: 4,
+  });
+  assert.throws(() => parseGameOptions("game", null, null, null), /spiel/);
+  assert.throws(() => parseGameOptions("game", "Game", null, 100), /1 und 99/);
+  assert.throws(() => parseGameOptions("other", "Game", null, null), /nur für Typ/);
+  assert.deepEqual(parseGameOptions("other", null, null, null), {
+    game: "",
+    gameUrl: "",
+    playersWanted: 0,
+  });
+});
+
+test("event command publishes the Game type and conditional inputs", () => {
+  const json = eventCommand.data.toJSON() as {
+    options?: Array<{
+      name: string;
+      options?: Array<{ name: string; choices?: Array<{ value: string | number }> }>;
+    }>;
+  };
+  const create = json.options?.find((option) => option.name === "create");
+  const createOptions = create?.options ?? [];
+  const type = createOptions?.find((option) => option.name === "typ");
+  assert.ok(type?.choices?.some((choice) => choice.value === "game"));
+  assert.ok(createOptions?.some((option) => option.name === "spiel"));
+  assert.ok(createOptions?.some((option) => option.name === "ziel"));
+  assert.ok(createOptions?.some((option) => option.name === "mitspieler"));
+});
+
+test("game embeds expose destination and player target without a hard-cap calculation", () => {
+  const embed = eventToEmbed({
+    ...event,
+    type: "game",
+    game: "Counter-Strike 2",
+    gameUrl: "https://store.steampowered.com/app/730/",
+    playersWanted: 4,
+  }).toJSON();
+  assert.match(embed.title ?? "", /🎮/);
+  assert.match(embed.fields?.find((field) => field.name === "Spiel")?.value ?? "", /Steam/);
+  assert.equal(embed.fields?.find((field) => field.name === "Mitspieler gesucht")?.value, "4");
+  assert.equal(embed.fields?.find((field) => field.name === "Interessiert")?.value, "0");
 });
 
 test("event persistence requires Discord and rolls Discord back on failure", async () => {
@@ -123,4 +212,153 @@ test("event persistence requires Discord and rolls Discord back on failure", asy
     /PocketBase failed/,
   );
   assert.equal(rolledBack, "guild-event");
+});
+
+test("Game creation rolls every completed Discord stage back in reverse order", async () => {
+  const calls: string[] = [];
+  const created = await createGameEventTransaction({
+    createGuildEvent: async () => {
+      calls.push("guild");
+      return "guild-event";
+    },
+    createThread: async () => {
+      calls.push("thread");
+      return { id: "thread" };
+    },
+    persist: async () => {
+      calls.push("persist");
+      return "event";
+    },
+    rollbackThread: async () => true,
+    rollbackGuildEvent: async () => true,
+  });
+  assert.equal(created, "event");
+  assert.deepEqual(calls, ["guild", "thread", "persist"]);
+
+  calls.length = 0;
+  await assert.rejects(
+    createGameEventTransaction({
+      createGuildEvent: async () => "guild-event",
+      createThread: async () => {
+        throw new Error("thread failed");
+      },
+      persist: async () => "unused",
+      rollbackThread: async () => true,
+      rollbackGuildEvent: async () => {
+        calls.push("guild rollback");
+        return true;
+      },
+    }),
+    /thread failed/,
+  );
+  assert.deepEqual(calls, ["guild rollback"]);
+
+  calls.length = 0;
+  await assert.rejects(
+    createGameEventTransaction({
+      createGuildEvent: async () => "guild-event",
+      createThread: async () => ({ id: "thread" }),
+      persist: async () => {
+        throw new Error("PocketBase failed");
+      },
+      rollbackThread: async () => {
+        calls.push("thread rollback");
+        return true;
+      },
+      rollbackGuildEvent: async () => {
+        calls.push("guild rollback");
+        return true;
+      },
+    }),
+    /PocketBase failed/,
+  );
+  assert.deepEqual(calls, ["thread rollback", "guild rollback"]);
+});
+
+test("Game thread creation adds the creator and cleans partial resources", async () => {
+  const calls: string[] = [];
+  const thread = {
+    id: "333333333333333333",
+    members: { add: async (id: string) => calls.push(`add:${id}`) },
+    send: async () => calls.push("intro"),
+    delete: async () => calls.push("delete thread"),
+  };
+  const message = {
+    id: "222222222222222222",
+    startThread: async () => thread,
+    delete: async () => calls.push("delete message"),
+  };
+  const channel = {
+    send: async () => message,
+  } as unknown as GuildTextBasedChannel;
+  const game = {
+    ...event,
+    type: "game" as const,
+    game: "Counter-Strike 2",
+    playersWanted: 4,
+  };
+
+  const resources = await createGameThread(channel, game);
+  assert.equal(resources.thread.id, thread.id);
+  assert.deepEqual(calls, ["add:creator", "intro"]);
+
+  calls.length = 0;
+  thread.members.add = async () => {
+    throw new Error("member failed");
+  };
+  await assert.rejects(createGameThread(channel, game), /member failed/);
+  assert.deepEqual(calls, ["delete thread", "delete message"]);
+});
+
+test("Interested users sync to Game threads and cancellation closes them", async () => {
+  const calls: string[] = [];
+  const thread = {
+    archived: true,
+    locked: false,
+    isThread: () => true,
+    setArchived: async (value: boolean) => {
+      calls.push(`archived:${value}`);
+      thread.archived = value;
+    },
+    setLocked: async (value: boolean) => {
+      calls.push(`locked:${value}`);
+      thread.locked = value;
+    },
+    members: {
+      add: async (id: string) => calls.push(`add:${id}`),
+      remove: async (id: string) => calls.push(`remove:${id}`),
+      fetch: async () => new Map<string, unknown>(),
+    },
+  };
+  const client = {
+    channels: { fetch: async () => thread },
+  } as unknown as Client;
+  const game = {
+    ...event,
+    type: "game" as const,
+    game: "Counter-Strike 2",
+    discordThreadId: "333333333333333333",
+  };
+
+  await syncGameThreadMember(client, game, "player", true);
+  await syncGameThreadMember(client, game, "player", false);
+  await syncGameThreadMember(client, game, game.discordCreatorId, false);
+  assert.deepEqual(calls, ["archived:false", "add:player", "remove:player", "add:creator"]);
+  calls.length = 0;
+  thread.members.fetch = async () =>
+    new Map([
+      ["bot", {}],
+      ["creator", {}],
+      ["stale", {}],
+    ]);
+  const reconcileClient = {
+    user: { id: "bot" },
+    channels: { fetch: async () => thread },
+  } as unknown as Client;
+  await reconcileGameThreadMembers(reconcileClient, game, ["player"]);
+  assert.deepEqual(calls, ["add:player", "remove:stale"]);
+
+  calls.length = 0;
+  await closeGameThread(client, game);
+  assert.deepEqual(calls, ["locked:true", "archived:true"]);
 });

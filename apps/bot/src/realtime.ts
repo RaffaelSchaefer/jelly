@@ -15,10 +15,13 @@ import {
 import { eventToEmbed } from "./embeds";
 import {
   cancelGuildEvent,
+  closeGameThread,
   deleteGuildEvent,
   fetchGuildEventSubscriberIds,
+  reconcileGameThreadMembers,
   shouldAutoStart,
   startGuildEvent,
+  syncGameThreadMember,
   syncEnabled,
   updateGuildEvent,
 } from "./guild-events";
@@ -72,6 +75,7 @@ function announceAfterDiscordLink(client: Client, eventId: string): void {
 }
 
 async function handleGuildEventUser(
+  client: Client,
   guildEventId: string,
   discordUserId: string,
   joined: boolean,
@@ -84,6 +88,7 @@ async function handleGuildEventUser(
   } else {
     await removeEventAttendee(event.id, discordUserId);
   }
+  await syncGameThreadMember(client, event, discordUserId, joined);
 }
 
 async function reconcileDiscordAttendees(client: Client): Promise<void> {
@@ -93,6 +98,9 @@ async function reconcileDiscordAttendees(client: Client): Promise<void> {
     try {
       const discordUserIds = await fetchGuildEventSubscriberIds(client, event.discordGuildEventId);
       await reconcileEventAttendees(event.id, discordUserIds);
+      if (event.type === "game") {
+        await reconcileGameThreadMembers(client, event, discordUserIds);
+      }
     } catch (error) {
       console.warn(`[joint-bot] Teilnehmer-Sync übersprungen: ${event.title}`, error);
     }
@@ -109,12 +117,12 @@ async function startDueVoiceEvents(client: Client): Promise<void> {
 
 async function startDiscordAttendanceSync(client: Client): Promise<void> {
   client.on(DiscordEvents.GuildScheduledEventUserAdd, (guildEvent, user) => {
-    void handleGuildEventUser(guildEvent.id, user.id, true).catch((error) => {
+    void handleGuildEventUser(client, guildEvent.id, user.id, true).catch((error) => {
       console.error("[joint-bot] Teilnehmer konnte nicht hinzugefügt werden:", error);
     });
   });
   client.on(DiscordEvents.GuildScheduledEventUserRemove, (guildEvent, user) => {
-    void handleGuildEventUser(guildEvent.id, user.id, false).catch((error) => {
+    void handleGuildEventUser(client, guildEvent.id, user.id, false).catch((error) => {
       console.error("[joint-bot] Teilnehmer konnte nicht entfernt werden:", error);
     });
   });
@@ -151,9 +159,13 @@ export async function startEventRealtime(client: Client): Promise<void> {
 async function handleRecordChange(client: Client, record: JointEvent): Promise<void> {
   const previousCanceled = lastCanceled.get(record.id) ?? false;
   lastCanceled.set(record.id, record.isCanceled);
+  if (record.type === "game" && record.discordThreadId) announced.add(record.id);
 
-  if (record.isCanceled && !previousCanceled && record.discordGuildEventId && syncEnabled()) {
-    await cancelGuildEvent(client, record.discordGuildEventId);
+  if (record.isCanceled && !previousCanceled) {
+    if (record.discordGuildEventId && syncEnabled()) {
+      await cancelGuildEvent(client, record.discordGuildEventId);
+    }
+    await closeGameThread(client, record);
     console.log(`[joint-bot] Server-Event gecancelt: ${record.title}`);
   }
 
@@ -180,6 +192,8 @@ async function pbSubscribe(client: Client): Promise<void> {
             announced.delete(data.record.id);
             lastCanceled.delete(data.record.id);
 
+            const deletedEvent = toJointEvent(data.record);
+            await closeGameThread(client, deletedEvent);
             const guildEventId = String(data.record.discordGuildEventId ?? "");
             if (guildEventId && syncEnabled()) {
               await deleteGuildEvent(client, guildEventId);

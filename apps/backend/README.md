@@ -54,11 +54,11 @@ scripts/          Download-Skript für das PocketBase-Binary (Version gepinnt)
 
 ## Datenmodell
 
-| Collection        | Zweck                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| `users`           | Auth-Accounts, erweitert um `nickname` und `discordUsername`                         |
-| `events`          | Alles ist ein Event: Ankündigungen, Essen, Giveaways, Turniere … (öffentlich lesbar) |
-| `event_attendees` | Private Spiegelung der Discord-Interessierten pro Event                              |
+| Collection        | Zweck                                                                      |
+| ----------------- | -------------------------------------------------------------------------- |
+| `users`           | Auth-Accounts, erweitert um `nickname` und `discordUsername`               |
+| `events`          | Alles ist ein Event: Ankündigungen, Essen, Giveaways, Turniere, Game-LFG … |
+| `event_attendees` | Private Spiegelung der Discord-Interessierten pro Event                    |
 
 ## Erweitern
 

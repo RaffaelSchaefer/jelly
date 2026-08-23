@@ -1,18 +1,32 @@
 import {
+  ChannelType,
   GuildScheduledEventEntityType,
   GuildScheduledEventPrivacyLevel,
   GuildScheduledEventStatus,
+  PermissionsBitField,
+  ThreadAutoArchiveDuration,
   type Client,
   type FetchGuildScheduledEventSubscribersOptions,
+  type GuildTextBasedChannel,
   type GuildScheduledEventCreateOptions,
+  type Message,
+  type PublicThreadChannel,
 } from "discord.js";
 import { env } from "./env";
 import type { JointEvent } from "./events";
-import { htmlToText, isChannelId } from "./embeds";
+import { eventToEmbed, htmlToText, isChannelId } from "./embeds";
 
 type GuildEventDetails = Pick<
   JointEvent,
-  "title" | "description" | "location" | "startsAt" | "endsAt"
+  | "title"
+  | "description"
+  | "location"
+  | "startsAt"
+  | "endsAt"
+  | "type"
+  | "game"
+  | "gameUrl"
+  | "playersWanted"
 >;
 
 export function syncEnabled(): boolean {
@@ -39,7 +53,21 @@ function guildEventOptions(
   const endsAt = event.endsAt
     ? new Date(event.endsAt)
     : new Date(startsAt.getTime() + DEFAULT_DURATION_MS);
-  const description = clamp(htmlToText(event.description), 1000);
+  const description = clamp(
+    [
+      event.type === "game" ? `🎮 ${event.game}` : "",
+      event.type === "game" && event.playersWanted
+        ? `👥 ${event.playersWanted} Mitspieler gesucht`
+        : "",
+      event.type === "game" ? event.gameUrl : "",
+      htmlToText(event.description),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    1000,
+  );
+  const externalLocation =
+    event.type === "game" && event.game ? `Online · ${event.game}` : event.location;
 
   return {
     name: clamp(event.title, 100),
@@ -53,8 +81,166 @@ function guildEventOptions(
     image,
     ...(isVoice
       ? { channel: event.location }
-      : { entityMetadata: { location: event.location || "Ort wird bekannt gegeben" } }),
+      : {
+          entityMetadata: {
+            location: clamp(externalLocation || "Ort wird bekannt gegeben", 100),
+          },
+        }),
   };
+}
+
+const GAME_THREAD_PERMISSIONS = [
+  PermissionsBitField.Flags.ViewChannel,
+  PermissionsBitField.Flags.SendMessages,
+  PermissionsBitField.Flags.EmbedLinks,
+  PermissionsBitField.Flags.CreatePublicThreads,
+  PermissionsBitField.Flags.SendMessagesInThreads,
+  PermissionsBitField.Flags.ManageThreads,
+];
+
+export async function resolveGameThreadChannel(client: Client): Promise<GuildTextBasedChannel> {
+  if (!env.guildId) {
+    throw new Error("Für Game-Events muss DISCORD_GUILD_ID gesetzt sein.");
+  }
+  if (!env.announceChannelId) {
+    throw new Error("Für Game-Events muss ANNOUNCE_CHANNEL_ID gesetzt sein.");
+  }
+
+  const channel = await client.channels.fetch(env.announceChannelId);
+  if (
+    !channel ||
+    (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement)
+  ) {
+    throw new Error("Der Announce-Channel muss ein threadfähiger Server-Textkanal sein.");
+  }
+  if (channel.guildId !== env.guildId) {
+    throw new Error("Announce-Channel und DISCORD_GUILD_ID müssen zum selben Server gehören.");
+  }
+
+  const me = channel.guild.members.me ?? client.user;
+  const permissions = me ? channel.permissionsFor(me) : null;
+  if (!permissions || !GAME_THREAD_PERMISSIONS.every((permission) => permissions.has(permission))) {
+    throw new Error(
+      "Im Announce-Channel fehlen Rechte zum Senden, Einbetten oder Verwalten öffentlicher Threads.",
+    );
+  }
+
+  return channel;
+}
+
+export interface GameThreadResources {
+  message: Message<true>;
+  thread: PublicThreadChannel<false>;
+}
+
+export async function deleteGameThreadResources(
+  resources: Partial<GameThreadResources>,
+): Promise<boolean> {
+  let removed = true;
+  if (resources.thread) {
+    try {
+      await resources.thread.delete("Game-Event-Erstellung zurückgerollt");
+    } catch (error) {
+      removed = false;
+      console.error(`[joint-bot] Verwaister Game-Thread: ${resources.thread.id}`, error);
+    }
+  }
+  if (resources.message) {
+    try {
+      await resources.message.delete();
+    } catch (error) {
+      removed = false;
+      console.error(`[joint-bot] Verwaiste Game-Ankündigung: ${resources.message.id}`, error);
+    }
+  }
+  return removed;
+}
+
+export async function createGameThread(
+  channel: GuildTextBasedChannel,
+  event: JointEvent,
+  banner: { buffer: Buffer; name: string } | null = null,
+): Promise<GameThreadResources> {
+  const resources: Partial<GameThreadResources> = {};
+
+  try {
+    const announcedEvent = banner ? { ...event, bannerUrl: `attachment://${banner.name}` } : event;
+    resources.message = await channel.send({
+      embeds: [eventToEmbed(announcedEvent, 0)],
+      ...(banner ? { files: [{ attachment: banner.buffer, name: banner.name }] } : {}),
+    });
+    resources.thread = await resources.message.startThread({
+      name: clamp(`🎮 ${event.game} — ${event.title}`, 100),
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
+      reason: `Koordination für Game-Event ${event.title}`,
+    });
+    await resources.thread.members.add(event.discordCreatorId);
+    await resources.thread.send({
+      content:
+        "Organisiert hier Lobby, Server und Teams. Interesse bitte über das verlinkte Discord-Event markieren.",
+    });
+    return resources as GameThreadResources;
+  } catch (error) {
+    await deleteGameThreadResources(resources);
+    throw error;
+  }
+}
+
+async function fetchGameThread(client: Client, event: JointEvent) {
+  if (event.type !== "game" || !event.discordThreadId) return null;
+  const channel = await client.channels.fetch(event.discordThreadId);
+  return channel?.isThread() ? channel : null;
+}
+
+export async function syncGameThreadMember(
+  client: Client,
+  event: JointEvent,
+  discordUserId: string,
+  joined: boolean,
+): Promise<void> {
+  const thread = await fetchGameThread(client, event);
+  if (!thread) return;
+  if (thread.archived) await thread.setArchived(false, "Game-Teilnehmer aktualisiert");
+
+  if (joined || discordUserId === event.discordCreatorId) {
+    await thread.members.add(discordUserId);
+  } else {
+    await thread.members.remove(discordUserId);
+  }
+}
+
+export async function reconcileGameThreadMembers(
+  client: Client,
+  event: JointEvent,
+  discordUserIds: Iterable<string>,
+): Promise<void> {
+  const thread = await fetchGameThread(client, event);
+  if (!thread) return;
+
+  const expected = new Set(discordUserIds);
+  expected.add(event.discordCreatorId);
+  if (client.user) expected.add(client.user.id);
+
+  const members = await thread.members.fetch();
+  const add = [...expected].filter((discordUserId) => !members.has(discordUserId));
+  const remove = [...members.keys()].filter((discordUserId) => !expected.has(discordUserId));
+  if (add.length === 0 && remove.length === 0) return;
+  if (thread.archived) await thread.setArchived(false, "Game-Teilnehmer abgeglichen");
+
+  for (const discordUserId of add) await thread.members.add(discordUserId);
+  for (const discordUserId of remove) await thread.members.remove(discordUserId);
+}
+
+export async function closeGameThread(client: Client, event: JointEvent): Promise<void> {
+  try {
+    const thread = await fetchGameThread(client, event);
+    if (!thread || (thread.archived && thread.locked)) return;
+    if (thread.archived) await thread.setArchived(false, "Game-Event geschlossen");
+    if (!thread.locked) await thread.setLocked(true, "Game-Event geschlossen");
+    await thread.setArchived(true, "Game-Event geschlossen");
+  } catch (error) {
+    console.warn(`[joint-bot] Game-Thread konnte nicht geschlossen werden: ${event.title}`, error);
+  }
 }
 
 async function fetchBannerImage(url: string): Promise<Buffer> {

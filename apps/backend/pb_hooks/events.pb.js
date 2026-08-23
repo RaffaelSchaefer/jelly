@@ -9,21 +9,25 @@ onRecordCreateRequest((e) => {
 }, "events")
 
 onRecordCreate((e) => {
-  const { hasInvalidTimeRange } = require(`${__hooks}/events-utils.js`)
+  const { gameValidationError, hasInvalidTimeRange } = require(`${__hooks}/events-utils.js`)
 
   if (hasInvalidTimeRange(e.record)) {
     throw new BadRequestError("'endsAt' muss nach 'startsAt' liegen.")
   }
+  const gameError = gameValidationError(e.record)
+  if (gameError) throw new BadRequestError(gameError)
 
   e.next()
 }, "events")
 
 onRecordUpdate((e) => {
-  const { hasInvalidTimeRange } = require(`${__hooks}/events-utils.js`)
+  const { gameValidationError, hasInvalidTimeRange } = require(`${__hooks}/events-utils.js`)
 
   if (hasInvalidTimeRange(e.record)) {
     throw new BadRequestError("'endsAt' muss nach 'startsAt' liegen.")
   }
+  const gameError = gameValidationError(e.record)
+  if (gameError) throw new BadRequestError(gameError)
 
   e.next()
 }, "events")
