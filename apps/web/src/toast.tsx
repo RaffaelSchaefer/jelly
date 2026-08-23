@@ -14,7 +14,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {toast && (
         <div
           role="status"
-          className={`fixed bottom-5 left-1/2 z-[70] -translate-x-1/2 rounded-xl border px-4 py-3 text-sm font-bold shadow-2xl ${toast.tone === "error" ? "border-red-400/20 bg-[#4a2427] text-red-100" : "border-emerald-400/20 bg-[#183b2a] text-emerald-100"}`}
+          className={`fixed bottom-5 left-1/2 z-[70] -translate-x-1/2 rounded-xl border px-4 py-3 text-sm font-bold shadow-2xl ${toast.tone === "error" ? "border-danger bg-danger text-white" : "border-primary bg-primary text-white"}`}
         >
           {toast.message}
         </div>

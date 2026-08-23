@@ -58,31 +58,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,430px)] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/10 bg-card p-7 shadow-2xl">
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,430px)] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-line bg-card p-7 shadow-2xl">
             <Dialog.Close
-              className="absolute right-4 top-4 rounded-lg p-2 text-muted hover:bg-white/5 hover:text-white"
+              className="absolute right-4 top-4 rounded-lg p-2 text-muted hover:bg-card-hover hover:text-copy"
               aria-label="Dialog schließen"
             >
               <X size={19} />
             </Dialog.Close>
-            <div className="grid size-12 place-items-center rounded-2xl bg-blurple/15 text-blurple-light">
+            <div className="grid size-12 place-items-center bg-primary text-white">
               <LogIn size={23} />
             </div>
-            <Dialog.Title className="mt-5 text-2xl font-black text-white">
+            <Dialog.Title className="mt-5 text-2xl font-black text-copy">
               Bereit für die nächste Runde?
             </Dialog.Title>
             <Dialog.Description className="mt-2 leading-6 text-muted">
               Melde dich mit Discord an, um Events und Lobbys zu erstellen oder teilzunehmen.
             </Dialog.Description>
             {error && (
-              <p className="mt-4 rounded-xl bg-red-500/10 p-3 text-sm text-red-200" role="alert">
+              <p className="mt-4 border-l-4 border-danger bg-danger/10 p-3 text-sm text-danger" role="alert">
                 {error}
               </p>
             )}
             <button
               onClick={() => void login()}
               disabled={busy}
-              className="mt-6 w-full rounded-xl bg-blurple px-4 py-3 font-extrabold text-white transition hover:bg-[#6874f7] disabled:opacity-60"
+              className="btn-wipe mt-6 w-full border-2 border-primary px-4 py-3 font-bold uppercase tracking-wide text-white hover:text-primary disabled:opacity-60"
             >
               {busy ? "Discord wird geöffnet …" : "Mit Discord anmelden"}
             </button>

@@ -22,9 +22,11 @@ import { useMembership, useUsers } from "./queries";
 import type { EventRecord, GameSuggestion, LobbyRecord } from "./types";
 
 export const inputClass =
-  "w-full rounded-xl border border-white/8 bg-chrome/70 px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-muted focus:border-blurple";
+  "w-full border border-line bg-card px-3.5 py-3 text-sm text-copy outline-none transition placeholder:text-muted focus:border-primary";
 export const buttonClass =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-blurple px-4 py-2.5 text-sm font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-[#6874f7] disabled:pointer-events-none disabled:opacity-50";
+  "btn-wipe inline-flex items-center justify-center gap-2 border-2 border-primary px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white hover:text-primary disabled:pointer-events-none disabled:opacity-50";
+export const buttonOutlineClass =
+  "inline-flex items-center justify-center gap-2 border-2 border-primary px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-primary transition hover:bg-primary hover:text-white";
 
 export function AppShell() {
   const { user, logout, openLogin } = useAuth();
@@ -32,15 +34,15 @@ export function AppShell() {
   const [search, setSearch] = useState("");
   return (
     <div className="min-h-screen bg-canvas text-copy">
-      <header className="sticky top-0 z-30 border-b border-white/5 bg-chrome/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-line bg-card">
         <div className="mx-auto flex h-18 max-w-7xl items-center gap-7 px-5 lg:px-8">
           <Link className="flex items-center gap-3 text-lg font-black tracking-tight" to="/">
-            <span className="grid size-10 place-items-center rounded-xl bg-blurple text-white shadow-lg shadow-blurple/25">
+            <span className="grid size-10 place-items-center bg-primary text-white">
               <Gamepad2 size={21} />
             </span>
             JOINT
           </Link>
-          <nav className="hidden items-center gap-6 text-sm font-semibold text-muted md:flex">
+          <nav className="hidden items-center gap-6 self-stretch text-sm font-bold uppercase tracking-wide text-muted md:flex">
             {[
               ["/", "Entdecken"],
               ["/events", "Events"],
@@ -51,7 +53,7 @@ export function AppShell() {
                 to={to}
                 end={to === "/"}
                 className={({ isActive }) =>
-                  isActive ? "text-white" : "transition hover:text-white"
+                  `flex items-center border-b-2 transition ${isActive ? "border-primary text-copy" : "border-transparent hover:text-copy"}`
                 }
               >
                 {label}
@@ -59,24 +61,24 @@ export function AppShell() {
             ))}
           </nav>
           <form
-            className="ml-auto hidden w-64 items-center gap-2 rounded-xl border border-white/5 bg-canvas px-3 py-2.5 text-muted lg:flex"
+            className="ml-auto hidden w-64 items-center gap-2 border border-line px-3 py-2 text-muted lg:flex"
             onSubmit={(event) => {
               event.preventDefault();
               navigate(`/events?q=${encodeURIComponent(search)}`);
             }}
           >
-            <Search size={17} />
+            <Search size={16} />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-muted"
+              className="w-full bg-transparent text-sm text-copy outline-none placeholder:text-muted"
               placeholder="Events & Spiele suchen"
               aria-label="Events und Spiele suchen"
             />
           </form>
           {user ? (
             <DropdownMenu.Root>
-              <DropdownMenu.Trigger className="ml-auto flex items-center gap-2 rounded-xl border border-white/8 bg-card px-2.5 py-2 text-sm font-bold lg:ml-0">
+              <DropdownMenu.Trigger className="ml-auto flex items-center gap-2 rounded-xl border border-line bg-card px-2.5 py-2 text-sm font-bold lg:ml-0">
                 <img
                   className="size-7 rounded-full"
                   src={avatarUrl(user.discordId, user.discordAvatar)}
@@ -88,19 +90,19 @@ export function AppShell() {
               <DropdownMenu.Portal>
                 <DropdownMenu.Content
                   align="end"
-                  className="z-50 mt-2 min-w-48 rounded-xl border border-white/10 bg-card p-1.5 text-sm shadow-2xl"
+                  className="z-50 mt-2 min-w-48 rounded-xl border border-line bg-card p-1.5 text-sm shadow-2xl"
                 >
                   <DropdownMenu.Item asChild>
                     <Link
                       to="/me"
-                      className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-white outline-none hover:bg-white/6"
+                      className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-copy outline-none hover:bg-card-hover"
                     >
                       <CircleUserRound size={17} /> Profil
                     </Link>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item
                     onSelect={logout}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-red-200 outline-none hover:bg-red-500/10"
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-danger outline-none hover:bg-danger/10"
                   >
                     <LogOut size={17} /> Abmelden
                   </DropdownMenu.Item>
@@ -122,7 +124,7 @@ export function AppShell() {
             <DropdownMenu.Portal>
               <DropdownMenu.Content
                 align="end"
-                className="z-50 min-w-44 rounded-xl border border-white/10 bg-card p-2 shadow-2xl"
+                className="z-50 min-w-44 rounded-xl border border-line bg-card p-2 shadow-2xl"
               >
                 {[
                   ["/", "Entdecken"],
@@ -132,7 +134,7 @@ export function AppShell() {
                 ].map(([to, label]) => (
                   <DropdownMenu.Item key={to} asChild>
                     <Link
-                      className="block rounded-lg px-3 py-2 text-sm font-bold text-white hover:bg-white/5"
+                      className="block rounded-lg px-3 py-2 text-sm font-bold text-copy hover:bg-card-hover"
                       to={to}
                     >
                       {label}
@@ -158,7 +160,7 @@ export function EventCard({ event, count = 0 }: { event: EventRecord; count?: nu
   return (
     <Link
       to={`/events/${event.id}`}
-      className="group grid overflow-hidden rounded-2xl border border-white/6 bg-card transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-card-hover sm:grid-cols-[190px_1fr_auto]"
+      className="group grid overflow-hidden rounded-2xl border border-line bg-card transition hover:border-primary hover:bg-card-hover sm:grid-cols-[190px_1fr_auto]"
     >
       <div className="relative min-h-36 bg-chrome">
         {image ? (
@@ -169,30 +171,30 @@ export function EventCard({ event, count = 0 }: { event: EventRecord; count?: nu
             loading="lazy"
           />
         ) : (
-          <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-blurple/25 to-cyan-400/5 text-blurple-light">
+          <div className="absolute inset-0 grid place-items-center bg-chrome text-primary">
             <Gamepad2 size={42} />
           </div>
         )}
-        <span className="absolute left-3 top-3 rounded-lg bg-chrome/90 px-2.5 py-1.5 text-center shadow-lg">
-          <b className="block text-xl leading-none text-white">{date.getDate()}</b>
-          <small className="text-[10px] font-black uppercase tracking-widest text-blurple-light">
-            {date.toLocaleString("de-DE", { month: "short" })}
-          </small>
-        </span>
       </div>
       <div className="p-5">
-        <span className="rounded-full bg-blurple/12 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-blurple-light">
+        <span className="block text-[13px] font-bold uppercase tracking-wide text-copy">
           {event.game || event.type}
         </span>
-        <h3 className="mt-3 text-xl font-extrabold text-white">{event.title}</h3>
+        <h3 className="mt-1 text-xl font-extrabold text-copy">{event.title}</h3>
         <p className="mt-2 text-sm text-muted">
-          {date.toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit" })} ·{" "}
-          {event.location || "Discord"}
+          {date.toLocaleString("de-DE", {
+            weekday: "short",
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}{" "}
+          · {event.location || "Discord"}
         </p>
       </div>
       <div className="flex items-center gap-2 self-center px-5 pb-5 text-sm font-bold text-muted sm:pb-0">
         <Users size={16} /> {count} dabei{" "}
-        <ArrowRight className="ml-1 text-white transition group-hover:translate-x-1" size={18} />
+        <ArrowRight className="ml-1 text-copy transition group-hover:translate-x-1" size={18} />
       </div>
     </Link>
   );
@@ -213,23 +215,28 @@ export function LobbyCard({
   return (
     <Link
       to={`/lobbies/${lobby.id}`}
-      className={`group block rounded-2xl border border-white/6 bg-card transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-card-hover ${compact ? "p-4" : "overflow-hidden"}`}
+      className={`group block rounded-2xl border border-line bg-card transition hover:border-primary hover:bg-card-hover ${compact ? "p-4" : "overflow-hidden"}`}
     >
       {!compact && (
         <div className="relative h-36 bg-chrome">
           {image ? (
             <img src={image} className="size-full object-cover" alt="" />
           ) : (
-            <div className="grid size-full place-items-center bg-gradient-to-br from-blurple/20 to-emerald-400/5">
-              <Gamepad2 className="text-blurple-light" size={40} />
+            <div className="grid size-full place-items-center bg-chrome">
+              <Gamepad2 className="text-primary" size={40} />
             </div>
           )}
         </div>
       )}
       <div className={compact ? "" : "p-5"}>
+        {!compact && (
+          <span className="block text-[13px] font-bold uppercase tracking-wide text-copy">
+            Lobby
+          </span>
+        )}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-extrabold text-white">{lobby.game}</h3>
+            <h3 className="font-extrabold text-copy">{lobby.game}</h3>
             <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
               <CalendarDays size={13} />{" "}
               {lobby.startsAt
@@ -241,13 +248,13 @@ export function LobbyCard({
                 : "Jetzt"}
             </p>
           </div>
-          <span className="rounded-lg bg-white/5 px-2 py-1 text-xs font-black text-white">
+          <span className="rounded-lg bg-chrome px-2 py-1 text-xs font-black text-copy">
             {count}/{lobby.playersWanted || "∞"}
           </span>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/7">
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-chrome">
           <div
-            className={`h-full rounded-full ${percent >= 100 ? "bg-amber-400" : "bg-success"}`}
+            className={`h-full rounded-full ${percent >= 100 ? "bg-accent-orange" : "bg-primary"}`}
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -278,7 +285,7 @@ export function ParticipantAvatars({ ids }: { ids: string[] }) {
             </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content
-                className="z-50 rounded-lg bg-chrome px-2 py-1 text-xs text-white shadow-xl"
+                className="z-50 border border-line bg-chrome px-2 py-1 text-xs text-copy shadow-xl"
                 sideOffset={5}
               >
                 {label}
@@ -315,7 +322,7 @@ export function JoinButton({
             onClick={membership.toggle}
             className={
               membership.joined
-                ? "rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-extrabold text-white"
+                ? `${buttonOutlineClass} px-5 py-3`
                 : `${buttonClass} px-5 py-3`
             }
           >
@@ -325,7 +332,7 @@ export function JoinButton({
       </Tooltip.Trigger>
       {disabled && (
         <Tooltip.Portal>
-          <Tooltip.Content className="z-50 max-w-64 rounded-lg bg-chrome px-3 py-2 text-xs text-white">
+          <Tooltip.Content className="z-50 max-w-64 border border-line bg-chrome px-3 py-2 text-xs text-copy">
             Diese Runde ist geschlossen oder voll.
           </Tooltip.Content>
         </Tooltip.Portal>
@@ -346,11 +353,11 @@ export function EmptyState({
   action?: { to: string; label: string };
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/10 bg-card/60 px-6 py-12 text-center">
-      <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-white/5 text-blurple-light">
+    <div className="rounded-2xl border border-dashed border-line bg-card px-6 py-12 text-center">
+      <span className="mx-auto grid size-12 place-items-center bg-chrome text-primary">
         {icon}
       </span>
-      <h3 className="mt-4 text-lg font-extrabold text-white">{title}</h3>
+      <h3 className="mt-4 text-lg font-extrabold text-copy">{title}</h3>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">{text}</p>
       {action && (
         <Link className={`${buttonClass} mt-5`} to={action.to}>
@@ -366,7 +373,7 @@ export function LoadingCards() {
   return (
     <div className="space-y-4" aria-label="Wird geladen">
       {[1, 2, 3].map((item) => (
-        <div key={item} className="h-36 animate-pulse rounded-2xl bg-card" />
+        <div key={item} className="h-36 animate-pulse bg-chrome" />
       ))}
     </div>
   );
@@ -386,8 +393,8 @@ export function PageHeading({
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[.18em] text-blurple-light">{eyebrow}</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">{title}</h1>
+        <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">{eyebrow}</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-copy sm:text-4xl">{title}</h1>
         {text && <p className="mt-2 max-w-2xl text-muted">{text}</p>}
       </div>
       {action && (
@@ -447,7 +454,7 @@ export function GameCombobox({
         <div
           id="game-options"
           role="listbox"
-          className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-white/10 bg-chrome p-1.5 shadow-2xl"
+          className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto border border-line bg-card p-1.5 shadow-2xl"
         >
           {query.isLoading ? (
             <p className="p-3 text-sm text-muted">Steam wird durchsucht …</p>
@@ -463,15 +470,15 @@ export function GameCombobox({
                   onSelect(game);
                   setOpen(false);
                 }}
-                className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-white/6"
+                className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-card-hover"
               >
-                <span className="h-11 w-24 overflow-hidden rounded-lg bg-card">
+                <span className="h-11 w-24 overflow-hidden bg-chrome">
                   {game.capsuleUrl && (
                     <img className="size-full object-cover" src={game.capsuleUrl} alt="" />
                   )}
                 </span>
                 <span>
-                  <b className="block text-sm text-white">{game.name}</b>
+                  <b className="block text-sm text-copy">{game.name}</b>
                   <small className="text-muted">Steam {game.steamAppId}</small>
                 </span>
               </button>
@@ -491,7 +498,7 @@ export function DiscordLink({ href, children }: { href: string; children: ReactN
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-2 text-sm font-bold text-blurple-light hover:text-white"
+      className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-copy"
     >
       {children}
       <ExternalLink size={15} />

@@ -33,6 +33,7 @@ import {
   PageHeading,
   ParticipantAvatars,
   buttonClass,
+  buttonOutlineClass,
 } from "./components";
 import { keys, useAttendees, useEvents, useLobbies, useParticipants } from "./queries";
 import { useToast } from "./toast";
@@ -85,25 +86,20 @@ export function DiscoverPage() {
 
   return (
     <>
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/8 bg-card px-7 py-12 shadow-2xl shadow-black/20 md:px-12 md:py-16">
-        <div className="absolute -right-24 -top-36 size-96 rounded-full bg-blurple/25 blur-3xl" />
-        <div className="absolute bottom-0 right-24 size-56 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="relative max-w-2xl">
-          <h1 className="text-4xl font-black leading-[1.05] tracking-[-.04em] text-white sm:text-6xl">
-            Finde deine <span className="text-gradient">Squad.</span>
+      <section className="border-y border-line bg-chrome px-7 py-12 md:px-12 md:py-16">
+        <div className="max-w-2xl">
+          <h1 className="text-4xl font-black leading-[1.05] tracking-[-.04em] text-copy sm:text-6xl">
+            Was läuft gerade auf der <span className="text-primary">LAN?</span>
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-muted sm:text-lg">
-            Entdecke Community-Events, finde Mitspieler und spring direkt ins nächste gemeinsame
-            Abenteuer.
+            Alle Programmpunkte und offenen Lobbys der LAN-Party auf einen Blick. Such dir eine
+            Runde, trag dich ein und setz dich dazu.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link className={`${buttonClass} px-5 py-3`} to="/events">
               Events entdecken
             </Link>
-            <Link
-              className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white"
-              to="/lobbies"
-            >
+            <Link className={`${buttonOutlineClass} px-5 py-3`} to="/lobbies">
               Offene Lobbys
             </Link>
           </div>
@@ -114,7 +110,7 @@ export function DiscoverPage() {
           <button
             key={item}
             onClick={() => setFilter(item)}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold transition ${filter === item ? "bg-white text-chrome" : "border border-white/8 bg-card text-muted hover:text-white"}`}
+            className={`whitespace-nowrap border px-4 py-2 text-sm font-bold uppercase tracking-wide transition ${filter === item ? "border-primary bg-primary text-white" : "border-line text-muted hover:text-copy"}`}
           >
             {item}
           </button>
@@ -125,12 +121,12 @@ export function DiscoverPage() {
           <section>
             <div className="mb-4 flex items-end justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[.18em] text-blurple-light">
+                <p className="text-xs font-bold uppercase tracking-[.18em] text-primary-soft">
                   Demnächst
                 </p>
-                <h2 className="mt-1 text-2xl font-extrabold text-white">Community Events</h2>
+                <h2 className="mt-1 text-2xl font-extrabold text-copy">Community Events</h2>
               </div>
-              <Link className="text-sm font-bold text-muted hover:text-white" to="/events">
+              <Link className="text-sm font-bold text-muted hover:text-copy" to="/events">
                 Alle ansehen
               </Link>
             </div>
@@ -152,10 +148,10 @@ export function DiscoverPage() {
           </section>
         )}
         {filter !== "Events" && (
-          <aside className="rounded-2xl border border-white/6 bg-card p-5 shadow-xl shadow-black/10">
+          <aside className="rounded-2xl border border-line bg-card p-5">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="mt-1 text-xl font-extrabold text-white">Offene Lobbys</h2>
+                <h2 className="mt-1 text-xl font-extrabold text-copy">Offene Lobbys</h2>
               </div>
             </div>
             {lobbies.isLoading ? (
@@ -179,7 +175,7 @@ export function DiscoverPage() {
               </div>
             )}
             <Link
-              className="mt-4 block w-full rounded-xl border border-dashed border-white/15 py-3 text-center text-sm font-bold text-muted transition hover:border-blurple hover:text-white"
+              className="mt-4 block w-full rounded-xl border border-dashed border-line py-3 text-center text-sm font-bold text-muted transition hover:border-primary hover:text-copy"
               to="/lobbies/neu"
             >
               + Eigene Lobby starten
@@ -214,13 +210,13 @@ export function EventsPage() {
       <div className="mb-6 flex gap-2">
         <button
           onClick={() => setParams({ ...(q ? { q } : {}), tab: "upcoming" })}
-          className={`rounded-full px-4 py-2 text-sm font-bold ${tab === "upcoming" ? "bg-white text-chrome" : "bg-card text-muted"}`}
+          className={`border px-4 py-2 text-sm font-bold uppercase tracking-wide ${tab === "upcoming" ? "border-primary bg-primary text-white" : "border-line text-muted"}`}
         >
           Bevorstehend
         </button>
         <button
           onClick={() => setParams({ ...(q ? { q } : {}), tab: "past" })}
-          className={`rounded-full px-4 py-2 text-sm font-bold ${tab === "past" ? "bg-white text-chrome" : "bg-card text-muted"}`}
+          className={`border px-4 py-2 text-sm font-bold uppercase tracking-wide ${tab === "past" ? "border-primary bg-primary text-white" : "border-line text-muted"}`}
         >
           Vergangen
         </button>
@@ -276,23 +272,23 @@ export function EventDetailPage() {
     <>
       <Link
         to="/events"
-        className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-white"
+        className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-copy"
       >
         <ArrowLeft size={17} /> Zurück zu Events
       </Link>
-      <article className="overflow-hidden rounded-3xl border border-white/7 bg-card">
+      <article className="overflow-hidden rounded-3xl border border-line bg-card">
         <div className="relative min-h-64 bg-chrome md:min-h-80">
           {cover ? (
             <img src={cover} className="absolute inset-0 size-full object-cover" alt="" />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-blurple/35 to-cyan-400/5" />
+            <div className="absolute inset-0 bg-chrome" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-card via-card/25 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-7 md:p-10">
-            <span className="rounded-full bg-blurple px-3 py-1 text-xs font-black uppercase tracking-wider text-white">
+            <span className="bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
               {event.game || eventTypeLabels[event.type]}
             </span>
-            <h1 className="mt-4 max-w-3xl text-3xl font-black text-white md:text-5xl">
+            <h1 className="mt-4 max-w-3xl text-3xl font-black text-copy md:text-5xl">
               {event.title}
             </h1>
           </div>
@@ -320,7 +316,7 @@ export function EventDetailPage() {
             </p>
             {event.gameUrl && (
               <a
-                className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-blurple-light"
+                className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary-soft"
                 href={event.gameUrl}
                 target="_blank"
                 rel="noreferrer"
@@ -337,9 +333,9 @@ export function EventDetailPage() {
               </DiscordLink>
             </div>
           </div>
-          <aside className="rounded-2xl bg-chrome/60 p-5">
+          <aside className="border border-line bg-chrome p-5">
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Teilnehmende</p>
-            <p className="mt-1 text-3xl font-black text-white">
+            <p className="mt-1 text-3xl font-black text-copy">
               {ids.length}
               {event.playersWanted ? (
                 <small className="text-base text-muted"> / {event.playersWanted}</small>
@@ -356,13 +352,13 @@ export function EventDetailPage() {
               <div className="mt-4 grid gap-2">
                 <button
                   onClick={() => navigate(`/events/${id}/bearbeiten`)}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-white/6 px-4 py-2.5 text-sm font-bold text-white"
+                  className="flex items-center justify-center gap-2 border border-line px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-copy hover:bg-card-hover"
                 >
                   <Pencil size={16} /> Bearbeiten
                 </button>
                 <button
                   onClick={() => void cancel()}
-                  className="flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-red-200 hover:bg-red-500/10"
+                  className="flex items-center justify-center gap-2 border border-danger px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-danger hover:bg-danger/10"
                 >
                   <XCircle size={16} /> Absagen
                 </button>
@@ -482,7 +478,7 @@ export function EventFormPage() {
       />
       <form
         onSubmit={(event) => void submit(event)}
-        className="grid gap-6 rounded-3xl border border-white/7 bg-card p-6 md:grid-cols-2 md:p-8"
+        className="grid gap-6 rounded-3xl border border-line bg-card p-6 md:grid-cols-2 md:p-8"
       >
         <Field label="Titel" error={errors.title}>
           <input
@@ -530,7 +526,7 @@ export function EventFormPage() {
         </Field>
         <Field label="Banner (optional)" error={errors.banner}>
           <input
-            className={`${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-white/8 file:px-3 file:py-1 file:text-white`}
+            className={`${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-chrome file:px-3 file:py-1 file:text-copy`}
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={(e) => setBanner(e.target.files?.[0] ?? null)}
@@ -590,7 +586,7 @@ export function EventFormPage() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-xl bg-white/5 px-4 py-2.5 text-sm font-bold text-white"
+            className="border border-line px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-copy hover:bg-card-hover"
           >
             Abbrechen
           </button>
@@ -662,21 +658,21 @@ export function LobbyDetailPage() {
     <>
       <Link
         to="/lobbies"
-        className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-white"
+        className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-copy"
       >
         <ArrowLeft size={17} /> Zurück zu Lobbys
       </Link>
-      <article className="overflow-hidden rounded-3xl border border-white/7 bg-card">
+      <article className="overflow-hidden rounded-3xl border border-line bg-card">
         <div className="relative h-64 bg-chrome">
           {cover ? (
             <img className="size-full object-cover" src={cover} alt="" />
           ) : (
-            <div className="grid size-full place-items-center bg-gradient-to-br from-blurple/30 to-emerald-400/5">
-              <Gamepad2 size={64} className="text-blurple-light" />
+            <div className="grid size-full place-items-center bg-chrome">
+              <Gamepad2 size={64} className="text-primary-soft" />
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-          <h1 className="absolute bottom-7 left-7 text-3xl font-black text-white sm:text-5xl">
+          <h1 className="absolute bottom-7 left-7 text-3xl font-black text-copy sm:text-5xl">
             {lobby.game}
           </h1>
         </div>
@@ -707,7 +703,7 @@ export function LobbyDetailPage() {
                 href={lobby.gameUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm font-bold text-blurple-light"
+                className="text-sm font-bold text-primary-soft"
               >
                 Spiel öffnen
               </a>
@@ -716,9 +712,9 @@ export function LobbyDetailPage() {
               Zum Discord-Thread
             </DiscordLink>
           </div>
-          <aside className="rounded-2xl bg-chrome/60 p-5">
+          <aside className="border border-line bg-chrome p-5">
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Lobby</p>
-            <p className="mt-1 text-3xl font-black text-white">
+            <p className="mt-1 text-3xl font-black text-copy">
               {ids.length}
               <small className="text-base text-muted"> / {lobby.playersWanted || "∞"}</small>
             </p>
@@ -731,7 +727,7 @@ export function LobbyDetailPage() {
             {creator && !lobby.isClosed && (
               <button
                 onClick={() => void close()}
-                className="mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-bold text-red-200 hover:bg-red-500/10"
+                className="mt-3 w-full border border-danger px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-danger hover:bg-danger/10"
               >
                 Lobby schließen
               </button>
@@ -793,7 +789,7 @@ export function LobbyFormPage() {
       />
       <form
         onSubmit={(event) => void submit(event)}
-        className="grid gap-6 rounded-3xl border border-white/7 bg-card p-6 md:grid-cols-2 md:p-8"
+        className="grid gap-6 rounded-3xl border border-line bg-card p-6 md:grid-cols-2 md:p-8"
       >
         <Field label="Spiel" error={errors.game}>
           <GameCombobox
@@ -856,7 +852,7 @@ export function LobbyFormPage() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-xl bg-white/5 px-4 py-2.5 text-sm font-bold text-white"
+            className="border border-line px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-copy hover:bg-card-hover"
           >
             Abbrechen
           </button>
@@ -900,13 +896,13 @@ export function ProfilePage() {
     <>
       <PageHeading eyebrow="Dein Bereich" title="Profil" />
       <section className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <div className="h-fit rounded-3xl border border-white/7 bg-card p-6 text-center">
+        <div className="h-fit rounded-3xl border border-line bg-card p-6 text-center">
           <img
             src={avatarUrl(user.discordId, user.discordAvatar)}
-            className="mx-auto size-24 rounded-full ring-4 ring-blurple/20"
+            className="mx-auto size-24 rounded-full ring-4 ring-primary/20"
             alt="Discord-Avatar"
           />
-          <h2 className="mt-4 text-xl font-black text-white">
+          <h2 className="mt-4 text-xl font-black text-copy">
             {user.nickname || user.discordUsername}
           </h2>
           <p className="mt-1 text-sm text-muted">@{user.discordUsername}</p>
@@ -948,23 +944,23 @@ function ProfileGroup({
 }) {
   return (
     <section>
-      <h2 className="mb-4 text-xl font-black text-white">{title}</h2>
+      <h2 className="mb-4 text-xl font-black text-copy">{title}</h2>
       {events.length || lobbies.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {events.map((event) => (
             <Link
               key={event.id}
-              className="rounded-xl bg-card p-4 font-bold text-white hover:bg-card-hover"
+              className="border border-line bg-card p-4 font-bold text-copy hover:bg-card-hover"
               to={`/events/${event.id}`}
             >
-              <CalendarDays className="mb-3 text-blurple-light" size={20} />
+              <CalendarDays className="mb-3 text-primary-soft" size={20} />
               {event.title}
             </Link>
           ))}
           {lobbies.map((lobby) => (
             <Link
               key={lobby.id}
-              className="rounded-xl bg-card p-4 font-bold text-white hover:bg-card-hover"
+              className="border border-line bg-card p-4 font-bold text-copy hover:bg-card-hover"
               to={`/lobbies/${lobby.id}`}
             >
               <Gamepad2 className="mb-3 text-success" size={20} />
@@ -973,7 +969,7 @@ function ProfileGroup({
           ))}
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-muted">
+        <p className="rounded-xl border border-dashed border-line p-5 text-sm text-muted">
           Hier ist noch nichts – das lässt sich schnell ändern.
         </p>
       )}
@@ -993,9 +989,9 @@ export function NotFoundPage() {
 
 function AuthRequired({ title, onLogin }: { title: string; onLogin: () => void }) {
   return (
-    <div className="mx-auto max-w-xl rounded-3xl border border-white/7 bg-card p-10 text-center">
-      <UserRound className="mx-auto text-blurple-light" size={44} />
-      <h1 className="mt-5 text-2xl font-black text-white">{title}</h1>
+    <div className="mx-auto max-w-xl rounded-3xl border border-line bg-card p-10 text-center">
+      <UserRound className="mx-auto text-primary-soft" size={44} />
+      <h1 className="mt-5 text-2xl font-black text-copy">{title}</h1>
       <p className="mt-2 text-muted">
         Discord verbindet dein Community-Profil sicher mit deinen Aktionen.
       </p>
@@ -1020,21 +1016,21 @@ function Field({
     <label className={`block text-sm font-bold text-copy ${className}`}>
       {label}
       <div className="mt-2">{children}</div>
-      {error && <small className="mt-1.5 block text-red-300">{error}</small>}
+      {error && <small className="mt-1.5 block text-danger">{error}</small>}
     </label>
   );
 }
 function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="grid size-10 place-items-center rounded-xl bg-white/5 text-blurple-light">
+      <span className="grid size-10 place-items-center rounded-xl bg-chrome text-primary-soft">
         {icon}
       </span>
       <span>
         <small className="block text-xs font-bold uppercase tracking-wider text-muted">
           {label}
         </small>
-        <b className="text-white">{value}</b>
+        <b className="text-copy">{value}</b>
       </span>
     </div>
   );
