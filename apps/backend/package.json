@@ -5,6 +5,7 @@
   "scripts": {
     "setup": "node scripts/download-pocketbase.mjs",
     "dev": "node scripts/download-pocketbase.mjs && ./pocketbase serve --http=127.0.0.1:8090",
-    "db:migrate": "./pocketbase migrate up"
+    "db:migrate": "./pocketbase migrate up",
+    "test": "node --test tests/*.test.mjs"
   }
 }
