@@ -6,7 +6,6 @@ import {
   Gamepad2,
   MapPin,
   Pencil,
-  Sparkles,
   UserRound,
   XCircle,
 } from "lucide-react";
@@ -90,9 +89,6 @@ export function DiscoverPage() {
         <div className="absolute -right-24 -top-36 size-96 rounded-full bg-blurple/25 blur-3xl" />
         <div className="absolute bottom-0 right-24 size-56 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="relative max-w-2xl">
-          <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-blurple/30 bg-blurple/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.16em] text-blurple-light">
-            <Sparkles size={14} /> Deine Community ist online
-          </span>
           <h1 className="text-4xl font-black leading-[1.05] tracking-[-.04em] text-white sm:text-6xl">
             Finde deine <span className="text-gradient">Squad.</span>
           </h1>
@@ -159,11 +155,9 @@ export function DiscoverPage() {
           <aside className="rounded-2xl border border-white/6 bg-card p-5 shadow-xl shadow-black/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[.18em] text-success">Live</p>
                 <h2 className="mt-1 text-xl font-extrabold text-white">Offene Lobbys</h2>
               </div>
               <span className="relative flex size-3">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-50" />
                 <span className="relative inline-flex size-3 rounded-full bg-success" />
               </span>
             </div>

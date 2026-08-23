@@ -143,9 +143,6 @@ export function AppShell() {
       <main className="mx-auto max-w-7xl px-5 py-9 lg:px-8 lg:py-12">
         <Outlet />
       </main>
-      <footer className="mt-16 border-t border-white/5 py-8 text-center text-sm text-muted">
-        Joint · Von der Community, für die Community.
-      </footer>
     </div>
   );
 }
