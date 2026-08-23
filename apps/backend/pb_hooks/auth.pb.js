@@ -64,11 +64,12 @@ onRecordAuthWithOAuth2Request((e) => {
     throw new BadRequestError("Nur Discord-Login ist erlaubt.")
   }
 
-  const profile = /** @type {auth.AuthUser} */ (e.oAuth2User || {})
+  const profile = /** @type {auth.AuthUser} */ (e.oauth2User || {})
   const discordUsername = profile.username || profile.name || ""
   const discordId = String(profile.id || "")
 
   if (e.isNewRecord) {
+    e.createData = e.createData || {}
     e.createData.nickname = discordUsername || "Spieler"
     e.createData.discordUsername = discordUsername
     e.createData.discordId = discordId

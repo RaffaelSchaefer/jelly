@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     setError("");
     try {
-      await pb.collection("users").authWithOAuth2({ provider: "discord" });
+      await pb.collection("users").authWithOAuth2({ provider: "discord", createData: {} });
       setOpen(false);
     } catch (loginError) {
       setError(displayError(loginError));

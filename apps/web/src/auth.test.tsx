@@ -36,7 +36,9 @@ describe("Discord-Authentifizierung", () => {
     );
     fireEvent.click(screen.getByText("Öffnen"));
     fireEvent.click(screen.getByText("Mit Discord anmelden"));
-    await waitFor(() => expect(mocks.login).toHaveBeenCalledWith({ provider: "discord" }));
+    await waitFor(() =>
+      expect(mocks.login).toHaveBeenCalledWith({ provider: "discord", createData: {} }),
+    );
     fireEvent.click(screen.getByText("Logout"));
     expect(mocks.clear).toHaveBeenCalled();
   });
