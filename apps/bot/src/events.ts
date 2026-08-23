@@ -257,6 +257,17 @@ export async function cancelEvent(id: string): Promise<void> {
   await pb.collection("events").update(id, { isCanceled: true });
 }
 
+export async function setEventLinks(
+  id: string,
+  links: { discordGuildEventId?: string; discordThreadId?: string },
+): Promise<void> {
+  await ensureSuperuser();
+  await pb.collection("events").update(id, {
+    ...(links.discordGuildEventId ? { discordGuildEventId: links.discordGuildEventId } : {}),
+    ...(links.discordThreadId ? { discordThreadId: links.discordThreadId } : {}),
+  });
+}
+
 export async function listAllEvents(): Promise<JointEvent[]> {
   await ensureSuperuser();
   const records = await pb.collection("events").getFullList();

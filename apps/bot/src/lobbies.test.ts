@@ -21,6 +21,7 @@ const lobby: Lobby = {
   discordMessageId: "",
   discordThreadId: "",
   isClosed: false,
+  createdBy: "",
 };
 
 test("lobby options require a game and validate all inputs", () => {

@@ -29,20 +29,26 @@ Einrichtung:
 1. Auf <https://discord.com/developers/applications> eine Application
    anlegen und unter OAuth2 → Redirects
    `http://127.0.0.1:8090/api/oauth2-redirect` eintragen.
-2. Credentials als ENV setzen (werden von der Migration gelesen):
+2. Credentials in `apps/backend/.env` eintragen (wird von `setup`, `dev`
+   und `db:migrate` automatisch geladen, siehe `scripts/pb.sh`; alternativ
+   als ENV exportieren):
 
    ```sh
-   export DISCORD_CLIENT_ID="..."
-   export DISCORD_CLIENT_SECRET="..."
+   DISCORD_CLIENT_ID=...
+   DISCORD_CLIENT_SECRET=...
    ```
+
+   Ohne gesetzte Credentials deaktiviert der Bootstrap-Hook den
+   Discord-Login beim Start.
 
 3. `pnpm --filter @joint/backend dev` erneut starten – die Migration
    konfiguriert den Provider automatisch.
 
 Flow aus der Client-App: `pb.collection("users").authWithOAuth2({ provider: "discord" })`
 bzw. manuell via `POST /api/collections/users/auth-with-oauth2`.
-Bei erstmaligem Signup werden `nickname` und `discordUsername` automatisch
-aus dem Discord-Profil befüllt (siehe `pb_hooks/auth.pb.js`).
+Bei jedem Login werden `discordId`, `discordUsername` und `discordAvatar`
+aus dem Discord-Profil aktualisiert; `nickname` wird nur vorbelegt, solange
+er leer ist (siehe `pb_hooks/auth.pb.js`).
 
 ## Struktur
 

@@ -57,19 +57,48 @@ onBootstrap((e) => {
 
 // Discord-only Auth:
 // - Andere OAuth2-Provider werden abgewiesen (Defense-in-Depth zur Migration)
-// - Bei erstmaligem Signup via Discord werden nickname/discordUsername
-//   aus dem Discord-Profil befüllt
+// - Bei jedem Discord-Login werden discordId/discordUsername/discordAvatar
+//   aus dem Discord-Profil aktualisiert; der nickname wird nur vorbelegt,
+//   wenn er noch leer ist (er ist im Profil frei editierbar)
 onRecordAuthWithOAuth2Request((e) => {
   if (e.providerName !== "discord") {
     throw new BadRequestError("Nur Discord-Login ist erlaubt.")
   }
 
-  const profile = /** @type {auth.AuthUser} */ (e.oAuth2User || {})
-  const discordUsername = profile.username || profile.name || ""
+  // Achtung: PocketBase liefert das Feld als "oAuth2User" (grosses O)
+  const profile = /** @type {auth.AuthUser} */ (
+    e.oAuth2User || /** @type {any} */ (e).oauth2User || {}
+  )
+  const fields = {
+    discordId: String(profile.id || ""),
+    discordUsername: profile.username || profile.name || "",
+    // leer, wenn in Discord kein eigener Avatar gesetzt ist
+    discordAvatar: profile.avatarURL || "",
+  }
+  // profile.name ist der Discord-Anzeigename (global_name)
+  const displayName = profile.name || profile.username || "Spieler"
 
   if (e.isNewRecord) {
-    e.createData.nickname = discordUsername || "Spieler"
-    e.createData.discordUsername = discordUsername
+    e.createData = Object.assign(e.createData || {}, fields, { nickname: displayName })
+  } else {
+    let changed = false
+    for (const key in fields) {
+      // discordAvatar auch leeren, damit ein entfernter Discord-Avatar
+      // wieder auf den Platzhalter zurueckfaellt
+      const syncEmpty = key === "discordAvatar"
+      if ((!fields[key] && !syncEmpty) || e.record.getString(key) === fields[key]) {
+        continue
+      }
+      e.record.set(key, fields[key])
+      changed = true
+    }
+    if (!e.record.getString("nickname")) {
+      e.record.set("nickname", displayName)
+      changed = true
+    }
+    if (changed) {
+      $app.save(e.record)
+    }
   }
 
   return e.next()
