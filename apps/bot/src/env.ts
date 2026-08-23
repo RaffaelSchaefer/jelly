@@ -17,6 +17,7 @@ export const env = {
   discordClientId: required("DISCORD_CLIENT_ID"),
   guildId: optional("DISCORD_GUILD_ID"),
   announceChannelId: optional("ANNOUNCE_CHANNEL_ID"),
+  lobbyChannelId: optional("LOBBY_CHANNEL_ID"),
   pocketbaseUrl: optional("POCKETBASE_URL") ?? "http://127.0.0.1:8090",
   superuserEmail: optional("POCKETBASE_SUPERUSER_EMAIL"),
   superuserPassword: optional("POCKETBASE_SUPERUSER_PASSWORD"),

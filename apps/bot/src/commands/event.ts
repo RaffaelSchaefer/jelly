@@ -17,32 +17,30 @@ import {
   getEventAttendeeCounts,
   getEvent,
   listEventAttendeeUserIds,
-  listUpcomingEvents,
-  normalizeGameDestination,
+  listUpcomingEventsPage,
   type EventType,
   type JointEvent,
 } from "../events";
 import { eventToEmbed } from "../embeds";
+import { confirmAction } from "./confirm";
 import {
   cancelGuildEvent,
   closeGameThread,
-  createGameThread,
   createGuildEvent,
-  deleteGameThreadResources,
   deleteGuildEvent,
-  resolveGameThreadChannel,
 } from "../guild-events";
 import { env } from "../env";
 import type { Command } from "./types";
 
-const typeChoices = EVENT_TYPES.map((type) => ({ name: type, value: type }));
+const typeChoices = EVENT_TYPES.filter((type) => type !== "game").map((type) => ({
+  name: type,
+  value: type,
+}));
 const BANNER_MAX_BYTES = 5 * 1024 * 1024;
 const BANNER_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-const BANNER_EXTENSIONS: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
+const EVENT_NOT_FOUND =
+  "❌ Event nicht gefunden – es wurde vielleicht gelöscht. Bitte erneut über die Autocomplete-Vorschläge wählen.";
+const DATE_FORMAT_HINT = "Format: `2026-09-12T18:00` oder `12.09.2026 18:00`.";
 
 export function validateBannerUpload(contentType: string | null, size: number): string | null {
   if (!contentType || !BANNER_MIME_TYPES.has(contentType)) {
@@ -96,74 +94,16 @@ export async function persistEventAfterGuildCreate<T>(
   }
 }
 
-export async function createGameEventTransaction<T, R>(operations: {
-  createGuildEvent: () => Promise<string | null>;
-  createThread: (guildEventId: string) => Promise<R>;
-  persist: (guildEventId: string, resources: R) => Promise<T>;
-  rollbackThread: (resources: R) => Promise<boolean>;
-  rollbackGuildEvent: (guildEventId: string) => Promise<boolean>;
-}): Promise<T | null> {
-  async function rollback(label: string, operation: () => Promise<boolean>): Promise<void> {
-    try {
-      if (!(await operation())) console.error(`[joint-bot] Game-Rollback unvollständig: ${label}`);
-    } catch (error) {
-      console.error(`[joint-bot] Game-Rollback fehlgeschlagen: ${label}`, error);
-    }
-  }
-
-  const guildEventId = await operations.createGuildEvent();
-  if (!guildEventId) return null;
-
-  let resources: R;
-  try {
-    resources = await operations.createThread(guildEventId);
-  } catch (error) {
-    await rollback("Discord Server-Event", () => operations.rollbackGuildEvent(guildEventId));
-    throw error;
-  }
-
-  try {
-    return await operations.persist(guildEventId, resources);
-  } catch (error) {
-    await rollback("Thread und Ankündigung", () => operations.rollbackThread(resources));
-    await rollback("Discord Server-Event", () => operations.rollbackGuildEvent(guildEventId));
-    throw error;
-  }
-}
-
-export function parseGameOptions(
-  type: EventType,
-  gameInput: string | null,
-  destinationInput: string | null,
-  playersWanted: number | null,
-): { game: string; gameUrl: string; playersWanted: number } {
-  const game = gameInput?.trim() ?? "";
-  const hasGameDetails = Boolean(game || destinationInput?.trim() || playersWanted);
-
-  if (type !== "game") {
-    if (hasGameDetails)
-      throw new Error("Spiel, Ziel und Mitspieler sind nur für Typ `game` erlaubt.");
-    return { game: "", gameUrl: "", playersWanted: 0 };
-  }
-  if (!game) throw new Error("Für Typ `game` muss `spiel` angegeben werden.");
-  if (game.length > 100) throw new Error("Der Spielname darf höchstens 100 Zeichen lang sein.");
-  if (
-    playersWanted !== null &&
-    (!Number.isInteger(playersWanted) || playersWanted < 1 || playersWanted > 99)
-  ) {
-    throw new Error("`mitspieler` muss zwischen 1 und 99 liegen.");
-  }
-
-  return {
-    game,
-    gameUrl: destinationInput ? normalizeGameDestination(destinationInput) : "",
-    playersWanted: playersWanted ?? 0,
-  };
-}
-
-function eventChoiceLabel(event: JointEvent): string {
-  const date = new Date(event.startsAt).toLocaleDateString("de-DE");
-  const suffix = event.isCanceled ? " · abgesagt" : "";
+export function eventChoiceLabel(event: JointEvent, now = new Date()): string {
+  const start = new Date(event.startsAt);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const valid = !Number.isNaN(start.getTime());
+  const date = valid
+    ? `${pad(start.getDate())}.${pad(start.getMonth() + 1)}. · ${pad(start.getHours())}:${pad(
+        start.getMinutes(),
+      )} Uhr`
+    : "ohne Datum";
+  const suffix = event.isCanceled ? " · abgesagt" : valid && start < now ? " · vorbei" : "";
   const label = `${event.title} (${date})${suffix}`;
   return label.length > 100 ? label.slice(0, 97) + "..." : label;
 }
@@ -274,22 +214,6 @@ export const command: Command = {
         .addStringOption((option) =>
           option.setName("beschreibung").setDescription("Kurzbeschreibung"),
         )
-        .addStringOption((option) =>
-          option.setName("spiel").setDescription("Für Typ game: Spielname").setMaxLength(100),
-        )
-        .addStringOption((option) =>
-          option
-            .setName("ziel")
-            .setDescription("Für Typ game: Steam-App-ID/-Link oder HTTPS-Spiel-Link")
-            .setMaxLength(500),
-        )
-        .addIntegerOption((option) =>
-          option
-            .setName("mitspieler")
-            .setDescription("Für Typ game: zusätzlich gesuchte Spieler (1–99)")
-            .setMinValue(1)
-            .setMaxValue(99),
-        )
         .addChannelOption((option) =>
           option
             .setName("ort")
@@ -334,7 +258,7 @@ export const command: Command = {
     .addSubcommand((sub) =>
       sub
         .setName("cancel")
-        .setDescription("Event absagen (nur Ersteller oder Server-Admins)")
+        .setDescription("Event absagen – fragt vorher nach (nur Ersteller oder Server-Admins)")
         .addStringOption((option) =>
           option
             .setName("event")
@@ -351,7 +275,7 @@ export const command: Command = {
     .addSubcommand((sub) =>
       sub
         .setName("delete")
-        .setDescription("Event löschen (nur Ersteller oder Server-Admins)")
+        .setDescription("Event endgültig löschen – fragt vorher nach (nur Ersteller oder Admins)")
         .addStringOption((option) =>
           option
             .setName("event")
@@ -368,16 +292,23 @@ export const command: Command = {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       const type = interaction.options.getString("typ") as EventType | null;
-      const events = await listUpcomingEvents({ type: type ?? undefined, limit: 10 });
+      const { events, total } = await listUpcomingEventsPage({
+        type: type ?? undefined,
+        limit: 10,
+      });
 
-      if (events.length === 0) {
+      if (total === 0) {
         await interaction.editReply("Keine kommenden Events gefunden.");
         return;
       }
 
       const counts = await getEventAttendeeCounts(events);
+      const header =
+        total > events.length
+          ? `📅 **Kommende Events – ${events.length} von ${total}** (Filter: \`/event list\`):`
+          : `📅 **${total} kommende Event${total === 1 ? "" : "s"}:**`;
       await interaction.editReply({
-        content: `📅 **${events.length} kommende Events:**`,
+        content: header,
         embeds: events.map((event) => eventToEmbed(event, counts.get(event.id) ?? 0)).slice(0, 10),
       });
       return;
@@ -388,7 +319,7 @@ export const command: Command = {
 
       const event = await resolveEventOption(interaction);
       if (!event) {
-        await interaction.editReply("Event nicht gefunden.");
+        await interaction.editReply(EVENT_NOT_FOUND);
         return;
       }
 
@@ -404,7 +335,7 @@ export const command: Command = {
 
       const event = await resolveEventOption(interaction);
       if (!event) {
-        await interaction.editReply("Event nicht gefunden.");
+        await interaction.editReply(EVENT_NOT_FOUND);
         return;
       }
       if (!canModerate(interaction, event)) {
@@ -438,10 +369,11 @@ export const command: Command = {
     if (sub === "create") {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      const startsAt = parseDateInput(interaction.options.getString("start", true));
+      const startInput = interaction.options.getString("start", true);
+      const startsAt = parseDateInput(startInput);
       if (!startsAt) {
         await interaction.editReply(
-          "Ungültiges Start-Datum. Format: `2026-09-12T18:00` oder `12.09.2026 18:00`.",
+          `❌ Ungültiges Start-Datum \`${startInput.replaceAll("`", "'")}\`.\n${DATE_FORMAT_HINT}`,
         );
         return;
       }
@@ -450,8 +382,16 @@ export const command: Command = {
       let endsAt: Date | null = null;
       if (endsInput) {
         endsAt = parseDateInput(endsInput);
-        if (!endsAt || endsAt <= startsAt) {
-          await interaction.editReply("Ungültiges Ende – muss nach dem Start liegen.");
+        if (!endsAt) {
+          await interaction.editReply(
+            `❌ Ungültiges Ende \`${endsInput.replaceAll("`", "'")}\`.\n${DATE_FORMAT_HINT}`,
+          );
+          return;
+        }
+        if (endsAt <= startsAt) {
+          await interaction.editReply(
+            "❌ Das Ende muss nach dem Start liegen – z.B. Start `18:00`, Ende `23:00`.",
+          );
           return;
         }
       }
@@ -460,34 +400,6 @@ export const command: Command = {
       const type = interaction.options.getString("typ", true) as EventType;
       const location = interaction.options.getChannel("ort")?.id;
       const description = interaction.options.getString("beschreibung") ?? undefined;
-      let gameDetails: ReturnType<typeof parseGameOptions>;
-      try {
-        gameDetails = parseGameOptions(
-          type,
-          interaction.options.getString("spiel"),
-          interaction.options.getString("ziel"),
-          interaction.options.getInteger("mitspieler"),
-        );
-      } catch (error) {
-        await interaction.editReply(
-          error instanceof Error ? error.message : "Die Game-Angaben sind ungültig.",
-        );
-        return;
-      }
-
-      let gameThreadChannel: Awaited<ReturnType<typeof resolveGameThreadChannel>> | null = null;
-      if (type === "game") {
-        try {
-          gameThreadChannel = await resolveGameThreadChannel(interaction.client);
-        } catch (error) {
-          await interaction.editReply(
-            error instanceof Error
-              ? `❌ Game-Event nicht angelegt: ${error.message}`
-              : "❌ Der Game-Thread kann nicht erstellt werden.",
-          );
-          return;
-        }
-      }
 
       const attachment = interaction.options.getAttachment("banner");
       let banner: Awaited<ReturnType<typeof downloadBanner>> | undefined;
@@ -516,11 +428,13 @@ export const command: Command = {
         isCanceled: false,
         discordCreatorId: interaction.user.id,
         discordGuildEventId: "",
-        ...gameDetails,
+        game: "",
+        gameUrl: "",
+        playersWanted: 0,
         discordThreadId: "",
       };
 
-      const persist = (discordGuildEventId: string, discordThreadId = "") =>
+      const persist = (discordGuildEventId: string) =>
         createEvent({
           title,
           type,
@@ -531,53 +445,18 @@ export const command: Command = {
           banner: banner?.file,
           discordCreatorId: interaction.user.id,
           discordGuildEventId,
-          ...gameDetails,
-          discordThreadId,
         });
 
-      let event: JointEvent | null;
-      if (type === "game") {
-        try {
-          event = await createGameEventTransaction({
-            createGuildEvent: () =>
-              createGuildEvent(interaction.client, draft, banner?.buffer ?? null),
-            createThread: (discordGuildEventId) =>
-              createGameThread(
-                gameThreadChannel!,
-                { ...draft, discordGuildEventId },
-                banner
-                  ? {
-                      buffer: banner.buffer,
-                      name: `game-banner.${BANNER_EXTENSIONS[banner.file.type]}`,
-                    }
-                  : null,
-              ),
-            persist: (discordGuildEventId, resources) =>
-              persist(discordGuildEventId, resources.thread.id),
-            rollbackThread: deleteGameThreadResources,
-            rollbackGuildEvent: (discordGuildEventId) =>
-              deleteGuildEvent(interaction.client, discordGuildEventId),
-          });
-        } catch (error) {
-          await interaction.editReply(
-            error instanceof Error
-              ? `❌ Game-Event vollständig zurückgerollt: ${error.message}`
-              : "❌ Game-Event konnte nicht angelegt werden und wurde zurückgerollt.",
-          );
-          return;
-        }
-      } else {
-        const guildEventId = await createGuildEvent(
-          interaction.client,
-          draft,
-          banner?.buffer ?? null,
-        );
-        event = await persistEventAfterGuildCreate(
-          guildEventId,
-          (discordGuildEventId) => persist(discordGuildEventId),
-          (discordGuildEventId) => deleteGuildEvent(interaction.client, discordGuildEventId),
-        );
-      }
+      const guildEventId = await createGuildEvent(
+        interaction.client,
+        draft,
+        banner?.buffer ?? null,
+      );
+      const event = await persistEventAfterGuildCreate(
+        guildEventId,
+        persist,
+        (discordGuildEventId) => deleteGuildEvent(interaction.client, discordGuildEventId),
+      );
 
       if (!event) {
         await interaction.editReply(
@@ -587,10 +466,7 @@ export const command: Command = {
       }
 
       await interaction.editReply({
-        content:
-          event.type === "game"
-            ? `✅ Game-Event angelegt (\`${event.id}\`) – 📅 Server-Event und <#${event.discordThreadId}> erstellt.`
-            : `✅ Event angelegt (\`${event.id}\`) – 📅 Server-Event erstellt.`,
+        content: `✅ Event angelegt (\`${event.id}\`) – 📅 Server-Event erstellt.`,
         embeds: [eventToEmbed(event, 0)],
       });
       return;
@@ -601,7 +477,7 @@ export const command: Command = {
 
       const event = await resolveEventOption(interaction);
       if (!event) {
-        await interaction.editReply("Event nicht gefunden.");
+        await interaction.editReply(EVENT_NOT_FOUND);
         return;
       }
 
@@ -622,7 +498,7 @@ export const command: Command = {
 
       const event = await resolveEventOption(interaction);
       if (!event) {
-        await interaction.editReply("Event nicht gefunden.");
+        await interaction.editReply(EVENT_NOT_FOUND);
         return;
       }
       if (event.isCanceled) {
@@ -637,6 +513,17 @@ export const command: Command = {
         return;
       }
 
+      const notify = interaction.options.getBoolean("ankuendigen") ?? true;
+      const confirmed = await confirmAction(interaction, {
+        prompt:
+          `❌ **${event.title}** wirklich absagen?\n` +
+          (notify
+            ? "Die Absage wird danach im Announce-Channel gepostet."
+            : "Es wird keine Absage-Ankündigung gepostet."),
+        confirmLabel: "Absagen",
+      });
+      if (!confirmed) return;
+
       await cancelEvent(event.id);
 
       const counts = await getEventAttendeeCounts([event]);
@@ -646,7 +533,7 @@ export const command: Command = {
       }
       await closeGameThread(interaction.client, { ...event, isCanceled: true });
 
-      if (interaction.options.getBoolean("ankuendigen") ?? true) {
+      if (notify) {
         const channel = await resolveAnnounceChannel(interaction);
         if (channel) {
           await channel.send({
@@ -666,7 +553,7 @@ export const command: Command = {
 
       const event = await resolveEventOption(interaction);
       if (!event) {
-        await interaction.editReply("Event nicht gefunden.");
+        await interaction.editReply(EVENT_NOT_FOUND);
         return;
       }
       if (!canModerate(interaction, event)) {
@@ -675,6 +562,14 @@ export const command: Command = {
         );
         return;
       }
+
+      const confirmed = await confirmAction(interaction, {
+        prompt:
+          `🗑️ **${event.title}** endgültig löschen?\n` +
+          "Discord Server-Event, Game-Thread und der Event-Eintrag werden entfernt. Das kann nicht rückgängig gemacht werden.",
+        confirmLabel: "Löschen",
+      });
+      if (!confirmed) return;
 
       if (event.discordGuildEventId) {
         await deleteGuildEvent(interaction.client, event.discordGuildEventId);

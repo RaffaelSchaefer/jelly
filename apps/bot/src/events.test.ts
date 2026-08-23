@@ -3,9 +3,8 @@ import test from "node:test";
 import type { Client, GuildScheduledEventCreateOptions, GuildTextBasedChannel } from "discord.js";
 import {
   command as eventCommand,
-  createGameEventTransaction,
   downloadBanner,
-  parseGameOptions,
+  eventChoiceLabel,
   persistEventAfterGuildCreate,
   validateBannerUpload,
 } from "./commands/event";
@@ -139,23 +138,24 @@ test("game destinations normalize Steam IDs and accept safe web URLs", () => {
   );
 });
 
-test("game options are required only for Game events", () => {
-  assert.deepEqual(parseGameOptions("game", "  Counter-Strike 2 ", "730", 4), {
-    game: "Counter-Strike 2",
-    gameUrl: "https://store.steampowered.com/app/730/",
-    playersWanted: 4,
-  });
-  assert.throws(() => parseGameOptions("game", null, null, null), /spiel/);
-  assert.throws(() => parseGameOptions("game", "Game", null, 100), /1 und 99/);
-  assert.throws(() => parseGameOptions("other", "Game", null, null), /nur für Typ/);
-  assert.deepEqual(parseGameOptions("other", null, null, null), {
-    game: "",
-    gameUrl: "",
-    playersWanted: 0,
-  });
+test("event autocomplete labels mark past and canceled events", () => {
+  const now = new Date("2026-08-23T12:00:00.000Z");
+
+  const upcoming = eventChoiceLabel(event, now);
+  assert.doesNotMatch(upcoming, /vorbei|abgesagt/);
+  assert.match(upcoming, /\(\d{2}\.\d{2}\. · \d{2}:\d{2} Uhr\)$/);
+
+  assert.match(eventChoiceLabel({ ...event, startsAt: "2026-08-01T18:00:00.000Z" }, now), /vorbei/);
+  assert.match(eventChoiceLabel({ ...event, isCanceled: true }, now), /abgesagt/);
 });
 
-test("event command publishes the Game type and conditional inputs", () => {
+test("event autocomplete labels respect Discord's 100 character limit", () => {
+  const label = eventChoiceLabel({ ...event, title: "L".repeat(120) });
+  assert.equal(label.length, 100);
+  assert.ok(label.endsWith("..."));
+});
+
+test("event create no longer offers the game type or game inputs", () => {
   const json = eventCommand.data.toJSON() as {
     options?: Array<{
       name: string;
@@ -165,10 +165,11 @@ test("event command publishes the Game type and conditional inputs", () => {
   const create = json.options?.find((option) => option.name === "create");
   const createOptions = create?.options ?? [];
   const type = createOptions?.find((option) => option.name === "typ");
-  assert.ok(type?.choices?.some((choice) => choice.value === "game"));
-  assert.ok(createOptions?.some((option) => option.name === "spiel"));
-  assert.ok(createOptions?.some((option) => option.name === "ziel"));
-  assert.ok(createOptions?.some((option) => option.name === "mitspieler"));
+  assert.ok(type?.choices?.length);
+  assert.ok(type?.choices?.every((choice) => choice.value !== "game"));
+  for (const removed of ["spiel", "ziel", "mitspieler"]) {
+    assert.ok(!createOptions?.some((option) => option.name === removed));
+  }
 });
 
 test("game embeds expose destination and player target without a hard-cap calculation", () => {
@@ -212,67 +213,6 @@ test("event persistence requires Discord and rolls Discord back on failure", asy
     /PocketBase failed/,
   );
   assert.equal(rolledBack, "guild-event");
-});
-
-test("Game creation rolls every completed Discord stage back in reverse order", async () => {
-  const calls: string[] = [];
-  const created = await createGameEventTransaction({
-    createGuildEvent: async () => {
-      calls.push("guild");
-      return "guild-event";
-    },
-    createThread: async () => {
-      calls.push("thread");
-      return { id: "thread" };
-    },
-    persist: async () => {
-      calls.push("persist");
-      return "event";
-    },
-    rollbackThread: async () => true,
-    rollbackGuildEvent: async () => true,
-  });
-  assert.equal(created, "event");
-  assert.deepEqual(calls, ["guild", "thread", "persist"]);
-
-  calls.length = 0;
-  await assert.rejects(
-    createGameEventTransaction({
-      createGuildEvent: async () => "guild-event",
-      createThread: async () => {
-        throw new Error("thread failed");
-      },
-      persist: async () => "unused",
-      rollbackThread: async () => true,
-      rollbackGuildEvent: async () => {
-        calls.push("guild rollback");
-        return true;
-      },
-    }),
-    /thread failed/,
-  );
-  assert.deepEqual(calls, ["guild rollback"]);
-
-  calls.length = 0;
-  await assert.rejects(
-    createGameEventTransaction({
-      createGuildEvent: async () => "guild-event",
-      createThread: async () => ({ id: "thread" }),
-      persist: async () => {
-        throw new Error("PocketBase failed");
-      },
-      rollbackThread: async () => {
-        calls.push("thread rollback");
-        return true;
-      },
-      rollbackGuildEvent: async () => {
-        calls.push("guild rollback");
-        return true;
-      },
-    }),
-    /PocketBase failed/,
-  );
-  assert.deepEqual(calls, ["thread rollback", "guild rollback"]);
 });
 
 test("Game thread creation adds the creator and cleans partial resources", async () => {

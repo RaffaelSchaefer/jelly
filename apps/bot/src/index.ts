@@ -43,6 +43,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
+  if (interaction.isButton()) {
+    const owner = [...commandCollection.values()].find(
+      (candidate) =>
+        candidate.handleComponent && interaction.customId.startsWith(`${candidate.data.name}:`),
+    );
+    if (!owner?.handleComponent) return;
+
+    try {
+      await owner.handleComponent(interaction);
+    } catch (error) {
+      console.error(`[joint-bot] Fehler in Button ${interaction.customId}:`, error);
+      const content = "Da ist etwas schiefgelaufen. 🤷";
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content }).catch(() => {});
+      } else {
+        await interaction.reply({ content, flags: MessageFlags.Ephemeral }).catch(() => {});
+      }
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const command = commandCollection.get(interaction.commandName);

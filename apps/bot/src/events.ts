@@ -76,11 +76,11 @@ export function normalizeGameDestination(input: string): string {
   try {
     url = new URL(value);
   } catch {
-    throw new Error("Das Spielziel muss eine Steam-App-ID oder vollständige HTTPS-URL sein.");
+    throw new Error("Der Game-Link muss eine Steam-App-ID oder eine vollständige HTTPS-URL sein.");
   }
 
   if (url.protocol !== "https:" || url.username || url.password) {
-    throw new Error("Das Spielziel muss eine HTTPS-URL ohne Zugangsdaten sein.");
+    throw new Error("Der Game-Link muss eine HTTPS-URL ohne Zugangsdaten sein.");
   }
 
   if (
@@ -92,7 +92,7 @@ export function normalizeGameDestination(input: string): string {
     return canonical;
   }
 
-  if (url.href.length > 500) throw new Error("Das Spielziel darf höchstens 500 Zeichen lang sein.");
+  if (url.href.length > 500) throw new Error("Der Game-Link darf höchstens 500 Zeichen lang sein.");
   return url.href;
 }
 
@@ -104,13 +104,12 @@ function pocketBaseDate(date: Date): string {
   return date.toISOString().replace("T", " ");
 }
 
-export async function listUpcomingEvents(
-  options: { type?: EventType; limit?: number; includeCanceled?: boolean } = {},
-): Promise<JointEvent[]> {
+export async function listUpcomingEventsPage(
+  options: { type?: EventType; limit?: number } = {},
+): Promise<{ events: JointEvent[]; total: number }> {
   await ensureSuperuser();
 
-  let filter = options.includeCanceled ? "" : "isCanceled != true";
-  filter += filter ? " && startsAt >= @now" : "startsAt >= @now";
+  let filter = "isCanceled != true && startsAt >= @now";
   if (options.type) {
     filter += ` && type = '${escapeFilter(options.type)}'`;
   }
@@ -120,7 +119,7 @@ export async function listUpcomingEvents(
     sort: "+startsAt",
   });
 
-  return records.items.map(toJointEvent);
+  return { events: records.items.map(toJointEvent), total: records.totalItems };
 }
 
 export async function listLinkedCurrentEvents(now = new Date()): Promise<JointEvent[]> {
@@ -183,12 +182,34 @@ export async function findEventByDiscordGuildEventId(
 export async function findEventsByTitle(title: string, limit = 25): Promise<JointEvent[]> {
   await ensureSuperuser();
 
-  const records = await pb.collection("events").getList(1, limit, {
-    filter: `title ~ '${escapeFilter(title.trim())}'`,
+  const query = `title ~ '${escapeFilter(title.trim())}'`;
+  const active = "isCanceled != true";
+
+  const upcoming = (
+    await pb.collection("events").getList(1, limit, {
+      filter: `${query} && ${active} && startsAt >= @now`,
+      sort: "+startsAt",
+    })
+  ).items.map(toJointEvent);
+
+  let remaining = limit - upcoming.length;
+  if (remaining <= 0) return upcoming;
+
+  const past = (
+    await pb.collection("events").getList(1, remaining, {
+      filter: `${query} && ${active} && startsAt < @now`,
+      sort: "-startsAt",
+    })
+  ).items.map(toJointEvent);
+  remaining -= past.length;
+  if (remaining <= 0) return [...upcoming, ...past];
+
+  const canceled = await pb.collection("events").getList(1, remaining, {
+    filter: `${query} && isCanceled = true`,
     sort: "+startsAt",
   });
 
-  return records.items.map(toJointEvent);
+  return [...upcoming, ...past, ...canceled.items.map(toJointEvent)];
 }
 
 function escapeHtml(value: string): string {

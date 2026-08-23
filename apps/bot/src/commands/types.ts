@@ -1,4 +1,8 @@
-import type { AutocompleteInteraction, ChatInputCommandInteraction } from "discord.js";
+import type {
+  AutocompleteInteraction,
+  ButtonInteraction,
+  ChatInputCommandInteraction,
+} from "discord.js";
 
 export interface Command {
   readonly data: {
@@ -7,4 +11,5 @@ export interface Command {
   };
   execute(interaction: ChatInputCommandInteraction): Promise<void>;
   autocomplete?(interaction: AutocompleteInteraction): Promise<void>;
+  handleComponent?(interaction: ButtonInteraction): Promise<void>;
 }

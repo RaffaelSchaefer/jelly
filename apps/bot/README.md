@@ -10,17 +10,23 @@ automatisch per Realtime an.
 - `/event show <event>` – einzelnes Event anzeigen (Autocomplete nach Name)
 - `/event attendees <event>` – Discord-Interessierte anzeigen (nur Ersteller
   oder Server-Admins)
-- `/event create [... banner spiel ziel mitspieler]` – neues Event mit optionalem PNG-, JPEG- oder
-  WebP-Banner bis 5 MiB anlegen; der Discord-User wird als Ersteller getrackt
-  und das zugehörige **Discord Server-Event** wird zuerst erstellt
-- **Game-LFG:** Typ `game` verlangt einen Spielnamen und erstellt im
-  Announce-Channel einen öffentlichen Koordinations-Thread. Optional werden
-  Steam-App-ID/-Link oder HTTPS-Web-Link und gesuchte Mitspieler angezeigt;
-  Discord-Interessierte werden automatisch in den Thread aufgenommen
-- `/event cancel <event>` – Event absagen (nur Ersteller oder Server-Admins),
-  optionale Abgesagt-Info in den Announce-Channel; Server-Event wird mit gecancelt
+- `/event create` – neues Event anlegen (`titel`, `typ`, `start`, optional
+  `ende`, `beschreibung`, `ort`, `banner`); der Discord-User wird als Ersteller
+  getrackt und das zugehörige **Discord Server-Event** wird zuerst erstellt
+- `/lobby post <spiel>` – neue LFG-Lobby posten; ohne `start` wird ab sofort
+  gesucht, optional `mitspieler`, `game_link` (Steam-ID/-Link), `ort` (Voice).
+  Der Post landet im Lobby-Channel mit **Mitmachen/Verlassen-Buttons**, live
+  Zähler (X/Y) und „Voll“-Status; Teilnehmer werden automatisch in den
+  Thread aufgenommen
+- `/lobby list [spiel]` – offene Lobbys mit Belegung und Sprunglink
+- `/lobby close <lobby>` – eigene Lobby schließen (Server-Admins: alle),
+  mit Bestätigung
+- `/event cancel <event>` – Event absagen (nur Ersteller oder Server-Admins,
+  mit Bestätigung), optionale Abgesagt-Info in den Announce-Channel;
+  Server-Event wird mit gecancelt
 - `/event delete <event>` – Event endgültig löschen (nur Ersteller oder
-  Server-Admins, unabhängig vom Abgesagt-Status); Server-Event wird mitgelöscht
+  Server-Admins, unabhängig vom Abgesagt-Status, mit Bestätigung);
+  Server-Event wird mitgelöscht
 - `/event announce <event> [kanal]` – Event als Embed posten
 - `/ping` – Latenz-Check
 - **Realtime:** neue zukünftige Events werden automatisch in den konfigurierten
@@ -46,6 +52,7 @@ ENV-Variablen:
 | `DISCORD_CLIENT_ID`                   | Application-ID (für Slash-Command-Registrierung)                                    |
 | `DISCORD_GUILD_ID`                    | Dev-Command-Deploy + Ziel-Server für den Server-Event-Sync (ohne: Sync deaktiviert) |
 | `ANNOUNCE_CHANNEL_ID`                 | Channel für Auto-Ankündigungen; Pflicht und threadfähig für Game-Events             |
+| `LOBBY_CHANNEL_ID`                    | Pflicht und threadfähig für `/lobby post` (LFG-Posts mit Buttons)                   |
 | `POCKETBASE_URL`                      | Standard: `http://127.0.0.1:8090`                                                   |
 | `POCKETBASE_SUPERUSER_EMAIL/PASSWORD` | Superuser-Credentials (Pflicht für Schreib-Commands, Teilnehmerzahlen und Sync)     |
 
@@ -67,10 +74,12 @@ Ohne erreichbaren, über `DISCORD_GUILD_ID` konfigurierten Server wird das Event
 nicht angelegt. Ein optionales Banner erscheint im Server-Event und in allen
 Event-Embeds; empfohlenes Format ist 800×320 Pixel.
 
-Game-Events können nur über `/event create` vollständig angelegt werden. Ohne
-Voice-Channel wird der Ort `Online · <Spiel>` verwendet. Schlägt die Erstellung
-des Server-Events, der Ankündigung oder des Threads fehl, werden alle bereits
-angelegten Discord-Ressourcen wieder entfernt und kein PocketBase-Event gespeichert.
+Lobbys (`/lobby post`) sind bewusst unabhängig von Discord Server-Events: Es
+entsteht ein Post mit Buttons im Lobby-Channel plus Thread; Belegung und
+Voll-Status werden direkt am Post hochgezählt. Schlägt der Post oder Thread
+fehl, wird der PocketBase-Eintrag verworfen. Bestehende `game`-Events bleiben
+über `/event show|cancel|delete` verwaltbar; neue werden nur noch über
+`/lobby post` erstellt.
 
 PocketBase-Seite: Backend starten (`pnpm --filter @joint/backend dev`) und
 Superuser-Credentials setzen (`./pocketbase superuser upsert EMAIL PASS`).
@@ -95,6 +104,7 @@ index.ts               Client-Bootstrap + Interaction-Routing
 env.ts                 ENV-Validierung
 pocketbase.ts          PocketBase-Client + Superuser-Auth
 events.ts              Event- und Teilnehmer-Persistenz über JS SDK
+lobbies.ts             Lobby- und Teilnehmer-Persistenz über JS SDK
 embeds.ts              Event → Discord-Embed Mapping
 realtime.ts            PocketBase/Discord-Realtime-Sync + Auto-Start
 register-commands.ts   Slash-Command-Deployment (REST)
