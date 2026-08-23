@@ -31,3 +31,30 @@ onRecordUpdate((e) => {
 
   e.next()
 }, "events")
+
+// An einem Event teilnehmen: Event muss existieren, nicht abgesagt und
+// (falls playersWanted gesetzt) nicht voll sein. Duplikate/Rückzug nur
+// für die eigene discordId — das regeln die API-Regeln der Collection.
+onRecordCreateRequest((e) => {
+  const eventId = e.record.getString("event")
+  let event
+  try {
+    event = $app.findRecordById("events", eventId)
+  } catch {
+    throw new BadRequestError("Dieses Event existiert nicht mehr.", { reason: "missing" })
+  }
+  if (event.getBool("isCanceled")) {
+    throw new BadRequestError("Dieses Event wurde abgesagt.", { reason: "closed" })
+  }
+  const wanted = event.getInt("playersWanted")
+  if (wanted > 0) {
+    const joined = $app.countRecords(
+      "event_attendees",
+      $dbx.hashExp({ event: eventId }),
+    )
+    if (joined >= wanted) {
+      throw new BadRequestError("Dieses Event ist leider schon voll.", { reason: "full" })
+    }
+  }
+  e.next()
+}, "event_attendees")

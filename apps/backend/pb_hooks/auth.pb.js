@@ -66,10 +66,15 @@ onRecordAuthWithOAuth2Request((e) => {
 
   const profile = /** @type {auth.AuthUser} */ (e.oAuth2User || {})
   const discordUsername = profile.username || profile.name || ""
+  const discordId = String(profile.id || "")
 
   if (e.isNewRecord) {
     e.createData.nickname = discordUsername || "Spieler"
     e.createData.discordUsername = discordUsername
+    e.createData.discordId = discordId
+  } else if (discordId && e.record.getString("discordId") !== discordId) {
+    // Bestehende Konten bekommen die discordId nachträglich (Feld ist neu).
+    e.record.set("discordId", discordId)
   }
 
   return e.next()
