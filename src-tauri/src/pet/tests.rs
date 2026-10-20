@@ -47,19 +47,19 @@ fn settings_trim_names_and_reject_invalid_values() {
 }
 
 #[test]
-fn activity_is_limited_but_manual_actions_are_not() {
+fn activity_is_limited_to_once_a_second() {
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::open(dir.path().join("pet.json")).unwrap();
     let now = Instant::now();
-    store.interact_at(Action::Activity, now).unwrap();
+    store.interact_at(Action::Activity, now, 0).unwrap();
     store
-        .interact_at(Action::Activity, now + Duration::from_millis(900))
+        .interact_at(Action::Activity, now + Duration::from_millis(900), 0)
         .unwrap();
     assert_eq!(store.pet.xp, 1);
-    store.interact_at(Action::Food, now).unwrap();
+    store.interact_at(Action::Food, now, 0).unwrap();
     assert_eq!(store.pet.xp, 16);
     store
-        .interact_at(Action::Activity, now + Duration::from_secs(1))
+        .interact_at(Action::Activity, now + Duration::from_secs(1), 0)
         .unwrap();
     assert_eq!(store.pet.xp, 17);
 }
@@ -69,7 +69,8 @@ fn stored_progress_and_customization_survive_reopening() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("nested").join("pet.json");
     let mut store = Store::open(path.clone()).unwrap();
-    store.interact_at(Action::Event, Instant::now()).unwrap();
+    store.interact_at(Action::Event, Instant::now(), 0).unwrap();
+    store.equip(Some("party-hat".into())).unwrap();
     store.customize("Byte".into(), Color::Peach, true, 130).unwrap();
     let restored = Store::open(path).unwrap();
     assert_eq!(restored.pet.xp, 30);
@@ -77,6 +78,15 @@ fn stored_progress_and_customization_survive_reopening() {
     assert_eq!(restored.pet.color, Color::Peach);
     assert!(restored.pet.reduced_motion);
     assert_eq!(restored.pet.size, 130);
+    assert_eq!(restored.pet.cosmetic.as_deref(), Some("party-hat"));
+    assert_eq!(
+        restored.pet.log,
+        vec![Entry {
+            action: Action::Event,
+            xp: 30,
+            at: 0
+        }]
+    );
 }
 
 #[test]
@@ -114,9 +124,52 @@ fn failed_save_keeps_last_successful_state() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("pet.json");
     let mut store = Store::open(path.clone()).unwrap();
-    store.interact_at(Action::Food, Instant::now()).unwrap();
+    store.interact_at(Action::Food, Instant::now(), 0).unwrap();
     fs::create_dir(path.with_extension("tmp")).unwrap();
-    assert!(store.interact_at(Action::Event, Instant::now()).is_err());
+    assert!(store.interact_at(Action::Event, Instant::now(), 0).is_err());
     assert_eq!(store.pet.xp, 15);
     assert_eq!(Store::open(path).unwrap().pet.xp, 15);
+}
+
+#[test]
+fn self_reports_have_a_cooldown_and_a_daily_limit() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::open(dir.path().join("pet.json")).unwrap();
+    let now = Instant::now();
+    store.interact_at(Action::Drink, now, 1_000).unwrap();
+    let blocked = store.interact_at(Action::Drink, now, 1_060).unwrap_err();
+    assert_eq!(blocked, "Das geht wieder in 29 min.");
+    // Another kind is fine, and the same kind again once its cooldown is over.
+    store.interact_at(Action::Food, now, 1_060).unwrap();
+    store
+        .interact_at(Action::Drink, now, 1_000 + REPORT_COOLDOWN)
+        .unwrap();
+    assert_eq!(store.pet.xp, 35);
+    // Pokes never count as reports.
+    store.interact_at(Action::Activity, now, 4_000).unwrap();
+    assert_eq!(store.pet.log.len(), 3);
+
+    let mut at = 10_000;
+    for _ in 3..REPORTS_PER_WINDOW {
+        store.interact_at(Action::Food, now, at).unwrap();
+        at += REPORT_COOLDOWN;
+    }
+    assert_eq!(
+        store.interact_at(Action::Event, now, at).unwrap_err(),
+        "Für heute ist genug gemeldet. Morgen geht’s weiter."
+    );
+    assert!(store
+        .interact_at(Action::Event, now, at + REPORT_WINDOW)
+        .is_ok());
+}
+
+#[test]
+fn cosmetics_are_validated() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::open(dir.path().join("pet.json")).unwrap();
+    assert!(store.equip(Some("Bad Id".into())).is_err());
+    assert!(store.equip(Some(String::new())).is_err());
+    let equipped = store.equip(Some("pixel-glasses".into())).unwrap();
+    assert_eq!(equipped.cosmetic.as_deref(), Some("pixel-glasses"));
+    assert_eq!(store.equip(None).unwrap().cosmetic, None);
 }

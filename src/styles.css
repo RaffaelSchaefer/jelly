@@ -74,7 +74,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .dock nav button svg { width: 17px; height: 17px; }
 .dock nav button:hover { background: #ffffff0d; color: #f4f8fa; }
 .dock nav button[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
-.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; max-height: 370px; overflow-y: auto; }
+.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; max-height: 490px; overflow-y: auto; }
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: -4px -3px 3px 0; }
 .panel-heading h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
 .panel-hint { margin: 0 0 14px; color: var(--text-muted); font-size: 10px; line-height: 1.6; }
@@ -86,6 +86,74 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .action-button small { display: block; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
 .action-xp { margin-left: auto; white-space: nowrap; color: var(--accent); font-size: 10px; }
 .panel-note { color: var(--text-muted); font-size: 11px; line-height: 1.7; margin: 12px 0 0; }
+
+/* XP panel: tabs, log, self-reports, cosmetics, achievements, level-up. */
+.tabs { display: flex; gap: 3px; padding: 3px; margin: 8px 0 14px; border: 1px solid #ffffff0d; border-radius: 9px; }
+.tabs button { flex: 1; height: 26px; border: 0; border-radius: 7px; background: transparent; color: var(--text-muted); font-size: 11px; font-weight: 550; }
+.tabs button:hover { color: #f4f8fa; }
+.tabs button[aria-selected='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
+.xp-sections { display: flex; flex-direction: column; gap: 14px; }
+.xp-sections .level-summary { padding: 0; margin: 0; border: 0; }
+.xp-sections .panel-hint { margin: 0; }
+.xp-row.xp-next { margin: 8px 0 0; }
+.xp-row.xp-next > span:first-child { color: var(--text-muted); gap: 5px; }
+.xp-row.xp-next svg { width: 12px; height: 12px; }
+.xp-section { display: flex; flex-direction: column; gap: 7px; }
+.xp-section h3 { margin: 0; font-size: 11px; font-weight: 550; }
+.xp-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 10px; color: var(--text-muted); }
+.xp-section-head strong { font-size: 11px; font-weight: 650; color: #eef3f5; }
+.xp-section-head .action-xp { font-weight: 650; font-variant-numeric: tabular-nums; }
+.xp-entry, .achievement { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #ffffff0d; border-radius: 11px; background: #ffffff04; }
+.xp-entry.live { border-color: color-mix(in srgb, var(--accent) 17%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.xp-entry > span:nth-child(2), .achievement > span:nth-child(2) { flex: 1; min-width: 0; }
+.xp-entry strong, .achievement strong, .report-button strong { display: block; font-size: 11px; font-weight: 550; }
+.xp-entry small, .achievement small, .report-button small { display: block; margin-top: 2px; font-size: 9px; color: var(--text-muted); }
+.xp-entry .action-icon, .report-button .action-icon { width: 30px; height: 30px; flex-shrink: 0; }
+.xp-entry .action-icon svg, .report-button .action-icon svg { width: 17px; height: 17px; }
+.xp-entry-end { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; font-variant-numeric: tabular-nums; }
+.xp-entry-end .action-xp { font-weight: 650; }
+.xp-entry-end small { display: flex; align-items: center; gap: 4px; margin: 0; }
+.xp-entry.live .xp-entry-end small { color: var(--accent); }
+.report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.report-button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; text-align: left; border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 11px; }
+.report-button:hover:enabled, .cosmetic-tile:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); }
+.report-button .action-xp { display: block; margin-top: 1px; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chips button { height: 24px; padding: 0 10px; border: 1px solid #ffffff0d; border-radius: 7px; background: transparent; color: var(--text-muted); font-size: 10px; font-weight: 550; }
+.chips button[aria-pressed='true'] { border-color: color-mix(in srgb, var(--accent) 17%, transparent); background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
+.cosmetic-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.cosmetic-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px 8px; border: 1px solid #ffffff0d; border-radius: 11px; background: #ffffff04; }
+.cosmetic-tile strong { font-size: 11px; font-weight: 550; }
+.cosmetic-tile small { display: flex; align-items: center; gap: 3px; font-size: 9px; color: var(--text-muted); }
+.cosmetic-tile small svg { width: 10px; height: 10px; }
+.cosmetic-tile[aria-pressed='true'] { border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.cosmetic-tile.equipped { border-color: var(--accent); }
+.cosmetic-tile.equipped small { color: var(--accent); font-size: 10px; }
+.cosmetic-preview { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
+.cosmetic-preview svg { width: 22px; height: 22px; }
+.cosmetic-tile.locked .cosmetic-preview { background: #ffffff12; color: var(--text-muted); }
+.cosmetic-detail { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #ffffff0d; border-radius: 11px; background: #ffffff04; }
+.cosmetic-detail.featured { border-color: color-mix(in srgb, var(--accent) 17%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.cosmetic-detail > span:nth-child(2) { flex: 1; min-width: 0; }
+.cosmetic-detail strong { display: block; font-size: 12px; font-weight: 550; }
+.cosmetic-detail small { display: block; margin-top: 2px; font-size: 10px; color: var(--text-muted); }
+.cosmetic-detail .primary-button { width: auto; padding: 8px 14px; }
+.achievement-badge { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--accent); }
+.achievement-badge svg { width: 16px; height: 16px; }
+.achievement.done .achievement-badge { background: var(--accent); color: var(--accent-ink); }
+.achievement-end { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-variant-numeric: tabular-nums; }
+.achievement-end small { margin: 0; font-size: 10px; }
+.achievement-end progress { width: 48px; }
+.achievement-done { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--accent); }
+.achievement-done svg { width: 11px; height: 11px; }
+.achievement-featured .achievement { flex-wrap: wrap; padding: 12px; border-color: color-mix(in srgb, var(--accent) 17%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.achievement-featured .achievement strong { font-size: 12px; font-weight: 600; }
+.achievement-featured .achievement-end { flex-basis: 100%; flex-direction: column-reverse; align-items: stretch; }
+.achievement-featured .achievement-end progress { width: 100%; height: 6px; }
+.levelup-step { display: flex; align-items: center; gap: 6px; margin-top: -8px; font-size: 11px; font-weight: 650; color: var(--accent); }
+.levelup-step svg { width: 14px; height: 14px; }
+.secondary-button { border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 9px; padding: 10px 14px; font-size: 11px; font-weight: 550; }
+.secondary-button:hover { background: #ffffff0d; }
 .field-label, legend { display: block; font-size: 11px; color: #ccd6db; margin: 13px 0 8px; }
 input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent); background: color-mix(in srgb, var(--base) 65%, black); color: #f4f8fa; padding: 10px 12px; border-radius: 9px; font-size: 13px; }
 .colors { border: 0; margin: 14px 0 20px; padding: 0; display: flex; gap: 17px; }

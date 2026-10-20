@@ -45,12 +45,70 @@ export function ActionButton({ icon, title, detail, xp, ...rest }: ActionButtonP
   );
 }
 
-export function XpProgress({ name, xp }: { name: string; xp: number }) {
+/** Level bar; `next` names the next reward ("Bei Level 5: Pixel-Brille"). */
+export function XpProgress({ name, xp, next }: { name: string; xp: number; next?: string }) {
   const progress = levelProgress(xp);
   return (
     <div className="level-summary">
-      <div className="xp-row"><span><Icon name="spark" /><strong>{name} · Level {progress.level} · {xp} XP</strong></span><span>Noch {progress.remaining} XP</span></div>
+      <div className="xp-row"><span><Icon name="spark" /><strong>{name} · Level {progress.level}</strong></span><span>{progress.current} / 100 XP</span></div>
       <progress value={progress.current} max={100} aria-label={`Fortschritt zu Level ${progress.level + 1}`} />
+      <div className="xp-row xp-next">{next ? <span><Icon name="lock" />{next}</span> : <span />}<span>Noch {progress.remaining} XP</span></div>
+    </div>
+  );
+}
+
+export function Tabs<T extends string>({ label, tabs, value, onChange }: { label: string; tabs: { id: T; label: string }[]; value: T; onChange: (id: T) => void }) {
+  return (
+    <div className="tabs" role="tablist" aria-label={label}>
+      {tabs.map((tab) => <button key={tab.id} role="tab" aria-selected={tab.id === value} onClick={() => onChange(tab.id)}>{tab.label}</button>)}
+    </div>
+  );
+}
+
+/** One line of the XP log. `live` marks a source that is counting right now. */
+export function XpEntry({ icon, title, detail, xp, tag, live }: { icon: IconName; title: string; detail: string; xp: number; tag: string; live?: boolean }) {
+  return (
+    <div className={cx('xp-entry', live ? 'live' : undefined)}>
+      <span className="action-icon"><Icon name={icon} /></span>
+      <span><strong>{title}</strong><small>{detail}</small></span>
+      <span className="xp-entry-end"><span className="action-xp">+{xp} XP</span><small>{live ? <span className="status-dot" /> : null}{tag}</small></span>
+    </div>
+  );
+}
+
+/** A self-report button; `wait` minutes > 0 shows the cooldown instead of the XP. */
+export interface ReportButtonProps extends ComponentProps<'button'> { icon: IconName; title: string; xp: number; wait: number }
+export function ReportButton({ icon, title, xp, wait, ...rest }: ReportButtonProps) {
+  return (
+    <button className="report-button" {...rest}>
+      <span className="action-icon"><Icon name={icon} /></span>
+      <span><strong>{title}</strong>{wait > 0 ? <small>Wieder in {wait} min</small> : <span className="action-xp">+{xp} XP</span>}</span>
+    </button>
+  );
+}
+
+export interface CosmeticTileProps extends ComponentProps<'button'> { icon: IconName; name: string; state: 'equipped' | 'unlocked' | 'locked'; note: string; selected: boolean }
+export function CosmeticTile({ icon, name, state, note, selected, ...rest }: CosmeticTileProps) {
+  return (
+    <button className={cx('cosmetic-tile', state)} aria-pressed={selected} {...rest}>
+      <span className="cosmetic-preview"><Icon name={icon} /></span>
+      <strong>{name}</strong>
+      <small>{state === 'equipped' ? <Icon name="check" /> : state === 'locked' ? <Icon name="lock" /> : null}{note}</small>
+    </button>
+  );
+}
+
+export function AchievementRow({ icon, title, detail, value, goal, unit = '', done }: { icon: IconName; title: string; detail: string; value: number; goal: number; unit?: string; done: boolean }) {
+  return (
+    <div className={cx('achievement', done ? 'done' : undefined)}>
+      <span className="achievement-badge"><Icon name={icon} /></span>
+      <span><strong>{title}</strong><small>{detail}</small></span>
+      <span className="achievement-end">
+        {done ? <span className="achievement-done"><Icon name="check" />Geschafft</span> : <>
+          <small>{value} / {goal}{unit ? ` ${unit}` : ''}</small>
+          <progress value={value} max={goal} aria-label={`Fortschritt ${title}`} />
+        </>}
+      </span>
     </div>
   );
 }

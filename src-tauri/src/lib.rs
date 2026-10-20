@@ -1,7 +1,10 @@
 pub mod pet;
 
 use pet::{Action, Color, Pet, Store};
-use std::{sync::Mutex, time::Instant};
+use std::{
+    sync::Mutex,
+    time::{Instant, SystemTime, UNIX_EPOCH},
+};
 use tauri::{AppHandle, Manager, State};
 
 #[derive(Default)]
@@ -33,8 +36,21 @@ fn get_pet(app: AppHandle, state: State<'_, PetState>) -> Result<Pet, String> {
 #[tauri::command]
 fn interact(app: AppHandle, state: State<'_, PetState>, action: Action) -> Result<Pet, String> {
     with_store(&app, &state, |store| {
-        store.interact_at(action, Instant::now())
+        let unix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| format!("Die Systemuhr steht vor 1970: {error}"))?
+            .as_secs();
+        store.interact_at(action, Instant::now(), unix)
     })
+}
+
+#[tauri::command]
+fn equip_cosmetic(
+    app: AppHandle,
+    state: State<'_, PetState>,
+    cosmetic: Option<String>,
+) -> Result<Pet, String> {
+    with_store(&app, &state, |store| store.equip(cosmetic))
 }
 
 #[tauri::command]
@@ -65,7 +81,7 @@ pub fn run() {
             }
         }))
         .manage(PetState::default())
-        .invoke_handler(tauri::generate_handler![get_pet, interact, customize_pet])
+        .invoke_handler(tauri::generate_handler![get_pet, interact, customize_pet, equip_cosmetic])
         .run(tauri::generate_context!())
         .expect("LAN Desk Pet konnte nicht gestartet werden");
 }

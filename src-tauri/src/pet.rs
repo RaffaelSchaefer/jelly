@@ -14,7 +14,7 @@ pub enum Color {
     Peach,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Action {
     Activity,
@@ -34,7 +34,28 @@ pub struct Pet {
     /// Pet size in percent. Older save files without it load at the default size.
     #[serde(default = "default_size")]
     pub size: u8,
+    /// Every XP gain except pet pokes, oldest first. Feeds "today", cooldowns and achievements.
+    // ponytail: grows without limit; a LAN weekend is a few hundred entries, trim if it ever matters.
+    #[serde(default)]
+    pub log: Vec<Entry>,
+    /// The equipped cosmetic's id; the UI decides what is unlocked.
+    #[serde(default)]
+    pub cosmetic: Option<String>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Entry {
+    pub action: Action,
+    pub xp: u32,
+    /// Unix time in seconds.
+    pub at: u64,
+}
+
+/// Self-reported actions: each kind once per cooldown, and only so many in a rolling day.
+pub const REPORT_COOLDOWN: u64 = 30 * 60;
+pub const REPORT_WINDOW: u64 = 24 * 60 * 60;
+pub const REPORTS_PER_WINDOW: usize = 8;
 
 pub const MIN_SIZE: u8 = 70;
 pub const MAX_SIZE: u8 = 150;
@@ -53,6 +74,8 @@ impl Default for Pet {
             color: Color::Mint,
             reduced_motion: false,
             size: DEFAULT_SIZE,
+            log: Vec::new(),
+            cosmetic: None,
         }
     }
 }
@@ -75,10 +98,17 @@ impl Pet {
         if !(MIN_SIZE..=MAX_SIZE).contains(&self.size) {
             return Err(format!("Die Größe muss zwischen {MIN_SIZE} und {MAX_SIZE} % liegen."));
         }
+        if self.cosmetic.as_ref().is_some_and(|id| {
+            id.is_empty()
+                || id.len() > 32
+                || !id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        }) {
+            return Err("Unbekanntes Cosmetic.".into());
+        }
         Ok(())
     }
 
-    fn apply(&mut self, action: Action) {
+    fn apply(&mut self, action: Action) -> u32 {
         let xp = match action {
             Action::Activity => 1,
             Action::Food => 15,
@@ -86,6 +116,25 @@ impl Pet {
             Action::Event => 30,
         };
         self.xp = self.xp.saturating_add(xp);
+        xp
+    }
+
+    /// Why a self-reported action is not allowed right now, if it is not.
+    fn report_blocked(&self, action: Action, now: u64) -> Option<String> {
+        let recent = |window: u64| {
+            self.log
+                .iter()
+                .filter(move |entry| now.saturating_sub(entry.at) < window)
+        };
+        if let Some(last) = recent(REPORT_COOLDOWN)
+            .filter(|entry| entry.action == action)
+            .last()
+        {
+            let minutes = (REPORT_COOLDOWN - now.saturating_sub(last.at)).div_ceil(60);
+            return Some(format!("Das geht wieder in {minutes} min."));
+        }
+        (recent(REPORT_WINDOW).count() >= REPORTS_PER_WINDOW)
+            .then(|| "Für heute ist genug gemeldet. Morgen geht’s weiter.".into())
     }
 
     fn customize(
@@ -131,7 +180,8 @@ impl Store {
         })
     }
 
-    pub fn interact_at(&mut self, action: Action, now: Instant) -> Result<Pet, String> {
+    /// `now` paces pokes; `unix` (seconds) stamps the log and paces self-reports.
+    pub fn interact_at(&mut self, action: Action, now: Instant, unix: u64) -> Result<Pet, String> {
         if action == Action::Activity
             && self
                 .last_activity
@@ -139,8 +189,16 @@ impl Store {
         {
             return Ok(self.pet.clone());
         }
+        if action != Action::Activity {
+            if let Some(reason) = self.pet.report_blocked(action, unix) {
+                return Err(reason);
+            }
+        }
         let mut next = self.pet.clone();
-        next.apply(action);
+        let xp = next.apply(action);
+        if action != Action::Activity {
+            next.log.push(Entry { action, xp, at: unix });
+        }
         self.save(&next)?;
         self.pet = next;
         if action == Action::Activity {
@@ -158,6 +216,17 @@ impl Store {
     ) -> Result<Pet, String> {
         let mut next = self.pet.clone();
         next.customize(name, color, reduced_motion, size)?;
+        self.save(&next)?;
+        self.pet = next;
+        Ok(self.pet.clone())
+    }
+
+    pub fn equip(&mut self, cosmetic: Option<String>) -> Result<Pet, String> {
+        let next = Pet {
+            cosmetic,
+            ..self.pet.clone()
+        };
+        next.validate()?;
         self.save(&next)?;
         self.pet = next;
         Ok(self.pet.clone())

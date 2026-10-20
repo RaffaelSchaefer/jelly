@@ -1,18 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ActionButton, ColorChoice, Dock, DockButton, ErrorAlert, IconButton, Panel, PrimaryButton, SizeSlider, SpeechBubble, TextField, ToggleRow, XpProgress } from './ui';
-import { levelProgress, PET_SIZE, PREVIEW_PET, stageLayout, type Action, type Pet, type PetColor } from './pet';
+import { ColorChoice, Dock, DockButton, ErrorAlert, IconButton, Panel, PrimaryButton, SizeSlider, SpeechBubble, Tabs, TextField, ToggleRow } from './ui';
+import { Achievements, Cosmetics, LevelUp, Overview, REPORTS, XP_TABS, type XpTab } from './XpPanel';
+import { COSMETICS, levelProgress, PET_SIZE, PREVIEW_PET, stageLayout, type Action, type Pet, type PetColor } from './pet';
 
 const PetScene = lazy(() => import('./PetScene'));
 const desktop = isTauri();
-type Panel = 'lan' | 'look' | 'settings' | null;
-
-const actions = [
-  { action: 'food', icon: 'food', title: 'Essen geholt', detail: 'Snackpause für euch beide.', xp: 15, message: 'Snack gesichert. Weiter geht’s!' },
-  { action: 'drink', icon: 'drink', title: 'Getränk geholt', detail: 'Zeit für eine kleine Erfrischung.', xp: 10, message: 'Auf die nächste Runde!' },
-  { action: 'event', icon: 'event', title: 'Event mitgemacht', detail: 'Zusammen wird die LAN besser.', xp: 30, message: 'Dabei sein gibt Bonuspunkte.' },
-] as const;
+type Panel = 'lan' | 'levelup' | 'look' | 'settings' | null;
+const unixNow = () => Math.floor(Date.now() / 1000);
 
 type Save = (name: string, color: PetColor, reducedMotion: boolean, size: number) => void;
 
@@ -41,6 +37,8 @@ export default function App() {
   const [message, setMessage] = useState('Bereit für die nächste Runde.');
   const [pulse, setPulse] = useState(0);
   const [sizeDraft, setSizeDraft] = useState<number | null>(null);
+  const [xpTab, setXpTab] = useState<XpTab>('overview');
+  const [now, setNow] = useState(unixNow);
   const sizeSave = useRef<number | undefined>(undefined);
   const inFlight = useRef(false);
   const lastInput = useRef(-1000);
@@ -61,6 +59,13 @@ export default function App() {
   useEffect(() => { void load(); }, [load]);
   // The UI theme (accent, panels, bubble) follows the pet's colour.
   useEffect(() => { document.documentElement.dataset.petColor = pet.color; }, [pet.color]);
+  // Cooldowns count down while the XP panel is open.
+  useEffect(() => {
+    if (panel !== 'lan') return;
+    setNow(unixNow());
+    const timer = window.setInterval(() => setNow(unixNow()), 15_000);
+    return () => window.clearInterval(timer);
+  }, [panel]);
 
   const interact = useCallback(async (action: Action) => {
     if (!ready || !desktop || inFlight.current) return;
@@ -71,12 +76,18 @@ export default function App() {
     setError('');
     try {
       const next = await invoke<Pet>('interact', { action });
+      const level = levelProgress(next.xp).level;
+      if (level > levelProgress(pet.xp).level) {
+        const unlocked = COSMETICS.find((item) => 'level' in item.unlock && item.unlock.level === level);
+        setMessage(unlocked ? `Level ${level}! Neu für mich: ${unlocked.name}.` : `Level ${level}! Weiter so.`);
+        setPanel('levelup');
+      } else setMessage(REPORTS.find((item) => item.action === action)?.message ?? 'Gute Runde. Ich bin dabei.');
       setPet(next);
+      setNow(unixNow());
       setPulse((value) => value + 1);
-      setMessage(actions.find((item) => item.action === action)?.message ?? 'Gute Runde. Ich bin dabei.');
     } catch (cause) { setError(String(cause)); }
     finally { inFlight.current = false; setBusy(false); }
-  }, [ready]);
+  }, [ready, pet.xp]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -102,6 +113,19 @@ export default function App() {
     try {
       setPet(await invoke<Pet>('customize_pet', { name, color, reducedMotion, size }));
       setMessage('So gefällt’s mir.');
+    } catch (cause) { setError(String(cause)); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
+
+  async function equip(cosmetic: string | null) {
+    if (inFlight.current) return;
+    if (!desktop) { setPet((current) => ({ ...current, cosmetic })); return; }
+    inFlight.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      setPet(await invoke<Pet>('equip_cosmetic', { cosmetic }));
+      setMessage(cosmetic ? 'Steht mir, oder?' : 'Wieder ganz natürlich.');
     } catch (cause) { setError(String(cause)); }
     finally { inFlight.current = false; setBusy(false); }
   }
@@ -158,8 +182,15 @@ export default function App() {
         </div>
 
         <section className="pet-controls" aria-label="Pet-Steuerung">
-          {panel ? <Panel title={panel === 'lan' ? 'Ein Stück LAN für dein Pet.' : panel === 'look' ? 'Ganz dein Begleiter.' : 'Ein bisschen Feintuning.'} onClose={() => setPanel(null)}>
-            {panel === 'lan' ? <><p className="panel-hint">Du sagst, was passiert ist. Wir vertrauen dir.</p><XpProgress name={pet.name} xp={pet.xp} /><div className="action-list">{actions.map((item) => <ActionButton key={item.action} icon={item.icon} title={item.title} detail={item.detail} xp={item.xp} disabled={!desktop || !ready || busy} onClick={() => void interact(item.action)} />)}</div>{!desktop ? <p className="panel-note">Spielaktionen sind in der Desktop-App verfügbar.</p> : null}</> : null}
+          {panel ? <Panel title={panel === 'lan' ? XP_TABS.find((tab) => tab.id === xpTab)!.title : panel === 'levelup' ? `${pet.name} ist eine Stufe weiter.` : panel === 'look' ? 'Ganz dein Begleiter.' : 'Ein bisschen Feintuning.'} onClose={() => setPanel(null)}>
+            {panel === 'lan' ? <>
+              <Tabs label="Bereiche" tabs={XP_TABS} value={xpTab} onChange={setXpTab} />
+              {xpTab === 'overview' ? <Overview pet={pet} now={now} disabled={!desktop || !ready || busy} onReport={(action) => void interact(action)} /> : null}
+              {xpTab === 'cosmetics' ? <Cosmetics pet={pet} disabled={busy || !ready} onEquip={(id) => void equip(id)} /> : null}
+              {xpTab === 'achievements' ? <Achievements pet={pet} /> : null}
+              {!desktop && xpTab === 'overview' ? <p className="panel-note">Melden geht in der Desktop-App.</p> : null}
+            </> : null}
+            {panel === 'levelup' ? <LevelUp pet={pet} disabled={busy || !ready} onEquip={(id) => { void equip(id); setPanel(null); }} onClose={() => setPanel(null)} /> : null}
             {panel === 'look' ? <Appearance key={pet.name} pet={pet} disabled={busy || !ready} onSave={(...args) => void customize(...args)} /> : null}
             {panel === 'settings' ? <>
               <SizeSlider id="pet-size" label="Größe" hint={`So viel Platz bekommt ${pet.name} auf deinem Desktop.`} value={size} min={PET_SIZE.min} max={PET_SIZE.max} step={PET_SIZE.step} disabled={!ready} onChange={changeSize} />
@@ -168,7 +199,7 @@ export default function App() {
           </Panel> : null}
 
           <Dock label="Pet-Menü">
-            <DockButton icon="event" label="LAN-Aktionen" title={`${pet.name} · Level ${progress.level} · ${pet.xp} XP — LAN-Aktionen`} expanded={panel === 'lan'} onClick={() => toggle('lan')} />
+            <DockButton icon="spark" label="XP und Fortschritt" title={`${pet.name} · Level ${progress.level} · ${pet.xp} XP`} expanded={panel === 'lan' || panel === 'levelup'} onClick={() => setPanel((current) => current === 'lan' || current === 'levelup' ? null : 'lan')} />
             <DockButton icon="palette" label="Aussehen" title="Aussehen" expanded={panel === 'look'} onClick={() => toggle('look')} />
             <DockButton icon="settings" label="Einstellungen" title="Einstellungen" expanded={panel === 'settings'} onClick={() => toggle('settings')} />
           </Dock>
