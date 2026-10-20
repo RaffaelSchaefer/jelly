@@ -3,7 +3,8 @@ import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { BackSide, BufferGeometry, Color, Group, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector2 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { COSMETICS, PET_COLORS, type PetColor } from './pet';
-import { createBodyGeometry, createHandGeometry, createHeadGeometry, HAND, HEAD, headSurface } from './jellyGeometry';
+import { HAND, HEAD, headSurface } from './jellyGeometry';
+import JellyBody from './JellyBody';
 
 const vertexShader = `
   varying vec3 vNormal;
@@ -79,9 +80,6 @@ function AnimationClock({ paused }: { paused: boolean }) {
   return null;
 }
 
-const HEAD_GLOW = [0.1, 1.05] as const;
-const BODY_GLOW = [-1.05, 0.05] as const;
-const HAND_GLOW = [-HAND.radius, HAND.radius] as const;
 const OUTLINE = 0.035;
 /** How long the hands stay out after a poke or action. */
 const HANDS_OUT_SECONDS = 1.6;
@@ -97,8 +95,8 @@ function GlossyPart({ geometry, paint, range, layer = 0 }: { geometry: BufferGeo
   }), [paint.hex, paint.glow, range]);
   return (
     <>
-      {/* Higher layers clear depth first, so they sit over the parts below like layered stickers
-          and keep their full outline (the border round the head) instead of sinking into the body. */}
+      {/* Layers above 0 clear depth first, so they sit over everything drawn before like a sticker
+          and keep their full outline instead of sinking into the pet. */}
       <mesh geometry={geometry} renderOrder={layer * 2} onBeforeRender={layer > 0 ? (gl) => gl.clearDepth() : undefined}>
         <shaderMaterial side={BackSide} uniforms={outlineUniforms} vertexShader={outlineVertexShader} fragmentShader={outlineFragmentShader} />
       </mesh>
@@ -155,8 +153,8 @@ const COSMETIC_LAYER = 4; // above the face (render order 6–7)
 
 /**
  * A cosmetic in the pet's own coordinates (as modelled around blender/pet_reference.obj), drawn with
- * the jelly shader in each material's base colour and outlined in the pet's ink. Like the head it
- * clears depth first and sits on top as a sticker, so model only what is seen from the front.
+ * the glossy toon shader in each material's base colour and outlined in the pet's ink. It clears
+ * depth first and sits on top as a sticker, so model only what is seen from the front.
  */
 function CosmeticModel({ url, color }: { url: string; color: PetColor }) {
   const gltf = useLoader(GLTFLoader, url);
@@ -189,15 +187,12 @@ type CharacterProps = { color: PetColor; pulse: number; reducedMotion: boolean; 
 
 function Character({ color, pulse, reducedMotion, holding = false, cosmetic = null }: CharacterProps) {
   const worn = COSMETICS.find((item) => item.id === cosmetic);
-  const paint = PET_COLORS[color];
   const root = useRef<Group>(null);
   const head = useRef<Group>(null);
   const hands = useRef<(Group | null)[]>([]);
   const eyes = useRef<(Group | null)[]>([]);
   const cheeks = useRef<(Mesh | null)[]>([]);
   const mouth = useRef<Mesh | null>(null);
-  const geometry = useMemo(() => ({ head: createHeadGeometry(), body: createBodyGeometry(), hand: createHandGeometry() }), []);
-  useEffect(() => () => Object.values(geometry).forEach((part) => part.dispose()), [geometry]);
   const state = useRef({ pulse, bounce: 0, pokedAt: -10, hands: 0, handsSpeed: 0, blinkAt: -1, nextBlink: 2 });
 
   useFrame(({ clock }, rawDelta) => {
@@ -266,15 +261,13 @@ function Character({ color, pulse, reducedMotion, holding = false, cosmetic = nu
 
   return (
     <group ref={root}>
-      <GlossyPart geometry={geometry.body} paint={paint} range={BODY_GLOW} />
+      {/* Body, head and hands are one jelly; it reads where the head and hand groups are. */}
+      <JellyBody color={color} head={head} hands={hands} />
       {[-1, 1].map((side, index) => (
-        <group key={side} ref={(node) => { hands.current[index] = node; }} position={[side * HAND.x, HAND.y, HAND.z]} scale={0} visible={false}>
-          <GlossyPart geometry={geometry.hand} paint={paint} range={HAND_GLOW} layer={1} />
-        </group>
+        <group key={side} ref={(node) => { hands.current[index] = node; }} position={[side * HAND.x, HAND.y, HAND.z]} scale={0} visible={false} />
       ))}
       <group ref={head} position={[HEAD.x, HEAD.y, HEAD.z]}>
         <group position={[-HEAD.x, -HEAD.y, -HEAD.z]}>
-          <GlossyPart geometry={geometry.head} paint={paint} range={HEAD_GLOW} layer={2} />
           <Face color={color} eyes={eyes} mouth={mouth} cheeks={cheeks} />
           {/* Head and face cosmetics bob with the head; effects stay with the body (below). */}
           {worn && worn.slot !== 'Effekte' ? <Cosmetic id={worn.id} color={color} /> : null}
