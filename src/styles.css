@@ -74,7 +74,9 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .dock nav button svg { width: 17px; height: 17px; }
 .dock nav button:hover { background: #ffffff0d; color: #f4f8fa; }
 .dock nav button[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
-.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; max-height: 490px; overflow-y: auto; }
+.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px 8px 16px 16px; border-radius: 16px; max-height: 490px; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
+/* The XP panel reaches over the bubble; its text would shine through the glass. */
+.pet-window:has(.tabs) .speech { visibility: hidden; }
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: -4px -3px 3px 0; }
 .panel-heading h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
 .panel-hint { margin: 0 0 14px; color: var(--text-muted); font-size: 10px; line-height: 1.6; }
