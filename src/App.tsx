@@ -175,7 +175,7 @@ export default function App() {
         <div className="pet-stage">
           <SpeechBubble>{message}</SpeechBubble>
           <button className="pet-touch" aria-label={`${pet.name} anstupsen`} disabled={!desktop || !ready || busy} onClick={() => void interact('activity')}>
-            <Suspense fallback={<span className="render-fallback">Dein Begleiter wacht auf …</span>}><PetScene color={pet.color} pulse={pulse} reducedMotion={pet.reducedMotion || osReducedMotion.current} /></Suspense>
+            <Suspense fallback={<span className="render-fallback">Dein Begleiter wacht auf …</span>}><PetScene color={pet.color} cosmetic={pet.cosmetic} pulse={pulse} reducedMotion={pet.reducedMotion || osReducedMotion.current} /></Suspense>
           </button>
           <div className="ground-shadow" />
           <h1 className="sr-only">{pet.name}, Level {progress.level}</h1>

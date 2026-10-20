@@ -7,3 +7,6 @@ src-tauri/gen/
 .env
 .env.*
 !.env.example
+
+# Blender backup files
+*.blend1

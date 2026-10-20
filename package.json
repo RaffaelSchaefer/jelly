@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:rust": "node scripts/native.mjs cargo test --manifest-path src-tauri/Cargo.toml",
     "ds:bundle": "node scripts/ds-bundle.mjs",
+    "blender:reference": "node scripts/export-pet-reference.mjs",
     "check":"npm test && npm run build && npm run test:rust",
     "tauri": "node scripts/native.mjs tauri",
     "rust": "node scripts/native.mjs cargo"

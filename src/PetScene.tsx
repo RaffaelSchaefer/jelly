@@ -1,7 +1,8 @@
-import { Component, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { BackSide, BufferGeometry, Color, Group, MathUtils, Mesh, MeshBasicMaterial, Object3D, Vector2 } from 'three';
-import { PET_COLORS, type PetColor } from './pet';
+import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
+import { BackSide, BufferGeometry, Color, Group, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector2 } from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { COSMETICS, PET_COLORS, type PetColor } from './pet';
 import { createBodyGeometry, createHandGeometry, createHeadGeometry, HAND, HEAD, headSurface } from './jellyGeometry';
 
 const vertexShader = `
@@ -85,13 +86,15 @@ const OUTLINE = 0.035;
 /** How long the hands stay out after a poke or action. */
 const HANDS_OUT_SECONDS = 1.6;
 
-function GlossyPart({ geometry, color, range, layer = 0 }: { geometry: BufferGeometry; color: PetColor; range: readonly [number, number]; layer?: number }) {
-  const outlineUniforms = useMemo(() => ({ uWidth: { value: OUTLINE }, uInk: { value: new Color(PET_COLORS[color].outline) } }), [color]);
+type Paint = { hex: string; glow: string; outline: string };
+
+function GlossyPart({ geometry, paint, range, layer = 0 }: { geometry: BufferGeometry; paint: Paint; range: readonly [number, number]; layer?: number }) {
+  const outlineUniforms = useMemo(() => ({ uWidth: { value: OUTLINE }, uInk: { value: new Color(paint.outline) } }), [paint.outline]);
   const uniforms = useMemo(() => ({
-    uColor: { value: new Color(PET_COLORS[color].hex) },
-    uGlow: { value: new Color(PET_COLORS[color].glow) },
+    uColor: { value: new Color(paint.hex) },
+    uGlow: { value: new Color(paint.glow) },
     uGlowRange: { value: new Vector2(range[0], range[1]) },
-  }), [color, range]);
+  }), [paint.hex, paint.glow, range]);
   return (
     <>
       {/* Higher layers clear depth first, so they sit over the parts below like layered stickers
@@ -146,9 +149,47 @@ function Face({ color, eyes, mouth, cheeks }: { color: PetColor; eyes: React.Ref
   );
 }
 
-type CharacterProps = { color: PetColor; pulse: number; reducedMotion: boolean; holding?: boolean };
+// Cosmetic models exported from blender/cosmetics.blend, by id. Cosmetics without a file show nothing.
+const MODELS = import.meta.glob<string>('./cosmetics/*.glb', { query: '?url', import: 'default', eager: true });
+const COSMETIC_LAYER = 4; // above the face (render order 6–7)
 
-function Character({ color, pulse, reducedMotion, holding = false }: CharacterProps) {
+/**
+ * A cosmetic in the pet's own coordinates (as modelled around blender/pet_reference.obj), drawn with
+ * the jelly shader in each material's base colour and outlined in the pet's ink. Like the head it
+ * clears depth first and sits on top as a sticker, so model only what is seen from the front.
+ */
+function CosmeticModel({ url, color }: { url: string; color: PetColor }) {
+  const gltf = useLoader(GLTFLoader, url);
+  const parts = useMemo(() => {
+    gltf.scene.updateMatrixWorld(true);
+    const found: { geometry: BufferGeometry; hex: string; range: [number, number] }[] = [];
+    gltf.scene.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
+      geometry.computeBoundingBox();
+      const material = (Array.isArray(object.material) ? object.material[0] : object.material) as MeshStandardMaterial;
+      found.push({ geometry, hex: `#${material.color.getHexString()}`, range: [geometry.boundingBox!.min.y, geometry.boundingBox!.max.y] });
+    });
+    return found;
+  }, [gltf]);
+  useEffect(() => () => parts.forEach((part) => part.geometry.dispose()), [parts]);
+  return <>{parts.map((part, index) => (
+    <GlossyPart key={index} geometry={part.geometry} layer={COSMETIC_LAYER} range={part.range}
+      paint={{ hex: part.hex, glow: `#${new Color(part.hex).lerp(new Color('#ffffff'), 0.45).getHexString()}`, outline: PET_COLORS[color].outline }} />
+  ))}</>;
+}
+
+function Cosmetic({ id, color }: { id: string; color: PetColor }) {
+  const url = MODELS[`./cosmetics/${id}.glb`];
+  if (!url) return null;
+  return <RenderBoundary fallback={null}><Suspense fallback={null}><CosmeticModel url={url} color={color} /></Suspense></RenderBoundary>;
+}
+
+type CharacterProps = { color: PetColor; pulse: number; reducedMotion: boolean; holding?: boolean; cosmetic?: string | null };
+
+function Character({ color, pulse, reducedMotion, holding = false, cosmetic = null }: CharacterProps) {
+  const worn = COSMETICS.find((item) => item.id === cosmetic);
+  const paint = PET_COLORS[color];
   const root = useRef<Group>(null);
   const head = useRef<Group>(null);
   const hands = useRef<(Group | null)[]>([]);
@@ -225,27 +266,31 @@ function Character({ color, pulse, reducedMotion, holding = false }: CharacterPr
 
   return (
     <group ref={root}>
-      <GlossyPart geometry={geometry.body} color={color} range={BODY_GLOW} />
+      <GlossyPart geometry={geometry.body} paint={paint} range={BODY_GLOW} />
       {[-1, 1].map((side, index) => (
         <group key={side} ref={(node) => { hands.current[index] = node; }} position={[side * HAND.x, HAND.y, HAND.z]} scale={0} visible={false}>
-          <GlossyPart geometry={geometry.hand} color={color} range={HAND_GLOW} layer={1} />
+          <GlossyPart geometry={geometry.hand} paint={paint} range={HAND_GLOW} layer={1} />
         </group>
       ))}
       <group ref={head} position={[HEAD.x, HEAD.y, HEAD.z]}>
         <group position={[-HEAD.x, -HEAD.y, -HEAD.z]}>
-          <GlossyPart geometry={geometry.head} color={color} range={HEAD_GLOW} layer={2} />
+          <GlossyPart geometry={geometry.head} paint={paint} range={HEAD_GLOW} layer={2} />
           <Face color={color} eyes={eyes} mouth={mouth} cheeks={cheeks} />
+          {/* Head and face cosmetics bob with the head; effects stay with the body (below). */}
+          {worn && worn.slot !== 'Effekte' ? <Cosmetic id={worn.id} color={color} /> : null}
         </group>
       </group>
+      {worn?.slot === 'Effekte' ? <Cosmetic id={worn.id} color={color} /> : null}
     </group>
   );
 }
 
-class RenderBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+class RenderBoundary extends Component<{ children: ReactNode; fallback?: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
-    return this.state.failed ? <p className="render-fallback" role="status">3D ist nicht verfügbar. Bitte Grafiktreiber und WebView prüfen. Die LAN-Aktionen funktionieren weiterhin.</p> : this.props.children;
+    if (!this.state.failed) return this.props.children;
+    return this.props.fallback !== undefined ? this.props.fallback : <p className="render-fallback" role="status">3D ist nicht verfügbar. Bitte Grafiktreiber und WebView prüfen. Die LAN-Aktionen funktionieren weiterhin.</p>;
   }
 }
 
