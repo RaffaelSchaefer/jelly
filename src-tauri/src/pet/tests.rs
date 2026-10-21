@@ -69,7 +69,7 @@ fn stored_progress_and_customization_survive_reopening() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("nested").join("pet.json");
     let mut store = Store::open(path.clone()).unwrap();
-    store.interact_at(Action::Event, Instant::now(), 0).unwrap();
+    store.record_event("turnier-1".into(), 0).unwrap();
     store.equip(Some("party-hat".into())).unwrap();
     store.customize("Byte".into(), Color::Peach, true, 130).unwrap();
     let restored = Store::open(path).unwrap();
@@ -84,7 +84,8 @@ fn stored_progress_and_customization_survive_reopening() {
         vec![Entry {
             action: Action::Event,
             xp: 30,
-            at: 0
+            at: 0,
+            event: Some("turnier-1".into())
         }]
     );
 }
@@ -126,7 +127,7 @@ fn failed_save_keeps_last_successful_state() {
     let mut store = Store::open(path.clone()).unwrap();
     store.interact_at(Action::Food, Instant::now(), 0).unwrap();
     fs::create_dir(path.with_extension("tmp")).unwrap();
-    assert!(store.interact_at(Action::Event, Instant::now(), 0).is_err());
+    assert!(store.interact_at(Action::Drink, Instant::now(), 0).is_err());
     assert_eq!(store.pet.xp, 15);
     assert_eq!(Store::open(path).unwrap().pet.xp, 15);
 }
@@ -155,12 +156,33 @@ fn self_reports_have_a_cooldown_and_a_daily_limit() {
         at += REPORT_COOLDOWN;
     }
     assert_eq!(
-        store.interact_at(Action::Event, now, at).unwrap_err(),
+        store.interact_at(Action::Drink, now, at).unwrap_err(),
         "Für heute ist genug gemeldet. Morgen geht’s weiter."
     );
+    // Events are not self-reports: no limit for them, and they don't use up the reports.
+    store.record_event("lan-quiz".into(), at).unwrap();
     assert!(store
-        .interact_at(Action::Event, now, at + REPORT_WINDOW)
+        .interact_at(Action::Drink, now, at + REPORT_WINDOW)
         .is_ok());
+}
+
+#[test]
+fn events_count_once_per_id_and_skip_cooldown_and_limit() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::open(dir.path().join("pet.json")).unwrap();
+    store.record_event("mario-kart".into(), 1_000).unwrap();
+    // A second event right away is fine; the same id again (a retry) gives no XP.
+    store.record_event("cs2-turnier".into(), 1_001).unwrap();
+    store.record_event(" mario-kart ".into(), 1_002).unwrap();
+    assert_eq!(store.pet.xp, 60);
+    assert_eq!(store.pet.log.len(), 2);
+    assert!(store.record_event("  ".into(), 1_003).is_err());
+    assert!(store.record_event("x".repeat(65), 1_003).is_err());
+    // Events only come in with their id.
+    assert!(store
+        .interact_at(Action::Event, Instant::now(), 1_004)
+        .is_err());
+    assert_eq!(store.pet.xp, 60);
 }
 
 #[test]

@@ -13,6 +13,8 @@ describe('self-reports', () => {
     const last = full.at(-1)!.at;
     expect(reportStatus(full, 'drink', last + 1).left).toBe(0);
     expect(reportStatus(full, 'drink', REPORT.window).left).toBe(1);
+    // Events never use up self-reports.
+    expect(reportStatus([...full, { action: 'event', xp: 30, at: last, event: 'quiz' }], 'drink', REPORT.window).left).toBe(1);
   });
 });
 

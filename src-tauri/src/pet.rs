@@ -50,9 +50,13 @@ pub struct Entry {
     pub xp: u32,
     /// Unix time in seconds.
     pub at: u64,
+    /// For events: the id the organisers' system gave it, so a repeated report counts once.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event: Option<String>,
 }
 
-/// Self-reported actions: each kind once per cooldown, and only so many in a rolling day.
+/// Self-reported actions (food, drink): each kind once per cooldown, and only so many in a rolling day.
+/// Events come confirmed from outside and are limited only by their id.
 pub const REPORT_COOLDOWN: u64 = 30 * 60;
 pub const REPORT_WINDOW: u64 = 24 * 60 * 60;
 pub const REPORTS_PER_WINDOW: usize = 8;
@@ -133,7 +137,10 @@ impl Pet {
             let minutes = (REPORT_COOLDOWN - now.saturating_sub(last.at)).div_ceil(60);
             return Some(format!("Das geht wieder in {minutes} min."));
         }
-        (recent(REPORT_WINDOW).count() >= REPORTS_PER_WINDOW)
+        (recent(REPORT_WINDOW)
+            .filter(|entry| entry.action != Action::Event)
+            .count()
+            >= REPORTS_PER_WINDOW)
             .then(|| "Für heute ist genug gemeldet. Morgen geht’s weiter.".into())
     }
 
@@ -182,6 +189,9 @@ impl Store {
 
     /// `now` paces pokes; `unix` (seconds) stamps the log and paces self-reports.
     pub fn interact_at(&mut self, action: Action, now: Instant, unix: u64) -> Result<Pet, String> {
+        if action == Action::Event {
+            return Err("Events werden mit ihrer Event-ID gemeldet.".into());
+        }
         if action == Action::Activity
             && self
                 .last_activity
@@ -197,13 +207,41 @@ impl Store {
         let mut next = self.pet.clone();
         let xp = next.apply(action);
         if action != Action::Activity {
-            next.log.push(Entry { action, xp, at: unix });
+            next.log.push(Entry {
+                action,
+                xp,
+                at: unix,
+                event: None,
+            });
         }
         self.save(&next)?;
         self.pet = next;
         if action == Action::Activity {
             self.last_activity = Some(now);
         }
+        Ok(self.pet.clone())
+    }
+
+    /// An event the pet took part in. No cooldown or daily limit; the same id counts only once,
+    /// so a system that reports again (a retry, a restart) gives no extra XP.
+    pub fn record_event(&mut self, id: String, unix: u64) -> Result<Pet, String> {
+        let id = id.trim().to_owned();
+        if id.is_empty() || id.chars().count() > 64 || id.chars().any(char::is_control) {
+            return Err("Die Event-ID muss 1–64 Zeichen enthalten, ohne Steuerzeichen.".into());
+        }
+        if self.pet.log.iter().any(|entry| entry.event.as_ref() == Some(&id)) {
+            return Ok(self.pet.clone());
+        }
+        let mut next = self.pet.clone();
+        let xp = next.apply(Action::Event);
+        next.log.push(Entry {
+            action: Action::Event,
+            xp,
+            at: unix,
+            event: Some(id),
+        });
+        self.save(&next)?;
+        self.pet = next;
         Ok(self.pet.clone())
     }
 

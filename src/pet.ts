@@ -5,7 +5,7 @@ export type Action = 'activity' | 'food' | 'drink' | 'event';
 export type Report = Exclude<Action, 'activity'>;
 
 /** One XP gain, as logged by pet.rs. Pokes are not logged. */
-export interface Entry { action: Report; xp: number; /** Unix seconds. */ at: number }
+export interface Entry { action: Report; xp: number; /** Unix seconds. */ at: number; /** Events only: the organisers' event id. */ event?: string }
 
 export interface Pet {
   schemaVersion: number;
@@ -32,12 +32,12 @@ export const PREVIEW_PET: Pet = {
   cosmetic: null,
 };
 
-// Mirrors REPORT_* in pet.rs, which enforces them; the UI only shows them.
+// Mirrors REPORT_* in pet.rs, which enforces them; the UI only shows them. Events don't count.
 export const REPORT = { cooldown: 30 * 60, window: 24 * 60 * 60, perWindow: 8 } as const;
 
 /** Minutes until `action` may be reported again (0 = now) and how many reports are left. */
 export function reportStatus(log: Entry[], action: Report, now: number) {
-  const recent = log.filter((entry) => now - entry.at < REPORT.window);
+  const recent = log.filter((entry) => entry.action !== 'event' && now - entry.at < REPORT.window);
   const last = recent.filter((entry) => entry.action === action && now - entry.at < REPORT.cooldown).at(-1);
   return {
     waitMinutes: last ? Math.ceil((REPORT.cooldown - (now - last.at)) / 60) : 0,

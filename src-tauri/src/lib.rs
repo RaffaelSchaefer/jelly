@@ -33,15 +33,28 @@ fn get_pet(app: AppHandle, state: State<'_, PetState>) -> Result<Pet, String> {
     with_store(&app, &state, |store| Ok(store.pet.clone()))
 }
 
+fn unix_now() -> Result<u64, String> {
+    Ok(SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("Die Systemuhr steht vor 1970: {error}"))?
+        .as_secs())
+}
+
 #[tauri::command]
 fn interact(app: AppHandle, state: State<'_, PetState>, action: Action) -> Result<Pet, String> {
     with_store(&app, &state, |store| {
-        let unix = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|error| format!("Die Systemuhr steht vor 1970: {error}"))?
-            .as_secs();
-        store.interact_at(action, Instant::now(), unix)
+        store.interact_at(action, Instant::now(), unix_now()?)
     })
+}
+
+/// For the organisers' event system (not wired up yet): one call per event taken part in.
+#[tauri::command]
+fn record_event(
+    app: AppHandle,
+    state: State<'_, PetState>,
+    event_id: String,
+) -> Result<Pet, String> {
+    with_store(&app, &state, |store| store.record_event(event_id, unix_now()?))
 }
 
 #[tauri::command]
@@ -81,7 +94,7 @@ pub fn run() {
             }
         }))
         .manage(PetState::default())
-        .invoke_handler(tauri::generate_handler![get_pet, interact, customize_pet, equip_cosmetic])
+        .invoke_handler(tauri::generate_handler![get_pet, interact, record_event, customize_pet, equip_cosmetic])
         .run(tauri::generate_context!())
         .expect("LAN Desk Pet konnte nicht gestartet werden");
 }
