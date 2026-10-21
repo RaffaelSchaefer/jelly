@@ -58,7 +58,7 @@ Then commit `src/cosmetics/<id>.glb` (and `cosmetics.blend`, so others can carry
 The reference is generated from `src/jellyGeometry.ts`. After changing the pet's shape:
 
 ```bash
-npm run blender:reference
+pnpm run blender:reference
 ```
 
 Then in Blender, delete the objects in **Referenz** and import `blender/pet_reference.obj` again

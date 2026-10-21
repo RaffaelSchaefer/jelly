@@ -10,7 +10,7 @@ ist ein austauschbarer Platzhalter mit einem eigenen Toon-Shader.
 
 ## Starten
 
-Benötigt: Node.js 24 LTS mit npm, aktuelles Rust stable sowie die
+Benötigt: Node.js 24 LTS mit pnpm (Monorepo-Root `joint`), aktuelles Rust stable sowie die
 [Tauri-Systemvoraussetzungen](https://v2.tauri.app/start/prerequisites/).
 Unter Windows sind insbesondere MSVC-Buildtools und WebView2 nötig. Linux
 benötigt unter anderem WebKitGTK 4.1 und die in der Tauri-Dokumentation für die
@@ -18,9 +18,11 @@ jeweilige Distribution aufgeführten Entwicklungspakete. macOS benötigt Xcode
 Command Line Tools.
 
 ```sh
-npm ci
-npm run tauri dev
+pnpm install
+pnpm run tauri dev
 ```
+
+`pnpm install` läuft im Monorepo-Root, die übrigen Befehle in `apps/desk-pet`.
 
 Das öffnet das transparente Desktop-Pet. Über die Punkte oben links wird es
 verschoben; oben rechts lässt es sich minimieren oder schließen. Eine minimierte
@@ -31,17 +33,17 @@ Node 24; die getestete Version steht in `.nvmrc`. Für diesen Aufbau wurde die
 bereits installierte Node-Laufzeit direkt verwendet, ohne die globale
 Versionsmanager-Konfiguration zu verändern.
 
-Die npm-Befehle für Tauri und Rust ergänzen für ihre Unterprozesse automatisch
+Die pnpm-Skripte für Tauri und Rust ergänzen für ihre Unterprozesse automatisch
 `$CARGO_HOME/bin` beziehungsweise `~/.cargo/bin`. Damit funktioniert eine bereits
 installierte Rustup-Toolchain auch dann, wenn ein noch offenes Terminal oder
 Codex den bei der Installation ergänzten Suchpfad noch nicht übernommen hat.
 Die globale PATH-Konfiguration wird dabei nicht verändert. Direkte Rust-Befehle
-lassen sich über `npm run rust -- <Cargo-Argumente>` ausführen.
+lassen sich über `pnpm run rust -- <Cargo-Argumente>` ausführen.
 
 Nur die Oberfläche im Browser ansehen:
 
 ```sh
-npm run dev
+pnpm run dev
 ```
 
 Die Vorschau liegt unter [localhost:1420](http://127.0.0.1:1420). Dort lassen sich
@@ -89,17 +91,17 @@ Server und keine externe Kauf- oder Veranstaltungsprüfung.
 ## Prüfen und bauen
 
 ```sh
-npm test
-npm run test:rust
-npm run build
-npm run rust -- fmt --manifest-path src-tauri/Cargo.toml --check
-npm run rust -- clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-npm run tauri build -- --debug --no-bundle
+pnpm test
+pnpm run test:rust
+pnpm run build
+pnpm run rust -- fmt --manifest-path src-tauri/Cargo.toml --check
+pnpm run rust -- clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+pnpm run tauri build -- --debug --no-bundle
 ```
 
 Der letzte Befehl erstellt einen nativen Debug-Build, unter Windows in
 `src-tauri/target/debug/lan-desk-pet.exe`. Installer, Signierung und Updates sind
-noch nicht konfiguriert. `npm run check` kombiniert die Frontend-Tests, den
+noch nicht konfiguriert. `pnpm run check` kombiniert die Frontend-Tests, den
 Frontend-Build und die Rust-Tests.
 
 ## Bewusste Grenzen und nächste Schritte
