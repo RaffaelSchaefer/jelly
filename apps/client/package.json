@@ -1,5 +1,5 @@
 {
-  "name": "jelly/client",
+  "name": "@jelly/client",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,8 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "check": "pnpm test && pnpm run build && pnpm run test:rust",
     "check-types": "tsc --noEmit",
+    "doc:rust": "node scripts/native.mjs cargo doc --manifest-path src-tauri/Cargo.toml --no-deps --document-private-items",
     "ds:bundle": "node scripts/ds-bundle.mjs",
-    "format": "oxfmt --write \"**/*.{ts,tsx,md}\" && pnpm run format:rust",
+    "format": "oxfmt --write \"**/*.{ts,tsx,mjs,md}\" && pnpm run format:rust",
     "format:rust": "node scripts/native.mjs cargo fmt --manifest-path src-tauri/Cargo.toml",
     "lint": "oxlint && pnpm run lint:rust",
     "lint:rust": "node scripts/native.mjs cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",

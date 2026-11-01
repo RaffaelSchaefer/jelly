@@ -1,4 +1,4 @@
-"""LAN Desk Pet cosmetics pipeline for Blender 4.2+.
+"""Jelly cosmetics pipeline for Blender 4.2+.
 
 Create the modelling file once (writes blender/cosmetics.blend next to this script):
     blender --background --python blender/setup_cosmetics.py
@@ -134,7 +134,7 @@ class COSMETICS_OT_export(bpy.types.Operator):
 
 
 class COSMETICS_PT_panel(bpy.types.Panel):
-    bl_label = "LAN Desk Pet"
+    bl_label = "Jelly"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Cosmetics"

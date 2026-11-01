@@ -60,6 +60,12 @@
     "unicorn/no-useless-undefined": "warn",
     "typescript/no-explicit-any": "warn"
   },
+  "overrides": [
+    {
+      "files": ["scripts/**"],
+      "rules": { "node/no-sync": "off" }
+    }
+  ],
   "env": {
     "builtin": true,
     "node": true

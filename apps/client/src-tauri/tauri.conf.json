@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "LAN Desk Pet",
+  "productName": "Jelly",
   "version": "0.1.0",
-  "identifier": "de.ucb.lan-desk-pet",
+  "identifier": "de.ucb.jelly",
   "build": {
     "beforeDevCommand": "pnpm run webpreview:dev",
     "beforeBuildCommand": "pnpm run build",
@@ -13,7 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [{
       "label": "main",
-      "title": "LAN Desk Pet",
+      "title": "Jelly",
       "width": 420,
       "height": 620,
       "resizable": false,

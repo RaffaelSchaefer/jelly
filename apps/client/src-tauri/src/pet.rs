@@ -1,70 +1,135 @@
-use serde::{Deserialize, Serialize};
-use std::{
-    fs,
-    io::{ErrorKind, Write},
-    path::PathBuf,
-    time::{Duration, Instant},
-};
+//! Das Spielmodell: wie ein Pet aussieht, wofür es XP gibt und welche Werte gültig sind.
+//!
+//! Hier gibt es weder Dateizugriff noch eine Uhr. Zeitpunkte kommen als Parameter herein, damit
+//! sich jede Regel direkt testen lässt. Laden und Speichern übernimmt [`crate::store`].
+//!
+//! Die Oberfläche spiegelt Typen und Grenzwerte in `src/pet/types.ts`. Wer hier etwas ändert,
+//! muss dort mitziehen.
 
+use serde::{Deserialize, Serialize};
+
+use crate::error::{Error, Result};
+
+/// Version des Dateiformats. Ein Spielstand mit anderer Version wird nicht geladen.
+pub const SCHEMA_VERSION: u8 = 1;
+
+/// Abklingzeit in Sekunden, bevor dieselbe Selbstmeldung (Essen, Getränk) wieder zählt.
+pub const REPORT_COOLDOWN: u64 = 30 * 60;
+/// Länge des rollenden Fensters in Sekunden, in dem [`REPORTS_PER_WINDOW`] gilt.
+pub const REPORT_WINDOW: u64 = 24 * 60 * 60;
+/// Höchstzahl an Selbstmeldungen pro [`REPORT_WINDOW`]. Events zählen nicht mit.
+pub const REPORTS_PER_WINDOW: usize = 8;
+
+/// Kleinste erlaubte Pet-Größe in Prozent.
+pub const MIN_SIZE: u8 = 70;
+/// Größte erlaubte Pet-Größe in Prozent.
+pub const MAX_SIZE: u8 = 150;
+/// Standardgröße in Prozent, auch für alte Spielstände ohne Größenangabe.
+pub const DEFAULT_SIZE: u8 = 100;
+
+/// Höchstlänge des Pet-Namens in Zeichen.
+pub const MAX_NAME_LEN: usize = 24;
+/// Höchstlänge einer Event-ID in Zeichen.
+pub const MAX_EVENT_ID_LEN: usize = 64;
+/// Höchstlänge einer Cosmetic-ID in Bytes (nur ASCII erlaubt).
+pub const MAX_COSMETIC_ID_LEN: usize = 32;
+
+/// Die Farbvarianten des Pets. In JSON klein geschrieben (`"mint"`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Color {
+    /// Blau mit türkisem Leuchten, in der Oberfläche „Aqua“.
     Mint,
+    /// Flieder.
     Lilac,
+    /// Pfirsich.
     Peach,
 }
 
+/// Alles, wofür es XP gibt. In JSON klein geschrieben (`"food"`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Action {
+    /// Anstupsen per Klick oder Taste. Höchstens einmal pro Sekunde, wird nicht geloggt.
     Activity,
+    /// Selbst gemeldetes Essen, mit Abklingzeit und Tageslimit.
     Food,
+    /// Selbst gemeldetes Getränk, mit Abklingzeit und Tageslimit.
     Drink,
+    /// Teilnahme an einem Event. Kommt nur mit Event-ID herein, siehe
+    /// [`Store::record_event`](crate::store::Store::record_event).
     Event,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct Pet {
-    pub schema_version: u8,
-    pub name: String,
-    pub xp: u32,
-    pub color: Color,
-    pub reduced_motion: bool,
-    /// Pet size in percent. Older save files without it load at the default size.
-    #[serde(default = "default_size")]
-    pub size: u8,
-    /// Every XP gain except pet pokes, oldest first. Feeds "today", cooldowns and achievements.
-    // ponytail: grows without limit; a LAN weekend is a few hundred entries, trim if it ever matters.
-    #[serde(default)]
-    pub log: Vec<Entry>,
-    /// The equipped cosmetic's id; the UI decides what is unlocked.
-    #[serde(default)]
-    pub cosmetic: Option<String>,
+impl Action {
+    /// Wie viele XP diese Aktion einbringt.
+    pub const fn xp(self) -> u32 {
+        match self {
+            Action::Activity => 1,
+            Action::Food => 15,
+            Action::Drink => 10,
+            Action::Event => 30,
+        }
+    }
 }
 
+/// Ein Eintrag im XP-Verlauf. Stupser werden nicht geloggt.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Entry {
+    /// Wofür es die XP gab.
     pub action: Action,
+    /// Wie viele XP es gab, festgehalten zum Zeitpunkt der Aktion.
     pub xp: u32,
-    /// Unix time in seconds.
+    /// Unix-Zeit in Sekunden.
     pub at: u64,
-    /// For events: the id the organisers' system gave it, so a repeated report counts once.
+    /// Nur bei Events: die ID aus dem System der Orga, damit eine Wiederholung nur einmal zählt.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub event: Option<String>,
 }
 
-/// Self-reported actions (food, drink): each kind once per cooldown, and only so many in a rolling day.
-/// Events come confirmed from outside and are limited only by their id.
-pub const REPORT_COOLDOWN: u64 = 30 * 60;
-pub const REPORT_WINDOW: u64 = 24 * 60 * 60;
-pub const REPORTS_PER_WINDOW: usize = 8;
+/// Was der Nutzer am Pet selbst einstellen kann. Kommt so aus der Oberfläche (`customize_pet`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Appearance {
+    /// Anzeigename. Wird beim Übernehmen getrimmt.
+    pub name: String,
+    /// Farbvariante.
+    pub color: Color,
+    /// Animation auf eine ruhige Darstellung reduzieren.
+    pub reduced_motion: bool,
+    /// Größe in Prozent, [`MIN_SIZE`]…[`MAX_SIZE`].
+    pub size: u8,
+}
 
-pub const MIN_SIZE: u8 = 70;
-pub const MAX_SIZE: u8 = 150;
-pub const DEFAULT_SIZE: u8 = 100;
+/// Der komplette Spielstand, genau so, wie er in `pet.json` steht.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Pet {
+    /// Version des Dateiformats, siehe [`SCHEMA_VERSION`].
+    pub schema_version: u8,
+    /// Anzeigename, 1–[`MAX_NAME_LEN`] Zeichen.
+    pub name: String,
+    /// Gesammelte XP. Gesättigt statt übergelaufen.
+    pub xp: u32,
+    /// Farbvariante.
+    pub color: Color,
+    /// Animation auf eine ruhige Darstellung reduzieren.
+    pub reduced_motion: bool,
+    /// Größe in Prozent. Alte Spielstände ohne dieses Feld laden mit [`DEFAULT_SIZE`].
+    #[serde(default = "default_size")]
+    pub size: u8,
+    /// Jeder XP-Gewinn außer Stupsern, ältester zuerst. Grundlage für „heute“, Abklingzeiten
+    /// und Erfolge.
+    // ponytail: wächst unbegrenzt; ein LAN-Wochenende sind ein paar hundert Einträge. Kürzen, falls es je stört.
+    #[serde(default)]
+    pub log: Vec<Entry>,
+    /// ID des angelegten Cosmetics. Was freigeschaltet ist, entscheidet die Oberfläche.
+    #[serde(default)]
+    pub cosmetic: Option<String>,
+}
 
+/// Standardwert für [`Pet::size`] beim Laden alter Spielstände.
 fn default_size() -> u8 {
     DEFAULT_SIZE
 }
@@ -72,7 +137,7 @@ fn default_size() -> u8 {
 impl Default for Pet {
     fn default() -> Self {
         Self {
-            schema_version: 1,
+            schema_version: SCHEMA_VERSION,
             name: "Pixel".into(),
             xp: 0,
             color: Color::Mint,
@@ -84,51 +149,78 @@ impl Default for Pet {
     }
 }
 
+/// Prüft, ob `text` nach dem Trimmen nicht leer ist, höchstens `max` Zeichen hat und keine
+/// Steuerzeichen enthält. Gilt für Namen und Event-IDs.
+pub(crate) fn is_label(text: &str, max: usize) -> bool {
+    !text.trim().is_empty() && text.chars().count() <= max && !text.chars().any(char::is_control)
+}
+
+/// Prüft eine Cosmetic-ID: 1–[`MAX_COSMETIC_ID_LEN`] Zeichen aus `a–z`, `0–9` und `-`.
+fn is_cosmetic_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= MAX_COSMETIC_ID_LEN
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
 impl Pet {
+    /// Aktuelles Level: alle 100 XP eins mehr, beginnend bei 1.
     pub fn level(&self) -> u32 {
         self.xp / 100 + 1
     }
 
-    fn validate(&self) -> Result<(), String> {
-        if self.schema_version != 1 {
-            return Err("Dieser Spielstand stammt aus einer anderen App-Version. Die Datei bleibt unverändert.".into());
+    /// Prüft den ganzen Spielstand. Wird beim Laden und vor jedem Speichern aufgerufen.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::UnknownSchema`], [`Error::InvalidName`], [`Error::InvalidSize`] oder
+    /// [`Error::UnknownCosmetic`], je nachdem, welches Feld nicht passt.
+    pub(crate) fn validate(&self) -> Result<()> {
+        if self.schema_version != SCHEMA_VERSION {
+            return Err(Error::UnknownSchema);
         }
-        if self.name.trim().is_empty()
-            || self.name.chars().count() > 24
-            || self.name.chars().any(char::is_control)
-        {
-            return Err("Der Name muss 1–24 Zeichen enthalten, ohne Steuerzeichen.".into());
+        if !is_label(&self.name, MAX_NAME_LEN) {
+            return Err(Error::InvalidName);
         }
         if !(MIN_SIZE..=MAX_SIZE).contains(&self.size) {
-            return Err(format!(
-                "Die Größe muss zwischen {MIN_SIZE} und {MAX_SIZE} % liegen."
-            ));
+            return Err(Error::InvalidSize);
         }
-        if self.cosmetic.as_ref().is_some_and(|id| {
-            id.is_empty()
-                || id.len() > 32
-                || !id
-                    .bytes()
-                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
-        }) {
-            return Err("Unbekanntes Cosmetic.".into());
+        if self
+            .cosmetic
+            .as_deref()
+            .is_some_and(|id| !is_cosmetic_id(id))
+        {
+            return Err(Error::UnknownCosmetic);
         }
         Ok(())
     }
 
-    fn apply(&mut self, action: Action) -> u32 {
-        let xp = match action {
-            Action::Activity => 1,
-            Action::Food => 15,
-            Action::Drink => 10,
-            Action::Event => 30,
-        };
+    /// Schreibt die XP für `action` gut, ohne sie zu loggen, und gibt den Gewinn zurück.
+    pub(crate) fn apply(&mut self, action: Action) -> u32 {
+        let xp = action.xp();
         self.xp = self.xp.saturating_add(xp);
         xp
     }
 
-    /// Why a self-reported action is not allowed right now, if it is not.
-    fn report_blocked(&self, action: Action, now: u64) -> Option<String> {
+    /// Schreibt die XP für `action` gut und hält sie im [`Pet::log`] fest.
+    pub(crate) fn record(&mut self, action: Action, at: u64, event: Option<String>) {
+        let xp = self.apply(action);
+        self.log.push(Entry {
+            action,
+            xp,
+            at,
+            event,
+        });
+    }
+
+    /// Prüft, ob die Selbstmeldung `action` zum Zeitpunkt `now` (Unix-Sekunden) gerade zählt.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Cooldown`], solange dieselbe Meldung noch abklingt, sonst [`Error::DailyLimit`],
+    /// wenn das rollende Tagesfenster voll ist.
+    pub(crate) fn check_report(&self, action: Action, now: u64) -> Result<()> {
         let recent = |window: u64| {
             self.log
                 .iter()
@@ -136,165 +228,34 @@ impl Pet {
         };
         if let Some(last) = recent(REPORT_COOLDOWN).rfind(|entry| entry.action == action) {
             let minutes = (REPORT_COOLDOWN - now.saturating_sub(last.at)).div_ceil(60);
-            return Some(format!("Das geht wieder in {minutes} min."));
+            return Err(Error::Cooldown { minutes });
         }
-        (recent(REPORT_WINDOW)
+        let reports = recent(REPORT_WINDOW)
             .filter(|entry| entry.action != Action::Event)
-            .count()
-            >= REPORTS_PER_WINDOW)
-            .then(|| "Für heute ist genug gemeldet. Morgen geht’s weiter.".into())
+            .count();
+        if reports >= REPORTS_PER_WINDOW {
+            return Err(Error::DailyLimit);
+        }
+        Ok(())
     }
 
-    fn customize(
-        &mut self,
-        name: String,
-        color: Color,
-        reduced_motion: bool,
-        size: u8,
-    ) -> Result<(), String> {
+    /// Übernimmt ein neues Aussehen. Der Name wird getrimmt. Ist etwas ungültig, bleibt das Pet
+    /// unverändert.
+    ///
+    /// # Fehler
+    ///
+    /// Wie [`Pet::validate`].
+    pub(crate) fn customize(&mut self, appearance: Appearance) -> Result<()> {
         let next = Self {
-            name: name.trim().into(),
-            color,
-            reduced_motion,
-            size,
+            name: appearance.name.trim().into(),
+            color: appearance.color,
+            reduced_motion: appearance.reduced_motion,
+            size: appearance.size,
             ..self.clone()
         };
         next.validate()?;
         *self = next;
         Ok(())
-    }
-}
-
-pub struct Store {
-    pub pet: Pet,
-    path: PathBuf,
-    last_activity: Option<Instant>,
-}
-
-impl Store {
-    pub fn open(path: PathBuf) -> Result<Self, String> {
-        let pet: Pet = match fs::read(&path) {
-            Ok(contents) => serde_json::from_slice(&contents).map_err(|error| {
-                format!("Spielstand konnte nicht gelesen werden: {error}. Die Datei bleibt unverändert.")
-            })?,
-            Err(error) if error.kind() == ErrorKind::NotFound => Pet::default(),
-            Err(error) => return Err(format!("Spielstand konnte nicht geöffnet werden: {error}")),
-        };
-        pet.validate()?;
-        Ok(Self {
-            pet,
-            path,
-            last_activity: None,
-        })
-    }
-
-    /// `now` paces pokes; `unix` (seconds) stamps the log and paces self-reports.
-    pub fn interact_at(&mut self, action: Action, now: Instant, unix: u64) -> Result<Pet, String> {
-        if action == Action::Event {
-            return Err("Events werden mit ihrer Event-ID gemeldet.".into());
-        }
-        if action == Action::Activity
-            && self
-                .last_activity
-                .is_some_and(|last| now.saturating_duration_since(last) < Duration::from_secs(1))
-        {
-            return Ok(self.pet.clone());
-        }
-        if action != Action::Activity {
-            if let Some(reason) = self.pet.report_blocked(action, unix) {
-                return Err(reason);
-            }
-        }
-        let mut next = self.pet.clone();
-        let xp = next.apply(action);
-        if action != Action::Activity {
-            next.log.push(Entry {
-                action,
-                xp,
-                at: unix,
-                event: None,
-            });
-        }
-        self.save(&next)?;
-        self.pet = next;
-        if action == Action::Activity {
-            self.last_activity = Some(now);
-        }
-        Ok(self.pet.clone())
-    }
-
-    /// An event the pet took part in. No cooldown or daily limit; the same id counts only once,
-    /// so a system that reports again (a retry, a restart) gives no extra XP.
-    pub fn record_event(&mut self, id: String, unix: u64) -> Result<Pet, String> {
-        let id = id.trim().to_owned();
-        if id.is_empty() || id.chars().count() > 64 || id.chars().any(char::is_control) {
-            return Err("Die Event-ID muss 1–64 Zeichen enthalten, ohne Steuerzeichen.".into());
-        }
-        if self
-            .pet
-            .log
-            .iter()
-            .any(|entry| entry.event.as_ref() == Some(&id))
-        {
-            return Ok(self.pet.clone());
-        }
-        let mut next = self.pet.clone();
-        let xp = next.apply(Action::Event);
-        next.log.push(Entry {
-            action: Action::Event,
-            xp,
-            at: unix,
-            event: Some(id),
-        });
-        self.save(&next)?;
-        self.pet = next;
-        Ok(self.pet.clone())
-    }
-
-    pub fn customize(
-        &mut self,
-        name: String,
-        color: Color,
-        reduced_motion: bool,
-        size: u8,
-    ) -> Result<Pet, String> {
-        let mut next = self.pet.clone();
-        next.customize(name, color, reduced_motion, size)?;
-        self.save(&next)?;
-        self.pet = next;
-        Ok(self.pet.clone())
-    }
-
-    pub fn equip(&mut self, cosmetic: Option<String>) -> Result<Pet, String> {
-        let next = Pet {
-            cosmetic,
-            ..self.pet.clone()
-        };
-        next.validate()?;
-        self.save(&next)?;
-        self.pet = next;
-        Ok(self.pet.clone())
-    }
-
-    fn save(&self, pet: &Pet) -> Result<(), String> {
-        let write = || -> Result<(), Box<dyn std::error::Error>> {
-            if let Some(parent) = self.path.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            let temporary = self.path.with_extension("tmp");
-            let bytes = serde_json::to_vec_pretty(pet)?;
-            {
-                let mut file = fs::File::create(&temporary)?;
-                file.write_all(&bytes)?;
-                file.sync_all()?;
-            }
-            // Replace only after a complete write; a failed save keeps the previous state.
-            fs::rename(&temporary, &self.path)?;
-            Ok(())
-        };
-        write().map_err(|error| {
-            format!("Speichern fehlgeschlagen: {error}. Die Änderung wurde nicht übernommen.")
-        })
     }
 }
 

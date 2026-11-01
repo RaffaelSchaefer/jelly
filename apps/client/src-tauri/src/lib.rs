@@ -1,108 +1,64 @@
+//! Rust-Backend von **Jelly**, dem Desktop-Begleiter für die LAN am Umwelt-Campus Birkenfeld.
+//!
+//! Rust besitzt den Spielstand: Es rechnet XP, prüft Eingaben und speichert. Die Oberfläche
+//! (React im Tauri-WebView) zeigt nur an und meldet, was passieren soll.
+//!
+//! # Aufbau
+//!
+//! - [`pet`]: Spielmodell und Regeln, ohne Dateizugriff.
+//! - [`store`]: lädt und speichert den Spielstand atomar als `pet.json`.
+//! - [`error`]: alle Fehler samt deutscher Meldung für die Oberfläche.
+//! - [`commands`]: die Tauri-Befehle, die die Oberfläche aufruft.
+//!
+//! [`run`] setzt die App zusammen. `main.rs` ruft nur diese Funktion auf, wie es Tauri vorsieht,
+//! damit Desktop und Mobile denselben Einstieg teilen.
+
+#![warn(missing_docs)]
+// Die Doku wird immer mit `--document-private-items` gebaut (`pnpm run doc:rust`), Links auf
+// private Items funktionieren dort.
+#![allow(rustdoc::private_intra_doc_links)]
+
+mod commands;
+pub mod error;
 pub mod pet;
+pub mod store;
 
-use pet::{Action, Color, Pet, Store};
-use std::{
-    sync::Mutex,
-    time::{Instant, SystemTime, UNIX_EPOCH},
-};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 
-#[derive(Default)]
-struct PetState(Mutex<Option<Store>>);
-
-fn with_store(
-    app: &AppHandle,
-    state: &PetState,
-    operation: impl FnOnce(&mut Store) -> Result<Pet, String>,
-) -> Result<Pet, String> {
-    let mut guard = state.0.lock().map_err(|_| {
-        "Der Spielstand ist gerade nicht verfügbar. Bitte die App neu starten.".to_owned()
-    })?;
-    if guard.is_none() {
-        let directory = app
-            .path()
-            .app_data_dir()
-            .map_err(|error| format!("App-Datenverzeichnis nicht verfügbar: {error}"))?;
-        *guard = Some(Store::open(directory.join("pet.json"))?);
-    }
-    operation(guard.as_mut().ok_or("Spielstand nicht verfügbar")?)
-}
-
-#[tauri::command]
-fn get_pet(app: AppHandle, state: State<'_, PetState>) -> Result<Pet, String> {
-    with_store(&app, &state, |store| Ok(store.pet.clone()))
-}
-
-fn unix_now() -> Result<u64, String> {
-    Ok(SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|error| format!("Die Systemuhr steht vor 1970: {error}"))?
-        .as_secs())
-}
-
-#[tauri::command]
-fn interact(app: AppHandle, state: State<'_, PetState>, action: Action) -> Result<Pet, String> {
-    with_store(&app, &state, |store| {
-        store.interact_at(action, Instant::now(), unix_now()?)
-    })
-}
-
-/// For the organisers' event system (not wired up yet): one call per event taken part in.
-#[tauri::command]
-fn record_event(
-    app: AppHandle,
-    state: State<'_, PetState>,
-    event_id: String,
-) -> Result<Pet, String> {
-    with_store(&app, &state, |store| {
-        store.record_event(event_id, unix_now()?)
-    })
-}
-
-#[tauri::command]
-fn equip_cosmetic(
-    app: AppHandle,
-    state: State<'_, PetState>,
-    cosmetic: Option<String>,
-) -> Result<Pet, String> {
-    with_store(&app, &state, |store| store.equip(cosmetic))
-}
-
-#[tauri::command]
-fn customize_pet(
-    app: AppHandle,
-    state: State<'_, PetState>,
-    name: String,
-    color: Color,
-    reduced_motion: bool,
-    size: u8,
-) -> Result<Pet, String> {
-    with_store(&app, &state, |store| {
-        store.customize(name, color, reduced_motion, size)
-    })
-}
-
+/// Startet die App: Single-Instance-Schutz, Spielstand-State und alle Befehle.
+///
+/// # Panics
+///
+/// Wenn Tauri nicht starten kann, zum Beispiel weil kein WebView installiert ist.
 pub fn run() {
     tauri::Builder::default()
+        // Eine zweite Instanz holt das vorhandene Fenster nach vorn, statt denselben Spielstand
+        // aus einem zweiten Prozess zu überschreiben.
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            if let Some(window) = app.get_webview_window("main") {
-                if let Err(error) = window
-                    .unminimize()
-                    .and_then(|_| window.show())
-                    .and_then(|_| window.set_focus())
-                {
-                    eprintln!("Das vorhandene Pet-Fenster konnte nicht aktiviert werden: {error}");
-                }
-            }
+            focus_main_window(app)
         }))
-        .manage(PetState::default())
+        .manage(commands::PetState::default())
         .invoke_handler(tauri::generate_handler![
-            get_pet,
-            interact,
-            record_event,
-            customize_pet,
-            equip_cosmetic
+            commands::get_pet,
+            commands::interact,
+            commands::record_event,
+            commands::customize_pet,
+            commands::equip_cosmetic
         ])
         .run(tauri::generate_context!())
-        .expect("LAN Desk Pet konnte nicht gestartet werden");
+        .expect("Jelly konnte nicht gestartet werden");
+}
+
+/// Holt das Pet-Fenster aus der Taskleiste und gibt ihm den Fokus.
+fn focus_main_window(app: &AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if let Err(error) = window
+        .unminimize()
+        .and_then(|_| window.show())
+        .and_then(|_| window.set_focus())
+    {
+        eprintln!("Das vorhandene Pet-Fenster konnte nicht aktiviert werden: {error}");
+    }
 }

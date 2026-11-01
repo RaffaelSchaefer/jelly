@@ -15,7 +15,7 @@
     "sortSideEffects": false
   },
   "jsdoc": {
-    "commentLineStrategy": "multiline",
+    "commentLineStrategy": "singleLine",
     "lineWrappingStyle": "greedy",
     "capitalizeDescriptions": true
   }
