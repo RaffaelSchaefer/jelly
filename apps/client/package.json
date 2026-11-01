@@ -1,0 +1,43 @@
+{
+  "name": "@jelly/client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "blender:reference": "node scripts/export-pet-reference.mjs",
+    "build": "tsc --noEmit && vite build",
+    "check": "pnpm test && pnpm run build && pnpm run test:rust",
+    "check-types": "tsc --noEmit",
+    "doc:rust": "node scripts/native.mjs cargo doc --manifest-path src-tauri/Cargo.toml --no-deps --document-private-items",
+    "ds:bundle": "node scripts/ds-bundle.mjs",
+    "format": "oxfmt --write \"**/*.{ts,tsx,mjs,md}\" && pnpm run format:rust",
+    "format:rust": "node scripts/native.mjs cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "lint": "oxlint && pnpm run lint:rust",
+    "lint:rust": "node scripts/native.mjs cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
+    "preview": "vite preview --host 127.0.0.1",
+    "rust": "node scripts/native.mjs cargo",
+    "tauri": "node scripts/native.mjs tauri",
+    "test": "vitest run",
+    "test:rust": "node scripts/native.mjs cargo test --manifest-path src-tauri/Cargo.toml",
+    "webpreview:dev": "vite --host 127.0.0.1 --port 1420 --strictPort"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.8.2",
+    "@tauri-apps/api": "2.12.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.90.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}
