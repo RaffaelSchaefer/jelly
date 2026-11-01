@@ -1,0 +1,67 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["unicorn", "oxc", "import", "jsdoc", "node", "promise", "typescript"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "eqeqeq": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-empty": "error",
+    "no-throw-literal": "error",
+    "no-promise-executor-return": "error",
+    "array-callback-return": "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "args": "all",
+        "argsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "import/no-cycle": "error",
+    "import/no-self-import": "error",
+    "import/no-duplicates": "error",
+    "node/handle-callback-err": "error",
+    "node/no-path-concat": "error",
+    "node/no-sync": "warn",
+    "promise/param-names": "error",
+    "promise/no-return-wrap": "warn",
+    "unicorn/error-message": "error",
+    "unicorn/throw-new-error": "error",
+    "unicorn/prefer-node-protocol": "error",
+    "max-lines": [
+      "warn",
+      {
+        "max": 350,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "max-lines-per-function": [
+      "warn",
+      {
+        "max": 60,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "complexity": ["warn", { "max": 12 }],
+    "max-depth": ["warn", { "max": 3 }],
+    "max-statements": ["warn", { "max": 20 }],
+    "max-params": ["warn", { "max": 4 }],
+    "no-else-return": "warn",
+    "no-unneeded-ternary": "warn",
+    "no-useless-return": "warn",
+    "no-useless-catch": "error",
+    "no-empty-function": "warn",
+    "unicorn/no-useless-undefined": "warn",
+    "typescript/no-explicit-any": "warn"
+  },
+  "env": {
+    "builtin": true,
+    "node": true
+  }
+}

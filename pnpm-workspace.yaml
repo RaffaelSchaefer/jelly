@@ -2,8 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# pnpm 10 blocks postinstall scripts by default; these three need theirs to work.
+# pnpm 10 blocks postinstall scripts by default; this one needs its postinstall to work.
 onlyBuiltDependencies:
-  - "@prisma/engines"
   - esbuild
-  - prisma
