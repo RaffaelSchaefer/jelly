@@ -238,6 +238,21 @@ linters:
               desc: Database access belongs in internal/store.
             - pkg: os
               desc: Settings come in through cmd/jelly-server.
+        simulator-layer:
+          files:
+            - "**/internal/simulator/*.go"
+            - "!$test"
+          deny:
+            - pkg: database/sql
+              desc: The simulator plays through the public API only.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/store
+              desc: The simulator plays through the public API only.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/rules
+              desc: The simulator plays through the public API only.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/api
+              desc: The simulator plays through the public API only.
+            - pkg: os
+              desc: Settings come in through cmd/jelly-server.
         store-layer:
           files:
             - "**/internal/store/*.go"
@@ -249,6 +264,10 @@ linters:
               desc: The store does not know the API.
             - pkg: os
               desc: Settings come in through cmd/jelly-server.
+
+    goconst:
+      min-len: 2
+      min-occurrences: 2
 
     forbidigo:
       analyze-types: true

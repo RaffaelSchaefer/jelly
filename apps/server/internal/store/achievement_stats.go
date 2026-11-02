@@ -20,13 +20,14 @@ type metricQuery struct {
 // listMetricQueries returns everything that can be counted in one SQL statement.
 func listMetricQueries() []metricQuery {
 	return []metricQuery{
-		{rules.MetricPokes, `SELECT COUNT(*) FROM xp_log WHERE player_id = ?1 AND action = 'poke'`},
+		{rules.MetricPokes, `SELECT COUNT(*) FROM xp_log
+			WHERE player_id = ?1 AND action = '` + actionPoke + `'`},
 		{rules.MetricDrinks, `SELECT COUNT(*) FROM xp_log
-			WHERE player_id = ?1 AND lan_id = ?2 AND action = 'drink'`},
+			WHERE player_id = ?1 AND lan_id = ?2 AND action = '` + rules.ActionDrink + `'`},
 		{rules.MetricEventsLAN, `SELECT COUNT(*) FROM xp_log
-			WHERE player_id = ?1 AND lan_id = ?2 AND action = 'event'`},
+			WHERE player_id = ?1 AND lan_id = ?2 AND action = '` + actionEvent + `'`},
 		{rules.MetricEventsTotal, `SELECT COUNT(*) FROM xp_log
-			WHERE player_id = ?1 AND action = 'event'`},
+			WHERE player_id = ?1 AND action = '` + actionEvent + `'`},
 		{rules.MetricLANsAttended, `SELECT COUNT(*) FROM lan_entries WHERE player_id = ?1`},
 		{rules.MetricProfileEdits, `SELECT COUNT(*) FROM event_log
 			WHERE player_id = ?1 AND type = '` + EventPlayerUpdated + `'`},

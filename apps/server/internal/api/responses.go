@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -11,6 +12,15 @@ import (
 )
 
 const maxBodyBytes = 4 << 10
+
+// Field names shared by several responses.
+const (
+	fieldCreated = "created"
+	fieldDeleted = "deleted"
+	fieldHidden  = "hidden"
+	fieldMe      = "me"
+	fieldToken   = "token"
+)
 
 // problem is an error response with a stable code. `message` is shown in the German app.
 type problem struct {
@@ -177,11 +187,19 @@ func (server *apiServer) writeError(
 			return
 		}
 	}
-	server.Logger.ErrorContext(request.Context(), "request failed",
-		"route", request.Pattern, "error", err)
+	logFailure := server.Logger.ErrorContext
+	if isClientGone(request, err) {
+		logFailure = server.Logger.DebugContext
+	}
+	logFailure(request.Context(), "request failed", "route", request.Pattern, "error", err)
 	server.writeProblem(writer, problem{
 		http.StatusInternalServerError, "internal", "Auf dem Server ist ein Fehler aufgetreten.",
 	})
+}
+
+// isClientGone reports a request cancelled by its own client, which is no fault of the server.
+func isClientGone(request *http.Request, err error) bool {
+	return errors.Is(err, context.Canceled) && errors.Is(request.Context().Err(), context.Canceled)
 }
 
 // writeProblem writes the uniform error response.

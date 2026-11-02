@@ -10,6 +10,8 @@ Schnittstelle in [docs/api.md](docs/api.md).
 pnpm lint      # golangci-lint run, muss ohne Befund durchlaufen
 pnpm format    # golangci-lint fmt (gofumpt, goimports)
 pnpm test      # go test ./...
+pnpm bench     # Benchmarks der Datenbankzugriffe
+pnpm bench:load  # Lasttest mit dem Simulator, siehe benchmarks/README.md
 pnpm build     # go build
 go test -race -count=1 ./...   # vor jedem Abschluss, sobald Nebenläufigkeit beteiligt ist
 ```
@@ -50,6 +52,7 @@ AGENTS.md im Root. Deutsch bleiben nur die Meldungen, die die App anzeigt (`mess
 - `internal/rules` enthält reine Funktionen ohne IO und ohne Uhr. Zeiten kommen als Argument herein.
 - `internal/store` kennt SQLite, aber kein HTTP. `internal/api` kennt HTTP, aber kein SQL.
 - Nur `cmd/jelly-server` liest die Umgebung, wählt die echte Uhr und darf den Prozess beenden.
+- `internal/simulator` spielt nur über die öffentliche API und kennt weder `store` noch `rules`.
 - Logik gehört wenn möglich in reine, einzeln testbare Funktionen.
 - Dateien gruppieren zusammengehörigen Code und bleiben unter etwa 500 Zeilen. Große Module werden
   auf mehrere Dateien aufgeteilt.
@@ -100,6 +103,19 @@ Kommentare helfen beim Orientieren oder machen schwer Lesbares klar.
 - Länger nur, wenn der Code mehr Kontext braucht, etwa bei einem schwierigen Randfall. Dann nennt der
   Kommentar das Problem, ein Beispiel und die Lösung.
 
+## Keine magischen Werte
+
+Zahlen und Texte mit Bedeutung bekommen einen Namen: `registerRetryLimit` statt `5 * time.Second`,
+`pathActions` statt `"/actions"`. Der Name sagt, wofür der Wert steht, nicht wie groß er ist. Gleiche
+Werte stehen an einer Stelle, und feste Listen stehen in einer benannten Funktion. Das gilt auch für
+SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort besser lesbar sind.
+
+## Messungen und Skripte
+
+Skripte, die man wiederholen will, liegen im Repo statt nur im Terminal. Lasttests stehen in
+`benchmarks/`, die Baselines in [benchmarks/README.md](benchmarks/README.md). Nach einer Änderung,
+die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit dort eintragen.
+
 ## Weitere Regeln
 
 - Schemaänderungen sind neue, nummerierte [goose](https://github.com/pressly/goose)-Dateien in
@@ -118,6 +134,7 @@ Kommentare helfen beim Orientieren oder machen schwer Lesbares klar.
 | Höchstens 5 Parameter und 3 Ergebnisse | `revive` (`argument-limit`, `function-result-limit`)    |
 | Getrennte Module, reine Regeln         | `depguard`                                              |
 | Keine globalen Variablen, kein `init`  | `gochecknoglobals`, `gochecknoinits`                    |
+| Keine magischen Zahlen und Texte       | `mnd`, `goconst` (ab 2 Vorkommen)                       |
 | Kein globaler Logger, `snake_case`-Keys | `sloglint`                                             |
 | Kleine, klein geschriebene Fehlertexte | `staticcheck` (`ST1005`)                                |
 | Kein `panic`, Uhr nur von außen        | `forbidigo`, `revive` (`deep-exit`)                     |

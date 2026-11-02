@@ -65,7 +65,7 @@ func (server *apiServer) handleHidePlayer(writer http.ResponseWriter, request *h
 	playerID, valid := server.readPathID(writer, request)
 	if valid {
 		err := server.Store.HidePlayer(request.Context(), playerID, server.currentMillis())
-		server.writeOutcome(writer, request, map[string]bool{"hidden": true}, err)
+		server.writeOutcome(writer, request, map[string]bool{fieldHidden: true}, err)
 	}
 }
 
@@ -74,7 +74,7 @@ func (server *apiServer) handleShowPlayer(writer http.ResponseWriter, request *h
 	playerID, valid := server.readPathID(writer, request)
 	if valid {
 		err := server.Store.ShowPlayer(request.Context(), playerID, server.currentMillis())
-		server.writeOutcome(writer, request, map[string]bool{"hidden": false}, err)
+		server.writeOutcome(writer, request, map[string]bool{fieldHidden: false}, err)
 	}
 }
 
@@ -94,7 +94,7 @@ func (server *apiServer) handleRotateToken(writer http.ResponseWriter, request *
 		token, err := server.Store.RotatePlayerToken(
 			request.Context(), playerID, server.currentMillis(),
 		)
-		server.writeOutcome(writer, request, map[string]string{"token": token}, err)
+		server.writeOutcome(writer, request, map[string]string{fieldToken: token}, err)
 	}
 }
 
@@ -103,7 +103,7 @@ func (server *apiServer) handleDeletePlayer(writer http.ResponseWriter, request 
 	playerID, valid := server.readPathID(writer, request)
 	if valid {
 		err := server.Store.DeletePlayer(request.Context(), playerID, server.currentMillis())
-		server.writeOutcome(writer, request, map[string]bool{"deleted": true}, err)
+		server.writeOutcome(writer, request, map[string]bool{fieldDeleted: true}, err)
 	}
 }
 
@@ -121,7 +121,7 @@ func (server *apiServer) handleCreateLAN(writer http.ResponseWriter, request *ht
 	}
 	body.Rules = rules.DefaultRules()
 	err := server.Store.CreateLAN(request.Context(), body)
-	server.writeOutcome(writer, request, map[string]bool{"created": true}, err)
+	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
 }
 
 // handleUpdateRules replaces the rules of a LAN, also while it is running.
@@ -154,7 +154,7 @@ func (server *apiServer) handleCreateEventCode(writer http.ResponseWriter, reque
 		return
 	}
 	err := server.Store.CreateEventCode(request.Context(), body, server.currentMillis())
-	server.writeOutcome(writer, request, map[string]bool{"created": true}, err)
+	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
 }
 
 // handleListAreas returns the room map of a LAN and who belongs where.
@@ -216,7 +216,7 @@ func (server *apiServer) handleDeleteArea(writer http.ResponseWriter, request *h
 	areaID, valid := server.readPathValue(writer, request, "area")
 	if valid {
 		err := server.Store.DeleteArea(request.Context(), lanID, areaID, server.currentMillis())
-		server.writeOutcome(writer, request, map[string]bool{"deleted": true}, err)
+		server.writeOutcome(writer, request, map[string]bool{fieldDeleted: true}, err)
 	}
 }
 

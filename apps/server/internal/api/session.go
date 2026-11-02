@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	fieldLoggedIn   = "logged_in"
 	adminCookieName = "jelly_admin"
 	adminCookiePath = "/admin"
 	adminIdleLimit  = 30 * time.Minute
@@ -38,13 +39,13 @@ func (server *apiServer) handleAdminLogin(writer http.ResponseWriter, request *h
 		return
 	}
 	server.writeAdminCookie(writer)
-	server.writeJSON(writer, http.StatusOK, map[string]bool{"logged_in": true})
+	server.writeJSON(writer, http.StatusOK, map[string]bool{fieldLoggedIn: true})
 }
 
 // handleAdminLogout clears the cookie in this browser. A copy of it stays valid until it expires.
 func (server *apiServer) handleAdminLogout(writer http.ResponseWriter, _ *http.Request) {
 	http.SetCookie(writer, buildAdminCookie("", time.Unix(0, 0)))
-	server.writeJSON(writer, http.StatusOK, map[string]bool{"logged_in": false})
+	server.writeJSON(writer, http.StatusOK, map[string]bool{fieldLoggedIn: false})
 }
 
 // writeAdminCookie issues a session that expires after the idle limit.

@@ -1,6 +1,8 @@
 package api_test
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -349,5 +351,24 @@ func TestTokenIsNotStoredInPlaintext(t *testing.T) {
 	}
 	if storedHash == "" || strings.Contains(storedHash, token) {
 		t.Fatalf("token is not stored as a hash: %q", storedHash)
+	}
+}
+
+func TestCancelledRequestIsNoServerError(t *testing.T) {
+	testFixture := newFixture(t)
+	logs := &bytes.Buffer{}
+	handler := api.NewHandler(api.Dependencies{
+		Store: testFixture.database, Now: time.Now,
+		Logger:   slog.New(slog.NewTextHandler(logs, nil)),
+		StageKey: stageKey, AdminSecret: adminSecret,
+		IsStopping: testFixture.stopping.Load, Web: nil,
+	})
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	request := httptest.NewRequestWithContext(ctx, http.MethodGet, "/me", http.NoBody)
+	request.Header.Set("Authorization", "Bearer some-token")
+	handler.ServeHTTP(httptest.NewRecorder(), request)
+	if strings.Contains(logs.String(), "level=ERROR") {
+		t.Fatalf("a client that left must not look like a server error: %s", logs)
 	}
 }

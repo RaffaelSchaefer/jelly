@@ -73,7 +73,7 @@ func (server *apiServer) handleRegister(writer http.ResponseWriter, request *htt
 		server.writeError(writer, request, err)
 		return
 	}
-	server.writeJSON(writer, http.StatusCreated, map[string]any{"token": token, "me": state})
+	server.writeJSON(writer, http.StatusCreated, map[string]any{fieldToken: token, fieldMe: state})
 }
 
 // handleJoin adds an existing account to the running LAN.
@@ -147,7 +147,7 @@ func (server *apiServer) handleAction(
 		server.writeProblem(writer, problemUnknownAction())
 		return
 	}
-	server.writeOutcome(writer, request, map[string]any{"xp_gained": gainedXP, "me": state}, err)
+	server.writeOutcome(writer, request, map[string]any{"xp_gained": gainedXP, fieldMe: state}, err)
 }
 
 // handleRedeem redeems an event code.
