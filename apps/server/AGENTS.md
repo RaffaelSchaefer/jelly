@@ -1,18 +1,20 @@
 # AGENTS.md: Server
 
-Diese Regeln gelten für allen Go-Code in `apps/server` und ergänzen das
+Diese Regeln gelten für allen Code in `apps/server` und ergänzen das
 [AGENTS.md im Root](../../AGENTS.md). Aufbau und Betrieb stehen in der [README](README.md), die
 Schnittstelle in [docs/api.md](docs/api.md).
 
 ## Befehle
 
 ```sh
-pnpm lint      # golangci-lint run, muss ohne Befund durchlaufen
-pnpm format    # golangci-lint fmt (gofumpt, goimports)
-pnpm test      # go test ./...
+pnpm lint      # golangci-lint und oxlint, müssen ohne Befund durchlaufen
+pnpm format    # golangci-lint fmt und oxfmt
+pnpm test      # go test ./... und die Tests der Seiten
+pnpm check-types  # tsc für web/
 pnpm bench     # Benchmarks der Datenbankzugriffe
 pnpm bench:load  # Lasttest mit dem Simulator, siehe benchmarks/README.md
-pnpm build     # go build
+pnpm build     # Seiten bauen (go generate ./internal/web), dann go build
+pnpm demo      # Wegwerf-Server mit 70 simulierten Jellies, um die Bühne anzusehen
 go test -race -count=1 ./...   # vor jedem Abschluss, sobald Nebenläufigkeit beteiligt ist
 ```
 
@@ -53,6 +55,7 @@ AGENTS.md im Root. Deutsch bleiben nur die Meldungen, die die App anzeigt (`mess
 - `internal/store` kennt SQLite, aber kein HTTP. `internal/api` kennt HTTP, aber kein SQL.
 - Nur `cmd/jelly-server` liest die Umgebung, wählt die echte Uhr und darf den Prozess beenden.
 - `internal/simulator` spielt nur über die öffentliche API und kennt weder `store` noch `rules`.
+- `internal/web` liefert nur Dateien aus. Daten holen die Seiten über die öffentliche API.
 - Logik gehört wenn möglich in reine, einzeln testbare Funktionen.
 - Dateien gruppieren zusammengehörigen Code und bleiben unter etwa 500 Zeilen. Große Module werden
   auf mehrere Dateien aufgeteilt.
@@ -117,10 +120,22 @@ SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort b
 - Wird sie an mehreren Stellen gebraucht, wandert sie nur so weit nach oben, dass alle sie erreichen.
   Eine private Paket-Konstante ist nur erlaubt, wenn mehrere Funktionen dieselbe Query nutzen.
 
+## Seiten in `web/`
+
+- Einfaches TypeScript ohne Framework. Kommentare, Namen und `@module`-Kopf wie im Go-Code auf
+  Englisch, sichtbare Texte auf Deutsch.
+- Reine Logik (`wander.ts`, `projection.ts`, `effects.ts`) kennt weder DOM noch Canvas und hat Tests
+  daneben (`*.test.ts`). Alles mit DOM oder Canvas bleibt so dünn wie möglich.
+- Die Seiten spiegeln keine Regeln. Was dauerhaft gilt, kommt per `GET /state`, Ereignisse lösen nur
+  ein Neuladen oder eine kurze Animation aus.
+- Neue Einstiegsdateien müssen in die `go:generate`-Zeile von `internal/web/web.go`, neue Seiten
+  zusätzlich in `listPagePatterns`.
+- Änderungen im Browser ansehen, mit `pnpm demo`. Tests finden keine Zeichenfehler.
+
 ## Messungen und Skripte
 
-Skripte, die man wiederholen will, liegen im Repo statt nur im Terminal. Lasttests stehen in
-`benchmarks/`, die Baselines in [benchmarks/README.md](benchmarks/README.md). Nach einer Änderung,
+Skripte, die man wiederholen will, liegen im Repo statt nur im Terminal, Hilfen in `scripts/`,
+Lasttests in `benchmarks/`, die Baselines in [benchmarks/README.md](benchmarks/README.md). Nach einer Änderung,
 die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit dort eintragen.
 
 ## Weitere Regeln
@@ -140,6 +155,7 @@ die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit do
 | Kurze, einfache Funktionen             | `funlen`, `cyclop`, `gocognit`, `nestif`, `maintidx`    |
 | Höchstens 5 Parameter und 3 Ergebnisse | `revive` (`argument-limit`, `function-result-limit`)    |
 | Getrennte Module, reine Regeln         | `depguard`                                              |
+| Seiten: Komplexität und Größe wie im Client | `oxlint`, Typen mit `tsc`                          |
 | Keine globalen Variablen, kein `init`  | `gochecknoglobals`, `gochecknoinits`                    |
 | Keine magischen Zahlen und Texte       | `mnd`, `goconst` (ab 2 Vorkommen)                       |
 | Kein globaler Logger, `snake_case`-Keys | `sloglint`                                             |

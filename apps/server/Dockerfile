@@ -4,6 +4,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+RUN go generate ./internal/web
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/jelly-server ./cmd/jelly-server
 # The volume inherits owner and permissions of this directory on first start.
 RUN mkdir -p /out/data

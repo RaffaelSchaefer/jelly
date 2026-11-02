@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/api"
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/web"
 )
 
 const (
@@ -37,6 +38,10 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 	}
 	defer func() { _ = database.Close() }()
 
+	pages, err := web.NewHandler()
+	if err != nil {
+		return fmt.Errorf("load pages: %w", err)
+	}
 	handler := api.NewHandler(api.Dependencies{
 		Store:       database,
 		Now:         time.Now,
@@ -44,6 +49,7 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 		StageKey:    stageKey,
 		AdminSecret: adminSecret,
 		IsStopping:  func() bool { return appCtx.Err() != nil },
+		Web:         pages,
 	})
 	return serveHTTP(appCtx, handler, readEnv("JELLY_ADDR", ":8080"), logger)
 }

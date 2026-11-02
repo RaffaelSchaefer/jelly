@@ -227,6 +227,15 @@ linters:
               desc: Rules stay pure functions.
             - pkg: log
               desc: Rules stay pure functions.
+        web-layer:
+          files:
+            - "**/internal/web/*.go"
+            - "!$test"
+          deny:
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/store
+              desc: Pages reach data only through the public API.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/rules
+              desc: Pages reach data only through the public API.
         api-layer:
           files:
             - "**/internal/api/*.go"

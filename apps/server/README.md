@@ -5,7 +5,7 @@ Er ist in Go geschrieben und speichert in einer SQLite-Datei. Die Schnittstelle 
 [docs/api.md](docs/api.md).
 
 Gebaut sind Konten, Stupser, Berichte, Event-Codes, Cosmetics, Achievements, Emotes, Partner-Emotes,
-Schilder, die Raumkarte, Moderation und der Simulator. Bühne und Admin-Seite folgen.
+Schilder, die Raumkarte, Moderation, der Simulator und die 2D-Bühne. Die Admin-Seite folgt.
 
 ## Lokal starten
 
@@ -20,6 +20,19 @@ JELLY_STAGE_KEY=buehne JELLY_ADMIN_SECRET=admin go run ./cmd/jelly-server
 curl -X POST localhost:8080/register \
   -d '{"code":"geheim","name":"Glibber","color":"mint"}'
 ```
+
+## Bühne ansehen
+
+`scripts/demo.sh` startet einen Wegwerf-Server mit Raumbereichen und 70 simulierten Jellies und nennt
+den Link zur Bühne. Mit Strg+C ist alles wieder weg.
+
+```sh
+pnpm demo
+```
+
+Auf dem echten Server steht die Bühne unter `/stage/?key=<JELLY_STAGE_KEY>`. Sie zeichnet, was der
+Server meldet. Wandern ist eine reine Funktion aus Spieler-ID und Serverzeit, daher zeigen alle
+Bildschirme dasselbe und der Server speichert keine Positionen.
 
 ## Simulator
 
@@ -46,7 +59,8 @@ sich nicht anmelden, endet der Lauf mit dem Grund. Messungen stehen in
 
 Über pnpm läuft der Server mit `pnpm test`, `pnpm lint`, `pnpm build` und `pnpm format` zusammen mit
 dem Rest des Monorepos. `pnpm lint` braucht `golangci-lint`, die Version und alle Code-Regeln stehen
-in [AGENTS.md](AGENTS.md).
+in [AGENTS.md](AGENTS.md). Node wird nur für Tests und Typprüfung der Seiten gebraucht, das Bauen
+läuft über `go tool esbuild`.
 
 | Variable          | Standard   | Zweck                                       |
 | ----------------- | ---------- | ------------------------------------------- |
@@ -66,6 +80,9 @@ in [AGENTS.md](AGENTS.md).
 | `internal/architecture` | Tests für Regeln, die kein Linter prüft            |
 | `internal/rules`   | Spielregeln als reine Funktionen, ohne IO               |
 | `internal/simulator` | Simulierte Spieler, nutzt nur die öffentliche API     |
+| `internal/web`     | Liefert die gebauten Seiten aus, mit Sicherheits-Headern |
+| `web/stage`        | Quelltext der Bühne in TypeScript, ohne Framework       |
+| `scripts`          | Wiederholbare Hilfen wie die Demo                       |
 | `benchmarks`       | Lasttest und Baselines                                  |
 | `testdata/contract`| Regelfälle als JSON, Teil des API-Vertrags              |
 
