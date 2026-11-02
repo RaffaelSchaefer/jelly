@@ -2,13 +2,22 @@
   "name": "@jelly/server",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "go run ./cmd/jelly-server",
     "build": "go build -o dist/jelly-server ./cmd/jelly-server",
-    "test": "go test ./...",
+    "test": "go test ./... && pnpm run test:web",
+    "test:web": "node --test --disable-warning=ExperimentalWarning 'web/**/*.test.ts'",
+    "check-types": "tsc --noEmit",
     "bench": "go test -run=^$ -bench=. -benchmem ./internal/store/",
     "bench:load": "benchmarks/load.sh",
-    "lint": "golangci-lint run",
-    "format": "golangci-lint fmt"
+    "lint": "golangci-lint run && oxlint --deny-warnings web",
+    "format": "golangci-lint fmt && oxfmt web"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.90.0",
+    "typescript": "7.0.2"
   }
 }
