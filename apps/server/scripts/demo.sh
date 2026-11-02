@@ -7,7 +7,6 @@ cd "$(dirname "$0")/.."
 players="${1:-70}"
 address="${2:-127.0.0.1:18092}"
 base_url="http://$address"
-lan_id=1
 
 work_dir="$(mktemp -d)"
 go generate ./internal/web || exit 2
@@ -26,35 +25,14 @@ trap 'kill $server_pid $simulator_pid 2>/dev/null; rm -rf "$work_dir"' EXIT
 simulator_pid=""
 sleep 1
 
-# admin_call sends an admin request with the session cookie of the login below.
-admin_call() {
-  curl -sf -b "$cookie" -H 'Content-Type: application/json' "$@"
-}
-
-cookie="$(curl -si -X POST "$base_url/admin/api/login" -H 'Content-Type: application/json' \
-  -d "{\"secret\":\"$JELLY_ADMIN_SECRET\"}" | sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p')"
-
-# Roughly a hall with two long rows, a side table and a corner, as a seat plan would give it.
-for area in '{"x":5,"y":10,"width":40,"height":35}' '{"x":55,"y":10,"width":40,"height":35}' \
-  '{"x":5,"y":55,"width":55,"height":40}' '{"x":70,"y":60,"width":25,"height":35}'; do
-  admin_call -X POST "$base_url/admin/api/lans/$lan_id/areas" -d "$area" >/dev/null || exit 2
-done
+scripts/demo-room.sh areas "$base_url" "$JELLY_ADMIN_SECRET" || exit 2
 
 "$work_dir/jelly-server" simulate -url "$base_url" -players "$players" \
-  -min-delay 2s -max-delay 12s -duration 24h </dev/null >"$work_dir/simulator.log" 2>&1 &
+  -run-id d -min-delay 5s -max-delay 30s -duration 24h </dev/null >"$work_dir/simulator.log" 2>&1 &
 simulator_pid=$!
 sleep 3
 
-area_ids="$(admin_call "$base_url/admin/api/lans/$lan_id/areas" |
-  grep -o '"areas":\[[^]]*\]' | grep -o '"id":[0-9]*' | cut -d: -f2)"
-mapfile -t areas <<<"$area_ids"
-position=0
-for player_id in $(admin_call "$base_url/admin/api/players" | grep -o '"id":[0-9]*' | cut -d: -f2); do
-  area_id="${areas[$((position % ${#areas[@]}))]}"
-  admin_call -X PUT "$base_url/admin/api/lans/$lan_id/players/$player_id/area" \
-    -d "{\"area_id\":$area_id}" >/dev/null
-  position=$((position + 1))
-done
+scripts/demo-room.sh assign "$base_url" "$JELLY_ADMIN_SECRET"
 
 echo "Stage: $base_url/stage/?key=$JELLY_STAGE_KEY"
 echo "Stop with Ctrl+C."

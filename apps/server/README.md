@@ -23,11 +23,15 @@ curl -X POST localhost:8080/register \
 
 ## Bühne ansehen
 
-`scripts/demo.sh` startet einen Wegwerf-Server mit Raumbereichen und 70 simulierten Jellies und nennt
-den Link zur Bühne. Mit Strg+C ist alles wieder weg.
+`scripts/demo.sh` startet einen Wegwerf-Server mit 70 simulierten Jellies und nennt den Link zur
+Bühne. Mit Strg+C ist alles wieder weg. Der Raum ist wie ein Brustkorb aufgebaut: eine Wirbelsäule
+mit Kabeln, Rippen nach links und rechts, dazwischen je ein U aus Tischen für eine Gruppe. Der Aufbau
+steht in `scripts/demo-room.sh`.
 
 ```sh
-pnpm demo
+pnpm demo                          # direkt mit Go
+scripts/demo-docker.sh start       # aus dem echten Image, Ende mit: scripts/demo-docker.sh stop
+scripts/record-demo.sh videos 20   # nimmt 20 Sekunden als MP4 und GIF auf, braucht Firefox und ffmpeg
 ```
 
 Auf dem echten Server steht die Bühne unter `/stage/?key=<JELLY_STAGE_KEY>`. Sie zeichnet, was der
@@ -50,6 +54,7 @@ JELLY_JOIN_CODE=geheim go run ./cmd/jelly-server simulate -url http://localhost:
 | `-min-delay` | `2s`                    | Kürzeste Zeit zwischen zwei Aktionen   |
 | `-max-delay` | `20s`                   | Längste Zeit zwischen zwei Aktionen    |
 | `-duration`  | `0`                     | Laufzeit, `0` läuft bis zu einem Signal |
+| `-run-id`    | zufällig                | Teil der Namen, gleiche ID auf derselben Datenbank kollidiert |
 
 Am Ende stehen im Log angenommene und abgelehnte Aktionen, Fehler und Antwortzeiten. Können alle Bots
 sich nicht anmelden, endet der Lauf mit dem Grund. Messungen stehen in

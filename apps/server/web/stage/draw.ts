@@ -16,8 +16,8 @@ const STAGE_SIZE = 100;
 const BACKDROP_TOP = "#0f1519";
 const BACKDROP_BOTTOM = "#1e272a";
 const FLOOR_COLOR = "rgba(255, 255, 255, 0.03)";
-const AREA_FILL = "rgba(63, 232, 219, 0.07)";
-const AREA_LINE = "rgba(63, 232, 219, 0.22)";
+const AREA_FILL = "rgba(63, 232, 219, 0.13)";
+const AREA_LINE = "rgba(63, 232, 219, 0.4)";
 const SHADOW_COLOR = "rgba(0, 0, 0, 0.35)";
 const TEXT_COLOR = "#f4f7f8";
 const TEXT_OUTLINE = "rgba(10, 14, 16, 0.9)";
@@ -25,8 +25,8 @@ const SIGN_FILL = "#f5e6b8";
 const SIGN_TEXT = "#3b2f0f";
 
 /** Jelly height relative to the screen, limited by width so narrow screens still fit everyone. */
-const JELLY_HEIGHT_SHARE = 0.14;
-const JELLY_WIDTH_SHARE = 0.09;
+const JELLY_HEIGHT_SHARE = 0.11;
+const JELLY_WIDTH_SHARE = 0.07;
 const SPRITE_GRID = 256;
 const SHADOW_WIDTH = 0.34;
 const SHADOW_HEIGHT = 0.08;
@@ -34,11 +34,11 @@ const BREATH_AMOUNT = 0.025;
 const BREATH_PERIOD_MS = 1800;
 const FULL_CIRCLE = 2 * Math.PI;
 
-const NAME_FONT_SHARE = 0.17;
+const NAME_FONT_SHARE = 0.2;
 const MIN_FONT_PIXELS = 11;
 const NAME_GAP_SHARE = 0.08;
 const HEAD_TOP_SHARE = 0.84;
-const SIGN_FONT_SHARE = 0.16;
+const SIGN_FONT_SHARE = 0.18;
 const SIGN_PADDING = 6;
 const SIGN_RADIUS = 6;
 const BUBBLE_FONT_SHARE = 0.42;

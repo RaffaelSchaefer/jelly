@@ -29,6 +29,7 @@ func runSimulate(ctx context.Context, arguments []string, logger *slog.Logger) e
 	minDelay := flags.Duration("min-delay", simulator.DefaultMinDelay, "shortest wait")
 	maxDelay := flags.Duration("max-delay", simulator.DefaultMaxDelay, "longest wait")
 	limit := flags.Duration("duration", 0, "ends the run after this time, 0 runs until a signal")
+	runID := flags.String("run-id", simulator.GenerateRunID(), "part of the player names")
 	err := flags.Parse(arguments)
 	if err != nil {
 		return fmt.Errorf("parse options: %w", err)
@@ -43,7 +44,7 @@ func runSimulate(ctx context.Context, arguments []string, logger *slog.Logger) e
 		defer cancel()
 	}
 	config := simulator.Config{
-		BaseURL: *address, JoinCode: joinCode, RunID: simulator.GenerateRunID(), Players: *players,
+		BaseURL: *address, JoinCode: joinCode, RunID: *runID, Players: *players,
 		MinDelay: *minDelay, MaxDelay: *maxDelay, Now: time.Now,
 	}
 	httpClient := &http.Client{Timeout: simulatorHTTPLimit}
