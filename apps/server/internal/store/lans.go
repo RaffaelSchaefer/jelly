@@ -95,7 +95,9 @@ func (store *Store) ListLANs(ctx context.Context, now int64) ([]LANSummary, erro
 }
 
 // UpdateLANRules replaces the rules of a LAN, also while it is running.
-func (store *Store) UpdateLANRules(ctx context.Context, lanID int64, gameRules rules.Rules) error {
+func (store *Store) UpdateLANRules(
+	ctx context.Context, lanID int64, gameRules rules.Rules, now int64,
+) error {
 	err := rules.ValidateRules(gameRules)
 	if err != nil {
 		return fmt.Errorf("validate rules: %w", err)
@@ -110,7 +112,11 @@ func (store *Store) UpdateLANRules(ctx context.Context, lanID int64, gameRules r
 		if execErr != nil {
 			return fmt.Errorf("update rules: %w", execErr)
 		}
-		return requireAffectedRow(result, ErrLANNotFound)
+		execErr = requireAffectedRow(result, ErrLANNotFound)
+		if execErr != nil {
+			return execErr
+		}
+		return recordAdminAction(ctx, transaction, AdminActionRules, lanID, now)
 	})
 }
 

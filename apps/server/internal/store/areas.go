@@ -23,36 +23,64 @@ type AreaAssignment struct {
 	AreaID   *int64 `json:"area_id"`
 }
 
-// ReplaceAreas sets the room map of a LAN. Replacing it clears all assignments of that LAN.
-func (store *Store) ReplaceAreas(
-	ctx context.Context, lanID int64, areas []rules.Area, now int64,
-) ([]StageArea, error) {
-	err := rules.ValidateAreas(areas)
+// CreateArea adds an area to the room map of a LAN.
+func (store *Store) CreateArea(
+	ctx context.Context, lanID int64, area rules.Area, now int64,
+) (StageArea, error) {
+	err := rules.ValidateArea(area)
 	if err != nil {
-		return nil, fmt.Errorf("validate areas: %w", err)
+		return StageArea{}, fmt.Errorf("validate area: %w", err)
 	}
-	var stored []StageArea
+	stored := StageArea{ID: 0, Area: area}
 	err = store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		_, workErr := transaction.ExecContext(ctx, `DELETE FROM lan_areas WHERE lan_id = ?`, lanID)
-		if workErr != nil {
-			return fmt.Errorf("delete areas: %w", workErr)
-		}
-		for _, area := range areas {
-			workErr = insertArea(ctx, transaction, lanID, area)
-			if workErr != nil {
-				return workErr
-			}
-		}
-		stored, workErr = loadAreas(ctx, transaction, lanID)
+		var workErr error
+		stored.ID, workErr = insertArea(ctx, transaction, lanID, area)
 		if workErr != nil {
 			return workErr
 		}
 		return appendStageChanged(ctx, transaction, lanID, now)
 	})
 	if err != nil {
-		return nil, err
+		return StageArea{}, err
 	}
 	return stored, nil
+}
+
+// UpdateArea moves or resizes an area. Jellies in it stay assigned.
+func (store *Store) UpdateArea(ctx context.Context, lanID int64, area StageArea, now int64) error {
+	err := rules.ValidateArea(area.Area)
+	if err != nil {
+		return fmt.Errorf("validate area: %w", err)
+	}
+	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
+		result, err := transaction.ExecContext(ctx, `UPDATE lan_areas
+			SET x = ?, y = ?, width = ?, height = ? WHERE id = ? AND lan_id = ?`,
+			area.X, area.Y, area.Width, area.Height, area.ID, lanID)
+		if err != nil {
+			return fmt.Errorf("update area: %w", err)
+		}
+		err = requireAffectedRow(result, ErrAreaNotFound)
+		if err != nil {
+			return err
+		}
+		return appendStageChanged(ctx, transaction, lanID, now)
+	})
+}
+
+// DeleteArea removes an area. Its jellies lose their assignment and use the whole stage.
+func (store *Store) DeleteArea(ctx context.Context, lanID, areaID, now int64) error {
+	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
+		result, err := transaction.ExecContext(ctx,
+			`DELETE FROM lan_areas WHERE id = ? AND lan_id = ?`, areaID, lanID)
+		if err != nil {
+			return fmt.Errorf("delete area: %w", err)
+		}
+		err = requireAffectedRow(result, ErrAreaNotFound)
+		if err != nil {
+			return err
+		}
+		return appendStageChanged(ctx, transaction, lanID, now)
+	})
 }
 
 // ListAreas returns the room map of a LAN.
@@ -119,18 +147,24 @@ func (store *Store) AssignArea(
 	})
 }
 
-// insertArea writes one area and reports an unknown LAN.
-func insertArea(ctx context.Context, transaction *sql.Tx, lanID int64, area rules.Area) error {
-	_, err := transaction.ExecContext(ctx,
+// insertArea writes one area, reports an unknown LAN and returns the new ID.
+func insertArea(
+	ctx context.Context, transaction *sql.Tx, lanID int64, area rules.Area,
+) (int64, error) {
+	result, err := transaction.ExecContext(ctx,
 		`INSERT INTO lan_areas (lan_id, x, y, width, height) VALUES (?, ?, ?, ?, ?)`,
 		lanID, area.X, area.Y, area.Width, area.Height)
 	if err != nil && strings.Contains(err.Error(), "FOREIGN KEY") {
-		return ErrLANNotFound
+		return 0, ErrLANNotFound
 	}
 	if err != nil {
-		return fmt.Errorf("insert area: %w", err)
+		return 0, fmt.Errorf("insert area: %w", err)
 	}
-	return nil
+	areaID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("read area ID: %w", err)
+	}
+	return areaID, nil
 }
 
 // loadAreas reads the room map of a LAN.

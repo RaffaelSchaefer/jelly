@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	stageSize    = 100
-	maxAreaCount = 32
+	stageSize = 100
 	// Keeps home spots away from the area edge, so wandering jellies stay inside.
 	homeMarginPercent = 10
 	// The two halves of a player hash give independent positions on both axes.
@@ -33,17 +32,12 @@ type HomeSpot struct {
 	Y float64 `json:"home_y"`
 }
 
-// ValidateAreas checks a room layout. Areas may touch or overlap, the layout is only a rough map.
-func ValidateAreas(areas []Area) error {
-	if len(areas) > maxAreaCount {
+// ValidateArea checks one area. Areas may touch or overlap, the layout is only a rough map.
+func ValidateArea(area Area) error {
+	isInside := area.X >= 0 && area.Y >= 0 &&
+		area.X+area.Width <= stageSize && area.Y+area.Height <= stageSize
+	if !isInside || area.Width <= 0 || area.Height <= 0 {
 		return ErrInvalidArea
-	}
-	for _, area := range areas {
-		isInside := area.X >= 0 && area.Y >= 0 &&
-			area.X+area.Width <= stageSize && area.Y+area.Height <= stageSize
-		if !isInside || area.Width <= 0 || area.Height <= 0 {
-			return ErrInvalidArea
-		}
 	}
 	return nil
 }

@@ -69,12 +69,16 @@ func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSum
 
 // HidePlayer takes a jelly off the stage. The player keeps the account and XP.
 func (store *Store) HidePlayer(ctx context.Context, playerID, now int64) error {
-	return store.updateModeration(ctx, playerID, now, now, EventPlayerHidden)
+	return store.updateModeration(ctx, playerID, now, now, moderationChange{
+		eventType: EventPlayerHidden, adminAction: AdminActionHide,
+	})
 }
 
 // ShowPlayer brings a hidden jelly back.
 func (store *Store) ShowPlayer(ctx context.Context, playerID, now int64) error {
-	return store.updateModeration(ctx, playerID, now, nil, EventPlayerActive)
+	return store.updateModeration(ctx, playerID, now, nil, moderationChange{
+		eventType: EventPlayerActive, adminAction: AdminActionShow,
+	})
 }
 
 // ResetPlayerName replaces a name with a neutral one built from the player ID.
@@ -94,6 +98,10 @@ func (store *Store) ResetPlayerName(ctx context.Context, playerID, now int64) er
 		if err != nil {
 			return err
 		}
+		err = recordAdminAction(ctx, transaction, AdminActionResetName, playerID, now)
+		if err != nil {
+			return err
+		}
 		return appendEvent(ctx, transaction, eventRecord{
 			lanID: 0, eventType: EventPlayerUpdated, scope: scopePlayer,
 			playerID: playerID, payload: struct{}{}, now: now,
@@ -102,7 +110,9 @@ func (store *Store) ResetPlayerName(ctx context.Context, playerID, now int64) er
 }
 
 // RotatePlayerToken replaces the token of a lost account and returns the new one once.
-func (store *Store) RotatePlayerToken(ctx context.Context, playerID int64) (string, error) {
+func (store *Store) RotatePlayerToken(
+	ctx context.Context, playerID, now int64,
+) (string, error) {
 	token := generateToken()
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		result, err := transaction.ExecContext(ctx,
@@ -110,7 +120,11 @@ func (store *Store) RotatePlayerToken(ctx context.Context, playerID int64) (stri
 		if err != nil {
 			return fmt.Errorf("rotate token: %w", err)
 		}
-		return requireAffectedRow(result, ErrPlayerNotFound)
+		err = requireAffectedRow(result, ErrPlayerNotFound)
+		if err != nil {
+			return err
+		}
+		return recordAdminAction(ctx, transaction, AdminActionRotateToken, playerID, now)
 	})
 	if err != nil {
 		return "", err
@@ -129,6 +143,10 @@ func (store *Store) DeletePlayer(ctx context.Context, playerID, now int64) error
 		if err != nil {
 			return err
 		}
+		err = recordAdminAction(ctx, transaction, AdminActionDelete, playerID, now)
+		if err != nil {
+			return err
+		}
 		return appendEvent(ctx, transaction, eventRecord{
 			lanID: 0, eventType: EventPlayerRemoved, scope: scopePublic, playerID: 0,
 			payload: map[string]int64{"player_id": playerID}, now: now,
@@ -143,13 +161,23 @@ func (store *Store) GiveAward(ctx context.Context, award NewAward, now int64) er
 		return ErrInvalidInput
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		return insertAward(ctx, transaction, award, now)
+		err := insertAward(ctx, transaction, award, now)
+		if err != nil {
+			return err
+		}
+		return recordAdminAction(ctx, transaction, AdminActionAward, award.PlayerID, now)
 	})
 }
 
-// updateModeration sets the hidden state and tells the stage.
+// moderationChange names what a change of the hidden state announces and logs.
+type moderationChange struct {
+	eventType   string
+	adminAction string
+}
+
+// updateModeration sets the hidden state, logs it and tells the stage.
 func (store *Store) updateModeration(
-	ctx context.Context, playerID, now int64, hiddenAt any, eventType string,
+	ctx context.Context, playerID, now int64, hiddenAt any, change moderationChange,
 ) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		result, err := transaction.ExecContext(ctx,
@@ -161,8 +189,12 @@ func (store *Store) updateModeration(
 		if err != nil {
 			return err
 		}
+		err = recordAdminAction(ctx, transaction, change.adminAction, playerID, now)
+		if err != nil {
+			return err
+		}
 		return appendEvent(ctx, transaction, eventRecord{
-			lanID: 0, eventType: eventType, scope: scopePublic,
+			lanID: 0, eventType: change.eventType, scope: scopePublic,
 			playerID: playerID, payload: struct{}{}, now: now,
 		})
 	})

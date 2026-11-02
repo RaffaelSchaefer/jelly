@@ -165,8 +165,11 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/lans/{id}/event-codes`           |                                           |
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`    |
+| `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
-| `PUT /admin/api/lans/{id}/areas`                 | `[{"x","y","width","height"}]`            |
+| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height"}`              |
+| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height"}` bei `PUT`   |
 | `PUT /admin/api/lans/{id}/players/{player}/area` | `{"area_id"}`, `null` entfernt ihn        |
 
-Eine neue Raumkarte ersetzt die alte und löscht alle Zuordnungen dieser LAN.
+Beim Bearbeiten eines Bereichs bleiben seine Jellies zugeordnet. Wird er gelöscht, stehen sie auf der
+ganzen Bühne, bis ein Admin sie neu zuweist.

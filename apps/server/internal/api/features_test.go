@@ -367,6 +367,27 @@ func TestModeration(t *testing.T) {
 		http.StatusNotFound, "player_not_found")
 }
 
+func TestAdminActionsAreLoggedWithoutNames(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Beleidigung")
+	playerID := testFixture.loadMe(token).ID
+	base := "/admin/api/players/" + strconv.FormatInt(playerID, 10)
+	testFixture.callAdmin("POST", base+"/hide", "")
+	testFixture.callAdmin("DELETE", base, "")
+
+	response := testFixture.callAdmin("GET", "/admin/api/actions", "")
+	if strings.Contains(string(response.body), "Beleidigung") {
+		t.Fatalf("the log must not hold names: %s", response.body)
+	}
+	actions := decodeBody[[]store.AdminAction](t, response)
+	if len(actions) != 2 || actions[0].Action != store.AdminActionDelete {
+		t.Fatalf("actions: %s", response.body)
+	}
+	if actions[1].TargetID == nil || *actions[1].TargetID != playerID {
+		t.Fatalf("the log needs the target: %s", response.body)
+	}
+}
+
 func TestAwardGivesPermanentCosmetic(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")

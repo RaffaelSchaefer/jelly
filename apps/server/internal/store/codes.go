@@ -62,7 +62,7 @@ func (store *Store) CreateEventCode(ctx context.Context, code NewEventCode, now 
 		if err != nil {
 			return fmt.Errorf("insert event code: %w", err)
 		}
-		return nil
+		return recordAdminAction(ctx, transaction, AdminActionEventCode, code.LANID, now)
 	})
 }
 

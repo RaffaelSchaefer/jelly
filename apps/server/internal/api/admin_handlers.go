@@ -22,9 +22,12 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"PUT /admin/api/lans/{id}/rules":                 server.handleUpdateRules,
 		"GET /admin/api/lans/{id}/event-codes":           server.handleListEventCodes,
 		"POST /admin/api/event-codes":                    server.handleCreateEventCode,
+		"GET /admin/api/actions":                         server.handleListAdminActions,
 		"POST /admin/api/awards":                         server.handleGiveAward,
 		"GET /admin/api/lans/{id}/areas":                 server.handleListAreas,
-		"PUT /admin/api/lans/{id}/areas":                 server.handleReplaceAreas,
+		"POST /admin/api/lans/{id}/areas":                server.handleCreateArea,
+		"PUT /admin/api/lans/{id}/areas/{area}":          server.handleUpdateArea,
+		"DELETE /admin/api/lans/{id}/areas/{area}":       server.handleDeleteArea,
 		"PUT /admin/api/lans/{id}/players/{player}/area": server.handleAssignArea,
 	}
 	for pattern, handler := range routes {
@@ -36,12 +39,19 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 func (server *apiServer) readPathID(
 	writer http.ResponseWriter, request *http.Request,
 ) (int64, bool) {
-	pathID, err := strconv.ParseInt(request.PathValue("id"), 10, 64)
-	if err != nil || pathID <= 0 {
+	return server.readPathValue(writer, request, "id")
+}
+
+// readPathValue reads a numeric path value, answering with an error if it is invalid.
+func (server *apiServer) readPathValue(
+	writer http.ResponseWriter, request *http.Request, name string,
+) (int64, bool) {
+	value, err := strconv.ParseInt(request.PathValue(name), 10, 64)
+	if err != nil || value <= 0 {
 		server.writeError(writer, request, store.ErrInvalidInput)
 		return 0, false
 	}
-	return pathID, true
+	return value, true
 }
 
 // handleListPlayers searches players by name.
@@ -81,7 +91,9 @@ func (server *apiServer) handleResetName(writer http.ResponseWriter, request *ht
 func (server *apiServer) handleRotateToken(writer http.ResponseWriter, request *http.Request) {
 	playerID, valid := server.readPathID(writer, request)
 	if valid {
-		token, err := server.Store.RotatePlayerToken(request.Context(), playerID)
+		token, err := server.Store.RotatePlayerToken(
+			request.Context(), playerID, server.currentMillis(),
+		)
 		server.writeOutcome(writer, request, map[string]string{"token": token}, err)
 	}
 }
@@ -122,7 +134,7 @@ func (server *apiServer) handleUpdateRules(writer http.ResponseWriter, request *
 	if !server.readJSON(writer, request, &body) {
 		return
 	}
-	err := server.Store.UpdateLANRules(request.Context(), lanID, body)
+	err := server.Store.UpdateLANRules(request.Context(), lanID, body, server.currentMillis())
 	server.writeOutcome(writer, request, body, err)
 }
 
@@ -162,18 +174,50 @@ func (server *apiServer) handleListAreas(writer http.ResponseWriter, request *ht
 	}, err)
 }
 
-// handleReplaceAreas sets the room map of a LAN.
-func (server *apiServer) handleReplaceAreas(writer http.ResponseWriter, request *http.Request) {
+// handleCreateArea adds an area to the room map.
+func (server *apiServer) handleCreateArea(writer http.ResponseWriter, request *http.Request) {
 	lanID, valid := server.readPathID(writer, request)
 	if !valid {
 		return
 	}
-	var body []rules.Area
+	var body rules.Area
 	if !server.readJSON(writer, request, &body) {
 		return
 	}
-	areas, err := server.Store.ReplaceAreas(request.Context(), lanID, body, server.currentMillis())
-	server.writeOutcome(writer, request, areas, err)
+	area, err := server.Store.CreateArea(request.Context(), lanID, body, server.currentMillis())
+	server.writeOutcome(writer, request, area, err)
+}
+
+// handleUpdateArea moves or resizes an area. Its jellies stay assigned.
+func (server *apiServer) handleUpdateArea(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	areaID, valid := server.readPathValue(writer, request, "area")
+	if !valid {
+		return
+	}
+	var body rules.Area
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	area := store.StageArea{ID: areaID, Area: body}
+	err := server.Store.UpdateArea(request.Context(), lanID, area, server.currentMillis())
+	server.writeOutcome(writer, request, area, err)
+}
+
+// handleDeleteArea removes an area and the assignments to it.
+func (server *apiServer) handleDeleteArea(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	areaID, valid := server.readPathValue(writer, request, "area")
+	if valid {
+		err := server.Store.DeleteArea(request.Context(), lanID, areaID, server.currentMillis())
+		server.writeOutcome(writer, request, map[string]bool{"deleted": true}, err)
+	}
 }
 
 // handleAssignArea places a player in an area, or removes them with `area_id` null.
@@ -182,9 +226,8 @@ func (server *apiServer) handleAssignArea(writer http.ResponseWriter, request *h
 	if !valid {
 		return
 	}
-	playerID, err := strconv.ParseInt(request.PathValue("player"), 10, 64)
-	if err != nil || playerID <= 0 {
-		server.writeError(writer, request, store.ErrInvalidInput)
+	playerID, valid := server.readPathValue(writer, request, "player")
+	if !valid {
 		return
 	}
 	var body struct {
@@ -193,10 +236,18 @@ func (server *apiServer) handleAssignArea(writer http.ResponseWriter, request *h
 	if !server.readJSON(writer, request, &body) {
 		return
 	}
-	err = server.Store.AssignArea(
+	err := server.Store.AssignArea(
 		request.Context(), lanID, playerID, body.AreaID, server.currentMillis(),
 	)
 	server.writeOutcome(writer, request, map[string]*int64{"area_id": body.AreaID}, err)
+}
+
+// handleListAdminActions returns the newest entries of the admin log.
+func (server *apiServer) handleListAdminActions(
+	writer http.ResponseWriter, request *http.Request,
+) {
+	actions, err := server.Store.ListAdminActions(request.Context())
+	server.writeOutcome(writer, request, actions, err)
 }
 
 // handleGiveAward stores a prize, optionally with a permanent cosmetic.
