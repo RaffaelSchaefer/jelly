@@ -18,15 +18,37 @@ const (
 	MetricRestHours     Metric = "rest_hours"
 	MetricOwlNights     Metric = "owl_nights"
 	MetricSessionHours  Metric = "session_hours"
+	MetricPartners      Metric = "partners"
+	MetricPartnerAreas  Metric = "partner_areas"
+	MetricPokeDays      Metric = "poke_days"
+	MetricEventDays     Metric = "event_days"
+	MetricGhostHours    Metric = "ghost_hours"
+	MetricEmoteKinds    Metric = "emote_kinds"
+	MetricSameColor     Metric = "same_color_visits"
+	// MetricGrantedDirectly marks achievements that their action grants, not an evaluation.
+	MetricGrantedDirectly Metric = "granted_directly"
+)
+
+// Keys of achievements that their action grants directly.
+const (
+	AchievementFoundCompany = "found-company"
+	AchievementFullHouse    = "full-house"
 )
 
 const (
 	goalDrinks        = 10
 	goalEventsTotal   = 3
+	goalReturningLANs = 2
 	goalLANsAttended  = 3
-	goalJelliesJoined = 10
+	goalOldHandLANs   = 5
+	goalPartnersFirst = 3
+	goalPartnersMany  = 10
+	goalPartnerAreas  = 3
 	goalRestHours     = 6
+	goalComebackHours = 24
 	goalSessionHours  = 10
+	goalDaysAttended  = 3
+	goalEmoteKinds    = 4
 )
 
 // Achievement is one catalog entry. `Scope` decides whether it can be earned again at each LAN.
@@ -42,63 +64,6 @@ type Achievement struct {
 	Goal        int    `json:"goal"`
 	RecordUnit  string `json:"record_unit,omitempty"`
 	Quiet       bool   `json:"quiet,omitempty"`
-}
-
-// ListAchievements returns the catalog. Titles and descriptions are shown in the German app.
-func ListAchievements() []Achievement {
-	return []Achievement{
-		{
-			Key: "hatched", Title: "Frisch geschlüpft", Description: "Willkommen auf der LAN!",
-			Scope: ScopePermanent, Metric: MetricPokes, Goal: 1,
-		},
-		{
-			Key: "styled", Title: "Schick gemacht", Description: "Ein Jelly will gut aussehen.",
-			Scope: ScopePermanent, Metric: MetricProfileEdits, Goal: 1,
-		},
-		{
-			Key: "hydrated", Title: "Gut hydriert", Description: "10 Getränke geholt.",
-			Scope: ScopeLAN, Metric: MetricDrinks, Goal: goalDrinks,
-		},
-		{
-			Key: "first-event", Title: "Mittendrin", Description: "Dein erstes Event dieser LAN.",
-			Scope: ScopeLAN, Metric: MetricEventsLAN, Goal: 1,
-		},
-		{
-			Key: "tournament", Title: "Turnierheld", Description: "Bei 3 Events mitgemacht.",
-			Scope: ScopePermanent, Metric: MetricEventsTotal, Goal: goalEventsTotal,
-		},
-		{
-			Key: "neighbor", Title: "Hallo Nachbar", Description: "Du hast dich dazugesellt.",
-			Scope: ScopeLAN, Metric: MetricJelliesJoined, Goal: 1,
-		},
-		{
-			Key: "sociable", Title: "Kontaktfreudig", Description: "Bei 10 Jellies vorbeigeschaut.",
-			Scope: ScopeLAN, Metric: MetricJelliesJoined, Goal: goalJelliesJoined,
-		},
-		{
-			Key: "beauty-sleep", Title: "Schönheitsschlaf",
-			Description: "Auch Jellies brauchen Ruhe.",
-			Scope:       ScopeLAN, Metric: MetricRestHours, Goal: goalRestHours,
-		},
-		{
-			Key: "night-owl", Title: "Nachteule", Description: "Um 4 Uhr nachts noch dabei.",
-			Scope: ScopeLAN, Secret: true, Metric: MetricOwlNights, Goal: 1,
-			RecordUnit: "Nächte", Quiet: true,
-		},
-		{
-			Key: "marathon", Title: "Marathon", Description: "10 Stunden am Stück aktiv.",
-			Scope: ScopeLAN, Metric: MetricSessionHours, Goal: goalSessionHours,
-			RecordUnit: "Stunden", Quiet: true,
-		},
-		{
-			Key: "honored", Title: "Ausgezeichnet", Description: "Die Orga hat dich geehrt.",
-			Scope: ScopePermanent, Metric: MetricAwards, Goal: 1,
-		},
-		{
-			Key: "veteran", Title: "LAN-Veteran", Description: "Bei 3 LANs dabei gewesen.",
-			Scope: ScopePermanent, Metric: MetricLANsAttended, Goal: goalLANsAttended,
-		},
-	}
 }
 
 // FindNewAchievements returns the achievements reached by `stats` and not yet in `earnedKeys`.

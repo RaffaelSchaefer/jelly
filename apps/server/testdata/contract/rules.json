@@ -9,7 +9,10 @@
     "report_window": 86400,
     "reports_per_window": 8,
     "presence_window": 5400,
-    "emote_cooldown": 3
+    "emote_cooldown": 3,
+    "partner_code_seconds": 120,
+    "partner_xp": 2,
+    "full_house_percent": 33
   },
   "poke": [
     { "name": "first poke counts immediately", "elapsed_seconds": null, "xp": 3 },

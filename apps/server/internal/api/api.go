@@ -35,16 +35,20 @@ type apiServer struct {
 
 	// attempts limits guesses of join codes, event codes and the admin secret.
 	attempts *rate.Limiter
+	// partnerAttempts limits guesses of the short partner codes per player.
+	partnerAttempts *playerLimiters
 }
 
 // NewHandler builds the HTTP handler.
 func NewHandler(dependencies Dependencies) http.Handler {
 	server := &apiServer{
-		Dependencies: dependencies,
-		attempts:     rate.NewLimiter(attemptsPerSecond, attemptBurst),
+		Dependencies:    dependencies,
+		attempts:        rate.NewLimiter(attemptsPerSecond, attemptBurst),
+		partnerAttempts: newPlayerLimiters(),
 	}
 	mux := http.NewServeMux()
 	server.addPlayerRoutes(mux)
+	server.addPartnerRoutes(mux)
 	server.addStageRoutes(mux)
 	server.addSessionRoutes(mux)
 	server.addAdminRoutes(mux)

@@ -72,8 +72,35 @@ func (store *Store) UpdateFollow(
 			return fmt.Errorf("update follow: %w", err)
 		}
 		payload := map[string]any{"target_id": stored}
-		return appendVisibleEvent(ctx, action, EventFollowChanged, payload)
+		err = appendVisibleEvent(ctx, action, EventFollowChanged, payload)
+		if err != nil || targetID == 0 {
+			return err
+		}
+		return grantFoundCompany(ctx, action, targetID)
 	})
+}
+
+// grantFoundCompany rewards the visitor and the visited jelly if its search sign is up.
+func grantFoundCompany(ctx context.Context, action actionContext, targetID int64) error {
+	var sign sql.NullString
+	err := action.transaction.QueryRowContext(ctx,
+		`SELECT sign_key FROM lan_entries WHERE lan_id = ? AND player_id = ?`,
+		action.lan.id, targetID).Scan(&sign)
+	if err != nil {
+		return fmt.Errorf("load sign: %w", err)
+	}
+	if !sign.Valid {
+		return nil
+	}
+	err = grantAchievementOnce(ctx, action, rules.AchievementFoundCompany)
+	if err != nil {
+		return err
+	}
+	target, err := loadOtherPlayerAction(ctx, action, targetID)
+	if err != nil {
+		return err
+	}
+	return grantAchievementOnce(ctx, target, rules.AchievementFoundCompany)
 }
 
 // requireFollowTarget allows only other visible jellies of the running LAN.

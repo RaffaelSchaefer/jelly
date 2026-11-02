@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
 
 const eventCodeConflictMessage = "UNIQUE constraint failed: event_codes.lan_id, event_codes.code"
@@ -110,10 +112,14 @@ func (store *Store) RedeemEventCode(
 		if workErr != nil {
 			return workErr
 		}
-		return grantXP(ctx, action, xpEntry{
+		workErr = grantXP(ctx, action, xpEntry{
 			action: actionEvent, amount: redeemed.xp,
 			eventCodeID: sql.NullInt64{Int64: redeemed.id, Valid: true},
 		})
+		if workErr != nil {
+			return workErr
+		}
+		return grantFullHouse(ctx, action, redeemed.id)
 	}
 	state, err := store.runPlayerAction(ctx, playerID, now, false, work)
 	if err != nil {
@@ -147,4 +153,54 @@ func findRedeemableCode(
 		return redeemableCode{}, ErrEventCodeRedeemed
 	}
 	return found, nil
+}
+
+// grantFullHouse gives Volle Bude to everyone who redeemed this code once enough players did.
+func grantFullHouse(ctx context.Context, action actionContext, codeID int64) error {
+	var joinedPlayers int
+	err := action.transaction.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM lan_entries WHERE lan_id = ?`, action.lan.id).Scan(&joinedPlayers)
+	if err != nil {
+		return fmt.Errorf("count players: %w", err)
+	}
+	redeemers, err := loadCodeRedeemers(ctx, action.transaction, codeID)
+	if err != nil {
+		return err
+	}
+	if !rules.IsFullHouse(action.lan.gameRules, len(redeemers), joinedPlayers) {
+		return nil
+	}
+	for _, playerID := range redeemers {
+		redeemer, err := loadOtherPlayerAction(ctx, action, playerID)
+		if err != nil {
+			return err
+		}
+		err = grantAchievementOnce(ctx, redeemer, rules.AchievementFullHouse)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// loadCodeRedeemers returns everyone who redeemed an event code.
+func loadCodeRedeemers(ctx context.Context, database querier, codeID int64) ([]int64, error) {
+	rows, err := database.QueryContext(ctx,
+		`SELECT player_id FROM xp_log WHERE event_code_id = ?`, codeID)
+	if err != nil {
+		return nil, fmt.Errorf("load redeemers: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	redeemers := []int64{}
+	for rows.Next() {
+		var playerID int64
+		if err := rows.Scan(&playerID); err != nil {
+			return nil, fmt.Errorf("read redeemer: %w", err)
+		}
+		redeemers = append(redeemers, playerID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("load redeemers: %w", err)
+	}
+	return redeemers, nil
 }

@@ -27,6 +27,11 @@ func TestValidateRules(t *testing.T) {
 	if err := rules.ValidateRules(broken); !errors.Is(err, rules.ErrInvalidRules) {
 		t.Errorf("negative XP: %v", err)
 	}
+	broken = rules.DefaultRules()
+	broken.FullHousePercent = 0
+	if err := rules.ValidateRules(broken); !errors.Is(err, rules.ErrInvalidRules) {
+		t.Errorf("zero percent: %v", err)
+	}
 }
 
 func TestCheckReport(t *testing.T) {
@@ -129,7 +134,7 @@ func TestListUnlockedCosmetics(t *testing.T) {
 }
 
 func TestFindNewAchievements(t *testing.T) {
-	stats := map[rules.Metric]int{rules.MetricDrinks: 10, rules.MetricLANsAttended: 2}
+	stats := map[rules.Metric]int{rules.MetricDrinks: 10, rules.MetricLANsAttended: 1}
 	reached := findKeys(rules.FindNewAchievements(stats, nil))
 	if !slices.Equal(reached, []string{"hydrated"}) {
 		t.Fatalf("drinks reached: %v", reached)
@@ -139,8 +144,8 @@ func TestFindNewAchievements(t *testing.T) {
 	}
 	stats[rules.MetricLANsAttended] = 3
 	got := findKeys(rules.FindNewAchievements(stats, []string{"hydrated"}))
-	if !slices.Equal(got, []string{"veteran"}) {
-		t.Fatalf("veteran: %v", got)
+	if !slices.Equal(got, []string{"returning", "veteran"}) {
+		t.Fatalf("attendance: %v", got)
 	}
 }
 
@@ -189,6 +194,61 @@ func TestValidateCatalogKeys(t *testing.T) {
 	}
 	if err := rules.ValidateSign("free text"); !errors.Is(err, rules.ErrUnknownSign) {
 		t.Errorf("ValidateSign(free text) = %v", err)
+	}
+}
+
+func TestDirectAchievementsNeverComeFromStats(t *testing.T) {
+	stats := map[rules.Metric]int{rules.MetricGrantedDirectly: 0}
+	for _, achievement := range rules.FindNewAchievements(stats, nil) {
+		if achievement.Metric == rules.MetricGrantedDirectly {
+			t.Fatalf("%s was granted by an evaluation", achievement.Key)
+		}
+	}
+}
+
+func TestIsFullHouse(t *testing.T) {
+	gameRules := rules.DefaultRules()
+	testCases := []struct {
+		redeemers, joined int
+		want              bool
+	}{
+		{0, 0, false},
+		{23, 70, false},
+		{24, 70, true},
+		{1, 3, true},
+	}
+	for _, testCase := range testCases {
+		got := rules.IsFullHouse(gameRules, testCase.redeemers, testCase.joined)
+		if got != testCase.want {
+			t.Errorf("IsFullHouse(%d, %d) = %v", testCase.redeemers, testCase.joined, got)
+		}
+	}
+}
+
+func TestLocalTimeCounting(t *testing.T) {
+	moments := []rules.LocalMoment{
+		{Day: 25, Hour: 12},
+		{Day: 26, Hour: 3},
+		{Day: 26, Hour: 12},
+		{Day: 27, Hour: 0},
+	}
+	if got := rules.CountLANDays(moments); got != 2 {
+		t.Errorf("CountLANDays() = %d, want 2: a night belongs to the day before", got)
+	}
+	if got := rules.CountNightsAtHour(moments, rules.GhostHour); got != 1 {
+		t.Errorf("ghost hours = %d, want 1", got)
+	}
+	if got := rules.CountNightsAtHour(moments, rules.NightOwlHour); got != 0 {
+		t.Errorf("owl nights = %d, want 0", got)
+	}
+}
+
+func TestPartnerEmotesAreSeparateFromEmotes(t *testing.T) {
+	if err := rules.ValidatePartnerEmote("hop"); err != nil {
+		t.Errorf("hop: %v", err)
+	}
+	if err := rules.ValidatePartnerEmote("wave"); !errors.Is(err, rules.ErrUnknownPartnerEmote) {
+		t.Errorf("wave: %v", err)
 	}
 }
 

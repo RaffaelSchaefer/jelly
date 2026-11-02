@@ -36,6 +36,12 @@ var (
 	ErrInvalidFollow = errors.New("cannot stand next to this jelly")
 	// ErrAreaNotFound reports an area that is not part of this LAN.
 	ErrAreaNotFound = errors.New("area not found")
+	// ErrPartnerCodeInvalid reports an unknown or expired partner emote code.
+	ErrPartnerCodeInvalid = errors.New("invalid partner code")
+	// ErrPartnerSelf reports someone entering their own partner emote code.
+	ErrPartnerSelf = errors.New("cannot be your own partner")
+	// ErrPartnerCodesBusy reports that no free partner code was found.
+	ErrPartnerCodesBusy = errors.New("no free partner code")
 	// ErrInvalidInput reports admin input that is empty or inconsistent.
 	ErrInvalidInput = errors.New("invalid input")
 )

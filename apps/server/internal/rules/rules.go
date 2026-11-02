@@ -22,6 +22,10 @@ const (
 	defaultReportsPerWindow      = 8
 	defaultPresenceWindowSeconds = 5400
 	defaultEmoteCooldownSeconds  = 3
+	defaultPartnerCodeSeconds    = 120
+	defaultPartnerXP             = 2
+	defaultFullHousePercent      = 33
+	maxPercent                   = 100
 )
 
 // ErrInvalidRules reports rules with a value that would break the game.
@@ -49,6 +53,12 @@ type Rules struct {
 	PresenceWindowSeconds int64 `json:"presence_window"`
 	// EmoteCooldownSeconds is the time between two emotes of one player.
 	EmoteCooldownSeconds int64 `json:"emote_cooldown"`
+	// PartnerCodeSeconds is how long a partner emote code can be entered.
+	PartnerCodeSeconds int64 `json:"partner_code_seconds"`
+	// PartnerXP is the XP both players get for a partner emote with someone new in this LAN.
+	PartnerXP int `json:"partner_xp"`
+	// FullHousePercent is the share of the LAN's players that must redeem one event code together.
+	FullHousePercent int `json:"full_house_percent"`
 }
 
 // DefaultRules returns the starting values of a new LAN.
@@ -64,6 +74,9 @@ func DefaultRules() Rules {
 		ReportsPerWindow:      defaultReportsPerWindow,
 		PresenceWindowSeconds: defaultPresenceWindowSeconds,
 		EmoteCooldownSeconds:  defaultEmoteCooldownSeconds,
+		PartnerCodeSeconds:    defaultPartnerCodeSeconds,
+		PartnerXP:             defaultPartnerXP,
+		FullHousePercent:      defaultFullHousePercent,
 	}
 }
 
@@ -72,6 +85,7 @@ func ValidateRules(gameRules Rules) error {
 	for _, duration := range []int64{
 		gameRules.PokeIntervalSeconds, gameRules.PokeMaxTicks, gameRules.ReportCooldownSeconds,
 		gameRules.ReportWindowSeconds, gameRules.PresenceWindowSeconds,
+		gameRules.PartnerCodeSeconds,
 	} {
 		if duration <= 0 {
 			return ErrInvalidRules
@@ -79,12 +93,16 @@ func ValidateRules(gameRules Rules) error {
 	}
 	for _, amount := range []int{
 		gameRules.PokeXP, gameRules.FoodXP, gameRules.DrinkXP, gameRules.ReportsPerWindow,
+		gameRules.PartnerXP,
 	} {
 		if amount < 0 {
 			return ErrInvalidRules
 		}
 	}
 	if gameRules.EmoteCooldownSeconds < 0 {
+		return ErrInvalidRules
+	}
+	if gameRules.FullHousePercent < 1 || gameRules.FullHousePercent > maxPercent {
 		return ErrInvalidRules
 	}
 	return nil
@@ -125,4 +143,9 @@ func IsPresent(gameRules Rules, lastSeenAt, now int64) bool {
 // IsEmoteAllowed reports whether a player may emote again. `lastEmoteAt` is 0 without an emote.
 func IsEmoteAllowed(gameRules Rules, lastEmoteAt, now int64) bool {
 	return lastEmoteAt == 0 || now-lastEmoteAt >= gameRules.EmoteCooldownSeconds*millisPerSecond
+}
+
+// IsFullHouse reports whether enough players of a LAN redeemed the same event code.
+func IsFullHouse(gameRules Rules, redeemers, joinedPlayers int) bool {
+	return joinedPlayers > 0 && redeemers*maxPercent >= gameRules.FullHousePercent*joinedPlayers
 }

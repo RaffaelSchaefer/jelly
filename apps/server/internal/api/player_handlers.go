@@ -47,10 +47,11 @@ func (server *apiServer) handleCatalog(writer http.ResponseWriter, _ *http.Reque
 		}
 	}
 	server.writeJSON(writer, http.StatusOK, map[string]any{
-		"emotes":       rules.ListEmotes(),
-		"signs":        rules.ListSigns(),
-		"cosmetics":    rules.ListCosmetics(),
-		"achievements": achievements,
+		"emotes":         rules.ListEmotes(),
+		"partner_emotes": rules.ListPartnerEmotes(),
+		"signs":          rules.ListSigns(),
+		"cosmetics":      rules.ListCosmetics(),
+		"achievements":   achievements,
 	})
 }
 

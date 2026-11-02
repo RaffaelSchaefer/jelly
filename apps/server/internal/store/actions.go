@@ -155,6 +155,22 @@ func beginPlayerAction(
 	return action, err
 }
 
+// loadOtherPlayerAction builds the context for a second player in the same transaction.
+func loadOtherPlayerAction(
+	ctx context.Context, action actionContext, playerID int64,
+) (actionContext, error) {
+	hidden, err := isPlayerHidden(ctx, action.transaction, playerID)
+	if err != nil {
+		return actionContext{}, err
+	}
+	other := action
+	other.playerID = playerID
+	other.hidden = hidden
+	other.restHours = 0
+	other.sessionHours = 0
+	return other, nil
+}
+
 // appendVisibleEvent writes a public player event. Hidden jellies stay off the stage.
 func appendVisibleEvent(
 	ctx context.Context, action actionContext, eventType string, payload any,

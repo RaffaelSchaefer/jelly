@@ -7,6 +7,8 @@ var (
 	ErrUnknownEmote = errors.New("unknown emote")
 	// ErrUnknownSign reports a sign outside the fixed list.
 	ErrUnknownSign = errors.New("unknown sign")
+	// ErrUnknownPartnerEmote reports a partner emote outside the fixed list.
+	ErrUnknownPartnerEmote = errors.New("unknown partner emote")
 )
 
 // CatalogEntry is one choice of a fixed list. `Label` is shown in the German app.
@@ -24,6 +26,16 @@ func ListEmotes() []CatalogEntry {
 		{Key: "laugh", Label: "Lachen"},
 		{Key: "sleep", Label: "Schlafen"},
 		{Key: "love", Label: "Herz"},
+	}
+}
+
+// ListPartnerEmotes returns what two jellies can do together. These are motions only, so the stage
+// needs no animation art for them.
+func ListPartnerEmotes() []CatalogEntry {
+	return []CatalogEntry{
+		{Key: "hop", Label: "Zusammen hüpfen"},
+		{Key: "spin", Label: "Zusammen drehen"},
+		{Key: "wiggle", Label: "Zusammen wackeln"},
 	}
 }
 
@@ -47,6 +59,14 @@ func ValidateEmote(key string) error {
 		return nil
 	}
 	return ErrUnknownEmote
+}
+
+// ValidatePartnerEmote checks a partner emote key against the fixed list.
+func ValidatePartnerEmote(key string) error {
+	if containsKey(ListPartnerEmotes(), key) {
+		return nil
+	}
+	return ErrUnknownPartnerEmote
 }
 
 // ValidateSign checks a sign key against the fixed list.

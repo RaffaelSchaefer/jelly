@@ -107,6 +107,18 @@ func listGameErrors() []knownError {
 			http.StatusBadRequest, "invalid_follow",
 			"Zu diesem Jelly kannst du dich nicht stellen.",
 		}},
+		{store.ErrPartnerCodeInvalid, problem{
+			http.StatusBadRequest, "invalid_partner_code", "Dieser Code gilt gerade nicht.",
+		}},
+		{store.ErrPartnerSelf, problem{
+			http.StatusBadRequest, "partner_self", "Dafür brauchst du ein anderes Jelly.",
+		}},
+		{store.ErrPartnerCodesBusy, problem{
+			http.StatusConflict, "partner_codes_busy", "Gerade sind alle Codes belegt.",
+		}},
+		{rules.ErrUnknownPartnerEmote, problem{
+			http.StatusBadRequest, "unknown_partner_emote", "Dieses Partner-Emote gibt es nicht.",
+		}},
 		{rules.ErrReportCooldown, problem{
 			http.StatusConflict, "report_cooldown", "Das hast du gerade erst gemeldet.",
 		}},
