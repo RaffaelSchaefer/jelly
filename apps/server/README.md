@@ -25,8 +25,8 @@ curl -X POST localhost:8080/register \
 
 `scripts/demo.sh` startet einen Wegwerf-Server mit 70 simulierten Jellies und nennt den Link zur
 Bühne. Mit Strg+C ist alles wieder weg. Der Raum ist wie ein Brustkorb aufgebaut: eine Wirbelsäule
-mit Kabeln, Rippen nach links und rechts, dazwischen je ein U aus Tischen für eine Gruppe. Der Aufbau
-steht in `scripts/demo-room.sh`.
+mit Kabeln, Rippen nach links und rechts, dazwischen je ein nach außen offenes U aus Tischen, in dem
+eine Gruppe sitzt. Der Aufbau steht in `scripts/demo-room.sh`.
 
 ```sh
 pnpm demo                          # direkt mit Go
