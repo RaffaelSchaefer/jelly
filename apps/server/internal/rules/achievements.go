@@ -53,7 +53,7 @@ const (
 
 // Achievement is one catalog entry. `Scope` decides whether it can be earned again at each LAN.
 // With a `RecordUnit` it has one stage and then only tracks the best value, so nothing is left to
-// chase. `Quiet` keeps it off the stage, so unhealthy habits are noted but not celebrated.
+// chase.
 type Achievement struct {
 	Key         string `json:"key"`
 	Title       string `json:"title"`
@@ -63,7 +63,6 @@ type Achievement struct {
 	Metric      Metric `json:"-"`
 	Goal        int    `json:"goal"`
 	RecordUnit  string `json:"record_unit,omitempty"`
-	Quiet       bool   `json:"quiet,omitempty"`
 }
 
 // FindNewAchievements returns the achievements reached by `stats` and not yet in `earnedKeys`.

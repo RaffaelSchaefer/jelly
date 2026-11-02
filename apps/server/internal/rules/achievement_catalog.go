@@ -118,12 +118,12 @@ func listNightAchievements() []Achievement {
 		{
 			Key: "night-owl", Title: "Nachteule", Description: "Um 4 Uhr nachts noch dabei.",
 			Scope: ScopeLAN, Secret: true, Metric: MetricOwlNights, Goal: 1,
-			RecordUnit: "Nächte", Quiet: true,
+			RecordUnit: "Nächte",
 		},
 		{
 			Key: "marathon", Title: "Marathon", Description: "10 Stunden am Stück aktiv.",
 			Scope: ScopeLAN, Metric: MetricSessionHours, Goal: goalSessionHours,
-			RecordUnit: "Stunden", Quiet: true,
+			RecordUnit: "Stunden",
 		},
 	}
 }

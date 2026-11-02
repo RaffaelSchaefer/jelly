@@ -237,7 +237,7 @@ func TestEmotes(t *testing.T) {
 	requireProblem(t, response, http.StatusConflict, "emote_cooldown")
 }
 
-func TestMarathonIsQuietAndTracksARecord(t *testing.T) {
+func TestMarathonIsPublicAndTracksARecord(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 	for range 11 {
@@ -258,11 +258,12 @@ func TestMarathonIsQuietAndTracksARecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, event := range events {
-		isMarathon := strings.Contains(string(event.Payload), "marathon")
-		if event.Type == store.EventAchievement && isMarathon {
-			t.Fatalf("marathon reached the public stream: %s", event.Payload)
-		}
+	announced := slices.ContainsFunc(events, func(event store.Event) bool {
+		return event.Type == store.EventAchievement &&
+			strings.Contains(string(event.Payload), "marathon")
+	})
+	if !announced {
+		t.Fatal("marathon must reach the public stream")
 	}
 }
 
