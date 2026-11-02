@@ -11,18 +11,21 @@ import (
 // addAdminRoutes registers the JSON API of the admin page.
 func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 	routes := map[string]http.HandlerFunc{
-		"GET /admin/api/players":                    server.handleListPlayers,
-		"POST /admin/api/players/{id}/hide":         server.handleHidePlayer,
-		"POST /admin/api/players/{id}/show":         server.handleShowPlayer,
-		"POST /admin/api/players/{id}/reset-name":   server.handleResetName,
-		"POST /admin/api/players/{id}/rotate-token": server.handleRotateToken,
-		"DELETE /admin/api/players/{id}":            server.handleDeletePlayer,
-		"GET /admin/api/lans":                       server.handleListLANs,
-		"POST /admin/api/lans":                      server.handleCreateLAN,
-		"PUT /admin/api/lans/{id}/rules":            server.handleUpdateRules,
-		"GET /admin/api/lans/{id}/event-codes":      server.handleListEventCodes,
-		"POST /admin/api/event-codes":               server.handleCreateEventCode,
-		"POST /admin/api/awards":                    server.handleGiveAward,
+		"GET /admin/api/players":                         server.handleListPlayers,
+		"POST /admin/api/players/{id}/hide":              server.handleHidePlayer,
+		"POST /admin/api/players/{id}/show":              server.handleShowPlayer,
+		"POST /admin/api/players/{id}/reset-name":        server.handleResetName,
+		"POST /admin/api/players/{id}/rotate-token":      server.handleRotateToken,
+		"DELETE /admin/api/players/{id}":                 server.handleDeletePlayer,
+		"GET /admin/api/lans":                            server.handleListLANs,
+		"POST /admin/api/lans":                           server.handleCreateLAN,
+		"PUT /admin/api/lans/{id}/rules":                 server.handleUpdateRules,
+		"GET /admin/api/lans/{id}/event-codes":           server.handleListEventCodes,
+		"POST /admin/api/event-codes":                    server.handleCreateEventCode,
+		"POST /admin/api/awards":                         server.handleGiveAward,
+		"GET /admin/api/lans/{id}/areas":                 server.handleListAreas,
+		"PUT /admin/api/lans/{id}/areas":                 server.handleReplaceAreas,
+		"PUT /admin/api/lans/{id}/players/{player}/area": server.handleAssignArea,
 	}
 	for pattern, handler := range routes {
 		mux.HandleFunc(pattern, server.requireAdmin(handler))
@@ -140,6 +143,60 @@ func (server *apiServer) handleCreateEventCode(writer http.ResponseWriter, reque
 	}
 	err := server.Store.CreateEventCode(request.Context(), body, server.currentMillis())
 	server.writeOutcome(writer, request, map[string]bool{"created": true}, err)
+}
+
+// handleListAreas returns the room map of a LAN and who belongs where.
+func (server *apiServer) handleListAreas(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	areas, err := server.Store.ListAreas(request.Context(), lanID)
+	if err != nil {
+		server.writeError(writer, request, err)
+		return
+	}
+	assignments, err := server.Store.ListAreaAssignments(request.Context(), lanID)
+	server.writeOutcome(writer, request, map[string]any{
+		"areas": areas, "assignments": assignments,
+	}, err)
+}
+
+// handleReplaceAreas sets the room map of a LAN.
+func (server *apiServer) handleReplaceAreas(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var body []rules.Area
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	areas, err := server.Store.ReplaceAreas(request.Context(), lanID, body, server.currentMillis())
+	server.writeOutcome(writer, request, areas, err)
+}
+
+// handleAssignArea places a player in an area, or removes them with `area_id` null.
+func (server *apiServer) handleAssignArea(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	playerID, err := strconv.ParseInt(request.PathValue("player"), 10, 64)
+	if err != nil || playerID <= 0 {
+		server.writeError(writer, request, store.ErrInvalidInput)
+		return
+	}
+	var body struct {
+		AreaID *int64 `json:"area_id"`
+	}
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	err = server.Store.AssignArea(
+		request.Context(), lanID, playerID, body.AreaID, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, map[string]*int64{"area_id": body.AreaID}, err)
 }
 
 // handleGiveAward stores a prize, optionally with a permanent cosmetic.

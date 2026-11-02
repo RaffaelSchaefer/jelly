@@ -55,6 +55,12 @@ func listPlayerErrors() []knownError {
 		{store.ErrInvalidInput, problem{
 			http.StatusBadRequest, "invalid_input", "Die Angaben sind unvollständig.",
 		}},
+		{store.ErrAreaNotFound, problem{
+			http.StatusNotFound, "area_not_found", "Diesen Bereich gibt es nicht.",
+		}},
+		{rules.ErrInvalidArea, problem{
+			http.StatusBadRequest, "invalid_area", "Dieser Bereich passt nicht auf die Bühne.",
+		}},
 		{rules.ErrInvalidRules, problem{
 			http.StatusBadRequest, "invalid_rules", "Diese Regeln sind ungültig.",
 		}},

@@ -26,6 +26,7 @@ const (
 	EventEmote            = "emote"
 	EventSignChanged      = "sign.changed"
 	EventFollowChanged    = "follow.changed"
+	EventStageChanged     = "stage.changed"
 	maxEventsPerQueryRows = 200
 )
 

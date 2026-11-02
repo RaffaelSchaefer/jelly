@@ -34,6 +34,8 @@ var (
 	ErrEmoteCooldown = errors.New("emote is on cooldown")
 	// ErrInvalidFollow reports a jelly that cannot be followed.
 	ErrInvalidFollow = errors.New("cannot stand next to this jelly")
+	// ErrAreaNotFound reports an area that is not part of this LAN.
+	ErrAreaNotFound = errors.New("area not found")
 	// ErrInvalidInput reports admin input that is empty or inconsistent.
 	ErrInvalidInput = errors.New("invalid input")
 )
