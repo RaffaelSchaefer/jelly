@@ -61,6 +61,8 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@types/node@24.13.3)(jsdom@30.0.1)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12))
 
+  apps/server: {}
+
 packages:
 
   '@asamuzakjp/css-color@6.0.7':

@@ -1,0 +1,12 @@
+{
+  "name": "@jelly/server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "go run ./cmd/jelly-server",
+    "build": "go build -o dist/jelly-server ./cmd/jelly-server",
+    "test": "go test ./...",
+    "lint": "golangci-lint run",
+    "format": "golangci-lint fmt"
+  }
+}

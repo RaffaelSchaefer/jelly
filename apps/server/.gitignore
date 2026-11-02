@@ -1,0 +1,7 @@
+dist
+*.db
+*.db-shm
+*.db-wal
+
+# Local end-to-end checks, not part of the repo.
+.local-tests
