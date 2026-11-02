@@ -131,7 +131,8 @@ A startet ein Emote und nennt B den Code. Es gibt keine Einladung, also auch nic
 ```
 
 - Bereiche und Heimplätze sind Prozentwerte der Bühne. Bereiche haben keine Namen.
-- Der Heimplatz hängt nur von Spieler und Bereich ab. Ohne Bereich gilt die ganze Bühne.
+- Jeder Jelly bekommt im Bereich den nächsten freien Platz in der Reihenfolge der Spieler-IDs. Ohne
+  Bereich gilt die ganze Bühne. Abwesende behalten ihren Platz, Neue verschieben niemanden.
 - Mit `server_time` berechnen alle Bildschirme denselben Weg.
 
 `GET /events/stream` sendet Ereignisse als SSE und setzt mit `Last-Event-ID` oder `?since=` fort:

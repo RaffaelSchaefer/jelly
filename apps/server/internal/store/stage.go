@@ -5,9 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
+
+// noArea groups the jellies without an area. Area IDs start at 1.
+const noArea int64 = 0
 
 // StagePlayer is a jelly as the stage shows it. Its area is a number without a name.
 type StagePlayer struct {
@@ -55,39 +59,47 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	if err != nil {
 		return StageState{}, err
 	}
-	state.Players, err = loadStagePlayers(queryCtx, store.readDB, lan, now)
+	players, err := loadStagePlayers(queryCtx, store.readDB, lan.id)
 	if err != nil {
 		return StageState{}, err
 	}
-	placeStagePlayers(state.Players, state.Areas)
+	placeStagePlayers(players, state.Areas)
+	state.Players = slices.DeleteFunc(players, func(player StagePlayer) bool {
+		return !rules.IsPresent(lan.gameRules, player.LastSeenAt, now)
+	})
 	return state, nil
 }
 
 // placeStagePlayers gives every jelly its home spot. Without an area, it uses the whole stage.
+// Places follow the player order and count absent jellies, so nobody moves when someone leaves.
 func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 	areaByID := map[int64]rules.Area{}
 	for _, area := range areas {
 		areaByID[area.ID] = area.Area
 	}
+	takenPlaces := map[int64]int{}
 	for index := range players {
 		player := &players[index]
 		area := rules.WholeStage()
+		areaKey := noArea
 		if player.AreaID != nil {
 			area = areaByID[*player.AreaID]
+			areaKey = *player.AreaID
 		}
-		player.HomeSpot = rules.CalculateHomeSpot(area, player.ID)
+		player.HomeSpot = rules.CalculateHomeSpot(area, takenPlaces[areaKey])
+		takenPlaces[areaKey]++
 	}
 }
 
-// loadStagePlayers reads the jellies that are visible and recently active.
+// loadStagePlayers reads all visible jellies of a LAN, whether currently present or not.
 func loadStagePlayers(
-	ctx context.Context, database querier, lan activeLAN, now int64,
+	ctx context.Context, database querier, lanID int64,
 ) ([]StagePlayer, error) {
 	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, p.cosmetic_key, e.xp,
 			e.sign_key, e.follow_player_id, e.last_seen_at, e.area_id
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
 		WHERE e.lan_id = ? AND p.hidden_at IS NULL ORDER BY p.id`
-	rows, err := database.QueryContext(ctx, selectStagePlayersSQL, lan.id)
+	rows, err := database.QueryContext(ctx, selectStagePlayersSQL, lanID)
 	if err != nil {
 		return nil, fmt.Errorf("load stage players: %w", err)
 	}
@@ -98,9 +110,7 @@ func loadStagePlayers(
 		if err != nil {
 			return nil, err
 		}
-		if rules.IsPresent(lan.gameRules, player.LastSeenAt, now) {
-			players = append(players, player)
-		}
+		players = append(players, player)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("load stage players: %w", err)

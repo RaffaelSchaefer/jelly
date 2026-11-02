@@ -2,17 +2,16 @@ package rules
 
 import (
 	"errors"
-	"hash/fnv"
-	"strconv"
+	"math"
 )
 
 const (
 	stageSize = 100
 	// Keeps home spots away from the area edge, so wandering jellies stay inside.
 	homeMarginPercent = 10
-	// The two halves of a player hash give independent positions on both axes.
-	hashHalfBits = 16
-	hashHalfMask = 1<<hashHalfBits - 1
+	// Steps of the R2 sequence, which fills a rectangle evenly for any number of places.
+	spreadStepX = 0.7548776662466927
+	spreadStepY = 0.5698402909980532
 )
 
 // ErrInvalidArea reports an area outside the stage or without a size.
@@ -47,21 +46,23 @@ func WholeStage() Area {
 	return Area{X: 0, Y: 0, Width: stageSize, Height: stageSize}
 }
 
-// CalculateHomeSpot places a jelly by its ID, so every screen and every reload agrees.
-func CalculateHomeSpot(area Area, playerID int64) HomeSpot {
-	hasher := fnv.New32a()
-	// A hash never returns a write error.
-	_, _ = hasher.Write([]byte(strconv.FormatInt(playerID, 10)))
-	hash := hasher.Sum32()
+// CalculateHomeSpot returns the spot of the jelly with this place in its area, counted from 0.
+func CalculateHomeSpot(area Area, place int) HomeSpot {
 	return HomeSpot{
-		X: placeInSpan(area.X, area.Width, hash&hashHalfMask),
-		Y: placeInSpan(area.Y, area.Height, hash>>hashHalfBits),
+		X: placeInSpan(area.X, area.Width, calculateSpreadShare(place, spreadStepX)),
+		Y: placeInSpan(area.Y, area.Height, calculateSpreadShare(place, spreadStepY)),
 	}
 }
 
-// placeInSpan maps a 16-bit value to a position inside a span, without its margins.
-func placeInSpan(start, length int, value uint32) float64 {
+// calculateSpreadShare returns a share from 0 to below 1. Consecutive places land far apart.
+func calculateSpreadShare(place int, step float64) float64 {
+	_, share := math.Modf(float64(place+1) * step)
+	return share
+}
+
+// placeInSpan maps a share to a position inside a span, without its margins.
+func placeInSpan(start, length int, share float64) float64 {
 	margin := float64(length) * homeMarginPercent / stageSize
 	usable := float64(length) - margin - margin
-	return float64(start) + margin + usable*float64(value)/hashHalfMask
+	return float64(start) + margin + usable*share
 }

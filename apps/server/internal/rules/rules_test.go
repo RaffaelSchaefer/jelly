@@ -112,3 +112,23 @@ func TestValidateColor(t *testing.T) {
 		t.Errorf("ValidateColor(red) = %v", err)
 	}
 }
+
+func TestHomeSpotsFillTheirAreaEvenly(t *testing.T) {
+	area := rules.Area{X: 20, Y: 40, Width: 30, Height: 50}
+	const columns, rows, places = 3, 3, 18
+	var counts [columns * rows]int
+	for place := range places {
+		spot := rules.CalculateHomeSpot(area, place)
+		column := int((spot.X - float64(area.X)) / float64(area.Width) * columns)
+		row := int((spot.Y - float64(area.Y)) / float64(area.Height) * rows)
+		counts[row*columns+column]++
+		if spot.X < 23 || spot.X > 47 || spot.Y < 45 || spot.Y > 85 {
+			t.Errorf("place %d leaves the margin: %+v", place, spot)
+		}
+	}
+	for cell, count := range counts {
+		if count == 0 {
+			t.Errorf("cell %d stays empty: %v", cell, counts)
+		}
+	}
+}
