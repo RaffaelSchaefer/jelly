@@ -16,7 +16,8 @@ const (
 	MetricJelliesJoined Metric = "jellies_joined"
 	MetricAwards        Metric = "awards"
 	MetricRestHours     Metric = "rest_hours"
-	MetricMidnightPoke  Metric = "midnight_poke"
+	MetricOwlNights     Metric = "owl_nights"
+	MetricSessionHours  Metric = "session_hours"
 )
 
 const (
@@ -25,9 +26,12 @@ const (
 	goalLANsAttended  = 3
 	goalJelliesJoined = 10
 	goalRestHours     = 6
+	goalSessionHours  = 10
 )
 
 // Achievement is one catalog entry. `Scope` decides whether it can be earned again at each LAN.
+// With a `RecordUnit` it has one stage and then only tracks the best value, so nothing is left to
+// chase. `Quiet` keeps it off the stage, so unhealthy habits are noted but not celebrated.
 type Achievement struct {
 	Key         string `json:"key"`
 	Title       string `json:"title"`
@@ -36,6 +40,8 @@ type Achievement struct {
 	Secret      bool   `json:"secret"`
 	Metric      Metric `json:"-"`
 	Goal        int    `json:"goal"`
+	RecordUnit  string `json:"record_unit,omitempty"`
+	Quiet       bool   `json:"quiet,omitempty"`
 }
 
 // ListAchievements returns the catalog. Titles and descriptions are shown in the German app.
@@ -75,9 +81,14 @@ func ListAchievements() []Achievement {
 			Scope:       ScopeLAN, Metric: MetricRestHours, Goal: goalRestHours,
 		},
 		{
-			Key: "witching-hour", Title: "Geisterstunde",
-			Description: "Mitternacht, und du glibberst.",
-			Scope:       ScopeLAN, Secret: true, Metric: MetricMidnightPoke, Goal: 1,
+			Key: "night-owl", Title: "Nachteule", Description: "Um 4 Uhr nachts noch dabei.",
+			Scope: ScopeLAN, Secret: true, Metric: MetricOwlNights, Goal: 1,
+			RecordUnit: "Nächte", Quiet: true,
+		},
+		{
+			Key: "marathon", Title: "Marathon", Description: "10 Stunden am Stück aktiv.",
+			Scope: ScopeLAN, Metric: MetricSessionHours, Goal: goalSessionHours,
+			RecordUnit: "Stunden", Quiet: true,
 		},
 		{
 			Key: "honored", Title: "Ausgezeichnet", Description: "Die Orga hat dich geehrt.",
@@ -98,6 +109,17 @@ func FindNewAchievements(stats map[Metric]int, earnedKeys []string) []Achievemen
 			continue
 		}
 		if stats[achievement.Metric] >= achievement.Goal {
+			found = append(found, achievement)
+		}
+	}
+	return found
+}
+
+// FindRecordAchievements returns the earned achievements whose best value can still change.
+func FindRecordAchievements(earnedKeys []string) []Achievement {
+	found := []Achievement{}
+	for _, achievement := range ListAchievements() {
+		if achievement.RecordUnit != "" && slices.Contains(earnedKeys, achievement.Key) {
 			found = append(found, achievement)
 		}
 	}

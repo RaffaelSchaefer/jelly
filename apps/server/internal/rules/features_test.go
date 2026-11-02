@@ -144,6 +144,23 @@ func TestFindNewAchievements(t *testing.T) {
 	}
 }
 
+func TestRecordAchievementsHaveOneStageAndStayQuiet(t *testing.T) {
+	for _, key := range []string{"night-owl", "marathon"} {
+		achievement, found := rules.FindAchievement(key)
+		if !found || achievement.RecordUnit == "" || !achievement.Quiet {
+			t.Errorf("%s must track a record quietly: %+v", key, achievement)
+		}
+	}
+	got := findKeys(rules.FindRecordAchievements([]string{"marathon", "hatched"}))
+	if !slices.Equal(got, []string{"marathon"}) {
+		t.Fatalf("FindRecordAchievements() = %v", got)
+	}
+	reached := map[rules.Metric]int{rules.MetricSessionHours: 25}
+	if again := rules.FindNewAchievements(reached, []string{"marathon"}); len(again) != 0 {
+		t.Fatalf("a higher value must not earn anything new: %v", again)
+	}
+}
+
 func TestAchievementCatalogIsConsistent(t *testing.T) {
 	seen := map[string]bool{}
 	for _, achievement := range rules.ListAchievements() {
