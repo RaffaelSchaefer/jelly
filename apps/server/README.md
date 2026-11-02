@@ -5,7 +5,7 @@ Er ist in Go geschrieben und speichert in einer SQLite-Datei. Die Schnittstelle 
 [docs/api.md](docs/api.md).
 
 Gebaut sind Konten, Stupser, Berichte, Event-Codes, Cosmetics, Achievements, Emotes, Partner-Emotes,
-Schilder, die Raumkarte und Moderation. Bühne, Admin-Seite und Simulator folgen.
+Schilder, die Raumkarte, Moderation und der Simulator. Bühne und Admin-Seite folgen.
 
 ## Lokal starten
 
@@ -20,6 +20,27 @@ JELLY_STAGE_KEY=buehne JELLY_ADMIN_SECRET=admin go run ./cmd/jelly-server
 curl -X POST localhost:8080/register \
   -d '{"code":"geheim","name":"Glibber","color":"mint"}'
 ```
+
+## Simulator
+
+`jelly-server simulate` spielt viele Jellies über die öffentliche API und braucht keine Datenbank.
+Damit lässt sich auch der Server auf dem VPS prüfen. Eine LAN muss laufen.
+
+```sh
+JELLY_JOIN_CODE=geheim go run ./cmd/jelly-server simulate -url http://localhost:8080
+```
+
+| Option       | Standard                | Zweck                                  |
+| ------------ | ----------------------- | -------------------------------------- |
+| `-url`       | `http://localhost:8080` | Adresse des Servers                    |
+| `-players`   | 70                      | Anzahl der Jellies, höchstens 1000     |
+| `-min-delay` | `2s`                    | Kürzeste Zeit zwischen zwei Aktionen   |
+| `-max-delay` | `20s`                   | Längste Zeit zwischen zwei Aktionen    |
+| `-duration`  | `0`                     | Laufzeit, `0` läuft bis zu einem Signal |
+
+Am Ende stehen im Log angenommene und abgelehnte Aktionen, Fehler und Antwortzeiten. Können alle Bots
+sich nicht anmelden, endet der Lauf mit dem Grund. Messungen stehen in
+[benchmarks/README.md](benchmarks/README.md).
 
 ## Befehle
 
@@ -44,6 +65,8 @@ in [AGENTS.md](AGENTS.md).
 | `internal/store`   | SQLite, Transaktionen, goose-Migrationen in `migrations/` |
 | `internal/architecture` | Tests für Regeln, die kein Linter prüft            |
 | `internal/rules`   | Spielregeln als reine Funktionen, ohne IO               |
+| `internal/simulator` | Simulierte Spieler, nutzt nur die öffentliche API     |
+| `benchmarks`       | Lasttest und Baselines                                  |
 | `testdata/contract`| Regelfälle als JSON, Teil des API-Vertrags              |
 
 ## Betrieb
