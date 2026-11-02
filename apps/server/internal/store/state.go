@@ -117,10 +117,11 @@ func loadAccount(ctx context.Context, database querier, playerID int64) (State, 
 	state := State{ID: playerID}
 	var cosmetic sql.NullString
 	var hiddenAt sql.NullInt64
-	err := database.QueryRowContext(ctx, `SELECT name, color, cosmetic_key, hidden_at,
+	const selectAccountSQL = `SELECT name, color, cosmetic_key, hidden_at,
 			(SELECT COUNT(*) FROM lan_entries WHERE player_id = players.id),
 			(SELECT COALESCE(SUM(xp), 0) FROM lan_entries WHERE player_id = players.id)
-		FROM players WHERE id = ?`, playerID).
+		FROM players WHERE id = ?`
+	err := database.QueryRowContext(ctx, selectAccountSQL, playerID).
 		Scan(&state.Name, &state.Color, &cosmetic, &hiddenAt, &state.LANsAttended, &state.TotalXP)
 	if errors.Is(err, sql.ErrNoRows) {
 		return State{}, ErrUnauthorized
@@ -138,10 +139,11 @@ func loadAccount(ctx context.Context, database querier, playerID int64) (State, 
 // loadProgress adds the latest entry. After a LAN its last state stays visible.
 func loadProgress(ctx context.Context, database querier, state *State, now int64) error {
 	var row entryRow
-	err := database.QueryRowContext(ctx, `SELECT l.id, l.slug, l.name, l.starts_at, l.ends_at,
+	const selectLatestEntrySQL = `SELECT l.id, l.slug, l.name, l.starts_at, l.ends_at,
 			l.rules, e.joined_at, e.xp, e.sign_key, e.follow_player_id
 		FROM lan_entries e JOIN lans l ON l.id = e.lan_id
-		WHERE e.player_id = ? ORDER BY l.starts_at DESC LIMIT 1`, state.ID).
+		WHERE e.player_id = ? ORDER BY l.starts_at DESC LIMIT 1`
+	err := database.QueryRowContext(ctx, selectLatestEntrySQL, state.ID).
 		Scan(&row.lanID, &row.info.Slug, &row.info.Name, &row.startsAt, &row.endsAt,
 			&row.rulesJSON, &row.joinedAt, &row.xp, &row.sign, &row.follow)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -194,14 +196,15 @@ func loadUnlockedCosmetics(
 	ctx context.Context, database querier, playerID int64,
 ) ([]string, error) {
 	var currentXP, bestXP, currentEvents, totalEvents int
-	err := database.QueryRowContext(ctx, `SELECT
+	const selectUnlockFactsSQL = `SELECT
 		COALESCE((SELECT e.xp FROM lan_entries e JOIN lans l ON l.id = e.lan_id
 			WHERE e.player_id = ?1 ORDER BY l.starts_at DESC LIMIT 1), 0),
 		COALESCE((SELECT MAX(xp) FROM lan_entries WHERE player_id = ?1), 0),
 		(SELECT COUNT(*) FROM xp_log WHERE player_id = ?1 AND action = ?2 AND lan_id = (
 			SELECT e.lan_id FROM lan_entries e JOIN lans l ON l.id = e.lan_id
 			WHERE e.player_id = ?1 ORDER BY l.starts_at DESC LIMIT 1)),
-		(SELECT COUNT(*) FROM xp_log WHERE player_id = ?1 AND action = ?2)`,
+		(SELECT COUNT(*) FROM xp_log WHERE player_id = ?1 AND action = ?2)`
+	err := database.QueryRowContext(ctx, selectUnlockFactsSQL,
 		playerID, actionEvent).Scan(&currentXP, &bestXP, &currentEvents, &totalEvents)
 	if err != nil {
 		return nil, fmt.Errorf("load unlock facts: %w", err)
@@ -227,9 +230,10 @@ func loadUnlockedCosmetics(
 
 // loadBadges returns all attended LANs, newest first.
 func loadBadges(ctx context.Context, database querier, playerID int64) ([]Badge, error) {
-	rows, err := database.QueryContext(ctx, `SELECT l.slug, l.name
+	const selectBadgesSQL = `SELECT l.slug, l.name
 		FROM lan_entries e JOIN lans l ON l.id = e.lan_id
-		WHERE e.player_id = ? ORDER BY l.starts_at DESC`, playerID)
+		WHERE e.player_id = ? ORDER BY l.starts_at DESC`
+	rows, err := database.QueryContext(ctx, selectBadgesSQL, playerID)
 	if err != nil {
 		return nil, fmt.Errorf("load badges: %w", err)
 	}
@@ -252,9 +256,10 @@ func loadBadges(ctx context.Context, database querier, playerID int64) ([]Badge,
 func loadAchievementHistory(
 	ctx context.Context, database querier, playerID int64,
 ) ([]EarnedAchievement, error) {
-	rows, err := database.QueryContext(ctx, `SELECT a.key, l.slug, a.earned_at, a.best_value
+	const selectAchievementHistorySQL = `SELECT a.key, l.slug, a.earned_at, a.best_value
 		FROM achievements a LEFT JOIN lans l ON l.id = a.scope_lan_id
-		WHERE a.player_id = ? ORDER BY a.earned_at, a.key`, playerID)
+		WHERE a.player_id = ? ORDER BY a.earned_at, a.key`
+	rows, err := database.QueryContext(ctx, selectAchievementHistorySQL, playerID)
 	if err != nil {
 		return nil, fmt.Errorf("load achievement history: %w", err)
 	}
@@ -285,8 +290,9 @@ func loadAchievementHistory(
 func loadPlayerAwards(
 	ctx context.Context, database querier, playerID int64,
 ) ([]PlayerAward, error) {
-	rows, err := database.QueryContext(ctx, `SELECT title, cosmetic_key, given_at FROM awards
-		WHERE player_id = ? ORDER BY given_at, id`, playerID)
+	const selectAwardsSQL = `SELECT title, cosmetic_key, given_at FROM awards
+		WHERE player_id = ? ORDER BY given_at, id`
+	rows, err := database.QueryContext(ctx, selectAwardsSQL, playerID)
 	if err != nil {
 		return nil, fmt.Errorf("load awards: %w", err)
 	}

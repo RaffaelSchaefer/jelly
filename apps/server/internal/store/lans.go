@@ -66,8 +66,9 @@ func (store *Store) CreateLAN(ctx context.Context, lan NewLAN) error {
 func (store *Store) ListLANs(ctx context.Context, now int64) ([]LANSummary, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	rows, err := store.readDB.QueryContext(queryCtx, `SELECT id, slug, name, timezone, starts_at,
-		ends_at, rules FROM lans ORDER BY starts_at DESC`)
+	const selectLANsSQL = `SELECT id, slug, name, timezone, starts_at,
+		ends_at, rules FROM lans ORDER BY starts_at DESC`
+	rows, err := store.readDB.QueryContext(queryCtx, selectLANsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("list LANs: %w", err)
 	}
@@ -107,8 +108,8 @@ func (store *Store) UpdateLANRules(
 		return fmt.Errorf("encode rules: %w", err)
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		result, execErr := transaction.ExecContext(ctx,
-			`UPDATE lans SET rules = ? WHERE id = ?`, string(rulesJSON), lanID)
+		const updateRulesSQL = `UPDATE lans SET rules = ? WHERE id = ?`
+		result, execErr := transaction.ExecContext(ctx, updateRulesSQL, string(rulesJSON), lanID)
 		if execErr != nil {
 			return fmt.Errorf("update rules: %w", execErr)
 		}
@@ -123,8 +124,8 @@ func (store *Store) UpdateLANRules(
 // insertLAN writes the LAN if its period is free.
 func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON string) error {
 	var overlapCount int
-	const overlapQuery = `SELECT COUNT(*) FROM lans WHERE starts_at < ? AND ends_at > ?`
-	err := transaction.QueryRowContext(ctx, overlapQuery, lan.EndsAt, lan.StartsAt).
+	const countOverlapsSQL = `SELECT COUNT(*) FROM lans WHERE starts_at < ? AND ends_at > ?`
+	err := transaction.QueryRowContext(ctx, countOverlapsSQL, lan.EndsAt, lan.StartsAt).
 		Scan(&overlapCount)
 	if err != nil {
 		return fmt.Errorf("check period: %w", err)
@@ -132,9 +133,10 @@ func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON s
 	if overlapCount > 0 {
 		return ErrLANOverlap
 	}
-	_, err = transaction.ExecContext(ctx, `INSERT INTO lans
+	const insertLANSQL = `INSERT INTO lans
 		(slug, name, starts_at, ends_at, timezone, join_code_hash, rules)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?)`
+	_, err = transaction.ExecContext(ctx, insertLANSQL,
 		lan.Slug, lan.Name, lan.StartsAt, lan.EndsAt, lan.Timezone,
 		hashSecret(lan.JoinCode), rulesJSON)
 	if err != nil {
@@ -147,8 +149,9 @@ func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON s
 func loadActiveLAN(ctx context.Context, database querier, now int64) (activeLAN, error) {
 	var lan activeLAN
 	var rulesJSON string
-	err := database.QueryRowContext(ctx, `SELECT id, timezone, join_code_hash, rules FROM lans
-		WHERE starts_at <= ? AND ends_at > ?`, now, now).
+	const selectActiveLANSQL = `SELECT id, timezone, join_code_hash, rules FROM lans
+		WHERE starts_at <= ? AND ends_at > ?`
+	err := database.QueryRowContext(ctx, selectActiveLANSQL, now, now).
 		Scan(&lan.id, &lan.timezone, &lan.joinCodeHash, &rulesJSON)
 	if errors.Is(err, sql.ErrNoRows) {
 		return activeLAN{}, ErrNoActiveLAN

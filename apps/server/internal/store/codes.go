@@ -49,9 +49,10 @@ func (store *Store) CreateEventCode(ctx context.Context, code NewEventCode, now 
 		return ErrInvalidInput
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		_, err := transaction.ExecContext(ctx, `INSERT INTO event_codes
+		const insertEventCodeSQL = `INSERT INTO event_codes
 			(lan_id, title, code, xp, valid_from, valid_until, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, ?, ?, ?, ?)`
+		_, err := transaction.ExecContext(ctx, insertEventCodeSQL,
 			code.LANID, code.Title, code.Code, code.XP, code.ValidFrom, code.ValidUntil, now)
 		if err != nil && strings.Contains(err.Error(), eventCodeConflictMessage) {
 			return ErrEventCodeExists
@@ -70,10 +71,11 @@ func (store *Store) CreateEventCode(ctx context.Context, code NewEventCode, now 
 func (store *Store) ListEventCodes(ctx context.Context, lanID int64) ([]EventCode, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	rows, err := store.readDB.QueryContext(queryCtx, `SELECT c.id, c.lan_id, c.title, c.code, c.xp,
+	const selectEventCodesSQL = `SELECT c.id, c.lan_id, c.title, c.code, c.xp,
 			c.valid_from, c.valid_until,
 			(SELECT COUNT(*) FROM xp_log x WHERE x.event_code_id = c.id)
-		FROM event_codes c WHERE c.lan_id = ? ORDER BY c.valid_from DESC, c.id DESC`, lanID)
+		FROM event_codes c WHERE c.lan_id = ? ORDER BY c.valid_from DESC, c.id DESC`
+	rows, err := store.readDB.QueryContext(queryCtx, selectEventCodesSQL, lanID)
 	if err != nil {
 		return nil, fmt.Errorf("list event codes: %w", err)
 	}
@@ -133,8 +135,9 @@ func findRedeemableCode(
 	ctx context.Context, action actionContext, code string,
 ) (redeemableCode, error) {
 	var found redeemableCode
-	err := action.transaction.QueryRowContext(ctx, `SELECT id, title, xp FROM event_codes
-		WHERE lan_id = ? AND code = ? AND valid_from <= ? AND valid_until > ?`,
+	const findValidCodeSQL = `SELECT id, title, xp FROM event_codes
+		WHERE lan_id = ? AND code = ? AND valid_from <= ? AND valid_until > ?`
+	err := action.transaction.QueryRowContext(ctx, findValidCodeSQL,
 		action.lan.id, code, action.now, action.now).Scan(&found.id, &found.title, &found.xp)
 	if errors.Is(err, sql.ErrNoRows) {
 		return redeemableCode{}, ErrEventCodeInvalid
@@ -143,8 +146,9 @@ func findRedeemableCode(
 		return redeemableCode{}, fmt.Errorf("find event code: %w", err)
 	}
 	var redeemedCount int
-	err = action.transaction.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM xp_log WHERE player_id = ? AND event_code_id = ?`,
+	const countRedemptionsSQL = `SELECT COUNT(*) FROM xp_log
+		WHERE player_id = ? AND event_code_id = ?`
+	err = action.transaction.QueryRowContext(ctx, countRedemptionsSQL,
 		action.playerID, found.id).Scan(&redeemedCount)
 	if err != nil {
 		return redeemableCode{}, fmt.Errorf("check redemption: %w", err)
@@ -158,8 +162,9 @@ func findRedeemableCode(
 // grantFullHouse gives Volle Bude to everyone who redeemed this code once enough players did.
 func grantFullHouse(ctx context.Context, action actionContext, codeID int64) error {
 	var joinedPlayers int
-	err := action.transaction.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM lan_entries WHERE lan_id = ?`, action.lan.id).Scan(&joinedPlayers)
+	const countJoinedPlayersSQL = `SELECT COUNT(*) FROM lan_entries WHERE lan_id = ?`
+	err := action.transaction.QueryRowContext(ctx, countJoinedPlayersSQL,
+		action.lan.id).Scan(&joinedPlayers)
 	if err != nil {
 		return fmt.Errorf("count players: %w", err)
 	}
@@ -185,8 +190,8 @@ func grantFullHouse(ctx context.Context, action actionContext, codeID int64) err
 
 // loadCodeRedeemers returns everyone who redeemed an event code.
 func loadCodeRedeemers(ctx context.Context, database querier, codeID int64) ([]int64, error) {
-	rows, err := database.QueryContext(ctx,
-		`SELECT player_id FROM xp_log WHERE event_code_id = ?`, codeID)
+	const selectRedeemersSQL = `SELECT player_id FROM xp_log WHERE event_code_id = ?`
+	rows, err := database.QueryContext(ctx, selectRedeemersSQL, codeID)
 	if err != nil {
 		return nil, fmt.Errorf("load redeemers: %w", err)
 	}

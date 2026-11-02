@@ -11,6 +11,9 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
 
+// updatePlayerNameSQL is shared by players renaming themselves and admins resetting a name.
+const updatePlayerNameSQL = `UPDATE players SET name = ?, name_key = ? WHERE id = ?`
+
 const (
 	maxPlayerListRows = 200
 	resetNamePrefix   = "Jelly-"
@@ -40,10 +43,11 @@ func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSum
 	defer cancel()
 	escaper := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	pattern := "%" + escaper.Replace(rules.BuildNameKey(strings.TrimSpace(search))) + "%"
-	rows, err := store.readDB.QueryContext(queryCtx, `SELECT p.id, p.name, p.color, p.hidden_at,
+	const searchPlayersSQL = `SELECT p.id, p.name, p.color, p.hidden_at,
 			COALESCE(SUM(e.xp), 0), COUNT(e.lan_id), COALESCE(MAX(e.last_seen_at), 0)
 		FROM players p LEFT JOIN lan_entries e ON e.player_id = p.id
-		WHERE p.name_key LIKE ? ESCAPE '\' GROUP BY p.id ORDER BY p.id DESC LIMIT ?`,
+		WHERE p.name_key LIKE ? ESCAPE '\' GROUP BY p.id ORDER BY p.id DESC LIMIT ?`
+	rows, err := store.readDB.QueryContext(queryCtx, searchPlayersSQL,
 		pattern, maxPlayerListRows)
 	if err != nil {
 		return nil, fmt.Errorf("list players: %w", err)
@@ -85,8 +89,7 @@ func (store *Store) ShowPlayer(ctx context.Context, playerID, now int64) error {
 func (store *Store) ResetPlayerName(ctx context.Context, playerID, now int64) error {
 	name := resetNamePrefix + strconv.FormatInt(playerID, 10)
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		result, err := transaction.ExecContext(ctx,
-			`UPDATE players SET name = ?, name_key = ? WHERE id = ?`,
+		result, err := transaction.ExecContext(ctx, updatePlayerNameSQL,
 			name, rules.BuildNameKey(name), playerID)
 		if isNameConflict(err) {
 			return ErrNameTaken
@@ -115,8 +118,8 @@ func (store *Store) RotatePlayerToken(
 ) (string, error) {
 	token := generateToken()
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		result, err := transaction.ExecContext(ctx,
-			`UPDATE players SET token_hash = ? WHERE id = ?`, hashSecret(token), playerID)
+		const updateTokenHashSQL = `UPDATE players SET token_hash = ? WHERE id = ?`
+		result, err := transaction.ExecContext(ctx, updateTokenHashSQL, hashSecret(token), playerID)
 		if err != nil {
 			return fmt.Errorf("rotate token: %w", err)
 		}
@@ -135,7 +138,8 @@ func (store *Store) RotatePlayerToken(
 // DeletePlayer removes an account with all its data and tells the stage.
 func (store *Store) DeletePlayer(ctx context.Context, playerID, now int64) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		result, err := transaction.ExecContext(ctx, `DELETE FROM players WHERE id = ?`, playerID)
+		const deletePlayerSQL = `DELETE FROM players WHERE id = ?`
+		result, err := transaction.ExecContext(ctx, deletePlayerSQL, playerID)
 		if err != nil {
 			return fmt.Errorf("delete player: %w", err)
 		}
@@ -180,8 +184,8 @@ func (store *Store) updateModeration(
 	ctx context.Context, playerID, now int64, hiddenAt any, change moderationChange,
 ) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		result, err := transaction.ExecContext(ctx,
-			`UPDATE players SET hidden_at = ? WHERE id = ?`, hiddenAt, playerID)
+		const updateHiddenAtSQL = `UPDATE players SET hidden_at = ? WHERE id = ?`
+		result, err := transaction.ExecContext(ctx, updateHiddenAtSQL, hiddenAt, playerID)
 		if err != nil {
 			return fmt.Errorf("update moderation: %w", err)
 		}
@@ -211,8 +215,9 @@ func insertAward(ctx context.Context, transaction *sql.Tx, award NewAward, now i
 	if hasLAN {
 		lanID = lan.id
 	}
-	_, err = transaction.ExecContext(ctx, `INSERT INTO awards
-		(player_id, lan_id, title, cosmetic_key, given_at) VALUES (?, ?, ?, ?, ?)`,
+	const insertAwardSQL = `INSERT INTO awards
+		(player_id, lan_id, title, cosmetic_key, given_at) VALUES (?, ?, ?, ?, ?)`
+	_, err = transaction.ExecContext(ctx, insertAwardSQL,
 		award.PlayerID, lanID, award.Title, award.CosmeticKey, now)
 	if err != nil && strings.Contains(err.Error(), "FOREIGN KEY") {
 		return ErrPlayerNotFound

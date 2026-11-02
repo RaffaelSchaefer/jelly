@@ -32,8 +32,9 @@ type AdminAction struct {
 func (store *Store) ListAdminActions(ctx context.Context) ([]AdminAction, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	rows, err := store.readDB.QueryContext(queryCtx, `SELECT id, action, target_id, created_at
-		FROM admin_actions ORDER BY id DESC LIMIT ?`, maxAdminActionRows)
+	const selectAdminActionsSQL = `SELECT id, action, target_id, created_at
+		FROM admin_actions ORDER BY id DESC LIMIT ?`
+	rows, err := store.readDB.QueryContext(queryCtx, selectAdminActionsSQL, maxAdminActionRows)
 	if err != nil {
 		return nil, fmt.Errorf("list admin actions: %w", err)
 	}
@@ -61,8 +62,9 @@ func (store *Store) ListAdminActions(ctx context.Context) ([]AdminAction, error)
 func recordAdminAction(
 	ctx context.Context, transaction *sql.Tx, action string, targetID, now int64,
 ) error {
-	_, err := transaction.ExecContext(ctx,
-		`INSERT INTO admin_actions (action, target_id, created_at) VALUES (?, ?, ?)`,
+	const insertAdminActionSQL = `INSERT INTO admin_actions (action, target_id, created_at)
+		VALUES (?, ?, ?)`
+	_, err := transaction.ExecContext(ctx, insertAdminActionSQL,
 		action, targetID, now)
 	if err != nil {
 		return fmt.Errorf("record admin action: %w", err)

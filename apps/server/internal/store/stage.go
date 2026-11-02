@@ -83,10 +83,11 @@ func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 func loadStagePlayers(
 	ctx context.Context, database querier, lan activeLAN, now int64,
 ) ([]StagePlayer, error) {
-	rows, err := database.QueryContext(ctx, `SELECT p.id, p.name, p.color, p.cosmetic_key, e.xp,
+	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, p.cosmetic_key, e.xp,
 			e.sign_key, e.follow_player_id, e.last_seen_at, e.area_id
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
-		WHERE e.lan_id = ? AND p.hidden_at IS NULL ORDER BY p.id`, lan.id)
+		WHERE e.lan_id = ? AND p.hidden_at IS NULL ORDER BY p.id`
+	rows, err := database.QueryContext(ctx, selectStagePlayersSQL, lan.id)
 	if err != nil {
 		return nil, fmt.Errorf("load stage players: %w", err)
 	}

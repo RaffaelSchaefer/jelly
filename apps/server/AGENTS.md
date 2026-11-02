@@ -110,6 +110,13 @@ Zahlen und Texte mit Bedeutung bekommen einen Namen: `registerRetryLimit` statt 
 Werte stehen an einer Stelle, und feste Listen stehen in einer benannten Funktion. Das gilt auch für
 SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort besser lesbar sind.
 
+## SQL
+
+- Jede Query hat einen Namen, der auf `SQL` endet: `const selectBadgesSQL = ...`.
+- Sie steht als lokale Konstante direkt über dem Aufruf. So liest man Abfrage und Verwendung zusammen.
+- Wird sie an mehreren Stellen gebraucht, wandert sie nur so weit nach oben, dass alle sie erreichen.
+  Eine private Paket-Konstante ist nur erlaubt, wenn mehrere Funktionen dieselbe Query nutzen.
+
 ## Messungen und Skripte
 
 Skripte, die man wiederholen will, liegen im Repo statt nur im Terminal. Lasttests stehen in
@@ -148,6 +155,7 @@ Die Tests in `internal/architecture` prüfen zusätzlich mit `go test`:
 
 - ein einziger Einstiegspunkt
 - ein Plan-Kommentar an jeder Goroutine und jedem Channel, aber nicht dessen Inhalt
+- benannte SQL-Queries, die nur bei mehreren Nutzern außerhalb einer Funktion stehen
 
 Dafür gibt es keine automatische Prüfung, deshalb im Review darauf achten:
 

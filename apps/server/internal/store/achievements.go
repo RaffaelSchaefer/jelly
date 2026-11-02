@@ -85,9 +85,10 @@ func grantAchievementOnce(ctx context.Context, action actionContext, key string)
 func raiseAchievementRecord(
 	ctx context.Context, action actionContext, achievement rules.Achievement, value int,
 ) error {
-	_, err := action.transaction.ExecContext(ctx, `UPDATE achievements
+	const raiseBestValueSQL = `UPDATE achievements
 		SET best_value = MAX(best_value, ?)
-		WHERE player_id = ? AND key = ? AND scope_lan_id = ?`,
+		WHERE player_id = ? AND key = ? AND scope_lan_id = ?`
+	_, err := action.transaction.ExecContext(ctx, raiseBestValueSQL,
 		value, action.playerID, achievement.Key, findAchievementScopeID(achievement, action.lan.id))
 	if err != nil {
 		return fmt.Errorf("raise achievement record: %w", err)
@@ -107,8 +108,9 @@ func findAchievementScopeID(achievement rules.Achievement, lanID int64) int64 {
 func insertAchievement(
 	ctx context.Context, action actionContext, achievement rules.Achievement,
 ) error {
-	_, err := action.transaction.ExecContext(ctx, `INSERT INTO achievements
-		(player_id, key, scope_lan_id, earned_at) VALUES (?, ?, ?, ?)`,
+	const insertAchievementSQL = `INSERT INTO achievements
+		(player_id, key, scope_lan_id, earned_at) VALUES (?, ?, ?, ?)`
+	_, err := action.transaction.ExecContext(ctx, insertAchievementSQL,
 		action.playerID, achievement.Key, findAchievementScopeID(achievement, action.lan.id),
 		action.now)
 	if err != nil {
@@ -128,8 +130,9 @@ func insertAchievement(
 func loadEarnedKeys(
 	ctx context.Context, database querier, lanID, playerID int64,
 ) ([]string, error) {
-	rows, err := database.QueryContext(ctx, `SELECT key FROM achievements
-		WHERE player_id = ? AND scope_lan_id IN (?, ?)`, playerID, lifetimeScopeID, lanID)
+	const selectEarnedKeysSQL = `SELECT key FROM achievements
+		WHERE player_id = ? AND scope_lan_id IN (?, ?)`
+	rows, err := database.QueryContext(ctx, selectEarnedKeysSQL, playerID, lifetimeScopeID, lanID)
 	if err != nil {
 		return nil, fmt.Errorf("load achievements: %w", err)
 	}
@@ -151,8 +154,8 @@ func loadEarnedKeys(
 // isPlayerHidden reads the moderation state of a player.
 func isPlayerHidden(ctx context.Context, database querier, playerID int64) (bool, error) {
 	var hiddenAt sql.NullInt64
-	err := database.QueryRowContext(ctx,
-		`SELECT hidden_at FROM players WHERE id = ?`, playerID).Scan(&hiddenAt)
+	const selectHiddenAtSQL = `SELECT hidden_at FROM players WHERE id = ?`
+	err := database.QueryRowContext(ctx, selectHiddenAtSQL, playerID).Scan(&hiddenAt)
 	if err != nil {
 		return false, fmt.Errorf("load hidden state: %w", err)
 	}

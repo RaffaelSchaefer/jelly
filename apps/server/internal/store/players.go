@@ -111,8 +111,9 @@ func (store *Store) FindPlayerByToken(ctx context.Context, token string) (int64,
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
 	var playerID int64
-	const query = `SELECT id FROM players WHERE token_hash = ?`
-	err := store.readDB.QueryRowContext(queryCtx, query, hashSecret(token)).Scan(&playerID)
+	const selectPlayerIDSQL = `SELECT id FROM players WHERE token_hash = ?`
+	err := store.readDB.QueryRowContext(queryCtx, selectPlayerIDSQL,
+		hashSecret(token)).Scan(&playerID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrUnauthorized
 	}
@@ -169,8 +170,9 @@ func registerInTransaction(
 
 // insertPlayer writes the `players` row and translates a duplicate name.
 func insertPlayer(ctx context.Context, transaction *sql.Tx, player newPlayer) (int64, error) {
-	result, err := transaction.ExecContext(ctx, `INSERT INTO players
-		(token_hash, name, name_key, color, created_at) VALUES (?, ?, ?, ?, ?)`,
+	const insertPlayerSQL = `INSERT INTO players
+		(token_hash, name, name_key, color, created_at) VALUES (?, ?, ?, ?, ?)`
+	result, err := transaction.ExecContext(ctx, insertPlayerSQL,
 		hashSecret(player.token), player.name, rules.BuildNameKey(player.name),
 		player.color, player.now)
 	if isNameConflict(err) {
@@ -190,8 +192,9 @@ func insertPlayer(ctx context.Context, transaction *sql.Tx, player newPlayer) (i
 func insertLANEntry(
 	ctx context.Context, transaction *sql.Tx, lan activeLAN, playerID, now int64,
 ) error {
-	_, err := transaction.ExecContext(ctx, `INSERT INTO lan_entries
-		(lan_id, player_id, joined_at, last_seen_at, session_started_at) VALUES (?, ?, ?, ?, ?)`,
+	const insertEntrySQL = `INSERT INTO lan_entries
+		(lan_id, player_id, joined_at, last_seen_at, session_started_at) VALUES (?, ?, ?, ?, ?)`
+	_, err := transaction.ExecContext(ctx, insertEntrySQL,
 		lan.id, playerID, now, now, now)
 	if err != nil {
 		return fmt.Errorf("insert entry: %w", err)
@@ -223,8 +226,8 @@ func applyProfileUpdate(
 		if err != nil {
 			return fmt.Errorf("validate color: %w", err)
 		}
-		_, err = transaction.ExecContext(ctx,
-			`UPDATE players SET color = ? WHERE id = ?`, *update.Color, playerID)
+		const updateColorSQL = `UPDATE players SET color = ? WHERE id = ?`
+		_, err = transaction.ExecContext(ctx, updateColorSQL, *update.Color, playerID)
 		if err != nil {
 			return fmt.Errorf("update color: %w", err)
 		}
@@ -243,7 +246,7 @@ func updatePlayerName(
 	if err != nil {
 		return fmt.Errorf("validate name: %w", err)
 	}
-	_, err = transaction.ExecContext(ctx, `UPDATE players SET name = ?, name_key = ? WHERE id = ?`,
+	_, err = transaction.ExecContext(ctx, updatePlayerNameSQL,
 		name, rules.BuildNameKey(name), playerID)
 	if isNameConflict(err) {
 		return ErrNameTaken
@@ -269,8 +272,8 @@ func updatePlayerCosmetic(
 		}
 		stored = cosmeticKey
 	}
-	_, err := transaction.ExecContext(ctx,
-		`UPDATE players SET cosmetic_key = ? WHERE id = ?`, stored, playerID)
+	const updateCosmeticSQL = `UPDATE players SET cosmetic_key = ? WHERE id = ?`
+	_, err := transaction.ExecContext(ctx, updateCosmeticSQL, stored, playerID)
 	if err != nil {
 		return fmt.Errorf("update cosmetic: %w", err)
 	}
@@ -282,8 +285,8 @@ func removeLockedCosmetic(
 	ctx context.Context, transaction *sql.Tx, playerID, now int64,
 ) error {
 	var worn sql.NullString
-	err := transaction.QueryRowContext(ctx,
-		`SELECT cosmetic_key FROM players WHERE id = ?`, playerID).Scan(&worn)
+	const selectCosmeticSQL = `SELECT cosmetic_key FROM players WHERE id = ?`
+	err := transaction.QueryRowContext(ctx, selectCosmeticSQL, playerID).Scan(&worn)
 	if err != nil {
 		return fmt.Errorf("load cosmetic: %w", err)
 	}

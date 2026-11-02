@@ -18,6 +18,9 @@ const (
 	entryPointDir   = "cmd/jelly-server"
 	planMarker      = "Concurrency plan:"
 	goroutineMethod = "Go"
+	sqlNameSuffix   = "SQL"
+	// SQL follows the context in ExecContext, QueryContext and QueryRowContext.
+	sqlArgumentIndex = 1
 )
 
 // sourceFile is a parsed Go file with its path relative to the module root.
@@ -205,5 +208,107 @@ func TestFindMainPackages(t *testing.T) {
 	got := findMainPackages([]sourceFile{first, second, library})
 	if len(got) != 2 || !got["cmd/one"] || !got["internal/tool"] {
 		t.Fatalf("findMainPackages() = %v", got)
+	}
+}
+
+// isDatabaseCall matches the calls that run SQL.
+func isDatabaseCall(selector *ast.SelectorExpr) bool {
+	switch selector.Sel.Name {
+	case "ExecContext", "QueryContext", "QueryRowContext":
+		return true
+	default:
+		return false
+	}
+}
+
+// findUnnamedQueries returns the lines that pass SQL other than by a name ending in `SQL`.
+func findUnnamedQueries(source sourceFile) []int {
+	var lines []int
+	ast.Inspect(source.syntax, func(node ast.Node) bool {
+		call, isCall := node.(*ast.CallExpr)
+		if !isCall || len(call.Args) <= sqlArgumentIndex {
+			return true
+		}
+		selector, isSelector := call.Fun.(*ast.SelectorExpr)
+		if !isSelector || !isDatabaseCall(selector) {
+			return true
+		}
+		name, isName := call.Args[sqlArgumentIndex].(*ast.Ident)
+		if !isName || !strings.HasSuffix(name.Name, sqlNameSuffix) {
+			lines = append(lines, source.files.Position(call.Pos()).Line)
+		}
+		return true
+	})
+	return lines
+}
+
+// findPackageQueries returns the names of SQL constants declared outside of a function.
+func findPackageQueries(source sourceFile) []string {
+	var names []string
+	for _, declaration := range source.syntax.Decls {
+		general, isGeneral := declaration.(*ast.GenDecl)
+		if !isGeneral || general.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range general.Specs {
+			value, isValue := spec.(*ast.ValueSpec)
+			if !isValue {
+				continue
+			}
+			for _, name := range value.Names {
+				if strings.HasSuffix(name.Name, sqlNameSuffix) {
+					names = append(names, name.Name)
+				}
+			}
+		}
+	}
+	return names
+}
+
+// countUsingFunctions counts the functions of a package that use a name.
+func countUsingFunctions(sources []sourceFile, directory, wanted string) int {
+	count := 0
+	for _, source := range sources {
+		if filepath.Dir(source.path) != directory {
+			continue
+		}
+		for _, declaration := range source.syntax.Decls {
+			function, isFunction := declaration.(*ast.FuncDecl)
+			if isFunction && usesName(function, wanted) {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+// usesName reports whether a function mentions a name.
+func usesName(function *ast.FuncDecl, wanted string) bool {
+	found := false
+	ast.Inspect(function, func(node ast.Node) bool {
+		name, isName := node.(*ast.Ident)
+		if isName && name.Name == wanted {
+			found = true
+		}
+		return !found
+	})
+	return found
+}
+
+func TestSQLIsNamedAndStaysLocal(t *testing.T) {
+	sources := loadSourceFiles(t)
+	for _, source := range sources {
+		if strings.HasSuffix(source.path, "_test.go") {
+			continue
+		}
+		for _, line := range findUnnamedQueries(source) {
+			t.Errorf("%s:%d: SQL needs a name ending in %s", source.path, line, sqlNameSuffix)
+		}
+		for _, name := range findPackageQueries(source) {
+			directory := filepath.Dir(source.path)
+			if countUsingFunctions(sources, directory, name) < 2 {
+				t.Errorf("%s: %s has one user and belongs into that function", source.path, name)
+			}
+		}
 	}
 }

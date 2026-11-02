@@ -42,8 +42,9 @@ func (store *Store) UpdateSign(
 		stored = signKey
 	}
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		_, err := action.transaction.ExecContext(ctx,
-			`UPDATE lan_entries SET sign_key = ? WHERE lan_id = ? AND player_id = ?`,
+		const updateSignSQL = `UPDATE lan_entries SET sign_key = ?
+			WHERE lan_id = ? AND player_id = ?`
+		_, err := action.transaction.ExecContext(ctx, updateSignSQL,
 			stored, action.lan.id, playerID)
 		if err != nil {
 			return fmt.Errorf("update sign: %w", err)
@@ -65,8 +66,9 @@ func (store *Store) UpdateFollow(
 			}
 			stored = targetID
 		}
-		_, err := action.transaction.ExecContext(ctx,
-			`UPDATE lan_entries SET follow_player_id = ? WHERE lan_id = ? AND player_id = ?`,
+		const updateFollowSQL = `UPDATE lan_entries SET follow_player_id = ?
+			WHERE lan_id = ? AND player_id = ?`
+		_, err := action.transaction.ExecContext(ctx, updateFollowSQL,
 			stored, action.lan.id, playerID)
 		if err != nil {
 			return fmt.Errorf("update follow: %w", err)
@@ -83,8 +85,9 @@ func (store *Store) UpdateFollow(
 // grantFoundCompany rewards the visitor and the visited jelly if its search sign is up.
 func grantFoundCompany(ctx context.Context, action actionContext, targetID int64) error {
 	var sign sql.NullString
-	err := action.transaction.QueryRowContext(ctx,
-		`SELECT sign_key FROM lan_entries WHERE lan_id = ? AND player_id = ?`,
+	const selectTargetSignSQL = `SELECT sign_key FROM lan_entries
+		WHERE lan_id = ? AND player_id = ?`
+	err := action.transaction.QueryRowContext(ctx, selectTargetSignSQL,
 		action.lan.id, targetID).Scan(&sign)
 	if err != nil {
 		return fmt.Errorf("load sign: %w", err)
@@ -109,9 +112,10 @@ func requireFollowTarget(ctx context.Context, action actionContext, targetID int
 		return ErrInvalidFollow
 	}
 	var found int
-	err := action.transaction.QueryRowContext(ctx, `SELECT 1
+	const findFollowTargetSQL = `SELECT 1
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
-		WHERE e.lan_id = ? AND e.player_id = ? AND p.hidden_at IS NULL`,
+		WHERE e.lan_id = ? AND e.player_id = ? AND p.hidden_at IS NULL`
+	err := action.transaction.QueryRowContext(ctx, findFollowTargetSQL,
 		action.lan.id, targetID).Scan(&found)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrInvalidFollow
@@ -125,8 +129,10 @@ func requireFollowTarget(ctx context.Context, action actionContext, targetID int
 // loadLastEmoteTime returns the last emote of a player, or 0 without one.
 func loadLastEmoteTime(ctx context.Context, database querier, playerID int64) (int64, error) {
 	var lastEmoteAt int64
-	err := database.QueryRowContext(ctx, `SELECT COALESCE(MAX(created_at), 0) FROM event_log
-		WHERE player_id = ? AND type = ?`, playerID, EventEmote).Scan(&lastEmoteAt)
+	const selectLastEmoteSQL = `SELECT COALESCE(MAX(created_at), 0) FROM event_log
+		WHERE player_id = ? AND type = ?`
+	err := database.QueryRowContext(ctx, selectLastEmoteSQL,
+		playerID, EventEmote).Scan(&lastEmoteAt)
 	if err != nil {
 		return 0, fmt.Errorf("load last emote: %w", err)
 	}

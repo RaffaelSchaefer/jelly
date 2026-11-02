@@ -77,8 +77,9 @@ func (store *Store) AcceptPartnerOffer(
 func insertPartnerOffer(
 	ctx context.Context, action actionContext, emoteKey string,
 ) (PartnerOffer, error) {
-	_, err := action.transaction.ExecContext(ctx,
-		`DELETE FROM partner_offers WHERE lan_id = ? AND (expires_at <= ? OR player_id = ?)`,
+	const deleteStaleOffersSQL = `DELETE FROM partner_offers
+		WHERE lan_id = ? AND (expires_at <= ? OR player_id = ?)`
+	_, err := action.transaction.ExecContext(ctx, deleteStaleOffersSQL,
 		action.lan.id, action.now, action.playerID)
 	if err != nil {
 		return PartnerOffer{}, fmt.Errorf("delete partner offers: %w", err)
@@ -91,8 +92,9 @@ func insertPartnerOffer(
 		Code: code, EmoteKey: emoteKey,
 		ExpiresAt: action.now + action.lan.gameRules.PartnerCodeSeconds*millisPerSecond,
 	}
-	_, err = action.transaction.ExecContext(ctx, `INSERT INTO partner_offers
-		(lan_id, player_id, code, emote_key, expires_at) VALUES (?, ?, ?, ?, ?)`,
+	const insertOfferSQL = `INSERT INTO partner_offers
+		(lan_id, player_id, code, emote_key, expires_at) VALUES (?, ?, ?, ?, ?)`
+	_, err = action.transaction.ExecContext(ctx, insertOfferSQL,
 		action.lan.id, action.playerID, offer.Code, offer.EmoteKey, offer.ExpiresAt)
 	if err != nil {
 		return PartnerOffer{}, fmt.Errorf("insert partner offer: %w", err)
@@ -109,8 +111,8 @@ func findFreePartnerCode(ctx context.Context, action actionContext) (string, err
 		}
 		code := fmt.Sprintf(partnerCodeFormat, number.Int64())
 		var found int
-		err = action.transaction.QueryRowContext(ctx,
-			`SELECT 1 FROM partner_offers WHERE lan_id = ? AND code = ?`,
+		const findUsedCodeSQL = `SELECT 1 FROM partner_offers WHERE lan_id = ? AND code = ?`
+		err = action.transaction.QueryRowContext(ctx, findUsedCodeSQL,
 			action.lan.id, code).Scan(&found)
 		if errors.Is(err, sql.ErrNoRows) {
 			return code, nil
@@ -127,8 +129,10 @@ func applyPartnerOffer(
 	ctx context.Context, action actionContext, code string,
 ) (PartnerResult, error) {
 	var result PartnerResult
-	err := action.transaction.QueryRowContext(ctx, `SELECT player_id, emote_key FROM partner_offers
-		WHERE lan_id = ? AND code = ? AND expires_at > ?`, action.lan.id, code, action.now).
+	const findValidOfferSQL = `SELECT player_id, emote_key FROM partner_offers
+		WHERE lan_id = ? AND code = ? AND expires_at > ?`
+	err := action.transaction.QueryRowContext(ctx, findValidOfferSQL,
+		action.lan.id, code, action.now).
 		Scan(&result.PartnerID, &result.EmoteKey)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PartnerResult{}, ErrPartnerCodeInvalid
@@ -139,8 +143,8 @@ func applyPartnerOffer(
 	if result.PartnerID == action.playerID {
 		return PartnerResult{}, ErrPartnerSelf
 	}
-	_, err = action.transaction.ExecContext(ctx,
-		`DELETE FROM partner_offers WHERE lan_id = ? AND code = ?`, action.lan.id, code)
+	const deleteUsedOfferSQL = `DELETE FROM partner_offers WHERE lan_id = ? AND code = ?`
+	_, err = action.transaction.ExecContext(ctx, deleteUsedOfferSQL, action.lan.id, code)
 	if err != nil {
 		return PartnerResult{}, fmt.Errorf("use partner offer: %w", err)
 	}
@@ -175,8 +179,9 @@ func recordPartnerEmote(
 		gainedXP = action.lan.gameRules.PartnerXP
 	}
 	for _, pair := range [][2]actionContext{{action, partner}, {partner, action}} {
-		_, err = action.transaction.ExecContext(ctx, `INSERT INTO partner_emotes
-			(lan_id, player_id, partner_id, emote_key, created_at) VALUES (?, ?, ?, ?, ?)`,
+		const insertPartnerEmoteSQL = `INSERT INTO partner_emotes
+			(lan_id, player_id, partner_id, emote_key, created_at) VALUES (?, ?, ?, ?, ?)`
+		_, err = action.transaction.ExecContext(ctx, insertPartnerEmoteSQL,
 			action.lan.id, pair[0].playerID, pair[1].playerID, emoteKey, action.now)
 		if err != nil {
 			return 0, fmt.Errorf("write partner emote: %w", err)
@@ -198,8 +203,9 @@ func recordPartnerEmote(
 // isNewPartner reports whether these two players had no partner emote yet in this LAN.
 func isNewPartner(ctx context.Context, action actionContext, partnerID int64) (bool, error) {
 	var count int
-	err := action.transaction.QueryRowContext(ctx, `SELECT COUNT(*) FROM partner_emotes
-		WHERE lan_id = ? AND player_id = ? AND partner_id = ?`,
+	const countPartnerEmotesSQL = `SELECT COUNT(*) FROM partner_emotes
+		WHERE lan_id = ? AND player_id = ? AND partner_id = ?`
+	err := action.transaction.QueryRowContext(ctx, countPartnerEmotesSQL,
 		action.lan.id, action.playerID, partnerID).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("check partner: %w", err)

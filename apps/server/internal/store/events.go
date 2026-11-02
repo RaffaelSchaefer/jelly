@@ -64,9 +64,10 @@ func (store *Store) ListEventsAfter(
 ) ([]Event, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	rows, err := store.readDB.QueryContext(queryCtx, `SELECT
+	const selectEventsAfterSQL = `SELECT
 		id, type, player_id, payload, created_at
-		FROM event_log WHERE id > ? AND (scope = ? OR player_id = ?) ORDER BY id LIMIT ?`,
+		FROM event_log WHERE id > ? AND (scope = ? OR player_id = ?) ORDER BY id LIMIT ?`
+	rows, err := store.readDB.QueryContext(queryCtx, selectEventsAfterSQL,
 		afterID, scopePublic, viewerID, maxEventsPerQueryRows)
 	if err != nil {
 		return nil, fmt.Errorf("list events: %w", err)
@@ -105,7 +106,8 @@ func scanEvent(rows *sql.Rows) (Event, error) {
 // loadLatestEventID reads the newest event ID.
 func loadLatestEventID(ctx context.Context, database querier) (int64, error) {
 	var latestID int64
-	err := database.QueryRowContext(ctx, `SELECT COALESCE(MAX(id), 0) FROM event_log`).
+	const selectLatestEventIDSQL = `SELECT COALESCE(MAX(id), 0) FROM event_log`
+	err := database.QueryRowContext(ctx, selectLatestEventIDSQL).
 		Scan(&latestID)
 	if err != nil {
 		return 0, fmt.Errorf("load latest event: %w", err)
@@ -123,8 +125,9 @@ func appendEvent(ctx context.Context, transaction *sql.Tx, record eventRecord) e
 	if record.playerID != 0 {
 		playerID = sql.NullInt64{Int64: record.playerID, Valid: true}
 	}
-	_, err = transaction.ExecContext(ctx, `INSERT INTO event_log
-		(lan_id, type, scope, player_id, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+	const insertEventSQL = `INSERT INTO event_log
+		(lan_id, type, scope, player_id, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+	_, err = transaction.ExecContext(ctx, insertEventSQL,
 		record.lanID, record.eventType, record.scope, playerID, string(payload), record.now)
 	if err != nil {
 		return fmt.Errorf("write event: %w", err)

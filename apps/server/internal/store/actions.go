@@ -123,9 +123,10 @@ func beginPlayerAction(
 	}
 	var lastSeenAt, sessionStartedAt int64
 	var hidden sql.NullInt64
-	err = transaction.QueryRowContext(ctx, `SELECT e.last_seen_at, e.session_started_at, p.hidden_at
+	const selectPresenceSQL = `SELECT e.last_seen_at, e.session_started_at, p.hidden_at
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
-		WHERE e.lan_id = ? AND e.player_id = ?`, lan.id, playerID).
+		WHERE e.lan_id = ? AND e.player_id = ?`
+	err = transaction.QueryRowContext(ctx, selectPresenceSQL, lan.id, playerID).
 		Scan(&lastSeenAt, &sessionStartedAt, &hidden)
 	if errors.Is(err, sql.ErrNoRows) {
 		return actionContext{}, ErrNotJoined
@@ -137,8 +138,9 @@ func beginPlayerAction(
 	if !wasPresent {
 		sessionStartedAt = now
 	}
-	_, err = transaction.ExecContext(ctx, `UPDATE lan_entries
-		SET last_seen_at = ?, session_started_at = ? WHERE lan_id = ? AND player_id = ?`,
+	const updatePresenceSQL = `UPDATE lan_entries
+		SET last_seen_at = ?, session_started_at = ? WHERE lan_id = ? AND player_id = ?`
+	_, err = transaction.ExecContext(ctx, updatePresenceSQL,
 		now, sessionStartedAt, lan.id, playerID)
 	if err != nil {
 		return actionContext{}, fmt.Errorf("update presence: %w", err)
@@ -187,20 +189,21 @@ func appendVisibleEvent(
 // grantXP writes history and total in one transaction and announces XP and level changes.
 func grantXP(ctx context.Context, action actionContext, entry xpEntry) error {
 	var currentXP int
-	err := action.transaction.QueryRowContext(ctx,
-		`SELECT xp FROM lan_entries WHERE lan_id = ? AND player_id = ?`,
+	const selectEntryXPSQL = `SELECT xp FROM lan_entries WHERE lan_id = ? AND player_id = ?`
+	err := action.transaction.QueryRowContext(ctx, selectEntryXPSQL,
 		action.lan.id, action.playerID).Scan(&currentXP)
 	if err != nil {
 		return fmt.Errorf("load XP: %w", err)
 	}
-	_, err = action.transaction.ExecContext(ctx, `INSERT INTO xp_log
-		(lan_id, player_id, action, xp, event_code_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+	const insertXPLogSQL = `INSERT INTO xp_log
+		(lan_id, player_id, action, xp, event_code_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+	_, err = action.transaction.ExecContext(ctx, insertXPLogSQL,
 		action.lan.id, action.playerID, entry.action, entry.amount, entry.eventCodeID, action.now)
 	if err != nil {
 		return fmt.Errorf("write XP history: %w", err)
 	}
-	_, err = action.transaction.ExecContext(ctx,
-		`UPDATE lan_entries SET xp = xp + ? WHERE lan_id = ? AND player_id = ?`,
+	const addEntryXPSQL = `UPDATE lan_entries SET xp = xp + ? WHERE lan_id = ? AND player_id = ?`
+	_, err = action.transaction.ExecContext(ctx, addEntryXPSQL,
 		entry.amount, action.lan.id, action.playerID)
 	if err != nil {
 		return fmt.Errorf("write XP total: %w", err)
@@ -226,8 +229,9 @@ func loadLastPokeTime(
 	ctx context.Context, database querier, lanID, playerID int64,
 ) (int64, error) {
 	lastPokeAt := rules.NoPokeYet
-	err := database.QueryRowContext(ctx, `SELECT COALESCE(MAX(created_at), ?) FROM xp_log
-		WHERE player_id = ? AND lan_id = ? AND action = ?`,
+	const selectLastPokeSQL = `SELECT COALESCE(MAX(created_at), ?) FROM xp_log
+		WHERE player_id = ? AND lan_id = ? AND action = ?`
+	err := database.QueryRowContext(ctx, selectLastPokeSQL,
 		rules.NoPokeYet, playerID, lanID, actionPoke).Scan(&lastPokeAt)
 	if err != nil {
 		return 0, fmt.Errorf("load last poke: %w", err)
@@ -239,9 +243,10 @@ func loadLastPokeTime(
 func loadReportHistory(
 	ctx context.Context, database querier, lanID, playerID int64,
 ) ([]rules.ReportEntry, error) {
-	rows, err := database.QueryContext(ctx, `SELECT action, created_at FROM xp_log
+	const selectReportsSQL = `SELECT action, created_at FROM xp_log
 		WHERE player_id = ? AND lan_id = ? AND action IN (?, ?)
-		ORDER BY created_at DESC LIMIT ?`,
+		ORDER BY created_at DESC LIMIT ?`
+	rows, err := database.QueryContext(ctx, selectReportsSQL,
 		playerID, lanID, rules.ActionFood, rules.ActionDrink, maxReportRows)
 	if err != nil {
 		return nil, fmt.Errorf("load reports: %w", err)
@@ -264,8 +269,8 @@ func loadReportHistory(
 // requireLANEntry returns [ErrNotJoined] if the player has not joined the LAN.
 func requireLANEntry(ctx context.Context, database querier, lanID, playerID int64) error {
 	var found int
-	const query = `SELECT 1 FROM lan_entries WHERE lan_id = ? AND player_id = ?`
-	err := database.QueryRowContext(ctx, query, lanID, playerID).Scan(&found)
+	const findEntrySQL = `SELECT 1 FROM lan_entries WHERE lan_id = ? AND player_id = ?`
+	err := database.QueryRowContext(ctx, findEntrySQL, lanID, playerID).Scan(&found)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotJoined
 	}

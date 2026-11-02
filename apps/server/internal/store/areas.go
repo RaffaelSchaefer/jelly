@@ -53,8 +53,9 @@ func (store *Store) UpdateArea(ctx context.Context, lanID int64, area StageArea,
 		return fmt.Errorf("validate area: %w", err)
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		result, err := transaction.ExecContext(ctx, `UPDATE lan_areas
-			SET x = ?, y = ?, width = ?, height = ? WHERE id = ? AND lan_id = ?`,
+		const updateAreaSQL = `UPDATE lan_areas
+			SET x = ?, y = ?, width = ?, height = ? WHERE id = ? AND lan_id = ?`
+		result, err := transaction.ExecContext(ctx, updateAreaSQL,
 			area.X, area.Y, area.Width, area.Height, area.ID, lanID)
 		if err != nil {
 			return fmt.Errorf("update area: %w", err)
@@ -70,8 +71,8 @@ func (store *Store) UpdateArea(ctx context.Context, lanID int64, area StageArea,
 // DeleteArea removes an area. Its jellies lose their assignment and use the whole stage.
 func (store *Store) DeleteArea(ctx context.Context, lanID, areaID, now int64) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		result, err := transaction.ExecContext(ctx,
-			`DELETE FROM lan_areas WHERE id = ? AND lan_id = ?`, areaID, lanID)
+		const deleteAreaSQL = `DELETE FROM lan_areas WHERE id = ? AND lan_id = ?`
+		result, err := transaction.ExecContext(ctx, deleteAreaSQL, areaID, lanID)
 		if err != nil {
 			return fmt.Errorf("delete area: %w", err)
 		}
@@ -96,9 +97,10 @@ func (store *Store) ListAreaAssignments(
 ) ([]AreaAssignment, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	rows, err := store.readDB.QueryContext(queryCtx, `SELECT p.id, p.name, e.area_id
+	const selectAssignmentsSQL = `SELECT p.id, p.name, e.area_id
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
-		WHERE e.lan_id = ? ORDER BY p.name_key`, lanID)
+		WHERE e.lan_id = ? ORDER BY p.name_key`
+	rows, err := store.readDB.QueryContext(queryCtx, selectAssignmentsSQL, lanID)
 	if err != nil {
 		return nil, fmt.Errorf("list assignments: %w", err)
 	}
@@ -133,8 +135,9 @@ func (store *Store) AssignArea(
 				return err
 			}
 		}
-		result, err := transaction.ExecContext(ctx,
-			`UPDATE lan_entries SET area_id = ? WHERE lan_id = ? AND player_id = ?`,
+		const updateEntryAreaSQL = `UPDATE lan_entries SET area_id = ?
+			WHERE lan_id = ? AND player_id = ?`
+		result, err := transaction.ExecContext(ctx, updateEntryAreaSQL,
 			areaID, lanID, playerID)
 		if err != nil {
 			return fmt.Errorf("assign area: %w", err)
@@ -151,8 +154,9 @@ func (store *Store) AssignArea(
 func insertArea(
 	ctx context.Context, transaction *sql.Tx, lanID int64, area rules.Area,
 ) (int64, error) {
-	result, err := transaction.ExecContext(ctx,
-		`INSERT INTO lan_areas (lan_id, x, y, width, height) VALUES (?, ?, ?, ?, ?)`,
+	const insertAreaSQL = `INSERT INTO lan_areas (lan_id, x, y, width, height)
+		VALUES (?, ?, ?, ?, ?)`
+	result, err := transaction.ExecContext(ctx, insertAreaSQL,
 		lanID, area.X, area.Y, area.Width, area.Height)
 	if err != nil && strings.Contains(err.Error(), "FOREIGN KEY") {
 		return 0, ErrLANNotFound
@@ -169,8 +173,9 @@ func insertArea(
 
 // loadAreas reads the room map of a LAN.
 func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea, error) {
-	rows, err := database.QueryContext(ctx,
-		`SELECT id, x, y, width, height FROM lan_areas WHERE lan_id = ? ORDER BY id`, lanID)
+	const selectAreasSQL = `SELECT id, x, y, width, height FROM lan_areas
+		WHERE lan_id = ? ORDER BY id`
+	rows, err := database.QueryContext(ctx, selectAreasSQL, lanID)
 	if err != nil {
 		return nil, fmt.Errorf("load areas: %w", err)
 	}
@@ -193,8 +198,8 @@ func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea,
 // requireAreaInLAN rejects an area that belongs to another LAN.
 func requireAreaInLAN(ctx context.Context, database querier, lanID, areaID int64) error {
 	var found int
-	err := database.QueryRowContext(ctx,
-		`SELECT 1 FROM lan_areas WHERE id = ? AND lan_id = ?`, areaID, lanID).Scan(&found)
+	const findAreaInLANSQL = `SELECT 1 FROM lan_areas WHERE id = ? AND lan_id = ?`
+	err := database.QueryRowContext(ctx, findAreaInLANSQL, areaID, lanID).Scan(&found)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrAreaNotFound
 	}

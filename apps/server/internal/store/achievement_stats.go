@@ -111,8 +111,9 @@ func loadCountedMetrics(
 		selections = append(selections, "("+metricQuery.query+")")
 		targets = append(targets, &values[index])
 	}
-	err := database.QueryRowContext(ctx, "SELECT "+strings.Join(selections, ", "),
-		input.playerID, input.lan.id).Scan(targets...)
+	selectMetricsSQL := "SELECT " + strings.Join(selections, ", ")
+	err := database.QueryRowContext(ctx, selectMetricsSQL, input.playerID, input.lan.id).
+		Scan(targets...)
 	if err != nil {
 		return nil, fmt.Errorf("load achievement stats: %w", err)
 	}
@@ -127,8 +128,9 @@ func loadCountedMetrics(
 func loadActionTimes(
 	ctx context.Context, database querier, input achievementInput, actionName string,
 ) ([]int64, error) {
-	rows, err := database.QueryContext(ctx, `SELECT created_at FROM xp_log
-		WHERE player_id = ? AND lan_id = ? AND action = ?`,
+	const selectActionTimesSQL = `SELECT created_at FROM xp_log
+		WHERE player_id = ? AND lan_id = ? AND action = ?`
+	rows, err := database.QueryContext(ctx, selectActionTimesSQL,
 		input.playerID, input.lan.id, actionName)
 	if err != nil {
 		return nil, fmt.Errorf("load action times: %w", err)
