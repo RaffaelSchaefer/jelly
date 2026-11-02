@@ -6,6 +6,8 @@
     "dev": "go run ./cmd/jelly-server",
     "build": "go build -o dist/jelly-server ./cmd/jelly-server",
     "test": "go test ./...",
+    "bench": "go test -run=^$ -bench=. -benchmem ./internal/store/",
+    "bench:load": "benchmarks/load.sh",
     "lint": "golangci-lint run",
     "format": "golangci-lint fmt"
   }
