@@ -117,12 +117,6 @@ func insertAchievement(
 		return fmt.Errorf("insert achievement: %w", err)
 	}
 	payload := map[string]string{payloadKey: achievement.Key}
-	if achievement.Quiet {
-		return appendEvent(ctx, action.transaction, eventRecord{
-			lanID: action.lan.id, eventType: EventAchievement, scope: scopePlayer,
-			playerID: action.playerID, payload: payload, now: action.now,
-		})
-	}
 	return appendVisibleEvent(ctx, action, EventAchievement, payload)
 }
 

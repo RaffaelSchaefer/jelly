@@ -149,11 +149,11 @@ func TestFindNewAchievements(t *testing.T) {
 	}
 }
 
-func TestRecordAchievementsHaveOneStageAndStayQuiet(t *testing.T) {
+func TestRecordAchievementsHaveOneStage(t *testing.T) {
 	for _, key := range []string{"night-owl", "marathon"} {
 		achievement, found := rules.FindAchievement(key)
-		if !found || achievement.RecordUnit == "" || !achievement.Quiet {
-			t.Errorf("%s must track a record quietly: %+v", key, achievement)
+		if !found || achievement.RecordUnit == "" {
+			t.Errorf("%s must track a record: %+v", key, achievement)
 		}
 	}
 	got := findKeys(rules.FindRecordAchievements([]string{"marathon", "hatched"}))
