@@ -46,6 +46,7 @@ func NewHandler(dependencies Dependencies) http.Handler {
 	mux := http.NewServeMux()
 	server.addPlayerRoutes(mux)
 	server.addStageRoutes(mux)
+	server.addSessionRoutes(mux)
 	server.addAdminRoutes(mux)
 	if dependencies.Web != nil {
 		mux.Handle("GET /", dependencies.Web)

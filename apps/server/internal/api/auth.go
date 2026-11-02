@@ -49,18 +49,15 @@ func (server *apiServer) requireViewer(next viewerHandler) http.HandlerFunc {
 	}
 }
 
-// requireAdmin checks the admin secret and limits guessing. Without a configured secret, the
-// admin area stays closed.
+// requireAdmin checks the session cookie and renews it, so only 30 idle minutes end a session.
+// Without a configured secret, the admin area stays closed.
 func (server *apiServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if !server.attempts.Allow() {
-			server.writeProblem(writer, problemRateLimited())
-			return
-		}
-		if !matchSecret(server.AdminSecret, readBearerToken(request)) {
+		if !server.hasAdminSession(request) {
 			server.writeError(writer, request, errForbidden)
 			return
 		}
+		server.writeAdminCookie(writer)
 		next(writer, request)
 	}
 }

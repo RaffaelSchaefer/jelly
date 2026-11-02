@@ -15,14 +15,46 @@ import (
 )
 
 // stageResponse is the response of `GET /state`.
-type stageResponse struct {
-	LastEventID int64               `json:"last_event_id"`
-	Players     []store.StagePlayer `json:"players"`
+type stageResponse = store.StageState
+
+// sendWithCookie calls the API with a session cookie and returns the cookie it sets.
+func (testFixture *fixture) sendWithCookie(
+	method, path, session, body string,
+) (apiResponse, string) {
+	testFixture.t.Helper()
+	request := httptest.NewRequestWithContext(
+		testFixture.t.Context(), method, path, strings.NewReader(body),
+	)
+	if session != "" {
+		request.AddCookie(&http.Cookie{Name: "jelly_admin", Value: session})
+	}
+	recorder := httptest.NewRecorder()
+	testFixture.handler.ServeHTTP(recorder, request)
+	response := apiResponse{status: recorder.Code, body: recorder.Body.Bytes()}
+	for _, cookie := range recorder.Result().Cookies() {
+		if cookie.Name == "jelly_admin" {
+			return response, cookie.Value
+		}
+	}
+	return response, ""
+}
+
+// loginAdmin returns a new admin session.
+func (testFixture *fixture) loginAdmin() string {
+	testFixture.t.Helper()
+	response, session := testFixture.sendWithCookie(
+		"POST", "/admin/api/login", "", `{"secret":"`+adminSecret+`"}`,
+	)
+	if response.status != http.StatusOK || session == "" {
+		testFixture.t.Fatalf("login: %d %s", response.status, response.body)
+	}
+	return session
 }
 
 func (testFixture *fixture) callAdmin(method, path, body string) apiResponse {
 	testFixture.t.Helper()
-	return testFixture.callAPI(method, path, adminSecret, body)
+	response, _ := testFixture.sendWithCookie(method, path, testFixture.loginAdmin(), body)
+	return response
 }
 
 func (testFixture *fixture) loadStage() stageResponse {
@@ -246,14 +278,56 @@ func TestStateRequiresAccess(t *testing.T) {
 	}
 }
 
-func TestAdminRequiresSecret(t *testing.T) {
+func TestAdminRequiresSession(t *testing.T) {
 	testFixture := newFixture(t)
 	requireProblem(t, testFixture.callAPI("GET", "/admin/api/players", "", ""),
 		http.StatusForbidden, "forbidden")
-	requireProblem(t, testFixture.callAPI("GET", "/admin/api/players", "wrong", ""),
+	requireProblem(t, testFixture.callAPI("GET", "/admin/api/players", adminSecret, ""),
 		http.StatusForbidden, "forbidden")
+	response, _ := testFixture.sendWithCookie("POST", "/admin/api/login", "", `{"secret":"wrong"}`)
+	requireProblem(t, response, http.StatusForbidden, "forbidden")
+	forged := "9999999999999.forged"
+	response, _ = testFixture.sendWithCookie("GET", "/admin/api/players", forged, "")
+	requireProblem(t, response, http.StatusForbidden, "forbidden")
 	if got := testFixture.callAdmin("GET", "/admin/api/players", "").status; got != http.StatusOK {
-		t.Fatalf("admin secret: %d", got)
+		t.Fatalf("session: %d", got)
+	}
+}
+
+func TestAdminSessionExpiresWhenIdle(t *testing.T) {
+	testFixture := newFixture(t)
+	session := testFixture.loginAdmin()
+
+	testFixture.advanceClock(20 * time.Minute)
+	response, renewed := testFixture.sendWithCookie("GET", "/admin/api/players", session, "")
+	if response.status != http.StatusOK || renewed == "" {
+		t.Fatalf("active session: %d, cookie %q", response.status, renewed)
+	}
+	testFixture.advanceClock(20 * time.Minute)
+	response, _ = testFixture.sendWithCookie("GET", "/admin/api/players", session, "")
+	requireProblem(t, response, http.StatusForbidden, "forbidden")
+	response, _ = testFixture.sendWithCookie("GET", "/admin/api/players", renewed, "")
+	if response.status != http.StatusOK {
+		t.Fatalf("renewed session: %d", response.status)
+	}
+	testFixture.advanceClock(31 * time.Minute)
+	response, _ = testFixture.sendWithCookie("GET", "/admin/api/players", renewed, "")
+	requireProblem(t, response, http.StatusForbidden, "forbidden")
+}
+
+func TestAdminCookieIsProtected(t *testing.T) {
+	testFixture := newFixture(t)
+	request := httptest.NewRequestWithContext(t.Context(), "POST", "/admin/api/login",
+		strings.NewReader(`{"secret":"`+adminSecret+`"}`))
+	recorder := httptest.NewRecorder()
+	testFixture.handler.ServeHTTP(recorder, request)
+	cookies := recorder.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("cookies: %+v", cookies)
+	}
+	cookie := cookies[0]
+	if !cookie.HttpOnly || !cookie.Secure || cookie.SameSite != http.SameSiteStrictMode {
+		t.Fatalf("cookie is not protected: %+v", cookie)
 	}
 }
 
