@@ -1,0 +1,28 @@
+{
+  "name": "@jelly/scene",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./colors": "./src/colors.ts",
+    "./geometry": "./src/jellyGeometry.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "check-types": "tsc --noEmit",
+    "lint": "oxlint --deny-warnings",
+    "format": "oxfmt --write \"**/*.{ts,md}\""
+  },
+  "peerDependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.186.0",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.90.0",
+    "three": "0.186.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

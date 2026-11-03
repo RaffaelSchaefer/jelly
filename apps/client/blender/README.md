@@ -55,7 +55,7 @@ Then commit `src/cosmetics/<id>.glb` (and `cosmetics.blend`, so others can carry
 
 ## When the pet changes
 
-The reference is generated from `src/jellyGeometry.ts`. After changing the pet's shape:
+The reference is generated from `packages/jelly-scene/src/jellyGeometry.ts`. After changing the pet's shape:
 
 ```bash
 pnpm run blender:reference

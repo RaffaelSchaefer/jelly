@@ -1,13 +1,14 @@
 /**
- * Where a jelly stands at a given server time. Everything is a pure function of player ID and time,
- * so all screens show the same path without the server storing positions.
+ * Where a jelly wants to be at a given server time. It is a pure function of player ID and time, so
+ * all screens agree on it without the server storing positions.
  *
  * @module
  */
 
 import type { StageArea, StagePlayer, StagePoint } from "./types.ts";
 
-const STAGE_SIZE = 100;
+import { FULL_CIRCLE, STAGE_SIZE } from "./world.ts";
+
 /** Same share as `homeMarginPercent` in `internal/rules/areas.go`, so jellies stay in their area. */
 const WANDER_SHARE = 0.1;
 const SLOW_WEIGHT = 0.6;
@@ -15,8 +16,14 @@ const FAST_WEIGHT = 0.4;
 const SLOW_PERIOD_MS = { shortest: 40_000, longest: 90_000 };
 const FAST_PERIOD_MS = { shortest: 15_000, longest: 30_000 };
 const FOLLOW_GAP_PERCENT = 5;
-const FULL_CIRCLE = 2 * Math.PI;
-const WHOLE_STAGE: StageArea = { id: 0, x: 0, y: 0, width: STAGE_SIZE, height: STAGE_SIZE };
+const WHOLE_STAGE: StageArea = {
+  id: 0,
+  x: 0,
+  y: 0,
+  width: STAGE_SIZE,
+  height: STAGE_SIZE,
+  kind: "seats",
+};
 
 /** Independent random values of one jelly, one per use. */
 const SEED_SLOW_PERIOD = 1;
