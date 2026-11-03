@@ -16,7 +16,7 @@ pnpm bench:load  # Lasttest mit dem Simulator, siehe benchmarks/README.md
 pnpm openapi   # docs/openapi.json aus dem Code erzeugen, nach jeder Änderung an /v1
 pnpm build     # Seiten bauen (go generate ./internal/web), dann go build
 pnpm demo      # Wegwerf-Server mit 70 simulierten Jellies, um die Bühne anzusehen
-go test -race -count=1 ./...   # vor jedem Abschluss, sobald Nebenläufigkeit beteiligt ist
+go test -race -count=1 ./...   # vor jedem PR
 ```
 
 Benötigt `golangci-lint` in der festen Version v2.15.0 im `PATH`:
@@ -91,7 +91,7 @@ Standard ist linearer Code.
   sie, was passiert bei Fehlern, Abbruch und Neustart? Das Ergebnis steht direkt darüber in einem
   Kommentar, der `Concurrency plan:` enthält. Das prüft `internal/architecture`, Tests sind ausgenommen.
 - Channels nur, wenn es mehrere Schreiber gibt. Sonst reichen Rückgabewerte oder `sync.WaitGroup`.
-- `go test -race` muss durchlaufen.
+- `go test -race` muss vor jedem PR durchlaufen.
 
 ## Kontexte
 
