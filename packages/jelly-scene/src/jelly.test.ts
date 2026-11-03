@@ -19,6 +19,13 @@ test("body, head and hands are siblings, because the shader reads their local po
   for (const hand of jelly.hands) expect(hand.parent).toBe(jelly.root);
 });
 
+test("every eye is one mesh and the cheeks are hidden until the jelly is happy", () => {
+  const jelly = createJelly(JELLY_COLORS.mint);
+  expect(jelly.face.eyes.every((eye) => eye instanceof Mesh)).toBe(true);
+  animateJelly(jelly, createMotion(0), { ...frame, pulse: 0 });
+  expect(jelly.face.cheeks.every((cheek) => !cheek.visible)).toBe(true);
+});
+
 test("a pulse brings the hands out and makes the jelly happy", () => {
   const jelly = createJelly(JELLY_COLORS.peach);
   const motion = createMotion(0);

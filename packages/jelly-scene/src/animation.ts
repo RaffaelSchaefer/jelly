@@ -107,6 +107,8 @@ export function animateFace({ eyes, cheeks, mouth }: FaceParts, s: Motion, { tim
   }
   for (const cheek of cheeks) {
     (cheek.material as MeshBasicMaterial).opacity = 0.5 * happy;
+    // Unsichtbare Wangen werden gar nicht erst gezeichnet.
+    cheek.visible = happy > 0.01;
   }
   mouth.scale.set(1 + happy * 0.35, 0.65 + happy * 0.4, 1);
 }

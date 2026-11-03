@@ -42,6 +42,11 @@ const CLARITY = 0.3;
  * Alle Jellies teilen sich diesen Kasten.
  */
 const BOUNDS = new BoxGeometry(3.3, 2.7, 1.7).translate(0, 0.16, 0.03);
+/**
+ * Derselbe Kasten ohne die Hände. Meist sind sie eingezogen, und jedes Pixel des Kastens kostet
+ * einen Raymarch, auch wo nur Hintergrund ist.
+ */
+const BOUNDS_WITHOUT_HANDS = new BoxGeometry(2.0, 2.7, 1.7).translate(0, 0.16, 0.03);
 
 /** Die Teile, deren Lage der Shader pro Bild übernimmt. Sie liegen neben dem Körper im Jelly. */
 export interface BodyParts {
@@ -135,6 +140,7 @@ export function createJellyBody(palette: JellyPalette, parts: BodyParts): Mesh {
   const mesh = new Mesh(BOUNDS, material);
   const drawingBuffer = new Vector2();
   mesh.onBeforeRender = (renderer, _scene, camera) => {
+    mesh.geometry = parts.hands.some((hand) => hand.visible) ? BOUNDS : BOUNDS_WITHOUT_HANDS;
     updateUniforms({ mesh, uniforms, renderer, camera, parts, drawingBuffer });
     material.uniformsNeedUpdate = true;
   };

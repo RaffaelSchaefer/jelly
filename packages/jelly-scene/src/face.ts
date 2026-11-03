@@ -8,13 +8,17 @@
  */
 
 import {
-  CircleGeometry,
+  BufferAttribute,
+  BufferGeometry,
+  Color,
   Mesh,
   MeshBasicMaterial,
   Object3D,
   SphereGeometry,
   TorusGeometry,
+  CircleGeometry,
 } from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import type { FaceParts } from "./animation.ts";
 
@@ -70,9 +74,71 @@ function placeOnHead(object: Object3D, { x, y, inset, roll = 0 }: HeadSpot) {
   object.rotation.set(-Math.atan2(ny, Math.hypot(nx, nz)), Math.atan2(nx, nz), roll, "YXZ");
 }
 
+/** Ein Teil eines Auges: Form, Größe und Lage relativ zur Augenmitte. Ohne Farbe ist es Tinte. */
+interface EyePart {
+  shape: BufferGeometry;
+  scale: [number, number, number];
+  at: [number, number, number];
+  color?: string;
+}
+
+/** Pupille, großer und kleiner Glanzpunkt. */
+const EYE_PARTS: EyePart[] = [
+  { shape: SHAPES.pupil, scale: [0.058, 0.084, 0.022], at: [0, 0, 0] },
+  {
+    shape: SHAPES.sparkle,
+    scale: [0.018, 0.023, 0.008],
+    at: [-0.016, 0.028, 0.021],
+    color: HIGHLIGHT,
+  },
+  {
+    shape: SHAPES.sparkle,
+    scale: [0.008, 0.01, 0.005],
+    at: [0.015, -0.026, 0.022],
+    color: REFLECTION,
+  },
+];
+
+/** Ein Auge je Tintenfarbe: Pupille und Glanzpunkte als eine Geometrie mit Vertexfarben. */
+const EYE_SHAPES = new Map<string, BufferGeometry>();
+/** Der Mund je Tintenfarbe, mit Vertexfarben wie die Augen: beide teilen sich Material und Shader. */
+const MOUTH_SHAPES = new Map<string, BufferGeometry>();
+
+/** Färbt jeden Vertex einer Geometrie. */
+function tintGeometry(geometry: BufferGeometry, hex: string): BufferGeometry {
+  const color = new Color(hex);
+  const count = geometry.getAttribute("position").count;
+  const colors = new Float32Array(count * 3);
+  for (let index = 0; index < count; index++) colors.set([color.r, color.g, color.b], index * 3);
+  geometry.setAttribute("color", new BufferAttribute(colors, 3));
+  return geometry;
+}
+
+/**
+ * Baut das Auge in der Tintenfarbe oder holt es aus dem Cache. Ein Mesh statt drei spart der Bühne
+ * mit vielen Jellies Draw-Calls.
+ */
+function findEyeShape(ink: string): BufferGeometry {
+  const cached = EYE_SHAPES.get(ink);
+  if (cached) return cached;
+  const parts = EYE_PARTS.map(({ shape, scale, at, color }) =>
+    tintGeometry(
+      shape
+        .clone()
+        .scale(...scale)
+        .translate(...at),
+      color ?? ink,
+    ),
+  );
+  const eye = mergeGeometries(parts) ?? parts[0] ?? new BufferGeometry();
+  for (const part of parts) part.dispose();
+  EYE_SHAPES.set(ink, eye);
+  return eye;
+}
+
 /** Ein Mesh des Gesichts mit Position und Größe. */
 function createPart(
-  geometry: SphereGeometry | CircleGeometry | TorusGeometry,
+  geometry: BufferGeometry,
   material: MeshBasicMaterial,
   scale: [number, number, number],
   position: [number, number, number] = [0, 0, 0],
@@ -85,25 +151,19 @@ function createPart(
 }
 
 /** Ein Auge: dunkle Pupille mit großem und kleinem Glanzpunkt. */
-function createEye(ink: string, side: number) {
-  const eye = new Object3D();
-  eye.add(
-    createPart(SHAPES.pupil, new MeshBasicMaterial({ color: ink }), [0.058, 0.084, 0.022]),
-    createPart(
-      SHAPES.sparkle,
-      new MeshBasicMaterial({ color: HIGHLIGHT }),
-      [0.018, 0.023, 0.008],
-      [-0.016, 0.028, 0.021],
-    ),
-    createPart(
-      SHAPES.sparkle,
-      new MeshBasicMaterial({ color: REFLECTION }),
-      [0.008, 0.01, 0.005],
-      [0.015, -0.026, 0.022],
-    ),
-  );
+function createEye(ink: string, side: number, material: MeshBasicMaterial) {
+  const eye = createPart(findEyeShape(ink), material, [1, 1, 1]);
   placeOnHead(eye, { x: side * EYE.x, y: EYE.y, inset: 0.006 });
   return eye;
+}
+
+/** Holt den Mund in der Tintenfarbe aus dem Cache oder baut ihn. */
+function findMouthShape(ink: string): BufferGeometry {
+  const cached = MOUTH_SHAPES.get(ink);
+  if (cached) return cached;
+  const mouth = tintGeometry(SHAPES.smile.clone(), ink);
+  MOUTH_SHAPES.set(ink, mouth);
+  return mouth;
 }
 
 /** Eine Wange. Startet unsichtbar, die Animation blendet sie beim Stupsen ein. */
@@ -121,17 +181,19 @@ function createCheek(side: number) {
 }
 
 /** Der lächelnde Mund. */
-function createMouth(ink: string) {
-  const mouth = createPart(SHAPES.smile, new MeshBasicMaterial({ color: ink }), [1, 0.65, 1]);
+function createMouth(ink: string, material: MeshBasicMaterial) {
+  const mouth = createPart(findMouthShape(ink), material, [1, 0.65, 1]);
   placeOnHead(mouth, { x: 0, y: -0.165, inset: 0.004, roll: Math.PI });
   return mouth;
 }
 
 /** Das ganze Gesicht in der Tintenfarbe `ink`, in Koordinaten des Jellys. */
 export function createFace(ink: string): Face {
-  const eyes = SIDES.map((side) => createEye(ink, side));
+  // Augen und Mund tragen ihre Farbe in den Vertices, also reicht ein Material für alle drei.
+  const inked = new MeshBasicMaterial({ vertexColors: true });
+  const eyes = SIDES.map((side) => createEye(ink, side, inked));
   const cheeks = SIDES.map((side) => createCheek(side));
-  const mouth = createMouth(ink);
+  const mouth = createMouth(ink, inked);
   const root = new Object3D();
   root.add(...eyes, ...cheeks, mouth);
   return { root, eyes, cheeks, mouth };
