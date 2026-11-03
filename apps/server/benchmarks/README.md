@@ -29,10 +29,16 @@ pro Sekunde.
 
 ## 3D-Bühne
 
-Die Bühne zeichnet mit höchstens 30 Bildern pro Sekunde. Gemessen mit `scripts/demo-docker.sh start
-[Spieler]` und Chromium über das DevTools-Protokoll (`Performance.getMetrics`): Rechenzeit des
-Hauptthreads pro Sekunde, davon Skript, bei 1920×1080 und `?scale=1`. Ein Bild darf höchstens 33 ms
-kosten.
+Die Bühne zeichnet mit höchstens 30 Bildern pro Sekunde. Gemessen mit `pnpm demo` oder
+`scripts/demo-docker.sh start [Spieler]` und Chromium über das DevTools-Protokoll
+(`Performance.getMetrics`): Rechenzeit des Hauptthreads pro Bild, davon Skript, bei 1920×1080 und
+`?scale=1`. Ein Bild darf höchstens 33 ms kosten. Das Skript wartet, bis die Jellies stehen, misst
+dann und speichert auf Wunsch ein Bildschirmfoto:
+
+```sh
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  node benchmarks/stage.mjs "http://127.0.0.1:18092/stage/?key=demo-stage" 20 buehne.png
+```
 
 | Datum      | Commit     | Rechner                     | Jellies | Skript pro Bild | Hauptthread pro Bild |
 | ---------- | ---------- | --------------------------- | ------- | --------------- | -------------------- |
@@ -42,8 +48,13 @@ kosten.
 | 2026-11-03 | `97b009b`  | Apple M1 Pro                | 70, Halle wie oben              | 4,1 ms          | 4,7 ms               |
 | 2026-11-03 | `stage-3d` | Apple M1 Pro                | 70, eingerichtete Bühne, Lounge und Snackbar | 4,2 ms | 4,8 ms       |
 | 2026-11-03 | `stage-3d` | Apple M1 Pro                | 70, wie oben, Leinwand 3840×2160 | 4,6 ms          | 5,3 ms               |
+| 2026-11-03 | `40f575e`  | Apple M1 Pro, `stage.mjs`   | 70, wie oben, 1.473 Draw-Calls   | 5,7 ms          | 6,4 ms               |
+| 2026-11-03 | `0c770d8`  | Apple M1 Pro, `stage.mjs`   | 70, wie oben, 449 Draw-Calls     | 4,6 ms          | 5,4 ms               |
 
-Die Grafikkarte war bei beiden Messungen nicht der Engpass. Auf schwächerer Grafik hilft `?scale=0.5`.
+Die Grafikkarte war bei keiner Messung der Engpass, die Zeit geht in die Vorbereitung der Draw-Calls
+in three.js. Deshalb teilen sich gleiche Teile Geometrie und Material (`deab2e5`). Die beiden
+`stage.mjs`-Zeilen sind Mittel aus drei abwechselnden Läufen zu je 30 Sekunden. Einzelne Läufe streuen
+auf dem Laptop um gut 1 ms, Vergleiche daher immer abwechselnd messen. Auf schwächerer Grafik hilft `?scale=0.5`.
 Noch nicht gemessen ist ein Rechner mit integrierter Grafik, wie er bei der LAN die Bühne zeigen könnte.
 
 Noch nicht gemessen sind offene Streams vieler Bühnen, eine über Tage gewachsene Datenbank und der
