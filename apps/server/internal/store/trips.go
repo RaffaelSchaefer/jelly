@@ -19,6 +19,23 @@ type Trip struct {
 	Until int64   `json:"until"`
 }
 
+// runningFollow says whom a jelly follows and until when. Both are nil without a running follow.
+type runningFollow struct {
+	playerID *int64
+	until    *int64
+}
+
+// findRunningFollow leaves out a follow whose time is over.
+func findRunningFollow(
+	gameRules rules.Rules, follow sql.NullInt64, startedAt, now int64,
+) runningFollow {
+	until := rules.CalculateFollowEnd(gameRules, startedAt)
+	if !follow.Valid || until <= now {
+		return runningFollow{playerID: nil, until: nil}
+	}
+	return runningFollow{playerID: &follow.Int64, until: &until}
+}
+
 // tripColumns holds the stored trip of a jelly, which may be missing or already over.
 type tripColumns struct {
 	x     sql.NullFloat64
@@ -65,7 +82,7 @@ func (store *Store) StartTrip(
 // EndTrip ends a trip or following, so the jelly walks back to its place.
 func (store *Store) EndTrip(ctx context.Context, playerID, now int64) (PlayerState, error) {
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		follow, _, err := loadFollow(ctx, action)
+		follow, err := loadFollow(ctx, action)
 		if err != nil {
 			return err
 		}
@@ -88,12 +105,13 @@ func (store *Store) EndTrip(ctx context.Context, playerID, now int64) (PlayerSta
 	})
 }
 
-// StartFollow lets a jelly follow another one. Following the same jelly again changes nothing.
+// StartFollow lets a jelly follow another one until its time is over. Following the same jelly
+// again changes nothing and does not extend the time.
 func (store *Store) StartFollow(
 	ctx context.Context, playerID, targetID, now int64,
 ) (PlayerState, error) {
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		follow, startedAt, err := loadFollow(ctx, action)
+		follow, err := loadFollow(ctx, action)
 		if err != nil {
 			return err
 		}
@@ -103,9 +121,6 @@ func (store *Store) StartFollow(
 		err = requireFollowTarget(ctx, action, targetID)
 		if err != nil {
 			return err
-		}
-		if !rules.IsFollowAllowed(action.lan.gameRules, startedAt, now) {
-			return ErrFollowCooldown
 		}
 		err = writeFollow(ctx, action, targetID)
 		if err != nil {
@@ -137,18 +152,20 @@ func writeFollow(ctx context.Context, action actionContext, targetID int64) erro
 	return appendVisibleEvent(ctx, action, EventFollowChanged, payload)
 }
 
-// loadFollow returns whom a jelly follows and when it last started to follow someone.
-func loadFollow(ctx context.Context, action actionContext) (sql.NullInt64, int64, error) {
+// loadFollow returns whom a jelly follows right now.
+func loadFollow(ctx context.Context, action actionContext) (sql.NullInt64, error) {
 	var follow sql.NullInt64
-	var startedAt int64
-	const selectFollowSQL = `SELECT follow_player_id, follow_started_at FROM lan_entries
-		WHERE lan_id = ? AND player_id = ?`
-	err := action.transaction.QueryRowContext(ctx, selectFollowSQL,
-		action.lan.id, action.playerID).Scan(&follow, &startedAt)
-	if err != nil {
-		return follow, 0, fmt.Errorf("load follow: %w", err)
+	const selectFollowSQL = `SELECT follow_player_id FROM lan_entries
+		WHERE lan_id = ? AND player_id = ? AND follow_started_at > ?`
+	err := action.transaction.QueryRowContext(ctx, selectFollowSQL, action.lan.id, action.playerID,
+		rules.CalculateFollowCutoff(action.lan.gameRules, action.now)).Scan(&follow)
+	if errors.Is(err, sql.ErrNoRows) {
+		return sql.NullInt64{Int64: 0, Valid: false}, nil
 	}
-	return follow, startedAt, nil
+	if err != nil {
+		return follow, fmt.Errorf("load follow: %w", err)
+	}
+	return follow, nil
 }
 
 // requireFollowTarget allows only other visible jellies of the running LAN, and no circle of
@@ -189,12 +206,13 @@ func requireNoFollowCircle(ctx context.Context, action actionContext, targetID i
 			SELECT ?1
 			UNION
 			SELECT e.follow_player_id FROM lan_entries e JOIN line ON e.player_id = line.player_id
-			WHERE e.lan_id = ?2 AND e.follow_player_id IS NOT NULL
+			WHERE e.lan_id = ?2 AND e.follow_player_id IS NOT NULL AND e.follow_started_at > ?4
 		)
 		SELECT COUNT(*) FROM line WHERE player_id = ?3`
 	var found int
 	err := action.transaction.QueryRowContext(ctx, findCircleSQL,
-		targetID, action.lan.id, action.playerID).Scan(&found)
+		targetID, action.lan.id, action.playerID,
+		rules.CalculateFollowCutoff(action.lan.gameRules, action.now)).Scan(&found)
 	if err != nil {
 		return fmt.Errorf("check follow circle: %w", err)
 	}
@@ -207,11 +225,13 @@ func requireNoFollowCircle(ctx context.Context, action actionContext, targetID i
 // grantConga rewards a line of jellies: several follow the same one, or the followed one follows
 // someone too. Everyone directly in that line gets it, the one in front included.
 func grantConga(ctx context.Context, action actionContext, targetID int64) error {
-	var targetFollows sql.NullInt64
-	const selectTargetFollowSQL = `SELECT follow_player_id FROM lan_entries
-		WHERE lan_id = ? AND player_id = ?`
-	err := action.transaction.QueryRowContext(ctx, selectTargetFollowSQL,
-		action.lan.id, targetID).Scan(&targetFollows)
+	cutoff := rules.CalculateFollowCutoff(action.lan.gameRules, action.now)
+	var targetFollows int
+	const countTargetFollowSQL = `SELECT COUNT(*) FROM lan_entries
+		WHERE lan_id = ? AND player_id = ? AND follow_player_id IS NOT NULL
+		AND follow_started_at > ?`
+	err := action.transaction.QueryRowContext(ctx, countTargetFollowSQL,
+		action.lan.id, targetID, cutoff).Scan(&targetFollows)
 	if err != nil {
 		return fmt.Errorf("load target follow: %w", err)
 	}
@@ -219,7 +239,7 @@ func grantConga(ctx context.Context, action actionContext, targetID int64) error
 	if err != nil {
 		return err
 	}
-	if !targetFollows.Valid && len(followers) < congaFollowers {
+	if targetFollows == 0 && len(followers) < congaFollowers {
 		return nil
 	}
 	for _, playerID := range append(followers, targetID) {
@@ -238,8 +258,9 @@ func grantConga(ctx context.Context, action actionContext, targetID int64) error
 // listFollowers returns who follows a jelly right now.
 func listFollowers(ctx context.Context, action actionContext, targetID int64) ([]int64, error) {
 	const selectFollowersSQL = `SELECT player_id FROM lan_entries
-		WHERE lan_id = ? AND follow_player_id = ?`
-	rows, err := action.transaction.QueryContext(ctx, selectFollowersSQL, action.lan.id, targetID)
+		WHERE lan_id = ? AND follow_player_id = ? AND follow_started_at > ?`
+	rows, err := action.transaction.QueryContext(ctx, selectFollowersSQL, action.lan.id, targetID,
+		rules.CalculateFollowCutoff(action.lan.gameRules, action.now))
 	if err != nil {
 		return nil, fmt.Errorf("list followers: %w", err)
 	}

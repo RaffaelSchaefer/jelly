@@ -22,6 +22,7 @@ type StagePlayer struct {
 	Level          int                         `json:"level"`
 	Sign           *string                     `json:"sign"`
 	FollowPlayerID *int64                      `json:"follow_player_id"`
+	FollowUntil    *int64                      `json:"follow_until"`
 	LastSeenAt     int64                       `json:"last_seen_at"`
 	AreaID         *int64                      `json:"area_id"`
 	Trip           *Trip                       `json:"trip"`
@@ -127,7 +128,7 @@ func loadStagePlayers(
 	ctx context.Context, database querier, lan activeLAN, now int64,
 ) ([]StagePlayer, error) {
 	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, e.xp,
-			e.sign_key, e.follow_player_id, e.last_seen_at, e.area_id,
+			e.sign_key, e.follow_player_id, e.follow_started_at, e.last_seen_at, e.area_id,
 			e.trip_x, e.trip_y, e.trip_until,
 			COALESCE((SELECT MAX(x.created_at) FROM xp_log x
 				WHERE x.player_id = p.id AND x.lan_id = e.lan_id AND x.action IN (?, ?)), 0)
@@ -157,12 +158,12 @@ func loadStagePlayers(
 func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePlayer, error) {
 	var player StagePlayer
 	var lanXP int
-	var lastSnackAt int64
+	var lastSnackAt, followStartedAt int64
 	var trip tripColumns
 	var sign sql.NullString
 	var follow, area sql.NullInt64
 	err := rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP, &sign, &follow,
-		&player.LastSeenAt, &area, &trip.x, &trip.y, &trip.until, &lastSnackAt)
+		&followStartedAt, &player.LastSeenAt, &area, &trip.x, &trip.y, &trip.until, &lastSnackAt)
 	if err != nil {
 		return StagePlayer{}, fmt.Errorf("read stage player: %w", err)
 	}
@@ -172,9 +173,8 @@ func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePla
 	if sign.Valid {
 		player.Sign = &sign.String
 	}
-	if follow.Valid {
-		player.FollowPlayerID = &follow.Int64
-	}
+	running := findRunningFollow(gameRules, follow, followStartedAt, now)
+	player.FollowPlayerID, player.FollowUntil = running.playerID, running.until
 	if area.Valid {
 		player.AreaID = &area.Int64
 	}

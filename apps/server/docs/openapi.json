@@ -749,6 +749,11 @@
             "nullable": true,
             "type": "integer"
           },
+          "follow_until": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
           "hidden": {
             "type": "boolean"
           },
@@ -779,11 +784,6 @@
           },
           "name": {
             "type": "string"
-          },
-          "next_follow_at": {
-            "format": "int64",
-            "nullable": true,
-            "type": "integer"
           },
           "next_poke_at": {
             "format": "int64",
@@ -835,7 +835,7 @@
           "reports",
           "sign",
           "follow_player_id",
-          "next_follow_at",
+          "follow_until",
           "trip",
           "lans_attended",
           "badges",
@@ -1169,6 +1169,11 @@
             "nullable": true,
             "type": "integer"
           },
+          "follow_until": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
           "home_x": {
             "format": "double",
             "type": "number"
@@ -1208,6 +1213,7 @@
           "level",
           "sign",
           "follow_player_id",
+          "follow_until",
           "last_seen_at",
           "area_id",
           "trip",
@@ -2325,7 +2331,7 @@
     },
     "/v1/trips/follow": {
       "post": {
-        "description": "Someone new can be followed once per `follow_cooldown`, see `next_follow_at`. The server may end this by itself, so read `follow_player_id` instead of assuming it stays set.",
+        "description": "The jelly walks back after `follow_seconds`, see `follow_until`. The server may end this by itself, so read `follow_player_id` instead of assuming it stays set.",
         "operationId": "followPlayer",
         "requestBody": {
           "content": {

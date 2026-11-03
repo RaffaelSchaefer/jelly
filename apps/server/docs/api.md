@@ -28,7 +28,7 @@ Aktuelle Version: **1.4.0**
 | Version | Änderung |
 | ------- | -------- |
 | 1.4.0   | Stapel (`POST /stacks`, `POST /stacks/members`, `DELETE /stacks/current`, `stacks` in `GET /stage`, `level` im Weg), `POST /highlights`, Achievements `lighthouse` und `lighthouse-light`. Keine Route antwortet mehr mit `501` |
-| 1.3.0   | `POST /trips/goto`, Folgen mit Abklingzeit (`next_follow_at`, `follow_cooldown`), `409 too_far` bei Partner-Emotes (`near_distance`), Achievement `conga`, `trip` im Stand |
+| 1.3.0   | `POST /trips/goto`, Folgen endet von selbst (`follow_until`, `follow_seconds`), `409 too_far` bei Partner-Emotes (`near_distance`), Achievement `conga`, `trip` im Stand |
 | 1.2.0   | Der Server plant die Wege: `moves` in `GET /stage`, Nachricht `move` und `?topics=` im Stream, Regel `snack_run_seconds` |
 | 1.1.0   | 3D-Bühne: Bereiche haben eine Art (`kind`), `xp.gained` nennt seine Quelle (`source`) |
 | 1.0.0   | Erste Version: Mindestversion, LAN-Status, Konten, Stupser, Lebenszeichen, Berichte, Event-Codes, Emotes, Partner-Emotes, Schilder, Stellen zu einem Jelly, Bühne und Ereignisse |
@@ -109,6 +109,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
   "reports": { "food_ready_at": 0, "drink_ready_at": 0, "reports_left": 8 },
   "sign": null,
   "follow_player_id": null,
+  "follow_until": null,
   "lans_attended": 1,
   "badges": [{ "slug": "ucb-2026", "name": "UCB LAN 2026" }],
   "cosmetics": [],
@@ -219,9 +220,9 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
   Stelle am nächsten dran und nach `trip_seconds` zurück auf seinen Platz. `trip` im Stand nennt `x`, `y` und `until`.
   Punkte außerhalb der Bühne ergeben `400 invalid_trip`.
 - `POST /trips/follow` läuft einem anderen Jelly nach. Bekommt das Ziel einen neuen Weg, plant der Server selbst nach.
-  Wer folgt, kann jemand Neuem erst wieder ab `next_follow_at` folgen, sonst `409 follow_cooldown`. Die Abklingzeit
-  `follow_cooldown` beginnt mit dem Start und läuft auch dann weiter, wenn man vorher aufhört. Einen Kreis aus
-  Folgenden lehnt der Server mit `400 invalid_follow` ab.
+  Nach `follow_seconds` läuft das Jelly zurück auf seinen Platz, `follow_until` im Stand nennt die Zeit. Dann werden
+  `follow_player_id` und `follow_until` ohne eigenes Ereignis wieder `null`. Dasselbe Jelly erneut zu wählen verlängert
+  nichts, ein anderes Jelly startet die Zeit neu. Einen Kreis aus Folgenden lehnt der Server mit `400 invalid_follow` ab.
 - `DELETE /trips/current` beendet beides sofort. Ausflug und Folgen schließen sich aus, das Neue beendet das Alte.
 - Das Achievement `conga` gibt es, wenn mehrere demselben Jelly folgen oder man jemandem folgt, der selbst folgt.
 
@@ -252,7 +253,7 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
   "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "kind": "seats" }],
   "players": [{
     "id": 1, "name": "Glibber", "color": "mint", "equipped": {}, "level": 1,
-    "sign": null, "follow_player_id": null, "last_seen_at": 1795000000000,
+    "sign": null, "follow_player_id": null, "follow_until": null, "last_seen_at": 1795000000000,
     "area_id": 1, "trip": null, "home_x": 24.2, "home_y": 61.8
   }],
   "moves": [{

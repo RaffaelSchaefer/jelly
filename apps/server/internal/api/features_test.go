@@ -437,7 +437,7 @@ func TestRulesCanChangeDuringALAN(t *testing.T) {
 		`"report_cooldown":1800,"report_window":86400,"reports_per_window":8,` +
 		`"presence_window":5400,"emote_cooldown":3,"partner_invite_seconds":120,"partner_xp":5,` +
 		`"full_house_percent":33,"max_players":120,"max_streams":200,"max_player_streams":3,` +
-		`"snack_run_seconds":14,"trip_seconds":300,"follow_cooldown":1800,"near_distance":6,` +
+		`"snack_run_seconds":14,"trip_seconds":300,"follow_seconds":1800,"near_distance":6,` +
 		`"walk_speed":1.4,"stack_seconds":120,"stack_max_members":8,` +
 		`"highlight_seconds":10,"highlight_cooldown":30}`
 	response := testFixture.callAdmin("PUT", "/admin/api/lans/1/rules", body)

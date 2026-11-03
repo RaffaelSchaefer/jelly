@@ -69,21 +69,72 @@ func TestEndingATripWalksHomeAtOnce(t *testing.T) {
 	}
 }
 
-func TestFollowingSomeoneNewWaitsForTheCooldown(t *testing.T) {
+func TestFollowingEndsAfterItsTimeAndTheJellyWalksBack(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
-	first := testFixture.registerPlayer("B")
-	second := testFixture.registerPlayer("C")
-	state := decodeBody[store.PlayerState](t, testFixture.follow(token, first))
+	target := testFixture.registerPlayer("B")
+	testFixture.readStage(token)
+	testFixture.advanceClock(time.Second)
+	state := decodeBody[store.PlayerState](t, testFixture.follow(token, target))
 	want := testFixture.clock.Load() + (30 * time.Minute).Milliseconds()
-	if state.NextFollowAt == nil || *state.NextFollowAt != want {
-		t.Fatalf("next follow = %v, want %d", state.NextFollowAt, want)
+	if state.FollowUntil == nil || *state.FollowUntil != want {
+		t.Fatalf("follow until = %v, want %d", state.FollowUntil, want)
 	}
-	requireProblem(t, testFixture.follow(token, second), http.StatusConflict, "follow_cooldown")
-	testFixture.callAPI("DELETE", "/v1/trips/current", token, "")
-	requireProblem(t, testFixture.follow(token, second), http.StatusConflict, "follow_cooldown")
+	testFixture.advanceClock(time.Second)
+	playerID := state.ID
+	if kind := findMoveOf(
+		t,
+		testFixture.readStage(token),
+		playerID,
+	).Kind; kind != movement.KindFollow {
+		t.Fatalf("kind = %s", kind)
+	}
 	testFixture.advanceClock(30 * time.Minute)
-	if response := testFixture.follow(token, second); response.status != http.StatusOK {
+	testFixture.pokePlayer(token)
+	testFixture.pokePlayer(target)
+	answer := testFixture.readStage(token)
+	if kind := findMoveOf(t, answer, playerID).Kind; kind != movement.KindWander {
+		t.Fatalf("after the time, kind = %s", kind)
+	}
+	if me := testFixture.loadMe(token); me.FollowPlayerID != nil || me.FollowUntil != nil {
+		t.Fatalf("follow = %v until %v", me.FollowPlayerID, me.FollowUntil)
+	}
+}
+
+func TestFollowingSomeoneElseStartsANewTime(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	testFixture.follow(token, testFixture.registerPlayer("B"))
+	testFixture.advanceClock(time.Minute)
+	state := decodeBody[store.PlayerState](
+		t,
+		testFixture.follow(token, testFixture.registerPlayer("C")),
+	)
+	want := testFixture.clock.Load() + (30 * time.Minute).Milliseconds()
+	if state.FollowUntil == nil || *state.FollowUntil != want {
+		t.Fatalf("follow until = %v, want %d", state.FollowUntil, want)
+	}
+}
+
+func TestFollowingTheSameJellyAgainKeepsTheTime(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	target := testFixture.registerPlayer("B")
+	first := decodeBody[store.PlayerState](t, testFixture.follow(token, target))
+	testFixture.advanceClock(time.Minute)
+	second := decodeBody[store.PlayerState](t, testFixture.follow(token, target))
+	if *first.FollowUntil != *second.FollowUntil {
+		t.Fatalf("until moved from %d to %d", *first.FollowUntil, *second.FollowUntil)
+	}
+}
+
+func TestAnExpiredFollowIsNoCircle(t *testing.T) {
+	testFixture := newFixture(t)
+	first := testFixture.registerPlayer("A")
+	second := testFixture.registerPlayer("B")
+	testFixture.follow(first, second)
+	testFixture.advanceClock(30 * time.Minute)
+	if response := testFixture.follow(second, first); response.status != http.StatusOK {
 		t.Fatalf("follow: %d %s", response.status, response.body)
 	}
 }
@@ -171,14 +222,25 @@ func TestPartnerEmoteNeedsToStandNearby(t *testing.T) {
 	}
 }
 
+// findMoveOf returns the current move of a jelly.
+func findMoveOf(t *testing.T, answer api.StageAnswer, playerID int64) movement.Move {
+	t.Helper()
+	for _, move := range answer.Moves {
+		if move.PlayerID == playerID {
+			return move
+		}
+	}
+	t.Fatalf("jelly %d has no move", playerID)
+	return movement.Move{}
+}
+
 // findPointOf returns where the current move of a jelly ends.
 func findPointOf(t *testing.T, answer api.StageAnswer, playerID string) movement.Point {
 	t.Helper()
-	for _, move := range answer.Moves {
-		if strconv.FormatInt(move.PlayerID, 10) == playerID {
-			return move.Points[len(move.Points)-1].Point
-		}
+	number, err := strconv.ParseInt(playerID, 10, 64)
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Fatalf("jelly %s has no move", playerID)
-	return movement.Point{}
+	move := findMoveOf(t, answer, number)
+	return move.Points[len(move.Points)-1].Point
 }

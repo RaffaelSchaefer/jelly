@@ -60,7 +60,7 @@ type PlayerState struct {
 	Reports        *rules.ReportStatus         `json:"reports"`
 	Sign           *string                     `json:"sign"`
 	FollowPlayerID *int64                      `json:"follow_player_id"`
-	NextFollowAt   *int64                      `json:"next_follow_at"`
+	FollowUntil    *int64                      `json:"follow_until"`
 	Trip           *Trip                       `json:"trip"`
 	LANsAttended   int                         `json:"lans_attended"`
 	Badges         []Badge                     `json:"badges"`
@@ -71,17 +71,16 @@ type PlayerState struct {
 
 // entryRow is the latest entry as stored in the database.
 type entryRow struct {
-	lanID     int64
-	info      LANInfo
-	startsAt  int64
-	endsAt    int64
-	rulesJSON string
-	joinedAt  int64
-	xp        int
-	sign      sql.NullString
-	follow    sql.NullInt64
-	trip      tripColumns
-	// followStartedAt is 0 if the player has not followed anyone in this LAN.
+	lanID           int64
+	info            LANInfo
+	startsAt        int64
+	endsAt          int64
+	rulesJSON       string
+	joinedAt        int64
+	xp              int
+	sign            sql.NullString
+	follow          sql.NullInt64
+	trip            tripColumns
 	followStartedAt int64
 }
 
@@ -181,9 +180,6 @@ func loadProgress(ctx context.Context, database querier, state *PlayerState, now
 	if row.sign.Valid {
 		state.Sign = &row.sign.String
 	}
-	if row.follow.Valid {
-		state.FollowPlayerID = &row.follow.Int64
-	}
 	state.Trip = row.trip.findRunningTrip(now)
 	return loadActiveTimers(ctx, database, state, row, now)
 }
@@ -202,8 +198,8 @@ func loadActiveTimers(
 	}
 	nextPokeAt := rules.CalculateNextPokeTime(gameRules, lastPokeAt, row.joinedAt)
 	state.NextPokeAt = &nextPokeAt
-	nextFollowAt := rules.CalculateNextFollowTime(gameRules, row.followStartedAt)
-	state.NextFollowAt = &nextFollowAt
+	follow := findRunningFollow(gameRules, row.follow, row.followStartedAt, now)
+	state.FollowPlayerID, state.FollowUntil = follow.playerID, follow.until
 	history, err := loadReportHistory(ctx, database, row.lanID, state.ID)
 	if err != nil {
 		return err

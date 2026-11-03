@@ -240,9 +240,6 @@ func listGameErrors() []knownError {
 			http.StatusBadRequest, "invalid_follow",
 			"Zu diesem Jelly kannst du dich nicht stellen.",
 		}},
-		{store.ErrFollowCooldown, problem{
-			http.StatusConflict, "follow_cooldown", "Du kannst gerade niemand Neuem folgen.",
-		}},
 		{store.ErrInvalidTrip, problem{
 			http.StatusBadRequest, "invalid_trip", "Dieser Punkt liegt nicht auf der Bühne.",
 		}},
