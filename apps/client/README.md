@@ -1,8 +1,9 @@
 # Jelly
 
 Ein kleiner Desktop-Begleiter für die LAN am Umwelt-Campus Birkenfeld im November 2026. Ein
-minimalistisches 3D-Pet schwebt über einer kompakten Glas-Leiste. Essen, Getränke und Events werden
-auf Vertrauensbasis selbst gemeldet.
+minimalistisches 3D-Pet schwebt über einer kompakten Glas-Leiste. Essen und Getränke werden auf
+Vertrauensbasis selbst gemeldet, Events per Code. Über XP entscheidet der Jelly-Server
+(`apps/server`).
 
 Der erste Prototyp ist eine **Tauri-Desktop-App mit Rust-Backend** und einer
 **React-/TypeScript-Oberfläche mit React Three Fiber und Three.js**. Die 3D-Figur ist ein
@@ -43,8 +44,29 @@ pnpm run webpreview:dev
 ```
 
 Die Vorschau liegt unter [localhost:1420](http://127.0.0.1:1420). Dort lassen sich die Panels und
-das Aussehen ausprobieren. **XP-Aktionen und Speicherung laufen ausschließlich im nativen
-Rust-Backend** und sind im Browser deaktiviert.
+das Aussehen mit Beispieldaten ausprobieren. **Konto, XP-Aktionen und Speicherung laufen
+ausschließlich über das native Rust-Backend** und sind im Browser deaktiviert.
+
+## Server
+
+Die App braucht einen laufenden Jelly-Server. Rust spricht mit ihm über HTTP und hält das Token,
+die Oberfläche bekommt nur den fertigen Stand. Die Adresse steht beim Bauen fest:
+
+```sh
+JELLY_SERVER_URL=https://jelly.example.org pnpm run tauri build   # ohne Angabe: http://localhost:8080
+```
+
+Für die Entwicklung einen lokalen Server mit laufender LAN starten (in `apps/server`):
+
+```sh
+export JELLY_DB=/tmp/jelly.db JELLY_STAGE_KEY=buehne JELLY_ADMIN_SECRET=admin
+JELLY_JOIN_CODE=1234 go run ./cmd/jelly-server create-lan -slug test -name Test-LAN \
+  -from 2026-11-01T00:00:00+01:00 -to 2026-11-30T00:00:00+01:00
+go run ./cmd/jelly-server
+```
+
+Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`. Beim Start prüft sie
+`GET /version` und bittet um ein Update, wenn der Server eine neuere App verlangt.
 
 ## Im Prototyp enthalten
 
@@ -52,20 +74,29 @@ Rust-Backend** und sind im Browser deaktiviert.
 - Animiertes Jelly-Pet mit Raymarching-Shader; drei Farben und ein eigener Name.
 - Cosmetics zum Freischalten über Level, Erfolge und Events. Die 3D-Modelle kommen aus der
   Blender-Pipeline in `blender/`; im Repository liegen noch keine.
-- Kleine Glas-Leiste mit LAN-Aktionen, Anpassung und Einstellungen.
-- Essen: +15 XP, Getränk: +10 XP, Event: +30 XP; je 100 XP ein Level. Selbstmeldungen haben je Art
-  eine Abklingzeit von 30 Minuten und ein Limit von 8 pro 24 Stunden.
-- Pet-Klicks und Tasten im fokussierten Pet-Fenster: +1 XP, maximal einmal pro Sekunde. Eingaben in
-  Formularen und auf Bedienelementen werden nicht gezählt.
-- Lokaler Spielstand in `pet.json` im plattformspezifischen App-Datenverzeichnis für
-  `de.ucb.jelly`. Rust validiert den Zustand und ersetzt die Datei erst nach einem vollständigen
-  Schreibvorgang. Fehler werden im Pet angezeigt; defekte oder unbekannte Dateiformate werden nicht
-  still zurückgesetzt.
+- Kleine Glas-Leiste mit LAN-Aktionen, Studio und Einstellungen.
+- Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Effekten und Körper öffnen flüssige Popovers für
+  Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
+  Kamera fährt zur Region, das Namensschild unter den Füßen ist das Eingabefeld. Jede Wahl gilt
+  sofort.
+- Konto anlegen oder einer neuen LAN beitreten, jeweils mit dem Code der Orga.
+- XP, Level, Cosmetics und Erfolge kommen vom Server. Mit seinen Standardregeln: Stupser +3 XP alle
+  15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level.
+  Die App fragt nur beim Server, wenn ein Stupser wieder etwas bringt.
+- Ereignisse vom Server (neue XP, Erfolge, Auszeichnungen) kommen per Stream und lösen eine
+  Sprechblase aus. Alle 5 Minuten meldet die App, dass sie noch läuft.
+- Lokal in `jelly.json` im App-Datenverzeichnis für `de.ucb.jelly` liegen nur Token, Größe und
+  „Weniger Bewegung“. Rust ersetzt die Datei erst nach einem vollständigen Schreibvorgang. Defekte
+  oder unbekannte Dateiformate werden nicht still zurückgesetzt, und das Token wird nie wegen eines
+  Netzfehlers gelöscht.
 - Eine zweite gestartete Instanz aktiviert das vorhandene Pet, damit nicht zwei unabhängige Prozesse
   denselben Spielstand überschreiben.
 - Animation mit etwa 30 Bildern pro Sekunde, begrenzter Pixeldichte und Pause bei verborgenem
   WebView. Die Option „Weniger Bewegung“ und die entsprechende Systemeinstellung reduzieren die
   Animation auf eine statische Darstellung.
+
+> **Alte Spielstände:** Vor der Server-Anbindung rechnete die App XP lokal in `pet.json`. Diese Datei
+> bleibt unberührt, ihr Fortschritt lässt sich aber nicht auf den Server übertragen.
 
 > **Umbenennung:** Bis Ende Oktober 2026 hieß die App „LAN Desk Pet“ mit dem Identifier
 > `de.ucb.lan-desk-pet`. Spielstände von damals liegen weiter im alten App-Datenverzeichnis und
@@ -80,29 +111,37 @@ src/
   App.tsx             Fenster zusammenstecken: Knöpfe, Bühne, Panel, Dock
   backend.ts          einziger Ort mit Tauri-Aufrufen, ein Wrapper je Rust-Befehl
   usePet.ts           Hooks: Spielstand, Aktionen, Tastatur-Stupser, Größen-Regler
-  pet/                reine Spiellogik ohne React (spiegelt src-tauri/src/pet.rs)
-  panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Aussehen, Einstellungen)
-  scene/              3D: Canvas, Pet und Cosmetics; Jelly und Animation aus packages/jelly-scene
-    shaders/          GLSL der Cosmetics (Toon, Outline), per `?raw` importiert
+  useGame.ts          Hooks: Stand halten, Aufrufe, Server-Ereignisse, Lebenszeichen
+  WindowChrome.tsx    Fensterknöpfe, Kopf- und Fußzeile der Vorschau
+  Studio.tsx          Anpassen direkt am Jelly: Blobs, Popovers, Namensschild
+  studio/             Bausteine des Studios (Blob, Popover, Namensschild)
+  pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
+  panels/             Inhalte der Glas-Panels (Beitritt, XP mit Reitern, Level, Einstellungen)
+  scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet und Cosmetics; Jelly und
+                      Animation aus packages/jelly-scene
+    shaders/          GLSL der Cosmetics (Toon, Outline) und des Studio-Glases, per `?raw` importiert
   ui/                 Design-System-Bausteine (siehe `pnpm ds:bundle`)
   cosmetics/          3D-Modelle (.glb) aus Blender, nach Cosmetic-ID benannt
   styles.css          Transparenz, Leiste, Panels und Browser-Vorschau
+  studio.css          Knöpfe und Vorlagen des Studios
 src-tauri/
   src/main.rs         Desktop-Einstieg, ruft nur jelly_lib::run()
   src/lib.rs          App zusammensetzen: Plugins, State, Befehle
   src/commands.rs     Tauri-Befehle, die die Oberfläche aufruft
+  src/api.rs          Typen aus dem Server-Vertrag und HTTP-Client
+  src/events.rs       Ereignis-Stream des Servers an die Oberfläche weiterleiten
   src/error.rs        alle Fehler mit deutscher Meldung für die Oberfläche
-  src/pet.rs          Spielmodell, XP-Regeln und Validierung, ohne Dateizugriff
-  src/store.rs        Spielstand atomar laden und speichern
+  src/pet.rs          lokaler Stand und reine Regeln, ohne Dateizugriff und Netz
+  src/store.rs        lokalen Stand atomar laden und speichern
   tauri.conf.json     Desktop-Fenster und Content Security Policy
-  capabilities/       Berechtigungen für Fensterbedienung
+  capabilities/       Berechtigungen für Fensterbedienung und Server-Ereignisse
 blender/              Cosmetic-Pipeline und Referenzkörper für Blender
 scripts/              Hilfsskripte (Rust-Pfad, Design-System-Bundle, Blender-Export)
 ```
 
-Die Oberfläche übermittelt nur die Aktion oder die Anpassung an Rust; sie kann keinen beliebigen
-XP-Wert oder Dateipfad setzen. Die App hat noch keine Accounts und spricht noch nicht mit dem Server
-in `apps/server`. Eine externe Kauf- oder Veranstaltungsprüfung gibt es nicht.
+Die Oberfläche übermittelt nur die Aktion oder die Anpassung an Rust, Rust nur die Absicht an den
+Server. Niemand außer dem Server setzt XP. Das Token verlässt Rust nie, deshalb bleibt die Content
+Security Policy der Oberfläche auf `ipc:` beschränkt.
 
 ## Dokumentation und Konventionen
 
@@ -113,7 +152,7 @@ Kommentare und Doku-Kommentare sind auf Deutsch, UI-Texte ebenfalls.
 - Jede Datei beginnt mit `/** … @module */`: welche Rolle sie hat und mit wem sie spricht.
 - Jeder Export bekommt `/** … */` mit einem Satz, was er ist. `@param`/`@returns` nur, wenn der
   Name nicht reicht. Typen stehen nie im Kommentar, die kennt TypeScript.
-- Werte, die Rust erzwingt (Grenzen, XP, Typen), nennen ihr Gegenstück in Rust.
+- Werte, die Rust oder der Server erzwingen (Grenzen, XP, Typen), nennen ihr Gegenstück.
 - `//` im Code erklärt das Warum, nie das Was.
 
 **Rust** (`cargo doc`):
@@ -153,7 +192,12 @@ Frontend-Tests, den Frontend-Build und die Rust-Tests.
    durchklickbar. Position und Fenstergröße werden noch nicht gespeichert. Always-on-top garantiert
    keine Sichtbarkeit über exklusivem Vollbild. Linux und macOS brauchen eigene Tests auf echter
    Hardware.
-3. **Charakter und Fortschritt:** Den Platzhalter gemeinsam gestalten, dann Reaktionen und kleine
+3. **Rest der Server-API:** Noch nicht angebunden sind Emotes (`POST /v1/emote`), Schilder
+   (`PUT`/`DELETE /v1/sign`), Dazustellen (`PUT`/`DELETE /v1/follow`), Partner-Emotes
+   (`POST /v1/partner-emote`, `/join`), die Bühne (`GET /v1/stage`) und die Stream-Ereignisse
+   `emote`, `partner.emote`, `sign.changed`, `follow.changed` und `stage.changed`. Die Server-Adresse
+   lässt sich noch nicht zur Laufzeit ändern.
+4. **Charakter und Fortschritt:** Den Platzhalter gemeinsam gestalten, dann Reaktionen und kleine
    Belohnungen passend zur LAN festlegen. Die aktuellen XP-Werte sind Prototypwerte. Noch keine
    Hunger-/Durstsimulation.
 

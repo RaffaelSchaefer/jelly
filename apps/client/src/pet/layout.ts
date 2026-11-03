@@ -7,6 +7,13 @@
 
 import { PET_SIZE } from "./types";
 
+/**
+ * So viel größer als die Maße hier ist die Canvas wirklich. Die Tropfen des Studios brauchen Platz
+ * über ihren Rand hinaus. Das Pet bleibt, wo es ist: Die Canvas ragt nach allen Seiten gleich weit
+ * über, und die Kamera sieht um denselben Faktor mehr (siehe `scene/PetScene.tsx`).
+ */
+export const CANVAS_OVERSCAN = 1.5;
+
 /** Maße der Bühne bei 100 % in CSS-Pixeln. Muss zu `.pet-stage` in `styles.css` passen. */
 const BASE = {
   stage: 330,

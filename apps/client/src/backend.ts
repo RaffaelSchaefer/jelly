@@ -1,35 +1,77 @@
 /**
  * Die einzige Stelle, die mit dem Rust-Backend und dem Desktop-Fenster spricht.
  *
- * Jede Funktion entspricht einem Befehl in `src-tauri/src/commands.rs`. Schlägt ein Befehl fehl,
- * kommt die fertige deutsche Meldung aus `error.rs` als Text an und wird mit `String(cause)`
- * angezeigt. Im Browser (`pnpm webpreview:dev`) gibt es kein Backend: Dort ist {@link desktop}
- * `false`, und es darf nichts von hier aufgerufen werden.
+ * Jede Funktion entspricht einem Befehl in `src-tauri/src/commands.rs`. Rust spricht mit dem Server
+ * und hält das Token, die Oberfläche sieht nur den fertigen {@link Game}. Schlägt ein Befehl fehl,
+ * kommt eine fertige deutsche Meldung als Text an und wird mit `String(cause)` angezeigt. Im
+ * Browser (`pnpm webpreview:dev`) gibt es kein Backend: Dort ist {@link desktop} `false`, und es
+ * darf nichts von hier aufgerufen werden.
  *
  * @module
  */
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import type { Action, Appearance, Pet } from "./pet";
+import type { Action, Catalog, Game, PetColor, ServerEvent, Settings } from "./pet";
 
 /** Läuft die Oberfläche in der Desktop-App (sonst: Browser-Vorschau)? */
 export const desktop = isTauri();
 
-/** Aktueller Spielstand (`get_pet`). */
-export const getPet = () => invoke<Pet>("get_pet");
+/** Ergebnis einer Aktion: gewonnene XP und neuer Stand. */
+export interface ActResult {
+  xpGained: number;
+  game: Game;
+}
 
-/** Stupser oder Selbstmeldung (`interact`). Events laufen nicht hierüber. */
-export const interact = (action: Action) => invoke<Pet>("interact", { action });
+/** Ergebnis eines eingelösten Event-Codes. */
+export interface RedeemResult extends ActResult {
+  /** Titel des Events. */
+  title: string;
+}
 
-/** Übernimmt Name, Farbe, Bewegung und Größe (`customize_pet`). */
-export const customizePet = (appearance: Appearance) =>
-  invoke<Pet>("customize_pet", { appearance });
+/** Lädt Stand und LAN neu (`get_game`). Prüft beim ersten Mal die App-Version. */
+export const getGame = () => invoke<Game>("get_game");
+
+/** Feste Listen des Servers (`get_catalog`). */
+export const getCatalog = () => invoke<Catalog>("get_catalog");
+
+/** Legt ein Konto an (`register`). */
+export const register = (code: string, name: string, color: PetColor) =>
+  invoke<Game>("register", { code, name, color });
+
+/** Tritt mit einem vorhandenen Konto der laufenden LAN bei (`join_lan`). */
+export const joinLan = (code: string) => invoke<Game>("join_lan", { code });
+
+/** Stupser oder Selbstmeldung (`act`). */
+export const act = (action: Action) => invoke<ActResult>("act", { action });
+
+/** Löst einen Event-Code ein (`redeem_code`). */
+export const redeemCode = (code: string) => invoke<RedeemResult>("redeem_code", { code });
+
+/** Was sich am Profil ändert. Fehlende Felder bleiben, wie sie sind. */
+export interface ProfilePatch {
+  name?: string;
+  color?: PetColor;
+}
+
+/** Übernimmt Name und/oder Farbe (`update_profile`). */
+export const updateProfile = (patch: ProfilePatch) => invoke<Game>("update_profile", { ...patch });
 
 /** Legt ein Cosmetic an oder mit `null` ab (`equip_cosmetic`). */
 export const equipCosmetic = (cosmetic: string | null) =>
-  invoke<Pet>("equip_cosmetic", { cosmetic });
+  invoke<Game>("equip_cosmetic", { cosmetic });
+
+/** Übernimmt Größe und Bewegung, nur auf diesem Gerät (`update_settings`). */
+export const updateSettings = (settings: Settings) => invoke<Game>("update_settings", { settings });
+
+/** Meldet, dass die App noch läuft (`presence`). */
+export const presence = () => invoke<Game>("presence");
+
+/** Hört auf Ereignisse zum eigenen Jelly. Liefert die Funktion zum Abmelden. */
+export const onServerEvent = (handler: (event: ServerEvent) => void) =>
+  listen<ServerEvent>("server-event", (event) => handler(event.payload));
 
 /** Was die Fensterknöpfe tun. Freigegeben in `src-tauri/capabilities/main.json`. */
 export type WindowAction = "drag" | "minimize" | "close";

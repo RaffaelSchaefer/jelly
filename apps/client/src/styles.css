@@ -4,14 +4,16 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --text-muted: #b4bec4;
+  --text-muted: #c6d0d5;
   /* UI theme follows the pet's colour (html[data-pet-color], set in App.tsx). Aqua is the default. */
   --accent: #9fe6f2;
   --accent-ink: #0e2c38;
   --base: #1a2630;
   --backdrop: #2a3b46;
   --backdrop-deep: #121a23;
-  --surface: color-mix(in srgb, var(--base) 90%, transparent);
+  /* Sprechblase, Dock und Panels: heller als der Grund, damit sie neben den Tropfen des Studios bestehen. */
+  --surface-solid: color-mix(in srgb, var(--backdrop) 84%, var(--accent));
+  --surface: color-mix(in srgb, var(--surface-solid) 95%, transparent);
   --line: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 :root[data-pet-color='lilac'] { --accent: #dcc2fb; --accent-ink: #2a1546; --base: #231e2d; --backdrop: #3a3047; --backdrop-deep: #16131d; }
@@ -52,14 +54,14 @@ html[data-surface='preview'] .pet-window { position: absolute; top: 50%; left: 5
 .icon-button:hover:enabled { background: #ffffff10; }
 .drag-handle { cursor: grab; touch-action: none; }
 .pet-stage { position: relative; height: var(--stage-height, 330px); display: flex; flex-direction: column; align-items: center; }
-.speech { --bubble: var(--base); --bubble-line: color-mix(in srgb, var(--accent) 16%, var(--base)); font-size: 12px; color: #dde6ea; letter-spacing: 0.1px; margin: var(--bubble-top, 20px) 0 0; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--bubble-line); background: var(--bubble); box-shadow: 0 4px 14px #0003; position: relative; z-index: 2; }
+.speech { --bubble: var(--surface-solid); --bubble-line: color-mix(in srgb, var(--accent) 22%, var(--surface-solid)); font-size: 12px; color: #dde6ea; letter-spacing: 0.1px; margin: var(--bubble-top, 20px) 0 0; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--bubble-line); background: var(--bubble); box-shadow: 0 4px 14px #0003; position: relative; z-index: 2; }
 .speech::after { content: ''; position: absolute; left: calc(50% - 5px); bottom: -6px; width: 10px; height: 10px; transform: rotate(45deg); background: var(--bubble); border-right: 1px solid var(--bubble-line); border-bottom: 1px solid var(--bubble-line); border-bottom-right-radius: 2px; }
 .pet-touch { position: absolute; top: var(--canvas-top, 43px); left: 50%; width: var(--canvas-width, 396px); margin-left: calc(var(--canvas-width, 396px) / -2); height: var(--canvas-height, 315px); padding: 0; background: none; border: 0; opacity: 1 !important; cursor: pointer; z-index: 1; }
 .pet-touch:disabled { cursor: default; }
 .ground-shadow { position: absolute; top: var(--feet, 299px); width: calc(140px * var(--pet-scale, 1)); height: calc(18px * var(--pet-scale, 1)); border-radius: 50%; background: #08141177; filter: blur(9px); }
 .pet-controls { position: relative; z-index: 3; margin: 8px auto 0; width: fit-content; }
 .dock, .panel { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 28px #0003, inset 0 1px 0 #ffffff08; backdrop-filter: blur(22px) saturate(125%); -webkit-backdrop-filter: blur(22px) saturate(125%); border-radius: 18px; }
-.dock { padding: 3px; border-radius: 11px; background: color-mix(in srgb, var(--base) 85%, transparent); border-color: #ffffff0d; box-shadow: 0 3px 10px #0002; }
+.dock { padding: 3px; border-radius: 11px; background: var(--surface); border-color: #ffffff0d; box-shadow: 0 3px 10px #0002; }
 .level-summary { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
 .xp-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 10px; color: var(--text-muted); margin-bottom: 10px; }
 .xp-row > span:first-child { display: flex; align-items: center; gap: 6px; color: var(--accent); }
@@ -74,7 +76,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .dock nav button svg { width: 17px; height: 17px; }
 .dock nav button:hover { background: #ffffff0d; color: #f4f8fa; }
 .dock nav button[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
-.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px 8px 16px 16px; border-radius: 16px; max-height: calc(var(--stage-height, 330px) + 28px); overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
+.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; max-height: calc(var(--stage-height, 330px) + 28px); overflow-y: auto; scrollbar-gutter: stable both-edges; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
 /* Panels fill the stage above the dock (tools + stage + gap - panel gap - window padding), never past the window top.
    The XP panel reaches over the bubble; its text would shine through the glass. */
 .pet-window:has(.tabs) .speech { visibility: hidden; }
@@ -119,22 +121,10 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .xp-entry.live .xp-entry-end small { color: var(--accent); }
 .report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .report-button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; text-align: left; border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 11px; }
-.report-button:hover:enabled, .cosmetic-tile:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); }
+.report-button:hover:enabled { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); }
 .report-button .action-xp { display: block; margin-top: 1px; font-variant-numeric: tabular-nums; }
-.chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.chips button { height: 24px; padding: 0 10px; border: 1px solid #ffffff0d; border-radius: 7px; background: transparent; color: var(--text-muted); font-size: 10px; font-weight: 550; }
-.chips button[aria-pressed='true'] { border-color: color-mix(in srgb, var(--accent) 17%, transparent); background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
-.cosmetic-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
-.cosmetic-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px 8px; border: 1px solid #ffffff0d; border-radius: 11px; background: #ffffff04; }
-.cosmetic-tile strong { font-size: 11px; font-weight: 550; }
-.cosmetic-tile small { display: flex; align-items: center; gap: 3px; font-size: 9px; color: var(--text-muted); }
-.cosmetic-tile small svg { width: 10px; height: 10px; }
-.cosmetic-tile[aria-pressed='true'] { border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.cosmetic-tile.equipped { border-color: var(--accent); }
-.cosmetic-tile.equipped small { color: var(--accent); font-size: 10px; }
 .cosmetic-preview { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
 .cosmetic-preview svg { width: 22px; height: 22px; }
-.cosmetic-tile.locked .cosmetic-preview { background: #ffffff12; color: var(--text-muted); }
 .cosmetic-detail { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #ffffff0d; border-radius: 11px; background: #ffffff04; }
 .cosmetic-detail.featured { border-color: color-mix(in srgb, var(--accent) 17%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .cosmetic-detail > span:nth-child(2) { flex: 1; min-width: 0; }
@@ -158,7 +148,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .secondary-button { border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 9px; padding: 10px 14px; font-size: 11px; font-weight: 550; }
 .secondary-button:hover { background: #ffffff0d; }
 .field-label, legend { display: block; font-size: 11px; color: #ccd6db; margin: 13px 0 8px; }
-input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent); background: color-mix(in srgb, var(--base) 65%, black); color: #f4f8fa; padding: 10px 12px; border-radius: 9px; font-size: 13px; }
+input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent); background: color-mix(in srgb, var(--base) 70%, var(--surface-solid)); color: #f4f8fa; padding: 10px 12px; border-radius: 9px; font-size: 13px; }
 .colors { border: 0; margin: 14px 0 20px; padding: 0; display: flex; gap: 17px; }
 .colors legend { margin: 0 0 11px; }
 .color-choice { position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 10px; color: var(--text-muted); cursor: pointer; padding: 2px; }
@@ -167,6 +157,8 @@ input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix
 .color-choice input:checked + .swatch { box-shadow: 0 0 0 2px var(--swatch-fill); }
 .color-choice input:focus-visible + .swatch { outline: 2px solid white; outline-offset: 5px; }
 .primary-button { border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); background: var(--accent); color: var(--accent-ink); border-radius: 9px; padding: 10px 14px; font-size: 11px; font-weight: 650; width: 100%; }
+/* Knopf direkt unter einem Textfeld (Beitritt). Nach den Farben sorgt `.colors` für Abstand. */
+input + .primary-button { margin-top: 16px; }
 .primary-button:hover:enabled { background: color-mix(in srgb, var(--accent) 80%, white); }
 .size-row { padding: 4px 0 13px; border-bottom: 1px solid var(--line); }
 .size-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
@@ -186,6 +178,40 @@ input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix
 .error button { border: 1px solid #ffded566; color: inherit; background: #ffffff0e; padding: 8px; margin-top: 10px; border-radius: 6px; }
 .render-fallback { display: block; padding: 70px 35px; font-size: 12px; line-height: 1.7; text-align: center; color: #d6e0e4; }
 .loading { font-size: 11px; text-align: center; margin: 4px; }
+/* Reiter „Einlösen“: Ticket im Textring. `paused` statt ausgeschaltet, damit der Ring beim Verlassen stehen bleibt, statt zurückzuspringen. */
+.redeem { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 4px; }
+.redeem-seal { position: relative; display: grid; place-items: center; width: 172px; height: 172px; border-radius: 50%; color: var(--accent); background: radial-gradient(circle, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 64%); }
+.redeem-seal::before { content: ''; position: absolute; inset: 28px; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--accent) 32%, transparent); transition: border-color 300ms, inset 400ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.redeem-seal::after { content: ''; position: absolute; inset: 0; border-radius: 50%; opacity: 0; background: conic-gradient(transparent 62%, var(--accent)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); animation: redeem-spin 4s linear infinite paused; transition: opacity 400ms; }
+.redeem-seal:hover::before { inset: 24px; border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
+.redeem-seal:hover::after { opacity: 1; animation-play-state: running; }
+.redeem-ring { position: absolute; inset: 0; width: 100%; height: 100%; animation: redeem-spin 24s linear infinite paused; }
+.redeem-ring text { fill: currentColor; font-size: 12.5px; font-weight: 650; }
+.redeem-seal:hover .redeem-ring { animation-play-state: running; }
+.redeem-ticket { position: relative; display: grid; place-items: center; }
+.redeem-ticket svg { width: 84px; height: 84px; stroke-width: 1.2; transform: rotate(-14deg); filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 45%, transparent)); transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 300ms; }
+.redeem-seal:hover .redeem-ticket svg { transform: rotate(0deg) scale(1.1); filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 80%, transparent)); }
+.redeem-ticket.stamped { animation: redeem-stamp 550ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.redeem-ticket.stamped::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); animation: redeem-burst 700ms ease-out both; }
+/* Lichtband über Ring und Ticket. `color-dodge` macht helle Striche weiß und lässt den dunklen Grund fast unberührt. Grau statt Weiß, denn Weiß würde auch den Grund aufhellen. */
+.redeem-shimmer { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0; mix-blend-mode: color-dodge; background: linear-gradient(115deg, transparent 38%, #666 50%, transparent 62%) 130% 0 / 250% 100% no-repeat; animation: redeem-shimmer 2.4s ease-in-out infinite paused; transition: opacity 300ms; }
+.redeem-seal:hover .redeem-shimmer { opacity: 1; animation-play-state: running; }
+.redeem-form { display: flex; gap: 8px; width: 100%; }
+.redeem-form input { flex: 1; min-width: 0; width: auto; height: 44px; border-radius: 12px; letter-spacing: 0.06em; transition: border-color 200ms, box-shadow 200ms; }
+.redeem-form input:disabled { opacity: 0.65; }
+.redeem-form input::placeholder { color: var(--text-muted); letter-spacing: 0; }
+.redeem-form input:focus-visible { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
+.redeem-form .redeem-send { flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 30%, transparent); transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms, opacity 200ms; }
+.redeem-form .redeem-send:hover:enabled { background: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 26px color-mix(in srgb, var(--accent) 55%, transparent); }
+.redeem-form .redeem-send:active:enabled { transform: scale(0.92); }
+.redeem-send svg { transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.redeem-send:hover:enabled svg { transform: translate(2px, -2px); }
+@keyframes redeem-shimmer { from { background-position: 130% 0; } 65%, to { background-position: -30% 0; } }
+@keyframes redeem-spin { to { transform: rotate(360deg); } }
+@keyframes redeem-stamp { from { transform: scale(1.7) rotate(-24deg); opacity: 0; } 60% { transform: scale(0.92) rotate(3deg); opacity: 1; } to { transform: none; } }
+@keyframes redeem-burst { from { transform: scale(0.5); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
+html[data-reduced-motion] .redeem-ring, html[data-reduced-motion] .redeem-seal::after, html[data-reduced-motion] .redeem-ticket, html[data-reduced-motion] .redeem-ticket::after, html[data-reduced-motion] .redeem-shimmer { animation: none; }
+html[data-reduced-motion] .redeem-seal::before, html[data-reduced-motion] .redeem-ticket svg, html[data-reduced-motion] .redeem-send, html[data-reduced-motion] .redeem-send svg { transition: none; }
 @media (max-width: 500px) { .preview-header { top: 16px; left: 18px; right: 18px; }.preview-label { display: none; }.preview-header div > span { font-size: 10px; }.preview-footer { font-size: 9px; flex-wrap: wrap; bottom: 16px; }.preview-footer code { font-size: 9px; }.pet-window { width: min(420px, 100vw); } }
 @media (max-height: 740px) { html[data-surface='preview'] .pet-window { transform: translate(-50%, -50%) scale(0.85); } }
 @media (max-height: 610px) { html[data-surface='preview'] .preview-header, html[data-surface='preview'] .preview-footer { display: none; } html[data-surface='preview'] .pet-window { transform: translate(-50%, -50%) scale(0.75); } }

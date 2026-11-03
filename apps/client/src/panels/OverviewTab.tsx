@@ -1,5 +1,5 @@
 /**
- * XP-Reiter „Übersicht“: Levelbalken, heute gesammelte XP und die Knöpfe für Selbstmeldungen.
+ * XP-Reiter „Übersicht“: Levelbalken, Stupser-Hinweis und Selbstmeldungen.
  *
  * @module
  */
@@ -9,84 +9,54 @@ import { useEffect, useState } from "react";
 import {
   levelProgress,
   nextLevelCosmetic,
+  pokeWaitMinutes,
   REPORTS,
   reportStatus,
-  todaysEntries,
   unlockLabel,
-  type Entry,
-  type Pet,
+  type Catalog,
+  type Me,
   type Report,
 } from "../pet";
-import { ReportButton, XpEntry, XpProgress } from "../ui";
+import { ReportButton, XpProgress } from "../ui";
 
 /** Wie oft die Abklingzeiten neu berechnet werden, in Millisekunden. */
 const TICK_MS = 15_000;
 
-/** Aktuelle Unix-Zeit in Sekunden. */
-const unixNow = () => Math.floor(Date.now() / 1000);
-
-/** Uhrzeit als „14:05“. */
-const time = (at: number) =>
-  new Date(at * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-
 /**
- * Aktuelle Unix-Zeit, die alle {@link TICK_MS} weiterläuft und bei jeder Änderung von `pet` sofort
- * nachzieht. So zählt eine eben gemeldete Abklingzeit von der richtigen Zeit aus herunter.
+ * Uhrzeit des Servers, die alle {@link TICK_MS} weiterläuft und bei jedem neuen Stand sofort
+ * nachzieht.
  */
-function useUnixNow(pet: Pet) {
-  const [now, setNow] = useState(unixNow);
+function useServerNow(offset: number, me: Me) {
+  const [now, setNow] = useState(() => Date.now() + offset);
   useEffect(() => {
-    setNow(unixNow());
-    const timer = window.setInterval(() => setNow(unixNow()), TICK_MS);
+    setNow(Date.now() + offset);
+    const timer = window.setInterval(() => setNow(Date.now() + offset), TICK_MS);
     return () => window.clearInterval(timer);
-  }, [pet]);
+  }, [offset, me]);
   return now;
 }
 
-/** Die letzten drei Einträge von heute, oder ein Hinweis, wenn es noch keine gibt. */
-function TodaySection({ today }: { today: Entry[] }) {
-  return (
-    <section className="xp-section" aria-labelledby="xp-today">
-      <div className="xp-section-head">
-        <h3 id="xp-today">Heute gesammelt</h3>
-        <span className="action-xp">+{today.reduce((sum, entry) => sum + entry.xp, 0)} XP</span>
-      </div>
-      {today.length ? (
-        today.slice(0, 3).map((entry) => {
-          const report = REPORTS.find((item) => item.action === entry.action);
-          return (
-            <XpEntry
-              key={entry.at + entry.action}
-              icon={report?.icon ?? "event"}
-              title={report?.logTitle ?? "Event mitgemacht"}
-              detail={`${report ? "Selbst gemeldet" : "Event"} · ${time(entry.at)}`}
-              xp={entry.xp}
-              tag={report ? "Gemeldet" : "Event"}
-            />
-          );
-        })
-      ) : (
-        <p className="panel-hint">
-          Heute noch nichts. Bald zählen auch Zocken über Steam und Events von selbst.
-        </p>
-      )}
-    </section>
-  );
+/** Wann ein Stupser wieder XP gibt. */
+function pokeHint(me: Me, now: number) {
+  const wait = pokeWaitMinutes(me.next_poke_at, now);
+  if (wait === null) return "Gerade läuft keine LAN.";
+  if (wait === 0) return "Stups mich an, das gibt XP!";
+  return `Nächste Stupser-XP in ${wait} min.`;
 }
 
-/** Ein Knopf je Selbstmeldung, gesperrt während der Abklingzeit oder wenn das Tageslimit voll ist. */
+/** Ein Knopf je Selbstmeldung, gesperrt während der Abklingzeit oder wenn das Kontingent leer ist. */
 function ReportSection({
-  log,
+  me,
   now,
   disabled,
   onReport,
 }: {
-  log: Entry[];
+  me: Me;
   now: number;
   disabled: boolean;
   onReport: (action: Report) => void;
 }) {
-  const left = reportStatus(log, "food", now).left;
+  const left = reportStatus(me.reports, "food", now).left;
   return (
     <section className="xp-section" aria-labelledby="xp-report">
       <div className="xp-section-head">
@@ -95,7 +65,7 @@ function ReportSection({
       </div>
       <div className="report-grid">
         {REPORTS.map((item) => {
-          const wait = reportStatus(log, item.action, now).waitMinutes;
+          const wait = reportStatus(me.reports, item.action, now).waitMinutes;
           return (
             <ReportButton
               key={item.action}
@@ -116,26 +86,35 @@ function ReportSection({
 
 /** Der Reiter „Übersicht“. */
 export default function OverviewTab({
-  pet,
+  me,
+  catalog,
+  offset,
   disabled,
   onReport,
 }: {
-  pet: Pet;
-  /** Meldeknöpfe sperren, etwa während ein Aufruf läuft oder in der Browser-Vorschau. */
+  me: Me;
+  catalog: Catalog;
+  /** Abstand zur Uhr des Servers, siehe `useGameState`. */
+  offset: number;
+  /** Knöpfe sperren, etwa während ein Aufruf läuft oder in der Browser-Vorschau. */
   disabled: boolean;
   onReport: (action: Report) => void;
 }) {
-  const now = useUnixNow(pet);
-  const next = nextLevelCosmetic(levelProgress(pet.xp).level);
+  const now = useServerNow(offset, me);
+  const next = nextLevelCosmetic(levelProgress(me.xp).level, catalog);
+  const locked = disabled || !me.lan?.active;
   return (
     <div className="xp-sections">
       <XpProgress
-        name={pet.name}
-        xp={pet.xp}
-        next={next ? `Bei ${unlockLabel(next)}: ${next.name}` : undefined}
+        name={me.name}
+        xp={me.xp}
+        next={next ? `Bei ${unlockLabel(next.id, catalog)}: ${next.name}` : undefined}
       />
-      <TodaySection today={todaysEntries(pet.log, now)} />
-      <ReportSection log={pet.log} now={now} disabled={disabled} onReport={onReport} />
+      <p className="panel-hint">
+        {pokeHint(me, now)} Insgesamt {me.total_xp} XP auf {me.lans_attended}{" "}
+        {me.lans_attended === 1 ? "LAN" : "LANs"}.
+      </p>
+      <ReportSection me={me} now={now} disabled={locked} onReport={onReport} />
     </div>
   );
 }

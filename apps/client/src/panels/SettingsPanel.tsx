@@ -1,22 +1,25 @@
 /**
- * Panel „Einstellungen“: Pet-Größe und reduzierte Bewegung.
+ * Panel „Einstellungen“: Pet-Größe und reduzierte Bewegung. Beides bleibt auf diesem Gerät.
  *
  * @module
  */
 
-import { PET_SIZE, type Pet } from "../pet";
+import { PET_SIZE, type Settings } from "../pet";
 import { SizeSlider, ToggleRow } from "../ui";
 
 /** Die Einstellungen. Die Größe wird gespeichert, sobald der Regler ruht (siehe `useSizeDraft`). */
 export default function SettingsPanel({
-  pet,
+  name,
+  settings,
   size,
   ready,
   busy,
   onSize,
   onReducedMotion,
 }: {
-  pet: Pet;
+  /** Name des Pets für den Hinweistext. */
+  name: string;
+  settings: Settings;
   /** Angezeigte Größe, solange der Regler bewegt wird, also eventuell noch nicht gespeichert. */
   size: number;
   ready: boolean;
@@ -29,7 +32,7 @@ export default function SettingsPanel({
       <SizeSlider
         id="pet-size"
         label="Größe"
-        hint={`So viel Platz bekommt ${pet.name} auf deinem Desktop.`}
+        hint={`So viel Platz bekommt ${name} auf deinem Desktop.`}
         value={size}
         min={PET_SIZE.min}
         max={PET_SIZE.max}
@@ -40,7 +43,7 @@ export default function SettingsPanel({
       <ToggleRow
         label="Weniger Bewegung"
         hint="Ruhiger Begleiter, gleiche Gesellschaft."
-        checked={pet.reducedMotion}
+        checked={settings.reducedMotion}
         disabled={busy || !ready}
         onChange={onReducedMotion}
       />

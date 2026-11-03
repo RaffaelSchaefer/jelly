@@ -8,9 +8,10 @@ Menschen: [apps/client/README.md](apps/client/README.md).
 Jelly ist ein Desktop-Begleiter (Tauri 2) für die LAN am Umwelt-Campus Birkenfeld. pnpm-/Turborepo-
 Monorepo mit zwei Apps: `apps/client` mit Rust-Backend (`src-tauri/`) und React-19-/TypeScript-7-
 Oberfläche mit React Three Fiber (`src/`), dazu `apps/server` in Go. Das 3D-Jelly steht in
-`packages/jelly-scene` (`@jelly/scene`), App und Bühne des Servers zeigen damit dasselbe Jelly. Noch
-sind App und Server nicht verbunden: In der App besitzt Rust den Spielstand, die Oberfläche zeigt nur
-an. Künftig entscheidet der Server über XP. Regeln, Aufbau und Vertrag des Servers stehen in
+`packages/jelly-scene` (`@jelly/scene`), App und Bühne des Servers zeigen damit dasselbe Jelly. Der
+Server entscheidet über XP, Level, Cosmetics und Erfolge. In der App spricht Rust mit ihm und hält das
+Token, lokal liegen nur Token und Geräte-Einstellungen. Die Oberfläche zeigt nur an. Regeln, Aufbau
+und Vertrag des Servers stehen in
 [apps/server/README.md](apps/server/README.md) und [apps/server/docs/api.md](apps/server/docs/api.md).
 
 ## Befehle
@@ -39,26 +40,34 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 ## Wo was liegt
 
 - `src/backend.ts`: einziger Ort mit `invoke()`. Ein Wrapper je Befehl aus `src-tauri/src/commands.rs`.
-- `src/usePet.ts`: Spielstand, Aktionen, Tastatur-Stupser, Größen-Regler.
-- `src/pet/`: reine Logik ohne React/Three. Spiegelt `src-tauri/src/pet.rs`.
-- `src/panels/`, `src/scene/` (Canvas, Cosmetics, ihre Shader), `src/ui/` (Design-System).
+- `src/usePet.ts`, `src/useGame.ts`: Spielstand, Aktionen, Server-Ereignisse, Tastatur-Stupser,
+  Größen-Regler.
+- `src/pet/`: reine Logik ohne React/Three. Spiegelt den Server-Vertrag und `src-tauri/src/pet.rs`.
+- `src/Studio.tsx`, `src/studio/`, `src/studio.css`: Anpassen direkt am Jelly. Die Tropfen zeichnet
+  `src/scene/LiquidGlass.tsx` per Shader in die Canvas, das DOM liefert Knöpfe und mit `data-liquid`
+  die Vorlagen für ihre Form.
+- `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas des Studios, Cosmetics, ihre Shader),
+  `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
   `body.ts` (geraymarchter Körper, Shader in `shaders/`), `face.ts`, `animation.ts`,
   `jellyGeometry.ts` (Maße), `colors.ts` (Farben).
-- `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `error.rs`, `pet.rs` (Regeln, kein IO),
-  `store.rs` (atomares Speichern).
+- `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `api.rs` (Server-Typen, HTTP),
+  `events.rs` (Server-Stream), `error.rs`, `pet.rs` (lokaler Stand, reine Regeln), `store.rs`
+  (atomares Speichern von `jelly.json`).
 
 ## Regeln, die man leicht übersieht
 
-- **Rust und TypeScript spiegeln sich.** Typen, Grenzwerte und XP-Werte stehen in `pet.rs` und in
-  `src/pet/types.ts` bzw. `src/pet/reports.ts`. Immer beide Seiten ändern. Rust erzwingt, die
-  Oberfläche zeigt nur an.
+- **Server, Rust und TypeScript spiegeln sich.** Server-Typen stehen in `api.rs` und
+  `src/pet/types.ts` mit den snake_case-Namen aus `apps/server/docs/openapi.json`, lokale Typen in
+  `pet.rs` und `types.ts`. Immer alle Seiten ändern. Der Server erzwingt, die App zeigt nur an.
+- **Server-Typen ohne `deny_unknown_fields`.** Der Server darf Felder, Ereignisse und Fehlercodes
+  ergänzen. Nur der lokale Stand (`Local`, `Settings`) lehnt Unbekanntes ab.
+- **Server-Adresse** kommt beim Bauen aus `JELLY_SERVER_URL` (sonst `http://localhost:8080`). HTTP
+  läuft nur in Rust, die CSP der Oberfläche bleibt bei `ipc:`.
 - **Neuer Tauri-Befehl:** in `commands.rs` anlegen, in `lib.rs` bei `generate_handler!` eintragen,
   Wrapper in `src/backend.ts`. Fensterrechte stehen in `src-tauri/capabilities/main.json`.
 - **Fehler** sind Varianten von `Error` in `error.rs` mit deutscher Meldung. Kein `String` als
   Fehlertyp.
-- **`Appearance`** hat in Rust `deny_unknown_fields`: nie ein ganzes `Pet` schicken, sondern
-  `appearanceOf(pet)` verwenden.
 - **`src/ui/*.tsx`**: Jede exportierte Funktion landet als Komponente im Design-System-Bundle
   (`scripts/ds-bundle.mjs`, `window.Jelly`). Hilfsfunktionen gehören in `.ts`-Dateien.
 - **Shader** werden per `?raw` importiert. Werte aus TypeScript kommen über `defines` des

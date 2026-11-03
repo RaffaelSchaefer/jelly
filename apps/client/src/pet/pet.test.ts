@@ -1,73 +1,69 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  achievementProgress,
-  COSMETICS,
+  achievementRows,
   isUnlocked,
+  levelCosmetic,
   levelProgress,
   nextLevelCosmetic,
   PET_SIZE,
-  PREVIEW_PET,
-  REPORT,
+  pokeWaitMinutes,
+  PREVIEW_CATALOG,
+  PREVIEW_ME,
   reportStatus,
   stageLayout,
-  type Entry,
+  unlockLabel,
 } from ".";
 
 describe("self-reports", () => {
-  const log: Entry[] = [{ action: "drink", xp: 10, at: 1_000 }];
-  it("shows the cooldown per kind, like pet.rs", () => {
-    expect(reportStatus(log, "drink", 1_060)).toEqual({
-      waitMinutes: 29,
-      left: REPORT.perWindow - 1,
+  const reports = { food_ready_at: 0, drink_ready_at: 1_000_000, reports_left: 5 };
+  it("counts the cooldown down to the server's ready time", () => {
+    expect(reportStatus(reports, "drink", 1_000_000 - 29 * 60_000 - 1)).toEqual({
+      waitMinutes: 30,
+      left: 5,
     });
-    expect(reportStatus(log, "food", 1_060).waitMinutes).toBe(0);
-    expect(reportStatus(log, "drink", 1_000 + REPORT.cooldown).waitMinutes).toBe(0);
+    expect(reportStatus(reports, "drink", 1_000_000 - 60_000).waitMinutes).toBe(1);
+    expect(reportStatus(reports, "drink", 1_000_000).waitMinutes).toBe(0);
+    expect(reportStatus(reports, "food", 0).waitMinutes).toBe(0);
   });
-  it("frees reports once they leave the rolling window", () => {
-    const full = Array.from({ length: REPORT.perWindow }, (_, i): Entry => ({
-      action: "food",
-      xp: 15,
-      at: i * REPORT.cooldown,
-    }));
-    const last = full.at(-1)!.at;
-    expect(reportStatus(full, "drink", last + 1).left).toBe(0);
-    expect(reportStatus(full, "drink", REPORT.window).left).toBe(1);
-    // Events verbrauchen nie Selbstmeldungen.
-    expect(
-      reportStatus(
-        [...full, { action: "event", xp: 30, at: last, event: "quiz" }],
-        "drink",
-        REPORT.window,
-      ).left,
-    ).toBe(1);
+  it("blocks reports outside a running LAN", () => {
+    expect(reportStatus(null, "food", 0)).toEqual({ waitMinutes: 0, left: 0 });
+  });
+  it("tells when the next poke earns XP", () => {
+    expect(pokeWaitMinutes(null, 0)).toBeNull();
+    expect(pokeWaitMinutes(900_000, 0)).toBe(15);
+    expect(pokeWaitMinutes(900_000, 900_000)).toBe(0);
   });
 });
 
 describe("unlocks", () => {
-  it("opens cosmetics by level, event and achievement", () => {
-    const byId = (id: string) => COSMETICS.find((item) => item.id === id)!;
-    const pet = { ...PREVIEW_PET, xp: 250 };
-    expect(isUnlocked(byId("beanie"), pet)).toBe(true);
-    expect(isUnlocked(byId("pixel-glasses"), pet)).toBe(false);
-    expect(isUnlocked(byId("party-hat"), pet)).toBe(false);
-    expect(
-      isUnlocked(byId("party-hat"), { ...pet, log: [{ action: "event", xp: 30, at: 0 }] }),
-    ).toBe(true);
-    expect(isUnlocked(byId("glow-aura"), pet)).toBe(false);
-    expect(nextLevelCosmetic(3)?.id).toBe("pixel-glasses");
-    expect(nextLevelCosmetic(10)).toBeUndefined();
+  it("follows the server's list and catalog", () => {
+    expect(isUnlocked("beanie", PREVIEW_ME)).toBe(true);
+    expect(isUnlocked("pixel-glasses", PREVIEW_ME)).toBe(false);
+    expect(unlockLabel("pixel-glasses", PREVIEW_CATALOG)).toBe("Level 5");
+    expect(unlockLabel("party-hat", PREVIEW_CATALOG)).toBe("Bei einem Event");
+    expect(unlockLabel("glow-aura", PREVIEW_CATALOG)).toBe("Von der Orga");
   });
-  it("counts achievement progress up to the goal", () => {
-    const drinks = Array.from({ length: 12 }, (_, i): Entry => ({
-      action: "drink",
-      xp: 10,
-      at: i * 3600,
-    }));
-    const progress = achievementProgress(drinks);
-    expect(progress.hydrated).toBe(10);
-    expect(progress.tournament).toBe(0);
-    expect(progress.marathon).toBe(0);
+  it("finds level rewards in level order", () => {
+    expect(levelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("beanie");
+    expect(levelCosmetic(4, PREVIEW_CATALOG)).toBeUndefined();
+    expect(nextLevelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("pixel-glasses");
+    expect(nextLevelCosmetic(10, PREVIEW_CATALOG)).toBeUndefined();
+  });
+});
+
+describe("achievements", () => {
+  it("keeps catalog order and marks what the server granted", () => {
+    const rows = achievementRows(PREVIEW_CATALOG, PREVIEW_ME);
+    expect(rows.map((item) => item.key)).toEqual(PREVIEW_CATALOG.achievements.map((a) => a.key));
+    expect(rows.filter((item) => item.done).map((item) => item.key)).toEqual(["hatched"]);
+  });
+  it("shows a secret achievement only once it is earned", () => {
+    const earned = { key: "night-owl", title: "Nachteule", lan_slug: "ucb", earned_at: 1 };
+    const me = { ...PREVIEW_ME, achievements: [...PREVIEW_ME.achievements, earned, earned] };
+    const rows = achievementRows(PREVIEW_CATALOG, me);
+    expect(rows.at(-1)).toMatchObject({ key: "night-owl", title: "Nachteule", done: true });
+    expect(rows.filter((item) => item.key === "night-owl")).toHaveLength(1);
   });
 });
 

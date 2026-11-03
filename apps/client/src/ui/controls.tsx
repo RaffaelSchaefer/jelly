@@ -64,21 +64,21 @@ export function SpeechBubble({ children }: { children: ReactNode }) {
   );
 }
 
-/** Glas-Panel über dem Dock, mit Überschrift und Schließen-Knopf. */
+/** Glas-Panel über dem Dock, mit Überschrift und, wenn `onClose` da ist, Schließen-Knopf. */
 export function Panel({
   title,
   onClose,
   children,
 }: {
   title: string;
-  onClose: () => void;
+  onClose?: () => void;
   children: ReactNode;
 }) {
   return (
     <section className="panel" aria-labelledby="panel-title">
       <div className="panel-heading">
         <h2 id="panel-title">{title}</h2>
-        <IconButton icon="close" label="Panel schließen" onClick={onClose} />
+        {onClose ? <IconButton icon="close" label="Panel schließen" onClick={onClose} /> : null}
       </div>
       {children}
     </section>

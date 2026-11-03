@@ -1,0 +1,82 @@
+/*
+ * Pet-Studio. Die Tropfen zeichnet der Shader in der Canvas (`scene/LiquidGlass.tsx`). Hier liegen nur
+ * ihre unsichtbaren Vorlagen in `.studio-shapes` und darüber in `.ink` Knöpfe und Symbole.
+ * Die Positionen kommen als `--anchor-*` von der 3D-Szene (`scene/StudioAnchors.tsx`).
+ */
+.studio { position: absolute; top: var(--canvas-top, 43px); left: 50%; width: var(--canvas-width, 396px); margin-left: calc(var(--canvas-width, 396px) / -2); height: var(--canvas-height, 315px); z-index: 2; outline: 0; pointer-events: none; opacity: var(--studio-ready, 0); transition: opacity 250ms; }
+/* Offene Region: Ein Klick daneben schließt sie, statt das Pet anzustupsen. */
+.studio[data-open] { pointer-events: auto; }
+.studio-shapes, .ink { position: absolute; inset: 0; pointer-events: none; }
+/* Sie bewegen sich weiter, und der Shader liest ab, wo sie gerade sind. */
+.studio-shapes { visibility: hidden; }
+.ink { animation: ink-in 300ms ease-out 200ms both; }
+
+/* Jede Region hat ihre eigene Größe und ihren eigenen Takt. So wirkt nichts wie ein Raster. */
+.at-kopf { --x: var(--anchor-kopf-x); --y: var(--anchor-kopf-y); --size: calc(48px * clamp(0.8, var(--pet-scale, 1), 1.15)); --phase: 0s; }
+.at-gesicht { --x: var(--anchor-gesicht-x); --y: var(--anchor-gesicht-y); --size: calc(40px * clamp(0.8, var(--pet-scale, 1), 1.15)); --phase: -2s; }
+.at-effekte { --x: var(--anchor-effekte-x); --y: var(--anchor-effekte-y); --size: calc(38px * clamp(0.8, var(--pet-scale, 1), 1.15)); --phase: -4s; }
+.at-koerper { --x: var(--anchor-koerper-x); --y: var(--anchor-koerper-y); --size: calc(54px * clamp(0.8, var(--pet-scale, 1), 1.15)); --phase: -1s; }
+/* Die Canvas wird ab 150 % breiter als das Fenster (420 px). Blobs bleiben im Fenster. */
+.blob-shape, .blob, .pop { position: absolute; left: clamp(calc(50% - 188px), var(--x), calc(50% + 188px)); top: var(--y); }
+
+.blob-shape, .blob { width: var(--size); height: var(--size); translate: -50% -50%; animation: blob-float 5s ease-in-out infinite alternate var(--phase); transition: scale 350ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.studio[data-open] .blob-shape { scale: 0.78; }
+.studio[data-open] .blob-shape.active { scale: 1.08; }
+.studio:has(.blob.at-kopf:hover) .blob-shape.at-kopf, .studio:has(.blob.at-gesicht:hover) .blob-shape.at-gesicht, .studio:has(.blob.at-effekte:hover) .blob-shape.at-effekte, .studio:has(.blob.at-koerper:hover) .blob-shape.at-koerper { scale: 1.16; }
+
+.blob { display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #fff; pointer-events: auto; }
+.blob svg { width: 45%; height: 45%; min-width: 18px; min-height: 18px; filter: drop-shadow(0 1px 2px #0008); }
+.blob.worn::after { content: ''; position: absolute; top: 20%; right: 20%; width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; }
+.studio[data-open] .blob:not([aria-expanded='true']) { scale: 0.78; opacity: 0.8; }
+.blob[aria-expanded='true']::before, .blob[aria-expanded='true']::after { display: none; }
+.studio .blob:focus-visible, .pop button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* Popover: wächst an der Blob-Seite heraus, der Shader zieht es dabei wie einen Faden aus dem Tropfen. */
+.pop { display: flex; align-items: center; justify-content: center; gap: 6px; width: calc(var(--count) * 40px + 6px); height: 46px; }
+.pop-shape { animation: pop-grow 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.opens-up { translate: -50% calc(-100% - 20px); transform-origin: 50% 100%; }
+.opens-down { translate: -50% 18px; transform-origin: 50% 0; }
+.opens-left { translate: calc(-100% - 22px) -50%; transform-origin: 100% 50%; }
+.opens-right { translate: 18px -50%; transform-origin: 0 50%; }
+.ink .pop > button { animation: pop-ink 200ms ease-out 140ms both; }
+
+.pop button { position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #fff; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1), background 150ms; }
+.pop button svg { filter: drop-shadow(0 1px 2px #0008); }
+.pop button[aria-pressed='false']:not([aria-disabled='true']):hover { scale: 1.14; background: #ffffff26; }
+/* Angelegt: ein schillernder Ring wie die Haut der Tropfen. */
+.pop button[aria-pressed='true'] { background: #ffffff1f; cursor: default; }
+.pop button[aria-pressed='true']::after { content: ''; position: absolute; inset: -1px; border-radius: 50%; background: conic-gradient(#8dffbf, #ff9bd8, #9fd4ff, #ffe79a, #8dffbf); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); animation: film-spin 6s linear infinite; }
+.pop button.locked { cursor: default; }
+.pop button.locked > svg { opacity: 0.5; }
+.pop-lock { position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: #ffffffe0; color: #1a2630; }
+.pop-lock svg { width: 9px; height: 9px; filter: none; }
+.jelly-swatch { width: 24px; height: 32px; overflow: visible; }
+
+/* Beschriftung beim Darüberfahren. Reines CSS, damit nichts im React-Zustand mitläuft. */
+[data-tip]::before { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; translate: -50% 0; padding: 3px 8px; border-radius: 8px; background: var(--surface-solid); color: #eef3f5; font-size: 10px; font-weight: 500; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 120ms; }
+[data-tip]:is(:hover, :focus-visible)::before { opacity: 1; }
+
+/* Namensschild: bleibt immer über dem Dock, auch wenn die Füße beim Zoom aus dem Bild wandern. Der Spiegel-Text gibt ihm seine Breite. */
+.name-tag { position: absolute; left: var(--anchor-name-x); top: min(var(--anchor-name-y), calc(var(--stage-height, 330px) - var(--canvas-top, 43px) - 18px)); translate: -50% -50%; display: inline-grid; min-width: 72px; max-width: 220px; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.name-tag > span, .studio .name-tag input { grid-area: 1 / 1; padding: 6px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.1px; }
+.name-tag > span { visibility: hidden; white-space: pre; overflow: hidden; }
+.studio .name-tag input { width: 100%; min-width: 0; border: 0; border-radius: 14px; background: transparent; color: #fff; text-align: center; text-shadow: 0 1px 2px #0008; cursor: text; }
+.studio .name-tag input:focus-visible { outline: 1.5px solid #ffffffb0; outline-offset: -2px; }
+.name-tag:hover, .name-tag:focus-within { scale: 1.06; }
+
+/* Vom Fenstermittelpunkt aus gerechnet, damit es bei jeder Pet-Größe im Fenster bleibt. */
+.studio-done { position: absolute; top: 2px; left: calc(50% + 130px); padding: 6px 14px; border: 0; border-radius: 14px; background: transparent; color: #fff; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px #0008; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.studio-done:hover { scale: 1.08; }
+
+/* Die Sprechblase läge im Weg, der Bodenschatten bliebe beim Zoom in der Luft hängen. */
+.pet-window:has(.studio) .speech { visibility: hidden; }
+.ground-shadow { transition: opacity 300ms; }
+.pet-window:has(.studio[data-open]) .ground-shadow { opacity: 0; }
+
+@keyframes blob-float { from { translate: -50% -50%; } to { translate: -50% calc(-50% - 4px); } }
+@keyframes pop-grow { from { scale: 0.2; } }
+@keyframes pop-ink { from { opacity: 0; scale: 0.7; } }
+@keyframes ink-in { from { opacity: 0; } }
+@keyframes film-spin { to { rotate: 360deg; } }
+
+html[data-reduced-motion] .studio, html[data-reduced-motion] .studio * { animation: none; transition: none; }

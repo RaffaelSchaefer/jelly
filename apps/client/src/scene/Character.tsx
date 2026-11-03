@@ -7,7 +7,7 @@
  * @module
  */
 
-import { animateJelly, createJelly, createMotion, disposeJelly } from "@jelly/scene";
+import { animateJelly, createJelly, createMotion, disposeJelly, type Jelly } from "@jelly/scene";
 import { createPortal, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -26,6 +26,8 @@ export interface CharacterProps {
   holding?: boolean;
   /** ID des angelegten Cosmetics. */
   cosmetic?: string | null;
+  /** Bekommt das aktuelle Jelly, etwa für die Anker des Studios. Sollte stabil sein. */
+  onJelly?: (jelly: Jelly | null) => void;
 }
 
 /** Das Pet mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
@@ -35,6 +37,7 @@ export default function Character({
   reducedMotion,
   holding = false,
   cosmetic = null,
+  onJelly,
 }: CharacterProps) {
   const worn = COSMETICS.find((item) => item.id === cosmetic);
   const jelly = useMemo(() => createJelly(PET_COLORS[color]), [color]);
@@ -42,6 +45,11 @@ export default function Character({
 
   // Fiber gibt `<primitive>`-Objekte nie selbst frei.
   useEffect(() => () => disposeJelly(jelly), [jelly]);
+
+  useEffect(() => {
+    onJelly?.(jelly);
+    return () => onJelly?.(null);
+  }, [jelly, onJelly]);
 
   useFrame(({ clock }, rawDelta) => {
     animateJelly(jelly, motion.current, {
