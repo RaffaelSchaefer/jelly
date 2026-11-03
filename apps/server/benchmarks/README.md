@@ -39,6 +39,9 @@ kosten.
 | 2026-11-03 | `stage-3d` | Ryzen 7 5700X, RTX 3090     | 70      | 4,3 ms          | 6,3 ms               |
 | 2026-11-03 | `stage-3d` | Ryzen 7 5700X, RTX 3090     | 200     | 12,5 ms         | 23 ms                |
 | 2026-11-03 | `stage-3d` | Ryzen 7 5700X, RTX 3090     | 70, Halle mit Bühne, Lounge, Snackbar und Fischauge | 4,7 ms | 7,2 ms |
+| 2026-11-03 | `97b009b`  | Apple M1 Pro                | 70, Halle wie oben              | 4,1 ms          | 4,7 ms               |
+| 2026-11-03 | `stage-3d` | Apple M1 Pro                | 70, eingerichtete Bühne, Lounge und Snackbar | 4,2 ms | 4,8 ms       |
+| 2026-11-03 | `stage-3d` | Apple M1 Pro                | 70, wie oben, Leinwand 3840×2160 | 4,6 ms          | 5,3 ms               |
 
 Die Grafikkarte war bei beiden Messungen nicht der Engpass. Auf schwächerer Grafik hilft `?scale=0.5`.
 Noch nicht gemessen ist ein Rechner mit integrierter Grafik, wie er bei der LAN die Bühne zeigen könnte.

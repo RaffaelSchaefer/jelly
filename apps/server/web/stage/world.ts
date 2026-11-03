@@ -16,6 +16,13 @@ export const ROOM_WIDTH = 21;
 export const ROOM_DEPTH = 40;
 /** How far the body of a jelly reaches from its center, seen from above, hands included. */
 export const JELLY_RADIUS = 0.8;
+/**
+ * The canvas has twice as many pixels per side as the screen, and the browser smooths them down.
+ * That also smooths the edges of the raymarched jellies, which the GPU's own anti-aliasing misses.
+ */
+const SUPERSAMPLING = 2;
+/** Above about 4K the canvas stops growing: the raymarched jellies cost a lot per pixel. */
+const MAX_CANVAS_PIXELS = 3840 * 2160;
 
 /** A point on the floor. */
 export interface FloorPoint {
@@ -134,4 +141,16 @@ export function calculateCameraDistance(
     );
   }
   return distance;
+}
+
+/**
+ * Returns canvas pixels per CSS pixel: twice the screen's own while the canvas stays within the
+ * budget, never fewer than the screen has.
+ */
+export function calculateCanvasDensity(
+  size: { width: number; height: number },
+  screenDensity: number,
+) {
+  const budget = Math.sqrt(MAX_CANVAS_PIXELS / Math.max(1, size.width * size.height));
+  return Math.max(screenDensity, Math.min(screenDensity * SUPERSAMPLING, budget));
 }

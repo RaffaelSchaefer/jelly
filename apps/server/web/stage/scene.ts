@@ -39,8 +39,6 @@ const FAR_PLANE = 300;
 /** Heights the camera keeps on screen: heads with signs at the back, names at the front. */
 const SIGN_TOP = 3.2;
 const NAME_REACH = 1.6;
-/** Pixel density is capped, the raymarched jellies cost a lot per pixel. */
-const MAX_PIXEL_RATIO = 1.5;
 const SKY_LIGHT = { sky: "#ffffff", ground: "#c7d3e0", intensity: 2.1 };
 /** Same direction as the softbox the jelly shader reflects, so desks and jellies agree. */
 const SUN = { color: "#ffffff", intensity: 1.3, direction: [-0.45, 0.8, 0.45] as const };
@@ -94,17 +92,19 @@ function listFramePoints(): ScenePoint[] {
 }
 
 /**
- * Fits renderer and camera to the screen size in CSS pixels. `scale` lowers or raises detail, and
- * `lensStrength` is the fisheye the picture is shown through.
+ * Fits renderer and camera to the screen size in CSS pixels. `pixelRatio` is drawing buffer pixels
+ * per CSS pixel and `lensStrength` the fisheye the picture is shown through.
  */
 export function resizeStageScene(
   stage: StageScene,
   size: { width: number; height: number },
-  scale: number,
+  pixelRatio: number,
   lensStrength: number,
 ): void {
   const { renderer, camera } = stage;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO) * scale);
+  // The lens copies the picture into a texture, so it may not outgrow the largest one of the GPU.
+  const largest = renderer.capabilities.maxTextureSize / Math.max(1, size.width, size.height);
+  renderer.setPixelRatio(Math.min(pixelRatio, largest));
   renderer.setSize(size.width, size.height, false);
   camera.aspect = size.width / Math.max(1, size.height);
   const pitch = MathUtils.degToRad(PITCH_DEGREES);

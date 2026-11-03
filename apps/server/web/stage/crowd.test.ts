@@ -40,3 +40,18 @@ test("nobody is pushed into a desk", () => {
   );
   for (const goal of spread) assert.ok(isWalkable(grid, goal));
 });
+
+test("a push into a desk slides along the desk instead", () => {
+  const desk = { minX: -5, minZ: 0.5, maxX: 5, maxZ: 2 };
+  const grid = createNavGrid(ROOM, [desk], JELLY_RADIUS);
+  const spread = spreadGoals(
+    [
+      { x: 0, z: -0.4 },
+      { x: 0.1, z: -0.5 },
+    ],
+    grid,
+  );
+  const [one, other] = spread;
+  assert.ok(one && other && measureDistance(one, other) > 1.5);
+  for (const goal of spread) assert.ok(isWalkable(grid, goal));
+});

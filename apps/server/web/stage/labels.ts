@@ -37,6 +37,14 @@ export interface LabelAnchor {
   height: number;
 }
 
+/** A rectangle on the screen a text has taken. */
+interface TextBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /** Everything the texts of a frame need. */
 export interface LabelScene {
   /** Sorted from back to front, so nearer names cover those behind. */
@@ -46,16 +54,33 @@ export interface LabelScene {
   now: number;
 }
 
-/** Paints all texts of a frame over the picture of the stage. */
+/**
+ * Paints all texts of a frame over the picture of the stage. In a crowd, the texts of the nearest
+ * jellies win: a name or sign that would overlap one already painted is left out.
+ */
 export function drawLabels(context: CanvasRenderingContext2D, scene: LabelScene): void {
-  for (const anchor of scene.anchors) {
-    drawName(context, anchor);
+  const taken: TextBox[] = [];
+  for (const anchor of [...scene.anchors].reverse()) {
+    drawName(context, anchor, taken);
     const signLabel = scene.signLabels.get(anchor.player.sign ?? "");
     if (signLabel) {
-      drawSign(context, signLabel, anchor);
+      drawSign(context, signLabel, anchor, taken);
     }
   }
   drawEffects(context, scene);
+}
+
+/** Takes a box for a text, unless it overlaps one already taken. */
+function claimBox(taken: TextBox[], box: TextBox): boolean {
+  const isFree = taken.every(
+    (other) =>
+      box.x + box.width <= other.x ||
+      other.x + other.width <= box.x ||
+      box.y + box.height <= other.y ||
+      other.y + other.height <= box.y,
+  );
+  if (isFree) taken.push(box);
+  return isFree;
 }
 
 /** Writes text with a dark edge, so it stays readable on any background. */
@@ -81,22 +106,32 @@ function useFont(context: CanvasRenderingContext2D, pixels: number, weight = "60
   return size;
 }
 
-/** Writes name and level below a jelly. */
-function drawName(context: CanvasRenderingContext2D, anchor: LabelAnchor): void {
+/** Writes name and level below a jelly, if there is room. */
+function drawName(context: CanvasRenderingContext2D, anchor: LabelAnchor, taken: TextBox[]): void {
   const size = useFont(context, anchor.height * NAME_FONT_SHARE);
+  const text = `${anchor.player.name} · ${anchor.player.level}`;
+  const width = context.measureText(text).width + OUTLINE_PIXELS;
   const nameY = anchor.y + anchor.height * NAME_GAP_SHARE + size / 2;
-  writeOutlined(context, `${anchor.player.name} · ${anchor.player.level}`, {
-    x: anchor.x,
-    y: nameY,
-  });
+  if (claimBox(taken, { x: anchor.x - width / 2, y: nameY - size / 2, width, height: size })) {
+    writeOutlined(context, text, { x: anchor.x, y: nameY });
+  }
 }
 
-/** Paints a sign over the head. */
-function drawSign(context: CanvasRenderingContext2D, label: string, anchor: LabelAnchor): void {
+/** Paints a sign over the head, if there is room. */
+function drawSign(
+  context: CanvasRenderingContext2D,
+  label: string,
+  anchor: LabelAnchor,
+  taken: TextBox[],
+): void {
   const size = useFont(context, anchor.height * SIGN_FONT_SHARE);
   const width = context.measureText(label).width + 2 * SIGN_PADDING;
   const boxHeight = size + SIGN_PADDING;
   const centerY = anchor.y - anchor.height * (1 + SIGN_GAP_SHARE) - boxHeight / 2;
+  const box = { x: anchor.x - width / 2, y: centerY - boxHeight / 2, width, height: boxHeight };
+  if (!claimBox(taken, box)) {
+    return;
+  }
   context.fillStyle = SIGN_FILL;
   context.strokeStyle = SIGN_EDGE;
   context.lineWidth = 1;

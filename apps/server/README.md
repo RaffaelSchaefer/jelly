@@ -30,9 +30,9 @@ Bühne. Mit Strg+C ist alles wieder weg. Der Raum folgt dem Hallenplan der LAN: 
 Bodentank, links und rechts Tischreihen mit Gängen dazwischen. Meist
 stehen drei Reihen zusammen: Spieltische, eine Tischreihe für Switches und Kabel, wieder Spieltische.
 Jeder Spieltisch ist ein Platz, die Spieler stehen im Gang davor, und eine Reihe aus vier Plätzen ist
-eine Gruppe (`seats`). Tische (`desk`), die Theke der Snackbar und die Beamer sind Hindernisse, um
-die die Jellies herumlaufen. Jellies ohne Platz chillen in der Lounge, auf die Bühne stellt sie ein
-Admin, etwa für ein Turnier. Wer Essen oder Trinken meldet, holt sich kurz etwas an der Snackbar. Der
+eine Gruppe (`seats`). Tische (`desk`), die Theke der Snackbar und auf der Bühne Beamer, Boxen und
+Pokal sind Hindernisse, um die die Jellies herumlaufen. Jellies ohne Platz chillen in der Lounge,
+auf die Bühne stellt sie ein Admin, etwa für ein Turnier. Wer Essen oder Trinken meldet, holt sich kurz etwas an der Snackbar. Der
 Aufbau steht in `scripts/demo-room.sh`, `kind: "cable"` für Kabelkanäle am Boden nutzt die Demo
 nicht.
 
@@ -48,11 +48,20 @@ reine Funktion aus Spieler-ID und Serverzeit, daher wollen auf allen Bildschirme
 dieselbe Stelle und der Server speichert keine Positionen. Den Weg um die Tische sucht jeder
 Bildschirm selbst, während ein Jelly läuft, können Bildschirme also kurz voneinander abweichen.
 
+Bühne, Lounge und Snackbar sind eingerichtet, und manches bewegt sich: Spots wandern über die
+Bühnenbretter, die Boxen pumpen im Takt, in der Lounge blubbert eine Lavalampe unter Lichterketten,
+an der Theke dreht sich Slush und Lauflichter umrahmen das Schild. Die Bauteile stehen in
+`web/stage/stageSet.ts`, `lounge.ts` und `snackBar.ts`.
+
 Die Kamera schaut durch ein leichtes Fischauge, so wirkt der Raum wie ein Stück einer kleinen Kugel.
 `?lens=0` schaltet es ab, `?lens=1` biegt stark (Standard 0,55). Namen und Schilder folgen dem Bild.
 
-Die Jellies werden geraymarcht und kosten pro Bildpunkt viel Grafikleistung. `?scale=0.5` halbiert
-die Auflösung des 3D-Bilds für schwache Rechner, `?scale=2` verdoppelt sie (Bereich 0,25 bis 2).
+Die Bühne zeichnet je Seite doppelt so viele Bildpunkte wie der Bildschirm hat, höchstens etwa 4K,
+und der Browser rechnet das Bild herunter. Das glättet alle Kanten, auch die der Jellies, die die
+Kantenglättung der Grafikkarte nicht erfasst. Die Jellies werden geraymarcht und kosten pro
+Bildpunkt viel Grafikleistung. `?scale=0.5` halbiert die Auflösung des 3D-Bilds für schwache
+Rechner, dann hat es so viele Bildpunkte wie der Bildschirm. `?scale=2` verdoppelt sie (Bereich 0,25
+bis 2).
 Messungen stehen in [benchmarks/README.md](benchmarks/README.md).
 
 ## Simulator

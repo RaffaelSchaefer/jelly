@@ -1,0 +1,340 @@
+/**
+ * The stage at the back of the hall: a board floor with wandering spotlights, an LED strip and
+ * steps at the front, two beamer screens, speaker stacks with lights in the back corners and the
+ * tournament trophy between the screens.
+ *
+ * @module
+ */
+
+import {
+  CatmullRomCurve3,
+  CircleGeometry,
+  Color,
+  CylinderGeometry,
+  DoubleSide,
+  Group,
+  LatheGeometry,
+  Mesh,
+  PlaneGeometry,
+  ShaderMaterial,
+  TorusGeometry,
+  TubeGeometry,
+  Vector2,
+  Vector3,
+} from "three";
+
+import type { FloorPoint, FloorRect } from "./world.ts";
+
+import { createBulbs } from "./bulbs.ts";
+import {
+  createBox,
+  createGlow,
+  createMatte,
+  createShiny,
+  createZoneShadow,
+  FACE_LIFT,
+  findMiddle,
+  GLOW_COLORS,
+  keepMaterial,
+  layFlat,
+  LED_MATERIAL,
+  placeMesh,
+  VENUE_TIME,
+} from "./props.ts";
+import propVertexShader from "./shaders/prop.vert.glsl?raw";
+import screenFragmentShader from "./shaders/screen.frag.glsl?raw";
+import screenVertexShader from "./shaders/screen.vert.glsl?raw";
+import speakerFragmentShader from "./shaders/speaker.frag.glsl?raw";
+import speakerVertexShader from "./shaders/speaker.vert.glsl?raw";
+import floorFragmentShader from "./shaders/stageFloor.frag.glsl?raw";
+import {
+  findPedestalRect,
+  listScreenRects,
+  listSpeakerRects,
+  SCREEN_WIDTH,
+  STAGE_HEIGHT,
+} from "./zones.ts";
+
+const STAGE_CORNER = 0.08;
+/** The board floor lies just above the platform, so the two never fight over a pixel. */
+const FLOOR_LIFT = 0.003;
+const LED_STRIP = { height: 0.07, depth: 0.08 };
+const STEP = { width: 2.4, depth: 0.32, count: 2 };
+/** The screen hangs this high over the stage floor and is this tall. */
+const SCREEN_BOTTOM = 0.55;
+const SCREEN_HEIGHT = 2.3;
+const FRAME_BORDER = 0.12;
+const FRAME_DEPTH = 0.12;
+const LEG = { radius: 0.05, inset: 0.3 };
+const SOCKET = { width: 0.32, height: 0.26, depth: 0.2, inset: 0.35 };
+const CABLE = { radius: 0.025, swing: 0.25, segments: 24 };
+/** The lower box of a speaker stack carries the bass, the upper one is a little smaller. */
+const SUB_HEIGHT = 0.95;
+const TOP_BOX = { share: 0.86, height: 0.62 };
+const BEATS_PER_SECOND = 2;
+const CONE_SEGMENTS = 28;
+/** Cones stand out of the box front by this much. */
+const CONE_LIFT = 0.006;
+const PAR = { radius: 0.12, length: 0.3, tilt: 0.95, turn: 0.55 };
+const PEDESTAL_HEIGHT = 0.62;
+const TROPHY_PLATE = { height: 0.08, below: 0.14 };
+/** Outline of the trophy cup from foot to rim and back down inside, radius and height. */
+const CUP_PROFILE: [number, number][] = [
+  [0.001, 0],
+  [0.22, 0],
+  [0.22, 0.05],
+  [0.08, 0.09],
+  [0.05, 0.24],
+  [0.08, 0.29],
+  [0.05, 0.33],
+  [0.13, 0.4],
+  [0.28, 0.55],
+  [0.32, 0.74],
+  [0.34, 0.8],
+  [0.3, 0.8],
+  [0.25, 0.62],
+  [0.001, 0.48],
+];
+const HANDLE = { radius: 0.14, tube: 0.035, height: 0.6, reach: 0.31 };
+const GLINT = { radius: 0.035, spread: 0.45 };
+
+const PLATFORM_MATERIAL = createMatte("#56658a");
+const STEP_MATERIAL = createMatte("#6f7fa6");
+const FRAME_MATERIAL = createMatte("#2d3446");
+const SOCKET_MATERIAL = createMatte("#e98a3a");
+const CABLE_MATERIAL = createMatte("#2b3140");
+const SPEAKER_MATERIAL = createMatte("#353b4e");
+const PAR_MATERIAL = createMatte("#262b38");
+const PEDESTAL_MATERIAL = createMatte("#f3f5fb");
+const GOLD_MATERIAL = createShiny("#f2c14e", "#fff1c2");
+GOLD_MATERIAL.side = DoubleSide;
+GOLD_MATERIAL.emissive = new Color("#4a3208");
+const LENS_MATERIALS = GLOW_COLORS.map((color) => createGlow(color));
+const SCREEN_MATERIAL = keepMaterial(
+  new ShaderMaterial({
+    defines: { SCREEN_ASPECT: (SCREEN_WIDTH / SCREEN_HEIGHT).toFixed(3) },
+    uniforms: {
+      uTime: VENUE_TIME,
+      uSeed: { value: 0 },
+      uBase: { value: new Color("#1b2242") },
+      uColors: { value: GLOW_COLORS.map((color) => new Color(color)) },
+    },
+    vertexShader: screenVertexShader,
+    fragmentShader: screenFragmentShader,
+    toneMapped: false,
+  }),
+);
+const CONE_MATERIAL = keepMaterial(
+  new ShaderMaterial({
+    defines: { BEATS_PER_SECOND: BEATS_PER_SECOND.toFixed(2) },
+    uniforms: {
+      uTime: VENUE_TIME,
+      uCone: { value: new Color("#1f2330") },
+      uSurround: { value: new Color("#4a5168") },
+      uCap: { value: new Color("#5d6580") },
+    },
+    vertexShader: speakerVertexShader,
+    fragmentShader: speakerFragmentShader,
+    toneMapped: false,
+  }),
+);
+
+/** Creates the board floor of one stage. It knows the stage size, so it belongs to that stage. */
+function createFloorMaterial(width: number, depth: number): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      uTime: VENUE_TIME,
+      uSize: { value: new Vector2(width, depth) },
+      uBoard: { value: new Color("#5b6a92") },
+      uJoint: { value: new Color("#47536f") },
+      uSpots: { value: GLOW_COLORS.map((color) => new Color(color)) },
+    },
+    vertexShader: propVertexShader,
+    fragmentShader: floorFragmentShader,
+    toneMapped: false,
+  });
+}
+
+/** Builds the platform: sides, board floor, LED strip along the front and steps up. */
+function createPlatform(rect: FloorRect): Group {
+  const platform = new Group();
+  const width = rect.maxX - rect.minX;
+  const depth = rect.maxZ - rect.minZ;
+  const middle = findMiddle(rect);
+  const size = { width, height: STAGE_HEIGHT, depth, rounding: STAGE_CORNER };
+  platform.add(layFlat(createBox(size, PLATFORM_MATERIAL, middle, 0)));
+  const boards = new PlaneGeometry(width - 2 * STAGE_CORNER, depth - 2 * STAGE_CORNER);
+  const floorPoint = { x: middle.x, y: STAGE_HEIGHT + FLOOR_LIFT, z: middle.z };
+  const floor = layFlat(placeMesh(boards, createFloorMaterial(width, depth), floorPoint));
+  floor.rotation.x = -Math.PI / 2;
+  const strip = { width: width - 2 * STAGE_CORNER, ...LED_STRIP };
+  const stripSpot = { x: middle.x, z: rect.maxZ - LED_STRIP.depth / 2 };
+  platform.add(floor, createBox(strip, LED_MATERIAL, stripSpot, STAGE_HEIGHT - strip.height / 2));
+  for (let index = 0; index < STEP.count; index++) {
+    const height = (STAGE_HEIGHT * (index + 1)) / (STEP.count + 1);
+    const stepDepth = STEP.depth * (STEP.count - index);
+    const spot = { x: middle.x, z: rect.maxZ + stepDepth / 2 };
+    platform.add(
+      createBox({ width: STEP.width, height, depth: stepDepth }, STEP_MATERIAL, spot, 0),
+    );
+    const nose = { width: STEP.width, height: LED_STRIP.height / 2, depth: LED_STRIP.depth / 2 };
+    const noseSpot = { x: middle.x, z: rect.maxZ + stepDepth - nose.depth / 2 };
+    platform.add(createBox(nose, LED_MATERIAL, noseSpot, height - nose.height / 2));
+  }
+  return platform;
+}
+
+/** Builds a beamer screen in its frame, standing on the stage. */
+function createScreen(rect: FloorRect, seed: number): Group {
+  const screen = new Group();
+  const middle = findMiddle(rect);
+  const frame = {
+    width: SCREEN_WIDTH + 2 * FRAME_BORDER,
+    height: SCREEN_HEIGHT + 2 * FRAME_BORDER,
+    depth: FRAME_DEPTH,
+    rounding: FRAME_DEPTH / 2,
+  };
+  screen.add(createBox(frame, FRAME_MATERIAL, middle, STAGE_HEIGHT + SCREEN_BOTTOM - FRAME_BORDER));
+  const legHeight = SCREEN_BOTTOM - FRAME_BORDER;
+  for (const side of [-1, 1]) {
+    const leg = new CylinderGeometry(LEG.radius, LEG.radius, legHeight, 8);
+    const x = middle.x + side * (SCREEN_WIDTH / 2 - LEG.inset);
+    screen.add(placeMesh(leg, FRAME_MATERIAL, { x, y: STAGE_HEIGHT + legHeight / 2, z: middle.z }));
+  }
+  const picture = placeMesh(new PlaneGeometry(SCREEN_WIDTH, SCREEN_HEIGHT), SCREEN_MATERIAL, {
+    x: middle.x,
+    y: STAGE_HEIGHT + SCREEN_BOTTOM + SCREEN_HEIGHT / 2,
+    z: middle.z + FRAME_DEPTH / 2 + FACE_LIFT,
+  });
+  // One material for both screens: each sets its own seed right before it is drawn.
+  picture.onBeforeRender = () => {
+    const seedUniform = SCREEN_MATERIAL.uniforms.uSeed;
+    if (seedUniform) seedUniform.value = seed;
+    SCREEN_MATERIAL.uniformsNeedUpdate = true;
+  };
+  screen.add(picture);
+  return screen;
+}
+
+/** Builds a speaker cone facing the hall. */
+function createCone(radius: number, point: { x: number; y: number; z: number }): Mesh {
+  return placeMesh(new CircleGeometry(radius, CONE_SEGMENTS), CONE_MATERIAL, point);
+}
+
+/** Builds a PAR light on a speaker stack, aimed at the middle of the stage and the hall. */
+function createParLight(spot: FloorPoint, bottom: number, side: number, color: number): Group {
+  const light = new Group();
+  const can = new CylinderGeometry(PAR.radius, PAR.radius * 0.8, PAR.length, 16);
+  light.add(placeMesh(can, PAR_MATERIAL, { x: 0, y: 0, z: 0 }));
+  const lensMaterial = LENS_MATERIALS[color % LENS_MATERIALS.length] ?? FRAME_MATERIAL;
+  const lens = placeMesh(new CircleGeometry(PAR.radius * 0.85, 20), lensMaterial, {
+    x: 0,
+    y: PAR.length / 2 + FACE_LIFT,
+    z: 0,
+  });
+  lens.rotation.x = -Math.PI / 2;
+  light.add(lens);
+  light.position.set(spot.x, bottom + PAR.radius, spot.z);
+  light.rotation.set(PAR.tilt, 0, side * PAR.turn);
+  return light;
+}
+
+/** Builds a speaker stack: a bass box with a smaller box on top and two lights. */
+function createSpeakerStack(rect: FloorRect, side: number): Group {
+  const stack = new Group();
+  const width = rect.maxX - rect.minX;
+  const depth = rect.maxZ - rect.minZ;
+  const middle = findMiddle(rect);
+  const top = {
+    width: width * TOP_BOX.share,
+    height: TOP_BOX.height,
+    depth: depth * TOP_BOX.share,
+  };
+  const topBottom = STAGE_HEIGHT + SUB_HEIGHT;
+  stack.add(
+    createBox({ width, height: SUB_HEIGHT, depth }, SPEAKER_MATERIAL, middle, STAGE_HEIGHT),
+    createBox(top, SPEAKER_MATERIAL, middle, topBottom),
+    createCone(0.34, { x: middle.x, y: STAGE_HEIGHT + SUB_HEIGHT / 2, z: rect.maxZ + CONE_LIFT }),
+  );
+  const topFront = middle.z + top.depth / 2 + CONE_LIFT;
+  stack.add(
+    createCone(0.17, { x: middle.x, y: topBottom + top.height * 0.34, z: topFront }),
+    createCone(0.08, { x: middle.x, y: topBottom + top.height * 0.79, z: topFront }),
+  );
+  for (const [index, offset] of [-0.22, 0.22].entries()) {
+    const spot = { x: middle.x + offset * width, z: middle.z };
+    stack.add(createParLight(spot, topBottom + top.height, side, index + (side > 0 ? 1 : 0)));
+  }
+  stack.add(createZoneShadow(rect, STAGE_HEIGHT));
+  return stack;
+}
+
+/** Builds the trophy of the tournament on its pedestal, with a few glints around the cup. */
+function createTrophy(rect: FloorRect): Group {
+  const trophy = new Group();
+  const middle = findMiddle(rect);
+  const size = rect.maxX - rect.minX;
+  const pedestal = { width: size, height: PEDESTAL_HEIGHT, depth: size };
+  const plate = { width: size + 0.02, height: TROPHY_PLATE.height, depth: size + 0.02 };
+  const plateBottom = STAGE_HEIGHT + PEDESTAL_HEIGHT - TROPHY_PLATE.below;
+  trophy.add(
+    createBox(pedestal, PEDESTAL_MATERIAL, middle, STAGE_HEIGHT),
+    createBox(plate, GOLD_MATERIAL, middle, plateBottom),
+  );
+  const base = STAGE_HEIGHT + PEDESTAL_HEIGHT;
+  const outline = CUP_PROFILE.map(([radius, height]) => new Vector2(radius, height));
+  trophy.add(placeMesh(new LatheGeometry(outline, 32), GOLD_MATERIAL, { ...middle, y: base }));
+  for (const side of [-1, 1]) {
+    const handle = new TorusGeometry(HANDLE.radius, HANDLE.tube, 10, 20, Math.PI);
+    const point = { x: middle.x + side * HANDLE.reach, y: base + HANDLE.height, z: middle.z };
+    const mesh = placeMesh(handle, GOLD_MATERIAL, point);
+    // The half ring opens toward the cup.
+    mesh.rotation.z = -side * (Math.PI / 2);
+    trophy.add(mesh);
+  }
+  const glints = [-1, -0.4, 0.5, 1].map((share, index) => ({
+    x: middle.x + share * GLINT.spread,
+    y: base + 0.35 + 0.25 * (index % 2),
+    z: middle.z + 0.2,
+  }));
+  trophy.add(
+    createBulbs(glints, { radius: GLINT.radius, colors: ["#ffffff"], pattern: "twinkle" }),
+  );
+  return trophy;
+}
+
+/** Builds the 32A sockets in the back corners and their cables to the speakers. */
+function createSockets(rect: FloorRect, speakers: FloorRect[]): Mesh[] {
+  const corners = [rect.minX + SOCKET.inset, rect.maxX - SOCKET.inset];
+  return corners.flatMap((x, index) => {
+    const spot = { x, z: rect.minZ + SOCKET.inset };
+    const box = { width: SOCKET.width, height: SOCKET.height, depth: SOCKET.depth, rounding: 0.03 };
+    const socket = createBox(box, SOCKET_MATERIAL, spot, STAGE_HEIGHT);
+    const speaker = speakers[index];
+    if (!speaker) return [socket];
+    const end = { x: index === 0 ? speaker.minX : speaker.maxX, z: speaker.maxZ - 0.15 };
+    return [socket, createCable({ x, z: spot.z + SOCKET.depth / 2 }, end)];
+  });
+}
+
+/** Builds a cable lying on the stage between two points. */
+function createCable(from: FloorPoint, to: FloorPoint): Mesh {
+  const height = STAGE_HEIGHT + CABLE.radius;
+  const bend = { x: (from.x + to.x) / 2, z: Math.max(from.z, to.z) + CABLE.swing };
+  const curve = new CatmullRomCurve3(
+    [from, bend, to].map((point) => new Vector3(point.x, height, point.z)),
+  );
+  const tube = new TubeGeometry(curve, CABLE.segments, CABLE.radius, 6);
+  return placeMesh(tube, CABLE_MATERIAL, { x: 0, y: 0, z: 0 });
+}
+
+/** Builds a whole stage. */
+export function createStage(rect: FloorRect): Group {
+  const stage = new Group();
+  const speakers = listSpeakerRects(rect);
+  stage.add(createPlatform(rect), createZoneShadow(rect));
+  listScreenRects(rect).forEach((screenRect, index) => stage.add(createScreen(screenRect, index)));
+  speakers.forEach((speaker, index) => stage.add(createSpeakerStack(speaker, index * 2 - 1)));
+  stage.add(createTrophy(findPedestalRect(rect)), ...createSockets(rect, speakers));
+  return stage;
+}

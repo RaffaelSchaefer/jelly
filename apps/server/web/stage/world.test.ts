@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   calculateCameraDistance,
+  calculateCanvasDensity,
   remapIntoRect,
   ROOM_DEPTH,
   ROOM_WIDTH,
@@ -56,4 +57,12 @@ test("the camera stands far enough away to see every point", () => {
     touchesEdge ||= Math.abs(Math.abs(point.x) - tanVertical * view.aspect * depth) < 1e-6;
   }
   assert.ok(touchesEdge, "the fit is tight");
+});
+
+test("the canvas doubles the screen pixels up to about 4K, never below the screen", () => {
+  assert.equal(calculateCanvasDensity({ width: 1920, height: 1080 }, 1), 2);
+  assert.equal(calculateCanvasDensity({ width: 2560, height: 1440 }, 1), 1.5);
+  assert.equal(calculateCanvasDensity({ width: 3840, height: 2160 }, 1), 1);
+  assert.equal(calculateCanvasDensity({ width: 1920, height: 1080 }, 2), 2);
+  assert.equal(calculateCanvasDensity({ width: 0, height: 0 }, 1), 2);
 });

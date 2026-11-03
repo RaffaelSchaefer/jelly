@@ -15,8 +15,8 @@ import { calculateGoal } from "./walking.ts";
 
 /** Closest distance between two jelly centers, in jelly units. A jelly is about 1.7 wide. */
 const PERSONAL_SPACE = 1.8;
-/** More rounds untangle larger crowds but cost more time per frame. */
-const SPREAD_ROUNDS = 3;
+/** More rounds untangle larger crowds but cost more time per frame. Eight settle a full row. */
+const SPREAD_ROUNDS = 8;
 const SAME_SPOT = 1e-6;
 /**
  * Jellies on one spot would all be pushed along one line. A tiny nudge in a different direction
@@ -25,7 +25,18 @@ const SAME_SPOT = 1e-6;
 const NUDGE = 0.001;
 const GOLDEN_ANGLE = 2.399963;
 
-/** Pushes two goals apart until they keep their distance. A push into a desk is left out. */
+/** Moves a goal if the spot is free. A push into a desk slides along the desk instead. */
+function moveGoal(goals: FloorPoint[], index: number, moved: FloorPoint, grid: NavGrid): void {
+  const stay = goals[index];
+  if (!stay) {
+    return;
+  }
+  const candidates = [moved, { x: moved.x, z: stay.z }, { x: stay.x, z: moved.z }];
+  const free = candidates.find((candidate) => isWalkable(grid, candidate));
+  if (free) goals[index] = free;
+}
+
+/** Pushes two goals apart until they keep their distance. */
 function pushApart(goals: FloorPoint[], first: number, second: number, grid: NavGrid): void {
   const one = goals[first];
   const other = goals[second];
@@ -40,10 +51,8 @@ function pushApart(goals: FloorPoint[], first: number, second: number, grid: Nav
   const directionX = isSameSpot ? 1 : (other.x - one.x) / distance;
   const directionZ = isSameSpot ? 0 : (other.z - one.z) / distance;
   const push = (PERSONAL_SPACE - distance) / 2;
-  const movedOne = { x: one.x - directionX * push, z: one.z - directionZ * push };
-  const movedOther = { x: other.x + directionX * push, z: other.z + directionZ * push };
-  if (isWalkable(grid, movedOne)) goals[first] = movedOne;
-  if (isWalkable(grid, movedOther)) goals[second] = movedOther;
+  moveGoal(goals, first, { x: one.x - directionX * push, z: one.z - directionZ * push }, grid);
+  moveGoal(goals, second, { x: other.x + directionX * push, z: other.z + directionZ * push }, grid);
 }
 
 /** Returns the goals pushed apart, in the same order. */

@@ -32,7 +32,7 @@ import { applyLens, createLensPass, type LensPass } from "./lensPass.ts";
 import { createNavGrid } from "./navigation.ts";
 import { createStageScene, findViewer, projectToScreen, resizeStageScene } from "./scene.ts";
 import { createVenue, disposeVenue, updateVenue } from "./venue.ts";
-import { JELLY_RADIUS, ROOM } from "./world.ts";
+import { calculateCanvasDensity, JELLY_RADIUS, ROOM } from "./world.ts";
 import { findSnackBar, listObstacleRects, listStageRects } from "./zones.ts";
 
 /** Many events in a row cause only one reload. */
@@ -45,7 +45,7 @@ const FRAMES_PER_SECOND = 30;
 const FRAME_TOLERANCE_MS = 4;
 /** After a hidden tab, the jellies continue instead of jumping. */
 const LONGEST_FRAME_SECONDS = 0.1;
-/** `?scale=` sets the detail of the 3D picture, for slow or very fast machines. */
+/** `?scale=` sets the detail of the 3D picture relative to the canvas, for slow or fast machines. */
 const SCALE_RANGE = { lowest: 0.25, highest: 2, usual: 1 };
 const TEXT_WRONG_KEY = "Der Bühnen-Link ist ungültig. Bitte den vollständigen Link öffnen.";
 const TEXT_OFFLINE = "Keine Verbindung zum Server. Neuer Versuch läuft …";
@@ -194,10 +194,9 @@ async function reload(memory: StageMemory, stageKey: string): Promise<void> {
   }
 }
 
-/** Adjusts the visible canvas to the window and its pixel density. Returns the size in CSS pixels. */
-function fitCanvas(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+/** Adjusts the visible canvas to the window and the pixel density. Returns the size in CSS pixels. */
+function fitCanvas(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, density: number) {
   const { clientWidth: width, clientHeight: height } = canvas;
-  const density = window.devicePixelRatio;
   if (canvas.width !== Math.round(width * density)) {
     canvas.width = Math.round(width * density);
   }
@@ -209,7 +208,12 @@ function fitCanvas(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D)
 }
 
 /** Moves everything one frame on, renders the room and paints it with the texts. */
-function paintFrame(memory: StageMemory, context: CanvasRenderingContext2D, seconds: number): void {
+function paintFrame(
+  memory: StageMemory,
+  context: CanvasRenderingContext2D,
+  seconds: number,
+  density: number,
+): void {
   const now = Date.now();
   const { stage } = memory;
   memory.effects = updateEffects(memory.effects, [], now);
@@ -227,7 +231,7 @@ function paintFrame(memory: StageMemory, context: CanvasRenderingContext2D, seco
     now,
   });
   updateVenue(time);
-  const size = fitCanvas(context.canvas, context);
+  const size = fitCanvas(context.canvas, context, density);
   stage.renderer.render(stage.scene, stage.camera);
   applyLens(memory.lens, stage.renderer);
   // Copied in the same task as the render, so the WebGL picture is still there.
@@ -259,11 +263,12 @@ function startFrameLoop(memory: StageMemory, context: CanvasRenderingContext2D, 
     const seconds = Math.min(LONGEST_FRAME_SECONDS, (frameAt - lastFrameAt) / 1000);
     lastFrameAt = frameAt;
     const size = { width: context.canvas.clientWidth, height: context.canvas.clientHeight };
-    if (`${size.width}x${size.height}` !== lastSize) {
-      lastSize = `${size.width}x${size.height}`;
-      resizeStageScene(memory.stage, size, scale, memory.lens.strength);
+    const density = calculateCanvasDensity(size, window.devicePixelRatio);
+    if (`${size.width}x${size.height}@${density}` !== lastSize) {
+      lastSize = `${size.width}x${size.height}@${density}`;
+      resizeStageScene(memory.stage, size, density * scale, memory.lens.strength);
     }
-    paintFrame(memory, context, seconds);
+    paintFrame(memory, context, seconds, density);
   };
   requestAnimationFrame(tick);
 }

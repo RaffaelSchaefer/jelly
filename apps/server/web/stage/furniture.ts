@@ -44,8 +44,8 @@ const CABLE_MATERIAL = new MeshLambertMaterial({ color: "#9aa6b5", toneMapped: f
 /** Materials are shared by all furniture and stay for the whole page. */
 const SHARED_MATERIALS = new Set<Material>([TOP_MATERIAL, LEG_MATERIAL, CABLE_MATERIAL]);
 
-/** Creates a box mesh whose bottom sits at `bottom`. The venue builds its props with it, too. */
-export function createBlock(
+/** Creates a box mesh whose bottom sits at `bottom`. */
+function createBlock(
   geometry: BufferGeometry,
   material: Material,
   center: { x: number; z: number },

@@ -8,10 +8,13 @@ import { createNavGrid, isWalkable } from "./navigation.ts";
 import { JELLY_RADIUS, ROOM, toFloorRect } from "./world.ts";
 import {
   findFloorHeight,
+  findPedestalRect,
   findSnackBar,
   findSnackSpot,
   listObstacleRects,
   listScreenRects,
+  listSpeakerRects,
+  listStagePropRects,
   listStageRects,
   STAGE_HEIGHT,
 } from "./zones.ts";
@@ -25,14 +28,28 @@ const middleOf = (rect: FloorRect) => ({
   z: (rect.minZ + rect.maxZ) / 2,
 });
 
-test("desks, the counter and the beamers block the way, stage and lounge do not", () => {
+test("desks, the counter and the props on the stage block the way, stage and lounge do not", () => {
   assert.ok(stage && lounge);
   const desks = room.filter((area) => area.kind === "desk").length;
-  assert.equal(listObstacleRects(room).length, desks + 1 + 2);
+  assert.equal(listObstacleRects(room).length, desks + 1 + 5);
   assert.ok(isWalkable(grid, middleOf(toFloorRect(lounge))));
   assert.ok(isWalkable(grid, { x: middleOf(stage).x, z: stage.maxZ - 1 }));
-  for (const screen of listScreenRects(stage)) {
-    assert.equal(isWalkable(grid, middleOf(screen)), false);
+  for (const prop of listStagePropRects(stage)) {
+    assert.equal(isWalkable(grid, middleOf(prop)), false);
+  }
+});
+
+test("speakers stand in the back corners and the trophy between the beamers", () => {
+  assert.ok(stage);
+  const [left, right] = listSpeakerRects(stage);
+  const [leftScreen, rightScreen] = listScreenRects(stage);
+  const pedestal = findPedestalRect(stage);
+  assert.ok(left && right && leftScreen && rightScreen);
+  assert.ok(left.minX > stage.minX && left.maxX < leftScreen.minX);
+  assert.ok(right.maxX < stage.maxX && right.minX > rightScreen.maxX);
+  assert.ok(pedestal.minX > leftScreen.maxX && pedestal.maxX < rightScreen.minX);
+  for (const prop of [left, right, pedestal]) {
+    assert.ok(prop.minZ > stage.minZ && prop.maxZ < middleOf(stage).z);
   }
 });
 

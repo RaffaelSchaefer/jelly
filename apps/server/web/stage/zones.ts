@@ -20,6 +20,10 @@ const SCREEN_CENTERS = [0.3, 0.7];
 export const SCREEN_WIDTH = 4.2;
 const SCREEN_DEPTH = 0.2;
 const SCREEN_INSET = 0.3;
+/** Speaker stacks stand in the back corners of the stage, next to the 32A sockets. */
+const SPEAKER = { width: 1, depth: 0.8, sideInset: 0.6, backInset: 0.2 };
+/** The tournament trophy stands on a pedestal in the middle, between the two screens. */
+const PEDESTAL = { size: 0.7, backInset: 0.25 };
 /**
  * Where snack visitors wait: behind the counter, seen from the camera, so the counter stays in view
  * and the jellies peek over it. They spread along most of its length.
@@ -57,12 +61,41 @@ export function listScreenRects(stage: FloorRect): FloorRect[] {
   });
 }
 
-/** Returns everything jellies walk around: desks, snack bar counters and the beamer screens. */
+/** Returns the two speaker stacks in the back corners of a stage. */
+export function listSpeakerRects(stage: FloorRect): FloorRect[] {
+  const minZ = stage.minZ + SPEAKER.backInset;
+  const maxZ = minZ + SPEAKER.depth;
+  const leftX = stage.minX + SPEAKER.sideInset;
+  const rightX = stage.maxX - SPEAKER.sideInset;
+  return [
+    { minX: leftX, maxX: leftX + SPEAKER.width, minZ, maxZ },
+    { minX: rightX - SPEAKER.width, maxX: rightX, minZ, maxZ },
+  ];
+}
+
+/** Returns the pedestal of the trophy, in the middle of the back of a stage. */
+export function findPedestalRect(stage: FloorRect): FloorRect {
+  const centerX = (stage.minX + stage.maxX) / 2;
+  const minZ = stage.minZ + PEDESTAL.backInset;
+  return {
+    minX: centerX - PEDESTAL.size / 2,
+    maxX: centerX + PEDESTAL.size / 2,
+    minZ,
+    maxZ: minZ + PEDESTAL.size,
+  };
+}
+
+/** Returns what stands on a stage and blocks the way: screens, speakers and the trophy. */
+export function listStagePropRects(stage: FloorRect): FloorRect[] {
+  return [...listScreenRects(stage), ...listSpeakerRects(stage), findPedestalRect(stage)];
+}
+
+/** Returns everything jellies walk around: desks, snack bar counters and the props on stages. */
 export function listObstacleRects(areas: StageArea[]): FloorRect[] {
   return areas.flatMap((area) => {
     const rect = toFloorRect(area);
     if (area.kind === "stage") {
-      return listScreenRects(rect);
+      return listStagePropRects(rect);
     }
     return isObstacleKind(area.kind) ? [rect] : [];
   });

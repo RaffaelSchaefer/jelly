@@ -23,6 +23,11 @@ import {
 } from "./world.ts";
 import { findSnackSpot, isStandingKind } from "./zones.ts";
 
+/**
+ * Goals keep this far from the edges of their area: half a body. Desks keep the full clearance in
+ * the grid anyway, and a half body hanging over the edge of the stage still looks fine.
+ */
+const EDGE_MARGIN = JELLY_RADIUS / 2;
 /** A standing jelly starts walking only when its goal is this far away, in jelly units. */
 const START_DISTANCE = 0.6;
 /** A walking jelly searches a new path when its goal moved this far from the planned one. */
@@ -90,9 +95,9 @@ export interface GoalContext {
 }
 
 /**
- * Returns where a jelly wants to stand. In its own area it keeps clear of the edges, so the body
- * does not reach into the desks around it. On a snack run it waits at the counter. Elsewhere it
- * takes the nearest spot it may stand on.
+ * Returns where a jelly wants to stand. In its own area it keeps a little clear of the edges, so a
+ * row of jellies has some depth to stagger in without reaching far into the desks around it. On a
+ * snack run it waits at the counter. Elsewhere it takes the nearest spot it may stand on.
  */
 export function calculateGoal(player: StagePlayer, context: GoalContext): FloorPoint {
   const { lookup, grid, snackBar } = context;
@@ -104,7 +109,7 @@ export function calculateGoal(player: StagePlayer, context: GoalContext): FloorP
   const isFollowing = lookup.players.has(player.follow_player_id ?? 0);
   if (area && isStandingKind(area.kind) && !isFollowing) {
     const rect = toFloorRect(area);
-    goal = remapIntoRect(goal, rect, shrinkRect(rect, JELLY_RADIUS));
+    goal = remapIntoRect(goal, rect, shrinkRect(rect, EDGE_MARGIN));
   }
   return findNearestWalkable(grid, goal);
 }
