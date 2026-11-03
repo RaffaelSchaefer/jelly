@@ -20,6 +20,7 @@ formatters:
     golines:
       max-len: 100
       tab-len: 4
+      shorten-comments: true
     goimports:
       local-prefixes:
         - github.com/RaffaelSchaefer/jelly/apps/server
