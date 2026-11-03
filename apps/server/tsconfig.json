@@ -15,5 +15,5 @@
     "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["web"]
+  "include": ["web", "../../packages/jelly-scene/src/glsl.d.ts"]
 }

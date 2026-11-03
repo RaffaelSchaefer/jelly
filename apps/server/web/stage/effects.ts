@@ -5,12 +5,16 @@
  * @module
  */
 
-import type { StageCatalog, StageEvent } from "./types.ts";
+import type { EventPayload, StageCatalog, StageEvent } from "./types.ts";
 
 const BUBBLE_MS = 3000;
 const TOAST_MS = 5000;
 const XP_TOAST_MS = 1800;
 const MOTION_MS = 2400;
+/** A snack run: there, a short wait at the counter and back. */
+const VISIT_MS = 14_000;
+/** XP for these reports sends the jelly on a snack run. */
+const SNACK_SOURCES = new Set(["food", "drink"]);
 /** Events older than this are replays after a lost connection and not worth animating. */
 const FRESH_EVENT_MS = 10_000;
 /** A flood of events drops the oldest effects instead of slowing the stage down. */
@@ -21,6 +25,9 @@ const HOPS_PER_MOTION = 3;
 const WIGGLE_ANGLE = 0.3;
 const WIGGLES_PER_MOTION = 6;
 const SECRET_ACHIEVEMENT_TITLE = "Geheimes Achievement";
+/** Events that reward a jelly. It bounces and beams like the jelly in the app after a poke. */
+const PULSE_EVENTS = new Set(["xp.gained", "level.up", "achievement.earned", "award.given"]);
+const RESTING_POSE: MotionPose = { lift: 0, turn: 0, tilt: 0 };
 
 const EMOTE_GLYPHS: Record<string, string> = {
   wave: "👋",
@@ -40,8 +47,10 @@ export type MotionKey = "hop" | "spin" | "wiggle";
 export interface MotionPose {
   /** Lift in jelly heights. */
   lift: number;
-  /** Rotation in radians. */
-  angle: number;
+  /** Turn around the vertical axis in radians. */
+  turn: number;
+  /** Sideways tilt in radians. */
+  tilt: number;
 }
 
 /** A running animation of one jelly. */
@@ -49,7 +58,13 @@ export type StageEffect = { playerId: number; startedAt: number; endsAt: number 
   | { kind: "bubble"; glyph: string }
   | { kind: "toast"; text: string }
   | { kind: "motion"; motion: MotionKey }
+  | { kind: "visit" }
 );
+
+/** Reports whether an event rewards its jelly, which then bounces. */
+export function isPulseEvent(event: StageEvent): boolean {
+  return PULSE_EVENTS.has(event.type);
+}
 
 /** Reports whether an event happened recently enough to animate. */
 export function isFreshEvent(event: StageEvent, serverTime: number): boolean {
@@ -67,14 +82,14 @@ export function createEffects(
     return [];
   }
   const start = { playerId, startedAt: now };
-  const { key, amount, level, title, partner_id: partnerId } = event.payload;
+  const { key, level, title, partner_id: partnerId } = event.payload;
   switch (event.type) {
     case "emote":
       return createEmoteEffects(playerId, key ?? "", now);
     case "partner.emote":
       return createPartnerEffects([playerId, partnerId ?? playerId], key ?? "", now);
     case "xp.gained":
-      return [{ ...start, endsAt: now + XP_TOAST_MS, kind: "toast", text: `+${amount} XP` }];
+      return createXPEffects(start, event.payload);
     case "level.up":
       return [{ ...start, endsAt: now + TOAST_MS, kind: "toast", text: `Level ${level}!` }];
     case "achievement.earned":
@@ -84,6 +99,23 @@ export function createEffects(
     default:
       return [];
   }
+}
+
+/** XP rises as a short text. Food and drink also send the jelly on a snack run. */
+function createXPEffects(
+  start: { playerId: number; startedAt: number },
+  payload: EventPayload,
+): StageEffect[] {
+  const toast: StageEffect = {
+    ...start,
+    endsAt: start.startedAt + XP_TOAST_MS,
+    kind: "toast",
+    text: `+${payload.amount ?? 0} XP`,
+  };
+  if (!SNACK_SOURCES.has(payload.source ?? "")) {
+    return [toast];
+  }
+  return [toast, { ...start, endsAt: start.startedAt + VISIT_MS, kind: "visit" }];
 }
 
 /** Secret achievements are not in the catalog, the stage only says that one was found. */
@@ -135,15 +167,34 @@ export function calculateMotionPose(motion: MotionKey, progress: number): Motion
   switch (motion) {
     case "hop":
       return {
+        ...RESTING_POSE,
         lift: HOP_HEIGHT * Math.abs(Math.sin(progress * Math.PI * HOPS_PER_MOTION)),
-        angle: 0,
       };
     case "spin":
-      return { lift: 0, angle: progress * FULL_CIRCLE };
+      return { ...RESTING_POSE, turn: progress * FULL_CIRCLE };
     case "wiggle":
       return {
-        lift: 0,
-        angle: WIGGLE_ANGLE * Math.sin(progress * Math.PI * WIGGLES_PER_MOTION),
+        ...RESTING_POSE,
+        tilt: WIGGLE_ANGLE * Math.sin(progress * Math.PI * WIGGLES_PER_MOTION),
       };
   }
+}
+
+/** Returns the jellies that are on a snack run right now. */
+export function findVisitors(effects: StageEffect[], now: number): Set<number> {
+  const visitors = effects.filter(
+    (effect) => effect.kind === "visit" && effect.startedAt <= now && effect.endsAt > now,
+  );
+  return new Set(visitors.map((effect) => effect.playerId));
+}
+
+/** Returns the current motion of a jelly, or the resting pose. */
+export function findMotionPose(effects: StageEffect[], playerId: number, now: number): MotionPose {
+  for (const effect of effects) {
+    if (effect.kind === "motion" && effect.playerId === playerId) {
+      const progress = (now - effect.startedAt) / (effect.endsAt - effect.startedAt);
+      return calculateMotionPose(effect.motion, Math.min(1, Math.max(0, progress)));
+    }
+  }
+  return RESTING_POSE;
 }

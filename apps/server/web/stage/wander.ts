@@ -16,7 +16,14 @@ const SLOW_PERIOD_MS = { shortest: 40_000, longest: 90_000 };
 const FAST_PERIOD_MS = { shortest: 15_000, longest: 30_000 };
 const FOLLOW_GAP_PERCENT = 5;
 const FULL_CIRCLE = 2 * Math.PI;
-const WHOLE_STAGE: StageArea = { id: 0, x: 0, y: 0, width: STAGE_SIZE, height: STAGE_SIZE };
+const WHOLE_STAGE: StageArea = {
+  id: 0,
+  x: 0,
+  y: 0,
+  width: STAGE_SIZE,
+  height: STAGE_SIZE,
+  kind: "seats",
+};
 
 /** Independent random values of one jelly, one per use. */
 const SEED_SLOW_PERIOD = 1;

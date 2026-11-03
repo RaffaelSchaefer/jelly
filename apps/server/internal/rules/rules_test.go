@@ -113,8 +113,47 @@ func TestValidateColor(t *testing.T) {
 	}
 }
 
+func TestValidateArea(t *testing.T) {
+	testCases := []struct {
+		name  string
+		area  rules.Area
+		valid bool
+	}{
+		{"seats", rules.Area{X: 0, Y: 0, Width: 100, Height: 100, Kind: "seats"}, true},
+		{"desk", rules.Area{X: 4, Y: 5, Width: 43, Height: 2, Kind: "desk"}, true},
+		{"cable", rules.Area{X: 49, Y: 2, Width: 2, Height: 97, Kind: "cable"}, true},
+		{"stage", rules.Area{X: 5, Y: 1, Width: 90, Height: 8, Kind: "stage"}, true},
+		{"lounge", rules.Area{X: 5, Y: 12, Width: 40, Height: 10, Kind: "lounge"}, true},
+		{"snackbar", rules.Area{X: 65, Y: 14, Width: 20, Height: 3, Kind: "snackbar"}, true},
+		{"missing kind", rules.Area{X: 0, Y: 0, Width: 10, Height: 10, Kind: ""}, false},
+		{"unknown kind", rules.Area{X: 0, Y: 0, Width: 10, Height: 10, Kind: "plant"}, false},
+		{"outside", rules.Area{X: 95, Y: 0, Width: 10, Height: 10, Kind: "seats"}, false},
+		{"no size", rules.Area{X: 0, Y: 0, Width: 0, Height: 10, Kind: "seats"}, false},
+	}
+	for _, testCase := range testCases {
+		err := rules.ValidateArea(testCase.area)
+		if (err == nil) != testCase.valid {
+			t.Errorf("%s: ValidateArea = %v", testCase.name, err)
+		}
+		if err != nil && !errors.Is(err, rules.ErrInvalidArea) {
+			t.Errorf("%s: unexpected error %v", testCase.name, err)
+		}
+	}
+}
+
+func TestOnlySeatsStageAndLoungeHoldJellies(t *testing.T) {
+	for kind, isStanding := range map[string]bool{
+		"seats": true, "stage": true, "lounge": true,
+		"desk": false, "cable": false, "snackbar": false,
+	} {
+		if rules.IsStandingKind(kind) != isStanding {
+			t.Errorf("IsStandingKind(%q) = %v", kind, !isStanding)
+		}
+	}
+}
+
 func TestHomeSpotsFillTheirAreaEvenly(t *testing.T) {
-	area := rules.Area{X: 20, Y: 40, Width: 30, Height: 50}
+	area := rules.Area{X: 20, Y: 40, Width: 30, Height: 50, Kind: "seats"}
 	const columns, rows, places = 3, 3, 18
 	var counts [columns * rows]int
 	for place := range places {

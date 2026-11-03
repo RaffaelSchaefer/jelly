@@ -68,6 +68,9 @@ func listPlayerErrors() []knownError {
 		{store.ErrAreaNotFound, problem{
 			http.StatusNotFound, "area_not_found", "Diesen Bereich gibt es nicht.",
 		}},
+		{store.ErrAreaNotAssignable, problem{
+			http.StatusConflict, "area_not_assignable", "In diesem Bereich kann kein Jelly stehen.",
+		}},
 		{rules.ErrInvalidArea, problem{
 			http.StatusBadRequest, "invalid_area", "Dieser Bereich passt nicht auf die Bühne.",
 		}},

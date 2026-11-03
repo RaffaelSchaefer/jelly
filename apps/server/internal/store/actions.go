@@ -208,16 +208,23 @@ func grantXP(ctx context.Context, action actionContext, entry xpEntry) error {
 	if err != nil {
 		return fmt.Errorf("write XP total: %w", err)
 	}
-	return announceXP(ctx, action, currentXP, entry.amount)
+	return announceXP(ctx, action, currentXP, entry)
+}
+
+// xpGainedPayload says how much XP a jelly got and for what, so a stage can react to the source.
+type xpGainedPayload struct {
+	Amount int    `json:"amount"`
+	Source string `json:"source"`
 }
 
 // announceXP emits the XP gain and, if reached, the new level.
-func announceXP(ctx context.Context, action actionContext, previousXP, amount int) error {
-	err := appendVisibleEvent(ctx, action, EventXPGained, map[string]int{"amount": amount})
+func announceXP(ctx context.Context, action actionContext, previousXP int, entry xpEntry) error {
+	payload := xpGainedPayload{Amount: entry.amount, Source: entry.action}
+	err := appendVisibleEvent(ctx, action, EventXPGained, payload)
 	if err != nil {
 		return err
 	}
-	level := rules.CalculateLevel(previousXP + amount)
+	level := rules.CalculateLevel(previousXP + entry.amount)
 	if level == rules.CalculateLevel(previousXP) {
 		return nil
 	}

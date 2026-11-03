@@ -3,6 +3,9 @@
 pnpm-/Turborepo-Monorepo für Jelly, den Desktop-Begleiter für die LAN am Umwelt-Campus Birkenfeld.
 
 - `apps/client`: Tauri-Desktop-App (Rust-Backend, React-Oberfläche)
+- `apps/server`: Server in Go mit der 3D-Bühne für die LAN, siehe
+  [apps/server/README.md](apps/server/README.md)
+- `packages/jelly-scene`: das 3D-Jelly als reines three.js, genutzt von App und Bühne
 
 ```sh
 pnpm install                              # Abhängigkeiten für alle Apps

@@ -27,5 +27,21 @@ lässt den Simulator dagegen spielen. „Abgelehnt“ ist normal, zum Beispiel e
 Die erste Zeile entspricht etwa der LAN-Last, die zweite ist ein Vielfaches davon, rund 1.080 Aktionen
 pro Sekunde.
 
+## 3D-Bühne
+
+Die Bühne zeichnet mit höchstens 30 Bildern pro Sekunde. Gemessen mit `scripts/demo-docker.sh start
+[Spieler]` und Chromium über das DevTools-Protokoll (`Performance.getMetrics`): Rechenzeit des
+Hauptthreads pro Sekunde, davon Skript, bei 1920×1080 und `?scale=1`. Ein Bild darf höchstens 33 ms
+kosten.
+
+| Datum      | Commit     | Rechner                     | Jellies | Skript pro Bild | Hauptthread pro Bild |
+| ---------- | ---------- | --------------------------- | ------- | --------------- | -------------------- |
+| 2026-11-03 | `stage-3d` | Ryzen 7 5700X, RTX 3090     | 70      | 4,3 ms          | 6,3 ms               |
+| 2026-11-03 | `stage-3d` | Ryzen 7 5700X, RTX 3090     | 200     | 12,5 ms         | 23 ms                |
+| 2026-11-03 | `stage-3d` | Ryzen 7 5700X, RTX 3090     | 70, Halle mit Bühne, Lounge, Snackbar und Fischauge | 4,7 ms | 7,2 ms |
+
+Die Grafikkarte war bei beiden Messungen nicht der Engpass. Auf schwächerer Grafik hilft `?scale=0.5`.
+Noch nicht gemessen ist ein Rechner mit integrierter Grafik, wie er bei der LAN die Bühne zeigen könnte.
+
 Noch nicht gemessen sind offene Streams vieler Bühnen, eine über Tage gewachsene Datenbank und der
 VPS hinter Traefik.

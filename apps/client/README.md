@@ -82,8 +82,8 @@ src/
   usePet.ts           Hooks: Spielstand, Aktionen, Tastatur-Stupser, Größen-Regler
   pet/                reine Spiellogik ohne React (spiegelt src-tauri/src/pet.rs)
   panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Aussehen, Einstellungen)
-  scene/              3D: Canvas, Pet, Gesicht, Cosmetics, Animation
-    shaders/          GLSL-Shader als eigene Dateien, per `?raw` importiert
+  scene/              3D: Canvas, Pet und Cosmetics; Jelly und Animation aus packages/jelly-scene
+    shaders/          GLSL der Cosmetics (Toon, Outline), per `?raw` importiert
   ui/                 Design-System-Bausteine (siehe `pnpm ds:bundle`)
   cosmetics/          3D-Modelle (.glb) aus Blender, nach Cosmetic-ID benannt
   styles.css          Transparenz, Leiste, Panels und Browser-Vorschau

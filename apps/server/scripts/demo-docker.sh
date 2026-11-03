@@ -23,7 +23,7 @@ stop_demo() {
 start_demo() {
   local players="$1"
   stop_demo
-  docker build -q -t "$image" . >/dev/null || exit 2
+  docker build -q -f Dockerfile -t "$image" ../.. >/dev/null || exit 2
   docker volume create "$volume" >/dev/null || exit 2
   docker run --rm -v "$volume:/app/data" -e "JELLY_JOIN_CODE=$join_code" "$image" create-lan \
     -slug demo -name Demo "-from=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)" \

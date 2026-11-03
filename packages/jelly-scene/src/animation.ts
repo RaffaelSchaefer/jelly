@@ -1,15 +1,15 @@
 /**
  * Die Bewegungsrechnung pro Bild: Wippen, Hüpfen, Blinzeln, Strahlen und die Hände.
  *
- * Reine Funktionen ohne React. `Character.tsx` ruft sie in `useFrame` auf und reicht die Three.js-
- * Objekte herein. Der Zustand zwischen zwei Bildern liegt in {@link Motion}.
+ * Reine Funktionen ohne React. `animateJelly` in `jelly.ts` ruft sie pro Bild auf und reicht die
+ * Three.js-Objekte herein. Der Zustand zwischen zwei Bildern liegt in {@link Motion}.
  *
  * @module
  */
 
-import { MathUtils, type Group, type Mesh, type MeshBasicMaterial } from "three";
+import { MathUtils, type Mesh, type MeshBasicMaterial, type Object3D } from "three";
 
-import { HAND, HEAD } from "./jellyGeometry";
+import { HAND, HEAD } from "./jellyGeometry.ts";
 
 /** Wie lange die Hände nach einem Stupser oder einer Aktion draußen bleiben, in Sekunden. */
 const HANDS_OUT_SECONDS = 1.6;
@@ -48,9 +48,9 @@ export interface Frame {
 
 /** Die Gesichtsteile, die {@link animateFace} bewegt. */
 export interface FaceParts {
-  eyes: (Group | null)[];
-  cheeks: (Mesh | null)[];
-  mouth: Mesh | null;
+  eyes: Object3D[];
+  cheeks: Mesh[];
+  mouth: Mesh;
 }
 
 /** Startzustand. Das erste Blinzeln kommt nach 2 s. */
@@ -75,7 +75,7 @@ export function startFrame(
 }
 
 /** Körper: sanftes Wippen und Schwanken, beim Stupsen Stauchen und Hüpfen. Der Kopf folgt verzögert. */
-export function animateBody(root: Group, head: Group, { time, motion, bounce }: Frame) {
+export function animateBody(root: Object3D, head: Object3D, { time, motion, bounce }: Frame) {
   const breathe = Math.sin(time * 1.9) * 0.015 * motion;
   root.position.y = (Math.sin(time * 1.9) * 0.04 + bounce * 0.28) * motion;
   root.rotation.z = Math.sin(time * 1.3) * 0.03 * motion;
@@ -103,12 +103,12 @@ export function animateFace({ eyes, cheeks, mouth }: FaceParts, s: Motion, { tim
   const phase = (time - s.blinkAt) / 0.16;
   const blink = phase >= 0 && phase <= 1 ? Math.sin(phase * Math.PI) : 0;
   for (const eye of eyes) {
-    eye?.scale.set(1 + happy * 0.05, Math.max(0.08, 1 - blink * 0.92 - happy * 0.35), 1);
+    eye.scale.set(1 + happy * 0.05, Math.max(0.08, 1 - blink * 0.92 - happy * 0.35), 1);
   }
   for (const cheek of cheeks) {
-    if (cheek) (cheek.material as MeshBasicMaterial).opacity = 0.5 * happy;
+    (cheek.material as MeshBasicMaterial).opacity = 0.5 * happy;
   }
-  mouth?.scale.set(1 + happy * 0.35, 0.65 + happy * 0.4, 1);
+  mouth.scale.set(1 + happy * 0.35, 0.65 + happy * 0.4, 1);
 }
 
 /** Feder für die Hände: schnell und federnd heraus, zügig wieder weg. */
@@ -127,12 +127,11 @@ function springHands(s: Motion, wanted: number, { delta, motion }: Frame) {
  * Die Kugel-Hände kommen nur heraus, wenn er sie braucht: als Reaktion auf einen Stupser oder eine
  * Aktion, oder wenn er etwas hält (`holding`).
  */
-export function animateHands(hands: (Group | null)[], s: Motion, frame: Frame, holding: boolean) {
+export function animateHands(hands: Object3D[], s: Motion, frame: Frame, holding: boolean) {
   const wanted = holding || frame.time - s.pokedAt < HANDS_OUT_SECONDS ? 1 : 0;
   springHands(s, wanted, frame);
   const out = Math.max(0, s.hands);
   hands.forEach((hand, index) => {
-    if (!hand) return;
     hand.visible = out > 0.02;
     if (!hand.visible) return;
     const side = index === 0 ? -1 : 1;
