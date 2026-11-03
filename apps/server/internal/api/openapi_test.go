@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/getkin/kin-openapi/openapi3"
+
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/api"
 )
 
@@ -25,6 +27,17 @@ func TestOpenAPIFileMatchesTheCode(t *testing.T) {
 	}
 	if !bytes.Equal(generated, stored) {
 		t.Fatalf("%s is out of date, run `pnpm openapi`", openAPIFile)
+	}
+}
+
+func TestOpenAPIFileIsValid(t *testing.T) {
+	document, err := openapi3.NewLoader().LoadFromFile(openAPIFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = document.Validate(t.Context())
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
