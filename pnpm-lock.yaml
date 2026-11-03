@@ -14,6 +14,9 @@ importers:
 
   apps/client:
     dependencies:
+      '@jelly/scene':
+        specifier: workspace:*
+        version: link:../../packages/jelly-scene
       '@react-three/fiber':
         specifier: 9.8.2
         version: 9.8.2(@types/react@19.2.18)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(three@0.186.1)
@@ -62,10 +65,20 @@ importers:
         version: 5.0.5(@types/node@24.13.3)(jsdom@30.0.1)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12))
 
   apps/server:
+    dependencies:
+      '@jelly/scene':
+        specifier: workspace:*
+        version: link:../../packages/jelly-scene
+      three:
+        specifier: 0.186.1
+        version: 0.186.1
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
+      '@types/three':
+        specifier: 0.186.0
+        version: 0.186.0
       oxfmt:
         specifier: ^0.64.0
         version: 0.64.0
@@ -75,6 +88,27 @@ importers:
       typescript:
         specifier: 7.0.2
         version: 7.0.2
+
+  packages/jelly-scene:
+    devDependencies:
+      '@types/three':
+        specifier: 0.186.0
+        version: 0.186.0
+      oxfmt:
+        specifier: ^0.64.0
+        version: 0.64.0
+      oxlint:
+        specifier: ^1.90.0
+        version: 1.90.0
+      three:
+        specifier: 0.186.1
+        version: 0.186.1
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@types/node@24.13.3)(jsdom@30.0.1)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12))
 
 packages:
 

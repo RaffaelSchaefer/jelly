@@ -10,7 +10,7 @@ import {
   calculateWanderPoint,
 } from "./wander.ts";
 
-const area: StageArea = { id: 7, x: 20, y: 40, width: 30, height: 50 };
+const area: StageArea = { id: 7, x: 20, y: 40, width: 30, height: 50, kind: "seats" };
 
 function makePlayer(id: number, changes: Partial<StagePlayer> = {}): StagePlayer {
   return {

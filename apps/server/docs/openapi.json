@@ -691,6 +691,9 @@
             "format": "int64",
             "type": "integer"
           },
+          "kind": {
+            "type": "string"
+          },
           "width": {
             "format": "int64",
             "type": "integer"
@@ -709,7 +712,8 @@
           "x",
           "y",
           "width",
-          "height"
+          "height",
+          "kind"
         ],
         "type": "object"
       },

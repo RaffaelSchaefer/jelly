@@ -3,7 +3,15 @@ import { test } from "node:test";
 
 import type { EventPayload, StageCatalog, StageEvent } from "./types.ts";
 
-import { calculateMotionPose, createEffects, isFreshEvent, updateEffects } from "./effects.ts";
+import {
+  calculateMotionPose,
+  createEffects,
+  findMotionPose,
+  findVisitors,
+  isFreshEvent,
+  isPulseEvent,
+  updateEffects,
+} from "./effects.ts";
 
 const catalog: StageCatalog = {
   signs: [],
@@ -74,8 +82,42 @@ test("every motion starts and ends at rest", () => {
   for (const motion of ["hop", "wiggle"] as const) {
     for (const progress of [0, 1]) {
       const pose = calculateMotionPose(motion, progress);
-      assert.ok(Math.abs(pose.lift) < 1e-9 && Math.abs(pose.angle) < 1e-9, `${motion} ${progress}`);
+      const isResting = [pose.lift, pose.turn, pose.tilt].every((value) => Math.abs(value) < 1e-9);
+      assert.ok(isResting, `${motion} ${progress}`);
     }
   }
-  assert.ok(Math.abs(calculateMotionPose("spin", 1).angle - 2 * Math.PI) < 1e-9);
+  assert.ok(Math.abs(calculateMotionPose("spin", 1).turn - 2 * Math.PI) < 1e-9);
+});
+
+test("a spin turns the jelly around, a wiggle tilts it, others rest", () => {
+  const effects = createEffects(
+    {
+      id: 1,
+      type: "partner.emote",
+      player_id: 4,
+      payload: { key: "spin", partner_id: 9 },
+      created_at: 0,
+    },
+    { signs: [], achievements: [] },
+    1000,
+  );
+  assert.ok(findMotionPose(effects, 9, 1600).turn > 0);
+  assert.deepEqual(findMotionPose(effects, 5, 1600), { lift: 0, turn: 0, tilt: 0 });
+});
+
+test("rewards make a jelly bounce, emotes do not", () => {
+  const event = { id: 1, player_id: 4, payload: {}, created_at: 0 };
+  assert.equal(isPulseEvent({ ...event, type: "xp.gained" }), true);
+  assert.equal(isPulseEvent({ ...event, type: "level.up" }), true);
+  assert.equal(isPulseEvent({ ...event, type: "emote" }), false);
+});
+
+test("food and drink send the jelly on a snack run, a poke does not", () => {
+  const catalog = { signs: [], achievements: [] };
+  const event = { id: 1, type: "xp.gained", player_id: 4, created_at: 0 };
+  const food = createEffects({ ...event, payload: { amount: 15, source: "food" } }, catalog, 1000);
+  const poke = createEffects({ ...event, payload: { amount: 3, source: "poke" } }, catalog, 1000);
+  assert.deepEqual([...findVisitors(food, 5000)], [4]);
+  assert.equal(findVisitors(food, 20_000).size, 0, "the run ends");
+  assert.equal(findVisitors(poke, 5000).size, 0);
 });

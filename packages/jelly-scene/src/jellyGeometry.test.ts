@@ -10,7 +10,7 @@ import {
   HAND,
   HEAD,
   headSurface,
-} from "./jellyGeometry";
+} from "./jellyGeometry.ts";
 
 function bounds(geometry: BufferGeometry) {
   const positions = geometry.getAttribute("position");
