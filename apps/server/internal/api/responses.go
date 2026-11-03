@@ -72,7 +72,8 @@ func listPlayerErrors() []knownError {
 			http.StatusConflict, "area_not_assignable", "In diesem Bereich kann kein Jelly stehen.",
 		}},
 		{rules.ErrInvalidArea, problem{
-			http.StatusBadRequest, "invalid_area", "Dieser Bereich passt nicht auf die Bühne.",
+			http.StatusBadRequest, "invalid_area",
+			"Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art.",
 		}},
 		{rules.ErrInvalidRules, problem{
 			http.StatusBadRequest, "invalid_rules", "Diese Regeln sind ungültig.",

@@ -106,8 +106,7 @@ func listEventAchievements() []Achievement {
 	}
 }
 
-// listNightAchievements covers long nights. The records stay quiet, so they are noted but not
-// celebrated on the stage.
+// listNightAchievements covers long nights.
 func listNightAchievements() []Achievement {
 	return []Achievement{
 		{

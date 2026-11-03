@@ -85,7 +85,7 @@ func clearAreaAssignments(ctx context.Context, transaction *sql.Tx, lanID, areaI
 	return nil
 }
 
-// DeleteArea removes an area. Its jellies lose their assignment and use the whole stage.
+// DeleteArea removes an area. Its jellies lose their assignment and chill in the lounge.
 func (store *Store) DeleteArea(ctx context.Context, lanID, areaID, now int64) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		const deleteAreaSQL = `DELETE FROM lan_areas WHERE id = ? AND lan_id = ?`
