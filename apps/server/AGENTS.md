@@ -53,6 +53,8 @@ AGENTS.md im Root. Deutsch bleiben nur die Meldungen, die die App anzeigt (`mess
 
 - Es gibt genau einen Einstiegspunkt: `cmd/jelly-server`. Weitere Werkzeuge sind Unterbefehle.
 - `internal/rules` enthält reine Funktionen ohne IO und ohne Uhr. Zeiten kommen als Argument herein.
+- `internal/movement` plant die Wege der Jellies, ebenfalls ohne IO und ohne Uhr. Den Stand bekommt es
+  vom Aufrufer, `internal/api` stößt es an, sobald jemand die Bühne liest.
 - `internal/store` kennt SQLite, aber kein HTTP. `internal/api` kennt HTTP, aber kein SQL.
 - Nur `cmd/jelly-server` liest die Umgebung, wählt die echte Uhr und darf den Prozess beenden.
 - `internal/simulator` spielt nur über die öffentliche API und kennt weder `store` noch `rules`.
@@ -132,8 +134,7 @@ SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort b
 - Einfaches TypeScript ohne Framework. three.js ist eine Bibliothek und erlaubt, das Jelly kommt aus
   `@jelly/scene`. Kommentare, Namen und `@module`-Kopf wie im Go-Code auf Englisch, sichtbare Texte
   auf Deutsch.
-- Reine Logik (`wander.ts`, `world.ts`, `navigation.ts`, `walking.ts`, `crowd.ts`, `zones.ts`,
-  `lens.ts`, `effects.ts`) kennt weder DOM noch Canvas noch three.js und hat Tests daneben (`*.test.ts`). Alles
+- Reine Logik (`world.ts`, `walking.ts`, `zones.ts`, `lens.ts`, `effects.ts`, `random.ts`) kennt weder DOM noch Canvas noch three.js und hat Tests daneben (`*.test.ts`). Alles
   mit DOM, Canvas oder three.js bleibt so dünn wie möglich.
 - Shader stehen in `web/stage/shaders/*.glsl` und werden per `?raw` importiert (esbuild lädt `.glsl`
   als Text). Werte kommen über `defines` hinein.

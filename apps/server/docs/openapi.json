@@ -483,6 +483,35 @@
         ],
         "type": "object"
       },
+      "Move": {
+        "additionalProperties": true,
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "player_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/Waypoint"
+            },
+            "type": "array"
+          },
+          "start_at": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "kind",
+          "start_at",
+          "points"
+        ],
+        "type": "object"
+      },
       "PartnerInvite": {
         "additionalProperties": true,
         "properties": {
@@ -964,6 +993,49 @@
         ],
         "type": "object"
       },
+      "StageAnswer": {
+        "additionalProperties": true,
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/StageArea"
+            },
+            "type": "array"
+          },
+          "last_event_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/Move"
+            },
+            "type": "array"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/StagePlayer"
+            },
+            "type": "array"
+          },
+          "room": {
+            "$ref": "#/components/schemas/Room"
+          },
+          "server_time": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "moves",
+          "last_event_id",
+          "server_time",
+          "room",
+          "areas",
+          "players"
+        ],
+        "type": "object"
+      },
       "StageArea": {
         "additionalProperties": true,
         "properties": {
@@ -1066,42 +1138,6 @@
         ],
         "type": "object"
       },
-      "StageState": {
-        "additionalProperties": true,
-        "properties": {
-          "areas": {
-            "items": {
-              "$ref": "#/components/schemas/StageArea"
-            },
-            "type": "array"
-          },
-          "last_event_id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "players": {
-            "items": {
-              "$ref": "#/components/schemas/StagePlayer"
-            },
-            "type": "array"
-          },
-          "room": {
-            "$ref": "#/components/schemas/Room"
-          },
-          "server_time": {
-            "format": "int64",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "last_event_id",
-          "server_time",
-          "room",
-          "areas",
-          "players"
-        ],
-        "type": "object"
-      },
       "TripPointBody": {
         "additionalProperties": false,
         "properties": {
@@ -1135,6 +1171,29 @@
           "min_client_version"
         ],
         "type": "object"
+      },
+      "Waypoint": {
+        "additionalProperties": true,
+        "properties": {
+          "t": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "x": {
+            "format": "double",
+            "type": "number"
+          },
+          "y": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "t",
+          "x",
+          "y"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -1151,7 +1210,7 @@
   },
   "info": {
     "title": "Jelly API",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -2001,7 +2060,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StageState"
+                  "$ref": "#/components/schemas/StageAnswer"
                 }
               }
             },
@@ -2031,7 +2090,7 @@
     },
     "/v1/stage/events": {
       "get": {
-        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events, further back they get `reset` and read their state again. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
+        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events, further back they get `reset` and read their state again. `topics` is a comma-separated list of `events` and `moves`, without it both arrive. Messages of type `move` have no ID and carry a `Move`. Every new connection first gets the current move of each jelly. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
         "operationId": "streamEvents",
         "parameters": [
           {
@@ -2053,6 +2112,13 @@
           {
             "in": "query",
             "name": "key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topics",
             "schema": {
               "type": "string"
             }

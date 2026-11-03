@@ -28,6 +28,7 @@ const (
 	defaultMaxPlayers            = 120
 	defaultMaxStreams            = 200
 	defaultMaxPlayerStreams      = 3
+	defaultSnackRunSeconds       = 14
 	maxPercent                   = 100
 )
 
@@ -68,6 +69,8 @@ type Rules struct {
 	MaxStreams int `json:"max_streams"`
 	// MaxPlayerStreams limits the open event streams of one player.
 	MaxPlayerStreams int `json:"max_player_streams"`
+	// SnackRunSeconds is how long a jelly stays at the snack bar after a food or drink report.
+	SnackRunSeconds int64 `json:"snack_run_seconds"`
 }
 
 // DefaultRules returns the starting values of a new LAN.
@@ -89,6 +92,7 @@ func DefaultRules() Rules {
 		MaxPlayers:            defaultMaxPlayers,
 		MaxStreams:            defaultMaxStreams,
 		MaxPlayerStreams:      defaultMaxPlayerStreams,
+		SnackRunSeconds:       defaultSnackRunSeconds,
 	}
 }
 
@@ -97,7 +101,7 @@ func ValidateRules(gameRules Rules) error {
 	for _, duration := range []int64{
 		gameRules.PokeIntervalSeconds, gameRules.PokeMaxTicks, gameRules.ReportCooldownSeconds,
 		gameRules.ReportWindowSeconds, gameRules.PresenceWindowSeconds,
-		gameRules.PartnerInviteSeconds,
+		gameRules.PartnerInviteSeconds, gameRules.SnackRunSeconds,
 	} {
 		if duration <= 0 {
 			return ErrInvalidRules
@@ -157,6 +161,15 @@ func CalculateNextPokeTime(gameRules Rules, lastPokeAt, joinedAt int64) int64 {
 // IsPresent reports whether a jelly with this last activity belongs on the stage.
 func IsPresent(gameRules Rules, lastSeenAt, now int64) bool {
 	return now-lastSeenAt < gameRules.PresenceWindowSeconds*millisPerSecond
+}
+
+// CalculateSnackRunEnd returns when a snack run after this report ends. Without a report, it lies
+// in the past.
+func CalculateSnackRunEnd(gameRules Rules, lastSnackAt int64) int64 {
+	if lastSnackAt == 0 {
+		return 0
+	}
+	return lastSnackAt + gameRules.SnackRunSeconds*millisPerSecond
 }
 
 // IsEmoteAllowed reports whether a player may emote again. `lastEmoteAt` is 0 without an emote.

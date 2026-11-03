@@ -436,7 +436,8 @@ func TestRulesCanChangeDuringALAN(t *testing.T) {
 	body := `{"poke_interval":60,"poke_xp":5,"poke_max_ticks":1,"food_xp":15,"drink_xp":10,` +
 		`"report_cooldown":1800,"report_window":86400,"reports_per_window":8,` +
 		`"presence_window":5400,"emote_cooldown":3,"partner_invite_seconds":120,"partner_xp":5,` +
-		`"full_house_percent":33,"max_players":120,"max_streams":200,"max_player_streams":3}`
+		`"full_house_percent":33,"max_players":120,"max_streams":200,"max_player_streams":3,` +
+		`"snack_run_seconds":14}`
 	response := testFixture.callAdmin("PUT", "/admin/api/lans/1/rules", body)
 	if response.status != http.StatusOK {
 		t.Fatalf("rules: %d %s", response.status, response.body)

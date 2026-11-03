@@ -169,7 +169,7 @@ func TestStreamDeliversReplaysAndStops(t *testing.T) {
 	defer cancel()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		server.URL+"/v1/stage/events?since=0&key="+stageKey, http.NoBody)
+		server.URL+"/v1/stage/events?since=0&topics=events&key="+stageKey, http.NoBody)
 	if err != nil {
 		t.Fatal(err)
 	}

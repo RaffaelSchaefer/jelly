@@ -13,10 +13,6 @@ const BUBBLE_MS = 3000;
 const TOAST_MS = 5000;
 const XP_TOAST_MS = 1800;
 const MOTION_MS = 2400;
-/** A snack run: there, a short wait at the counter and back. */
-const VISIT_MS = 14_000;
-/** XP for these reports sends the jelly on a snack run. */
-const SNACK_SOURCES = new Set(["food", "drink"]);
 /** Events older than this are replays after a lost connection and not worth animating. */
 const FRESH_EVENT_MS = 10_000;
 /** A flood of events drops the oldest effects instead of slowing the stage down. */
@@ -59,7 +55,6 @@ export type StageEffect = { playerId: number; startedAt: number; endsAt: number 
   | { kind: "bubble"; glyph: string }
   | { kind: "toast"; text: string }
   | { kind: "motion"; motion: MotionKey }
-  | { kind: "visit" }
 );
 
 /** Reports whether an event rewards its jelly, which then bounces. */
@@ -102,21 +97,19 @@ export function createEffects(
   }
 }
 
-/** XP rises as a short text. Food and drink also send the jelly on a snack run. */
+/** XP rises as a short text. */
 function createXPEffects(
   start: { playerId: number; startedAt: number },
   payload: EventPayload,
 ): StageEffect[] {
-  const toast: StageEffect = {
-    ...start,
-    endsAt: start.startedAt + XP_TOAST_MS,
-    kind: "toast",
-    text: `+${payload.amount ?? 0} XP`,
-  };
-  if (!SNACK_SOURCES.has(payload.source ?? "")) {
-    return [toast];
-  }
-  return [toast, { ...start, endsAt: start.startedAt + VISIT_MS, kind: "visit" }];
+  return [
+    {
+      ...start,
+      endsAt: start.startedAt + XP_TOAST_MS,
+      kind: "toast",
+      text: `+${payload.amount ?? 0} XP`,
+    },
+  ];
 }
 
 /** Secret achievements are not in the catalog, the stage only says that one was found. */
@@ -179,14 +172,6 @@ export function calculateMotionPose(motion: MotionKey, progress: number): Motion
         tilt: WIGGLE_ANGLE * Math.sin(progress * Math.PI * WIGGLES_PER_MOTION),
       };
   }
-}
-
-/** Returns the jellies that are on a snack run right now. */
-export function findVisitors(effects: StageEffect[], now: number): Set<number> {
-  const visitors = effects.filter(
-    (effect) => effect.kind === "visit" && effect.startedAt <= now && effect.endsAt > now,
-  );
-  return new Set(visitors.map((effect) => effect.playerId));
 }
 
 /** Returns the current motion of a jelly, or the resting pose. */

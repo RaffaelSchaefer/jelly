@@ -9,32 +9,23 @@
 import type { StageEffect } from "./effects.ts";
 import type { JellyCast } from "./jellies.ts";
 import type { LabelAnchor } from "./labels.ts";
-import type { NavGrid } from "./navigation.ts";
 import type { StageScene } from "./scene.ts";
-import type { StageCatalog, StageEvent, StageState } from "./types.ts";
-import type { StageLookup } from "./wander.ts";
-import type { FloorRect, ScenePoint } from "./world.ts";
+import type { StageCatalog, StageEvent, StageMove, StageState } from "./types.ts";
+import type { FloorPoint, FloorRect, ScenePoint } from "./world.ts";
 
 import { fetchCatalog, fetchStageState, openEventStream, RequestError } from "./connection.ts";
-import { calculateGoals } from "./crowd.ts";
-import {
-  createEffects,
-  findVisitors,
-  isFreshEvent,
-  isPulseEvent,
-  updateEffects,
-} from "./effects.ts";
+import { createEffects, isFreshEvent, isPulseEvent, updateEffects } from "./effects.ts";
 import { createFurniture } from "./furniture.ts";
 import { createJellyCast, pulseJelly, syncJellies, updateJellies } from "./jellies.ts";
 import { drawLabels } from "./labels.ts";
 import { bendToLens, LENS_RANGE } from "./lens.ts";
 import { applyLens, createLensPass, type LensPass } from "./lensPass.ts";
-import { createNavGrid } from "./navigation.ts";
 import { createStageScene, findViewer, projectToScreen, resizeStageScene } from "./scene.ts";
 import { disposeProps } from "./props.ts";
 import { createVenue, updateVenue } from "./venue.ts";
-import { calculateCanvasDensity, JELLY_RADIUS, ROOM } from "./world.ts";
-import { findSnackBar, listObstacleRects, listStageRects } from "./zones.ts";
+import { findMovePosition, findSnackRunners, keepNewerMove } from "./walking.ts";
+import { calculateCanvasDensity, toFloorPoint } from "./world.ts";
+import { listStageRects } from "./zones.ts";
 
 /** Many events in a row cause only one reload. */
 const RELOAD_DELAY_MS = 500;
@@ -57,7 +48,8 @@ const STATUS_UNAUTHORIZED = 401;
 interface StageMemory {
   state: StageState | null;
   catalog: StageCatalog | null;
-  lookup: StageLookup;
+  /** The newest move of each jelly, by player ID. */
+  moves: Map<number, StageMove>;
   clockOffset: number;
   signLabels: Map<string, string>;
   effects: StageEffect[];
@@ -65,9 +57,7 @@ interface StageMemory {
   streamOpened: boolean;
   /** The room as last built, to notice when the areas change. */
   roomKey: string;
-  grid: NavGrid;
   stages: FloorRect[];
-  snackBar: FloorRect | null;
   stage: StageScene;
   lens: LensPass;
   cast: JellyCast;
@@ -104,18 +94,23 @@ function readSetting(
   return Math.min(range.highest, Math.max(range.lowest, value));
 }
 
-/** Returns where every jelly wants to stand right now. */
-function findGoals(memory: StageMemory, now: number, visitors = findVisitors(memory.effects, now)) {
-  return calculateGoals(memory.state?.players ?? [], {
-    lookup: memory.lookup,
-    serverTime: now + memory.clockOffset,
-    grid: memory.grid,
-    visitors,
-    snackBar: memory.snackBar,
-  });
+/** Returns where the move of every jelly puts it. A jelly without a move stands at home. */
+function findPositions(memory: StageMemory, now: number): Map<number, FloorPoint> {
+  const serverTime = now + memory.clockOffset;
+  const positions = new Map<number, FloorPoint>();
+  for (const player of memory.state?.players ?? []) {
+    const move = memory.moves.get(player.id);
+    positions.set(
+      player.id,
+      move
+        ? findMovePosition(move, serverTime)
+        : toFloorPoint({ x: player.home_x, y: player.home_y }),
+    );
+  }
+  return positions;
 }
 
-/** Builds furniture, venue, walkable floor, stages and snack bar again when the areas changed. */
+/** Builds furniture, venue and stages again when the areas changed. */
 function rebuildRoom(memory: StageMemory, state: StageState): void {
   const roomKey = JSON.stringify(state.areas);
   if (roomKey === memory.roomKey) {
@@ -129,24 +124,22 @@ function rebuildRoom(memory: StageMemory, state: StageState): void {
   disposeProps(memory.venue);
   memory.venue = createVenue(state.areas);
   memory.stage.scene.add(memory.furniture, memory.venue);
-  memory.grid = createNavGrid(ROOM, listObstacleRects(state.areas), JELLY_RADIUS);
   memory.stages = listStageRects(state.areas);
-  memory.snackBar = findSnackBar(state.areas);
-  for (const shown of memory.cast.jellies.values()) {
-    shown.walker.path = [];
-  }
 }
 
 /** Takes over a new state. */
 function applyState(memory: StageMemory, state: StageState): void {
   memory.state = state;
   memory.clockOffset = state.server_time - Date.now();
-  memory.lookup = {
-    players: new Map(state.players.map((player) => [player.id, player])),
-    areas: new Map(state.areas.map((area) => [area.id, area])),
-  };
+  for (const move of state.moves) {
+    keepNewerMove(memory.moves, move);
+  }
+  const present = new Set(state.players.map((player) => player.id));
+  for (const playerId of memory.moves.keys()) {
+    if (!present.has(playerId)) memory.moves.delete(playerId);
+  }
   rebuildRoom(memory, state);
-  syncJellies(memory.cast, state.players, findGoals(memory, Date.now()));
+  syncJellies(memory.cast, state.players, findPositions(memory, Date.now()));
 }
 
 /** Handles one stream event. */
@@ -186,6 +179,8 @@ async function reload(memory: StageMemory, stageKey: string): Promise<void> {
       memory.streamOpened = true;
       openEventStream(stageKey, memory.state.last_event_id, {
         onEvent: (event, changesState) => handleEvent(memory, stageKey, event, changesState),
+        onMove: (move) => keepNewerMove(memory.moves, move),
+        onReset: () => void reload(memory, stageKey),
         onConnectionChange: (isOpen) => showStatus(isOpen ? "" : TEXT_OFFLINE),
       });
     }
@@ -219,14 +214,12 @@ function paintFrame(
   const { stage } = memory;
   memory.effects = updateEffects(memory.effects, [], now);
   const time = performance.now() / 1000;
-  const visitors = findVisitors(memory.effects, now);
   const spots = updateJellies(memory.cast, {
-    goals: findGoals(memory, now, visitors),
-    grid: memory.grid,
+    positions: findPositions(memory, now),
     viewer: findViewer(stage.camera),
     camera: stage.camera.position,
     effects: memory.effects,
-    visitors,
+    visitors: findSnackRunners(memory.moves),
     stages: memory.stages,
     seconds,
     time,
@@ -298,16 +291,14 @@ function startStage(): void {
   const memory: StageMemory = {
     state: null,
     catalog: null,
-    lookup: { players: new Map(), areas: new Map() },
+    moves: new Map(),
     clockOffset: 0,
     signLabels: new Map(),
     effects: [],
     reloadPending: false,
     streamOpened: false,
     roomKey: "",
-    grid: createNavGrid(ROOM, [], JELLY_RADIUS),
     stages: [],
-    snackBar: null,
     stage,
     lens: createLensPass(readSetting(parameters, "lens", LENS_RANGE)),
     cast,

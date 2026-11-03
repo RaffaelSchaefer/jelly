@@ -4,7 +4,7 @@
  * @module
  */
 
-import type { StageCatalog, StageEvent, StageState } from "./types.ts";
+import type { StageCatalog, StageEvent, StageMove, StageState } from "./types.ts";
 
 const API_PREFIX = "/v1";
 const PATH_STATE = `${API_PREFIX}/stage`;
@@ -13,6 +13,10 @@ const PATH_CATALOG = `${API_PREFIX}/catalog`;
 const QUERY_KEY = "key";
 const QUERY_SINCE = "since";
 const REOPEN_DELAY_MS = 5000;
+/** A jelly starts walking. These messages are not part of the event log and have no ID. */
+const MOVE_MESSAGE = "move";
+/** The server dropped events for this stream, so the state has to be read again. */
+const RESET_MESSAGE = "reset";
 
 /** Events that change what the state holds, so it has to be read again. */
 const STATE_EVENTS = [
@@ -67,6 +71,8 @@ export function fetchCatalog(): Promise<StageCatalog> {
 /** What the stage wants to hear from the stream. */
 export interface StreamListener {
   onEvent: (event: StageEvent, changesState: boolean) => void;
+  onMove: (move: StageMove) => void;
+  onReset: () => void;
   onConnectionChange: (isOpen: boolean) => void;
 }
 
@@ -97,6 +103,10 @@ export function openEventStream(
     for (const type of ANIMATION_EVENTS) {
       source.addEventListener(type, (message) => handleMessage(message, false));
     }
+    source.addEventListener(MOVE_MESSAGE, (message: MessageEvent<string>) =>
+      listener.onMove(JSON.parse(message.data) as StageMove),
+    );
+    source.addEventListener(RESET_MESSAGE, () => listener.onReset());
     source.onopen = () => listener.onConnectionChange(true);
     source.onerror = () => {
       listener.onConnectionChange(false);

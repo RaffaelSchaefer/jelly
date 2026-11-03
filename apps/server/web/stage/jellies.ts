@@ -1,6 +1,6 @@
 /**
- * The jellies on the stage: the same 3D jelly as in the app, one per player. Each one walks to its
- * goal, bounces when it gets XP and plays its emotes.
+ * The jellies on the stage: the same 3D jelly as in the app, one per player. Each one plays its
+ * move, bounces when it gets XP and plays its emotes.
  *
  * @module
  */
@@ -20,14 +20,13 @@ import {
 import { Euler, Group, Matrix4, Object3D, Quaternion, Vector3, type InstancedMesh } from "three";
 
 import type { StageEffect } from "./effects.ts";
-import type { NavGrid } from "./navigation.ts";
 import type { StagePlayer } from "./types.ts";
 import type { FloorPoint, FloorRect, ScenePoint } from "./world.ts";
 
 import { findMotionPose } from "./effects.ts";
 import { createShadowInstances, disposeShadow, SHADOW_HEIGHT } from "./shadow.ts";
+import { calculateRandomValue } from "./random.ts";
 import { calculateWalkPose, createWalker, stepWalker, type Walker } from "./walking.ts";
-import { calculateRandomValue } from "./wander.ts";
 import { findFloorHeight } from "./zones.ts";
 
 /** From the feet to the top of the head, in jelly units. */
@@ -35,7 +34,6 @@ const JELLY_HEIGHT = HEAD.y + HEAD.radius - BODY_BOTTOM;
 /** Every jelly has its own clock offset, so they do not bob and blink in step. */
 const SEED_ANIMATION = 98;
 const ANIMATION_OFFSET_SECONDS = 10;
-const SEARCHES_PER_FRAME = 8;
 const JELLY_SHADOW = {
   halfWidth: 0.8,
   halfDepth: 0.55,
@@ -79,9 +77,8 @@ export interface JellyCast {
 
 /** What {@link updateJellies} needs for a frame. */
 export interface JellyFrame {
-  /** Where each jelly wants to stand, by player ID. */
-  goals: Map<number, FloorPoint>;
-  grid: NavGrid;
+  /** Where the move of each jelly puts it in this frame, by player ID. */
+  positions: Map<number, FloorPoint>;
   viewer: FloorPoint;
   camera: ScenePoint;
   effects: StageEffect[];
@@ -116,7 +113,7 @@ function findPalette(color: string): JellyPalette {
   return Object.entries(JELLY_COLORS).find(([key]) => key === color)?.[1] ?? JELLY_COLORS.mint;
 }
 
-/** Builds a jelly that appears where it wants to stand. */
+/** Builds a jelly that appears where its move puts it. */
 function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): void {
   const jelly = createJelly(findPalette(player.color));
   const group = new Group();
@@ -146,7 +143,7 @@ function removeJelly(cast: JellyCast, shown: StageJelly): void {
 export function syncJellies(
   cast: JellyCast,
   players: StagePlayer[],
-  goals: Map<number, FloorPoint>,
+  positions: Map<number, FloorPoint>,
 ): void {
   const present = new Set(players.map((player) => player.id));
   for (const shown of cast.jellies.values()) {
@@ -160,7 +157,7 @@ export function syncJellies(
     } else if (shown) {
       shown.player = player;
     } else {
-      addJelly(cast, player, goals.get(player.id) ?? { x: 0, z: 0 });
+      addJelly(cast, player, positions.get(player.id) ?? { x: 0, z: 0 });
     }
   }
 }
@@ -172,15 +169,12 @@ export function pulseJelly(cast: JellyCast, playerId: number): void {
 }
 
 /** Walks, poses and animates one jelly. */
-function updateJelly(shown: StageJelly, frame: JellyFrame, budget: { searches: number }): void {
+function updateJelly(shown: StageJelly, frame: JellyFrame): void {
   const { walker, group } = shown;
-  const goal = frame.goals.get(shown.player.id) ?? walker.position;
   stepWalker(walker, {
-    grid: frame.grid,
-    goal,
+    target: frame.positions.get(shown.player.id) ?? walker.position,
     viewer: frame.viewer,
     seconds: frame.seconds,
-    budget,
   });
   const floor = findFloorHeight(walker.position, frame.stages);
   shown.elevation += (floor - shown.elevation) * (1 - Math.exp(-STEP_RATE * frame.seconds));
@@ -222,10 +216,9 @@ function placeShadows(cast: JellyCast, shownJellies: StageJelly[]): void {
 
 /** Moves every jelly for one frame and returns where they are, from back to front. */
 export function updateJellies(cast: JellyCast, frame: JellyFrame): JellySpot[] {
-  const budget = { searches: SEARCHES_PER_FRAME };
   const shownJellies = [...cast.jellies.values()];
   for (const shown of shownJellies) {
-    updateJelly(shown, frame, budget);
+    updateJelly(shown, frame);
   }
   placeShadows(cast, shownJellies);
   const distanceOf = (shown: StageJelly) =>

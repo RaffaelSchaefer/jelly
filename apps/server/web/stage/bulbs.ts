@@ -19,7 +19,7 @@ import type { ScenePoint } from "./world.ts";
 import { keepMaterial, PROP_ORDER, VENUE_TIME } from "./props.ts";
 import fragmentShader from "./shaders/bulb.frag.glsl?raw";
 import vertexShader from "./shaders/bulb.vert.glsl?raw";
-import { calculateRandomValue } from "./wander.ts";
+import { calculateRandomValue } from "./random.ts";
 
 /** How bulbs light up: each at its own pace, or as a light that runs along the string. */
 export type BulbPattern = "twinkle" | "chase";

@@ -4,7 +4,6 @@ import { test } from "node:test";
 import {
   calculateCameraDistance,
   calculateCanvasDensity,
-  remapIntoRect,
   ROOM_DEPTH,
   ROOM_WIDTH,
   shrinkRect,
@@ -26,13 +25,6 @@ test("an area becomes a rectangle on the floor", () => {
 test("shrinking keeps a margin and collapses short sides to their middle", () => {
   const rect = { minX: 0, minZ: 0, maxX: 10, maxZ: 1 };
   assert.deepEqual(shrinkRect(rect, 0.8), { minX: 0.8, minZ: 0.5, maxX: 9.2, maxZ: 0.5 });
-});
-
-test("remapping keeps the relative spot and never leaves the target", () => {
-  const from = { minX: 0, minZ: 0, maxX: 10, maxZ: 10 };
-  const to = { minX: 1, minZ: 1, maxX: 9, maxZ: 9 };
-  assert.deepEqual(remapIntoRect({ x: 5, z: 0 }, from, to), { x: 5, z: 1 });
-  assert.deepEqual(remapIntoRect({ x: -3, z: 20 }, from, to), { x: 1, z: 9 });
 });
 
 test("the camera stands far enough away to see every point", () => {

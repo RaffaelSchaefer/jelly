@@ -24,11 +24,13 @@ type StagePlayer struct {
 	FollowPlayerID *int64                      `json:"follow_player_id"`
 	LastSeenAt     int64                       `json:"last_seen_at"`
 	AreaID         *int64                      `json:"area_id"`
+	// SnackUntil tells the movement planner when a snack run ends.
+	SnackUntil int64 `json:"-"`
 	rules.HomeSpot
 }
 
 // StageState is everything the stage needs to start, the response of `GET /state`. With
-// `ServerTime`, all screens compute the same wandering paths.
+// `ServerTime`, all screens play the moves of the jellies at the same time.
 type StageState struct {
 	LastEventID int64         `json:"last_event_id"`
 	ServerTime  int64         `json:"server_time"`
@@ -61,7 +63,7 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	if err != nil {
 		return StageState{}, err
 	}
-	players, err := loadStagePlayers(queryCtx, store.readDB, lan.id)
+	players, err := loadStagePlayers(queryCtx, store.readDB, lan)
 	if err != nil {
 		return StageState{}, err
 	}
@@ -113,20 +115,23 @@ func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 
 // loadStagePlayers reads all visible jellies of a LAN, whether currently present or not.
 func loadStagePlayers(
-	ctx context.Context, database querier, lanID int64,
+	ctx context.Context, database querier, lan activeLAN,
 ) ([]StagePlayer, error) {
 	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, e.xp,
-			e.sign_key, e.follow_player_id, e.last_seen_at, e.area_id
+			e.sign_key, e.follow_player_id, e.last_seen_at, e.area_id,
+			COALESCE((SELECT MAX(x.created_at) FROM xp_log x
+				WHERE x.player_id = p.id AND x.lan_id = e.lan_id AND x.action IN (?, ?)), 0)
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
 		WHERE e.lan_id = ? AND p.hidden_at IS NULL ORDER BY p.id`
-	rows, err := database.QueryContext(ctx, selectStagePlayersSQL, lanID)
+	rows, err := database.QueryContext(ctx, selectStagePlayersSQL,
+		rules.ActionFood, rules.ActionDrink, lan.id)
 	if err != nil {
 		return nil, fmt.Errorf("load stage players: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	players := []StagePlayer{}
 	for rows.Next() {
-		player, err := scanStagePlayer(rows)
+		player, err := scanStagePlayer(rows, lan.gameRules)
 		if err != nil {
 			return nil, err
 		}
@@ -139,17 +144,19 @@ func loadStagePlayers(
 }
 
 // scanStagePlayer reads one jelly row.
-func scanStagePlayer(rows *sql.Rows) (StagePlayer, error) {
+func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules) (StagePlayer, error) {
 	var player StagePlayer
 	var lanXP int
+	var lastSnackAt int64
 	var sign sql.NullString
 	var follow, area sql.NullInt64
 	err := rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP, &sign, &follow,
-		&player.LastSeenAt, &area)
+		&player.LastSeenAt, &area, &lastSnackAt)
 	if err != nil {
 		return StagePlayer{}, fmt.Errorf("read stage player: %w", err)
 	}
 	player.Level = rules.CalculateLevel(lanXP)
+	player.SnackUntil = rules.CalculateSnackRunEnd(gameRules, lastSnackAt)
 	if sign.Valid {
 		player.Sign = &sign.String
 	}

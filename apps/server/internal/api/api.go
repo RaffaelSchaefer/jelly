@@ -9,6 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"golang.org/x/time/rate"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/movement"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
@@ -52,6 +53,8 @@ type apiServer struct {
 	playerRequests *playerLimiters
 	// streams limits the open event streams.
 	streams *streamSlots
+	// planner decides where the jellies walk.
+	planner *movement.Planner
 }
 
 // newAPIServer creates the state that all routes share.
@@ -63,6 +66,7 @@ func newAPIServer(dependencies Dependencies) *apiServer {
 		codeAttempts:   newPlayerLimiters(codeAttemptsPerMinute, codeAttemptBurst),
 		playerRequests: newPlayerLimiters(playerRequestsPerMinute, playerRequestBurst),
 		streams:        newStreamSlots(),
+		planner:        movement.NewPlanner(),
 	}
 }
 

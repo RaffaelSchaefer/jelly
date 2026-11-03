@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.1.0**
+Aktuelle Version: **1.2.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.1.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.2.0   | Der Server plant die Wege: `moves` in `GET /stage`, Nachricht `move` und `?topics=` im Stream, Regel `snack_run_seconds` |
 | 1.1.0   | 3D-Bühne: Bereiche haben eine Art (`kind`), `xp.gained` nennt seine Quelle (`source`) |
 | 1.0.0   | Erste Version: Mindestversion, LAN-Status, Konten, Stupser, Lebenszeichen, Berichte, Event-Codes, Emotes, Partner-Emotes, Schilder, Stellen zu einem Jelly, Bühne und Ereignisse |
 
@@ -223,6 +224,10 @@ Diese Wege stehen schon im Vertrag und antworten mit `501 not_implemented`, bis 
     "id": 1, "name": "Glibber", "color": "mint", "equipped": {}, "level": 1,
     "sign": null, "follow_player_id": null, "last_seen_at": 1795000000000,
     "area_id": 1, "home_x": 24.2, "home_y": 61.8
+  }],
+  "moves": [{
+    "player_id": 1, "kind": "wander", "start_at": 1795000001000,
+    "points": [{ "x": 24.2, "y": 61.8, "t": 0 }, { "x": 27.4, "y": 58, "t": 2400 }]
   }]
 }
 ```
@@ -235,10 +240,29 @@ Diese Wege stehen schon im Vertrag und antworten mit `501 not_implemented`, bis 
   Lounge. Ohne Lounge haben sie keinen Bereich.
 - Jeder Jelly bekommt im Bereich den nächsten freien Platz in der Reihenfolge der Spieler-IDs. Ohne
   Bereich und ohne Lounge gilt die ganze Bühne. Abwesende behalten ihren Platz, Neue verschieben niemanden.
-- Mit `server_time` berechnen alle Bildschirme denselben Weg.
 
-`GET /stage/events` sendet Ereignisse als SSE und nimmt ebenfalls Schlüssel oder Token. Der Stream ist
+### Wege
+
+Der Server plant, wo die Jellies laufen. Bühne und Apps spielen die Wege nur ab, so zeigen alle Bildschirme
+dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachricht `move` im Stream.
+
+- `start_at` ist Serverzeit in Millisekunden, die Uhr gleicht man über `server_time` ab. Ein neuer Weg beginnt etwa
+  eine Sekunde in der Zukunft, damit er alle Bildschirme rechtzeitig erreicht.
+- `points` sind Prozentwerte der Bühne, `t` zählt Millisekunden ab `start_at`. Zwischen zwei Punkten läuft das Jelly
+  geradeaus, nach dem letzten steht es dort. Ein einzelner Punkt heißt: Es steht.
+- Ein neuer Weg desselben Jellys ersetzt den alten. Er beginnt dort, wo das Jelly zu seinem `start_at` ist.
+- `kind` nennt den Grund: `wander` (bummelt um seinen Platz oder geht dorthin zurück), `follow`, `trip` und `snack`.
+  Weitere Werte können dazukommen und sind wie `wander` zu behandeln.
+- Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur Theke und danach zurück.
+- Wo ein Jelly läuft, bestimmt nur der Server. Nach einem Neustart stehen alle Jellies wieder an ihrem Platz.
+
+`GET /stage/events` sendet Ereignisse und Wege als SSE und nimmt ebenfalls Schlüssel oder Token. Der Stream ist
 für alle gleich, das eigene Jelly filtert der Client über `player_id`.
+
+- **Themen:** `?topics=events`, `?topics=moves` oder `?topics=events,moves` wählen aus, ohne Angabe kommt beides.
+  Unbekannte Themen ergeben `400 invalid_input`.
+- **Wege:** Nachrichten vom Typ `move` haben keine ID und stehen nicht im Ereignis-Log. Jede neue Verbindung bekommt
+  zuerst den aktuellen Weg jedes Jellys, nach einem Abbruch geht also nichts verloren.
 
 - **Start:** erst `GET /players/me` oder `GET /stage` lesen, dann den Stream mit `?since=<last_event_id>` öffnen.
   So geht nichts verloren. Ohne Angabe beginnt er beim neuesten Ereignis.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/movement"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
@@ -45,6 +46,9 @@ func (server *apiServer) addStageRoutes(contract huma.API) {
 		Description: "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. " +
 			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events, " +
 			"further back they get `reset` and read their state again. " +
+			"`topics` is a comma-separated list of `events` and `moves`, without it both arrive. " +
+			"Messages of type `move` have no ID and carry a `Move`. " +
+			"Every new connection first gets the current move of each jelly. " +
 			"Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
 		Security:   listViewerSecurity(),
 		Parameters: buildStreamParameters(),
@@ -67,6 +71,7 @@ func buildStreamParameters() []*huma.Param {
 		{Name: querySince, In: paramInQuery, Schema: integer},
 		{Name: headerLastEventID, In: paramInHeader, Schema: integer},
 		{Name: queryStageKey, In: paramInQuery, Schema: &huma.Schema{Type: huma.TypeString}},
+		{Name: queryTopics, In: paramInQuery, Schema: &huma.Schema{Type: huma.TypeString}},
 	}
 }
 
@@ -86,15 +91,27 @@ func buildStreamResponse(contract huma.API) *huma.Response {
 	}
 }
 
-// handleState returns all visible jellies and the event ID to resume from.
-func (server *apiServer) handleState(
-	ctx context.Context, _ *noInput,
-) (*jsonOutput[store.StageState], error) {
-	return answerWith(server.Store.LoadStageState(ctx, server.currentMillis()))
+// StageAnswer is everything a stage needs to start, with the current move of each jelly.
+type StageAnswer struct {
+	store.StageState
+
+	Moves []movement.Move `json:"moves"`
 }
 
-// handleStream sends new events as SSE. It reads the event log in a loop instead of using a
-// broadcaster, so a restart or slow client cannot lose events and no extra goroutine is needed.
+// handleState returns all visible jellies, their moves and the event ID to resume from.
+func (server *apiServer) handleState(
+	ctx context.Context, _ *noInput,
+) (*jsonOutput[StageAnswer], error) {
+	state, err := server.Store.LoadStageState(ctx, server.currentMillis())
+	if err != nil {
+		return answerWith(StageAnswer{}, err)
+	}
+	server.advanceMovement(ctx)
+	return answerWith(StageAnswer{StageState: state, Moves: server.planner.ListCurrentMoves()}, nil)
+}
+
+// handleStream sends new events and moves as SSE. It reads the event log in a loop instead of using
+// a broadcaster, so a restart or slow client cannot lose events and no extra goroutine is needed.
 func (server *apiServer) handleStream(
 	writer http.ResponseWriter, request *http.Request, viewerID int64,
 ) {
@@ -102,6 +119,11 @@ func (server *apiServer) handleStream(
 		return
 	}
 	defer server.streams.releaseSlot(viewerID)
+	topics, err := parseStreamTopics(request)
+	if err != nil {
+		server.writeError(writer, request, err)
+		return
+	}
 	afterID, isTooOld, err := server.findStreamStart(request, viewerID)
 	if err != nil {
 		server.writeError(writer, request, err)
@@ -123,13 +145,14 @@ func (server *apiServer) handleStream(
 	if controller.Flush() != nil {
 		return
 	}
-	server.sendStreamTicks(writer, request, controller, afterID)
+	cursor := &streamCursor{topics: topics, afterEvent: afterID, afterMove: 0}
+	server.sendStreamTicks(writer, request, controller, cursor)
 }
 
 // sendStreamTicks regularly writes new events until the client or the server stops.
 func (server *apiServer) sendStreamTicks(
 	writer http.ResponseWriter, request *http.Request,
-	controller *http.ResponseController, afterID int64,
+	controller *http.ResponseController, cursor *streamCursor,
 ) {
 	ticker := time.NewTicker(streamPollInterval)
 	defer ticker.Stop()
@@ -142,11 +165,10 @@ func (server *apiServer) sendStreamTicks(
 		if server.IsStopping() {
 			return
 		}
-		events, err := server.Store.ListEventsAfter(request.Context(), afterID)
-		if err != nil || extendWriteDeadline(controller) != nil {
+		if extendWriteDeadline(controller) != nil {
 			return
 		}
-		afterID, err = writeStreamTick(writer, events, afterID, tick)
+		err := server.writeStreamUpdates(request.Context(), writer, cursor, tick)
 		if err != nil || controller.Flush() != nil {
 			return
 		}

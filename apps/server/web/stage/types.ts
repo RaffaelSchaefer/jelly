@@ -34,6 +34,23 @@ export interface StagePlayer {
   home_y: number;
 }
 
+/** A point of a move. `t` counts milliseconds from the start of the move. */
+export interface MovePoint extends StagePoint {
+  t: number;
+}
+
+/**
+ * One walk of a jelly, as `GET /v1/stage` and the `move` messages of the stream report it. A newer
+ * move of the same jelly replaces it, and after its last point the jelly stands there.
+ */
+export interface StageMove {
+  player_id: number;
+  /** Why the jelly walks, such as `wander`, `trip`, `follow` or `snack`. */
+  kind: string;
+  start_at: number;
+  points: MovePoint[];
+}
+
 /** Response of `GET /v1/stage`. */
 export interface StageState {
   last_event_id: number;
@@ -41,6 +58,7 @@ export interface StageState {
   room: { width: number; height: number; unit: string };
   areas: StageArea[];
   players: StagePlayer[];
+  moves: StageMove[];
 }
 
 /** One entry of `GET /v1/stage/events`. The payload depends on the event type. */

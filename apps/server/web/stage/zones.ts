@@ -1,14 +1,14 @@
 /**
  * The special zones of the hall: the stage with its beamers, the chillout lounge and the snack bar.
- * Says what blocks the way, where the floor is raised and where a jelly waits for its snack.
+ * Says what stands on a stage and where the floor is raised. `internal/movement/obstacles.go` keeps
+ * jellies away from the same props, so a change here belongs there too.
  *
  * @module
  */
 
-import type { AreaKind, StageArea } from "./types.ts";
+import type { StageArea } from "./types.ts";
 import type { FloorPoint, FloorRect } from "./world.ts";
 
-import { calculateRandomValue } from "./wander.ts";
 import { toFloorRect } from "./world.ts";
 
 /** Height of the stage platform and of the snack bar counter, in jelly units. */
@@ -25,29 +25,6 @@ const SCREEN_INSET = 0.3;
 const SPEAKER = { width: 1, depth: 0.8, sideInset: 0.6, backInset: 0.2 };
 /** The tournament trophy stands on a pedestal in the middle, between the two screens. */
 const PEDESTAL = { size: 0.7, backInset: 0.25 };
-/**
- * Where snack visitors wait: behind the counter, seen from the camera, so the counter stays in view
- * and the jellies peek over it. They spread along most of its length.
- */
-const SNACK_GAP = 1.1;
-const SNACK_SPREAD = 0.8;
-const SEED_SNACK_SPOT = 97;
-
-/** Kinds jellies can stand on, as `IsStandingKind` in `internal/rules/areas.go`. */
-const STANDING_KINDS: AreaKind[] = ["seats", "stage", "lounge"];
-/** Kinds jellies walk around. */
-const OBSTACLE_KINDS: AreaKind[] = ["desk", "snackbar"];
-
-/** Says whether jellies stand in an area of this kind. */
-export function isStandingKind(kind: AreaKind): boolean {
-  return STANDING_KINDS.includes(kind);
-}
-
-/** Says whether jellies walk around an area of this kind. */
-function isObstacleKind(kind: AreaKind): boolean {
-  return OBSTACLE_KINDS.includes(kind);
-}
-
 /** Returns the two beamer screens along the back edge of a stage. */
 export function listScreenRects(stage: FloorRect): FloorRect[] {
   const width = stage.maxX - stage.minX;
@@ -91,17 +68,6 @@ export function listStagePropRects(stage: FloorRect): FloorRect[] {
   return [...listScreenRects(stage), ...listSpeakerRects(stage), findPedestalRect(stage)];
 }
 
-/** Returns everything jellies walk around: desks, snack bar counters and the props on stages. */
-export function listObstacleRects(areas: StageArea[]): FloorRect[] {
-  return areas.flatMap((area) => {
-    const rect = toFloorRect(area);
-    if (area.kind === "stage") {
-      return listStagePropRects(rect);
-    }
-    return isObstacleKind(area.kind) ? [rect] : [];
-  });
-}
-
 /** Returns the rectangles of all stages. */
 export function listStageRects(areas: StageArea[]): FloorRect[] {
   return areas.filter((area) => area.kind === "stage").map(toFloorRect);
@@ -117,17 +83,4 @@ export function findFloorHeight(point: FloorPoint, stages: FloorRect[]): number 
       point.z <= stage.maxZ,
   );
   return isOnStage ? STAGE_HEIGHT : 0;
-}
-
-/** Returns the first snack bar counter, or null when the hall has none. */
-export function findSnackBar(areas: StageArea[]): FloorRect | null {
-  const bar = areas.find((area) => area.kind === "snackbar");
-  return bar ? toFloorRect(bar) : null;
-}
-
-/** Returns where a jelly waits at the counter. The ID picks the spot, so screens agree. */
-export function findSnackSpot(bar: FloorRect, playerId: number): FloorPoint {
-  const random = calculateRandomValue(playerId, SEED_SNACK_SPOT);
-  const share = (1 - SNACK_SPREAD) / 2 + SNACK_SPREAD * random;
-  return { x: bar.minX + share * (bar.maxX - bar.minX), z: bar.minZ - SNACK_GAP };
 }
