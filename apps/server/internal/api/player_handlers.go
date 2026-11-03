@@ -52,9 +52,15 @@ type redeemOutput struct {
 
 // ProfileBody changes the profile. Missing fields stay unchanged.
 type ProfileBody struct {
-	Name     *string `json:"name,omitempty"`
-	Color    *string `json:"color,omitempty"`
-	Cosmetic *string `json:"cosmetic,omitempty"`
+	Name  *string `json:"name,omitempty"`
+	Color *string `json:"color,omitempty"`
+}
+
+// EquipBody changes one slot. Without a key, the slot is emptied.
+type EquipBody struct {
+	Slot  string  `json:"slot"`
+	Key   string  `json:"key,omitempty"`
+	Color *string `json:"color,omitempty"`
 }
 
 // ReportBody names a food or drink report.
@@ -82,12 +88,14 @@ type VersionInfo struct {
 
 // Catalog holds the fixed lists. Secret achievements are not part of it.
 type Catalog struct {
-	Colors        []rules.CatalogEntry `json:"colors"`
-	Emotes        []rules.CatalogEntry `json:"emotes"`
-	PartnerEmotes []rules.CatalogEntry `json:"partner_emotes"`
-	Signs         []rules.CatalogEntry `json:"signs"`
-	Cosmetics     []rules.Cosmetic     `json:"cosmetics"`
-	Achievements  []rules.Achievement  `json:"achievements"`
+	Colors         []rules.CatalogEntry `json:"colors"`
+	Emotes         []rules.CatalogEntry `json:"emotes"`
+	PartnerEmotes  []rules.CatalogEntry `json:"partner_emotes"`
+	Signs          []rules.CatalogEntry `json:"signs"`
+	Cosmetics      []rules.Cosmetic     `json:"cosmetics"`
+	Slots          []rules.CatalogEntry `json:"cosmetic_slots"`
+	CosmeticColors []string             `json:"cosmetic_colors"`
+	Achievements   []rules.Achievement  `json:"achievements"`
 }
 
 // addLANRoutes registers what a client reads before it has joined.
@@ -155,8 +163,14 @@ func (server *apiServer) addPlayerRoutes(contract huma.API) {
 	}, server.handleMe)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "updateMe", Method: http.MethodPatch, Path: pathMe,
-		Summary: "Change name, color or cosmetic",
+		Summary: "Change name or color",
 	}, server.handleUpdateProfile)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "equipCosmetic", Method: http.MethodPut, Path: "/cosmetics/equipped",
+		Summary: "Put on a cosmetic or empty a slot",
+		Description: "Without `key`, the slot is emptied. `color` is hex text from " +
+			"`cosmetic_colors` in the catalog and only works for colorable cosmetics.",
+	}, server.handleEquipCosmetic)
 }
 
 // addActionRoutes registers what a player does during the LAN.
@@ -222,12 +236,14 @@ func handleCatalog(_ context.Context, _ *noInput) (*jsonOutput[Catalog], error) 
 		}
 	}
 	return answerWith(Catalog{
-		Colors:        rules.ListColors(),
-		Emotes:        rules.ListEmotes(),
-		PartnerEmotes: rules.ListPartnerEmotes(),
-		Signs:         rules.ListSigns(),
-		Cosmetics:     rules.ListCosmetics(),
-		Achievements:  achievements,
+		Colors:         rules.ListColors(),
+		Emotes:         rules.ListEmotes(),
+		PartnerEmotes:  rules.ListPartnerEmotes(),
+		Signs:          rules.ListSigns(),
+		Cosmetics:      rules.ListCosmetics(),
+		Slots:          rules.ListCosmeticSlots(),
+		CosmeticColors: rules.ListCosmeticColors(),
+		Achievements:   achievements,
 	}, nil)
 }
 
@@ -254,12 +270,22 @@ func (server *apiServer) handleMe(
 	return answerWith(server.Store.LoadPlayerState(ctx, playerID, server.currentMillis()))
 }
 
-// handleUpdateProfile changes name, color or cosmetic.
+// handleEquipCosmetic changes one slot.
+func (server *apiServer) handleEquipCosmetic(
+	ctx context.Context, playerID int64, input *jsonInput[EquipBody],
+) (*jsonOutput[store.PlayerState], error) {
+	choice := store.CosmeticChoice{
+		Slot: input.Body.Slot, Key: input.Body.Key, Color: input.Body.Color,
+	}
+	return answerWith(server.Store.EquipCosmetic(ctx, playerID, choice, server.currentMillis()))
+}
+
+// handleUpdateProfile changes name or color.
 func (server *apiServer) handleUpdateProfile(
 	ctx context.Context, playerID int64, input *jsonInput[ProfileBody],
 ) (*jsonOutput[store.PlayerState], error) {
 	update := store.ProfileUpdate{
-		Name: input.Body.Name, Color: input.Body.Color, Cosmetic: input.Body.Cosmetic,
+		Name: input.Body.Name, Color: input.Body.Color,
 	}
 	return answerWith(server.Store.UpdateProfile(ctx, playerID, update, server.currentMillis()))
 }

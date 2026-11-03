@@ -15,15 +15,15 @@ const noArea int64 = 0
 
 // StagePlayer is a jelly as the stage shows it. Its area is a number without a name.
 type StagePlayer struct {
-	ID             int64   `json:"id"`
-	Name           string  `json:"name"`
-	Color          string  `json:"color"`
-	Cosmetic       *string `json:"cosmetic"`
-	Level          int     `json:"level"`
-	Sign           *string `json:"sign"`
-	FollowPlayerID *int64  `json:"follow_player_id"`
-	LastSeenAt     int64   `json:"last_seen_at"`
-	AreaID         *int64  `json:"area_id"`
+	ID             int64                       `json:"id"`
+	Name           string                      `json:"name"`
+	Color          string                      `json:"color"`
+	Equipped       map[string]EquippedCosmetic `json:"equipped"`
+	Level          int                         `json:"level"`
+	Sign           *string                     `json:"sign"`
+	FollowPlayerID *int64                      `json:"follow_player_id"`
+	LastSeenAt     int64                       `json:"last_seen_at"`
+	AreaID         *int64                      `json:"area_id"`
 	rules.HomeSpot
 }
 
@@ -62,6 +62,16 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	players, err := loadStagePlayers(queryCtx, store.readDB, lan.id)
 	if err != nil {
 		return StageState{}, err
+	}
+	equipped, err := loadEquippedInLAN(queryCtx, store.readDB, lan.id)
+	if err != nil {
+		return StageState{}, err
+	}
+	for index := range players {
+		players[index].Equipped = equipped[players[index].ID]
+		if players[index].Equipped == nil {
+			players[index].Equipped = map[string]EquippedCosmetic{}
+		}
 	}
 	placeStagePlayers(players, state.Areas)
 	state.Players = slices.DeleteFunc(players, func(player StagePlayer) bool {
@@ -103,7 +113,7 @@ func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 func loadStagePlayers(
 	ctx context.Context, database querier, lanID int64,
 ) ([]StagePlayer, error) {
-	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, p.cosmetic_key, e.xp,
+	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, e.xp,
 			e.sign_key, e.follow_player_id, e.last_seen_at, e.area_id
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
 		WHERE e.lan_id = ? AND p.hidden_at IS NULL ORDER BY p.id`
@@ -130,17 +140,14 @@ func loadStagePlayers(
 func scanStagePlayer(rows *sql.Rows) (StagePlayer, error) {
 	var player StagePlayer
 	var lanXP int
-	var cosmetic, sign sql.NullString
+	var sign sql.NullString
 	var follow, area sql.NullInt64
-	err := rows.Scan(&player.ID, &player.Name, &player.Color, &cosmetic, &lanXP, &sign, &follow,
+	err := rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP, &sign, &follow,
 		&player.LastSeenAt, &area)
 	if err != nil {
 		return StagePlayer{}, fmt.Errorf("read stage player: %w", err)
 	}
 	player.Level = rules.CalculateLevel(lanXP)
-	if cosmetic.Valid {
-		player.Cosmetic = &cosmetic.String
-	}
 	if sign.Valid {
 		player.Sign = &sign.String
 	}

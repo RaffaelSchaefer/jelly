@@ -85,6 +85,18 @@
             },
             "type": "array"
           },
+          "cosmetic_colors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cosmetic_slots": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            },
+            "type": "array"
+          },
           "cosmetics": {
             "items": {
               "$ref": "#/components/schemas/Cosmetic"
@@ -116,6 +128,8 @@
           "partner_emotes",
           "signs",
           "cosmetics",
+          "cosmetic_slots",
+          "cosmetic_colors",
           "achievements"
         ],
         "type": "object"
@@ -151,6 +165,9 @@
       "Cosmetic": {
         "additionalProperties": true,
         "properties": {
+          "colorable": {
+            "type": "boolean"
+          },
           "key": {
             "type": "string"
           },
@@ -166,12 +183,17 @@
           },
           "scope": {
             "type": "string"
+          },
+          "slot": {
+            "type": "string"
           }
         },
         "required": [
           "key",
           "name",
-          "scope"
+          "scope",
+          "slot",
+          "colorable"
         ],
         "type": "object"
       },
@@ -205,6 +227,41 @@
           "title",
           "lan_slug",
           "earned_at"
+        ],
+        "type": "object"
+      },
+      "EquipBody": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "slot": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot"
+        ],
+        "type": "object"
+      },
+      "EquippedCosmetic": {
+        "additionalProperties": true,
+        "properties": {
+          "color": {
+            "nullable": true,
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "color"
         ],
         "type": "object"
       },
@@ -472,15 +529,17 @@
           "color": {
             "type": "string"
           },
-          "cosmetic": {
-            "nullable": true,
-            "type": "string"
-          },
           "cosmetics": {
             "items": {
               "type": "string"
             },
             "type": "array"
+          },
+          "equipped": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EquippedCosmetic"
+            },
+            "type": "object"
           },
           "follow_player_id": {
             "format": "int64",
@@ -555,7 +614,7 @@
           "id",
           "name",
           "color",
-          "cosmetic",
+          "equipped",
           "hidden",
           "lan",
           "xp",
@@ -577,9 +636,6 @@
         "additionalProperties": false,
         "properties": {
           "color": {
-            "type": "string"
-          },
-          "cosmetic": {
             "type": "string"
           },
           "name": {
@@ -726,9 +782,11 @@
           "color": {
             "type": "string"
           },
-          "cosmetic": {
-            "nullable": true,
-            "type": "string"
+          "equipped": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EquippedCosmetic"
+            },
+            "type": "object"
           },
           "follow_player_id": {
             "format": "int64",
@@ -767,7 +825,7 @@
           "id",
           "name",
           "color",
-          "cosmetic",
+          "equipped",
           "level",
           "sign",
           "follow_player_id",
@@ -917,6 +975,50 @@
           }
         },
         "summary": "Read the fixed lists"
+      }
+    },
+    "/v1/cosmetics/equipped": {
+      "put": {
+        "description": "Without `key`, the slot is emptied. `color` is hex text from `cosmetic_colors` in the catalog and only works for colorable cosmetics.",
+        "operationId": "equipCosmetic",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EquipBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerState"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Put on a cosmetic or empty a slot"
       }
     },
     "/v1/emotes": {
@@ -1197,7 +1299,7 @@
             "bearer": []
           }
         ],
-        "summary": "Change name, color or cosmetic"
+        "summary": "Change name or color"
       }
     },
     "/v1/pokes": {

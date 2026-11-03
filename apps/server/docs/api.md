@@ -63,6 +63,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 400    | `invalid_input`, `invalid_rules`          | Admin-Angaben oder `since` sind ungültig  |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
+| 400    | `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color` | Cosmetic passt nicht |
 | 400    | `unknown_action`, `unknown_emote`         | Eintrag steht nicht in der festen Liste   |
 | 400    | `unknown_partner_emote`, `unknown_sign`   | Eintrag steht nicht in der festen Liste   |
 | 400    | `invalid_event_code`                      | Code unbekannt oder außerhalb seiner Zeit |
@@ -97,7 +98,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
   "id": 1,
   "name": "Glibber",
   "color": "mint",
-  "cosmetic": null,
+  "equipped": { "head": { "key": "beanie", "color": "#4cc9f0" } },
   "hidden": false,
   "lan": { "slug": "ucb-2026", "name": "UCB LAN 2026", "active": true },
   "xp": 3,
@@ -151,7 +152,8 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `GET /lans/current`       |                                            | `{"server_time","current","next","joined"}` |
 | `POST /auth/redeem`       | `{"code","name","color"}`                  | `{"secret","me"}`              |
 | `GET /players/me`         |                                            | Stand                          |
-| `PATCH /players/me`       | `{"name","color","cosmetic"}`, alle optional | Stand                        |
+| `PATCH /players/me`       | `{"name","color"}`, alle optional          | Stand                          |
+| `PUT /cosmetics/equipped` | `{"slot","key","color"}`, ohne `key` leert den Platz | Stand                |
 | `POST /presence`          |                                            | Stand                          |
 | `POST /pokes`             |                                            | `{"xp_gained","me"}`           |
 | `POST /reports`           | `{"kind"}`, `food` oder `drink`            | `{"xp_gained","me"}`           |
@@ -163,11 +165,11 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `DELETE /trips/current`   |                                            | Stand                          |
 
 Das Secret gibt es nur in der Antwort von `POST /auth/redeem`. `GET /catalog` liefert `colors`,
-`emotes`, `partner_emotes`, `signs`, `cosmetics` und `achievements`, geheime Achievements fehlen dort.
+`emotes`, `partner_emotes`, `signs`, `cosmetics`, `cosmetic_slots`, `cosmetic_colors` und `achievements`, geheime Achievements fehlen dort.
 
 Namen haben 1 bis 24 Zeichen aus lateinischen Buchstaben, Umlauten, `ß`, Ziffern, Leerzeichen und
 `. _ ' -`, darunter mindestens ein Buchstabe oder eine Ziffer. Der Präfix `Jelly-` ist für den Admin
-reserviert. `"cosmetic":""` legt ein Cosmetic ab, `null` lässt es unverändert. Ein leeres `PATCH /players/me`
+reserviert. Plätze für Cosmetics sind `head`, `hands`, `body`, `face` und `aura`, je Platz eines. Einfärbbare Cosmetics (`colorable`) nehmen eine Farbe aus `cosmetic_colors`. Ein leeres `PATCH /players/me`
 ändert nichts und sendet nichts.
 
 **Anwesenheit:** XP gibt es nur per `POST /pokes`, also per Klick. Solange die App läuft, sendet sie
@@ -209,7 +211,7 @@ A startet ein Emote und nennt B den Code. Es gibt keine Einladung, also auch nic
   "server_time": 1795000000000,
   "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "kind": "seats" }],
   "players": [{
-    "id": 1, "name": "Glibber", "color": "mint", "cosmetic": null, "level": 1,
+    "id": 1, "name": "Glibber", "color": "mint", "equipped": {}, "level": 1,
     "sign": null, "follow_player_id": null, "last_seen_at": 1795000000000,
     "area_id": 1, "home_x": 24.2, "home_y": 61.8
   }]

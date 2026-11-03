@@ -166,7 +166,7 @@ func restoreAccount(
 	if err != nil {
 		return err
 	}
-	return removeLockedCosmetic(ctx, transaction, playerID, item.now)
+	return removeLockedCosmetics(ctx, transaction, playerID, item.now)
 }
 
 // placeOnSeat seats the account, sends anyone else away and uses up the code.

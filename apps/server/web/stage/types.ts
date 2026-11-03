@@ -25,7 +25,7 @@ export interface StagePlayer {
   id: number;
   name: string;
   color: string;
-  cosmetic: string | null;
+  equipped: Record<string, { key: string; color: string | null }>;
   level: number;
   sign: string | null;
   follow_player_id: number | null;

@@ -76,7 +76,9 @@ type knownError struct {
 
 // listKnownErrors returns all errors the client may learn about.
 func listKnownErrors() []knownError {
-	return slices.Concat(listPlayerErrors(), listSeatErrors(), listGameErrors())
+	return slices.Concat(
+		listPlayerErrors(), listSeatErrors(), listCosmeticErrors(), listGameErrors(),
+	)
 }
 
 // listPlayerErrors covers accounts, access and admin input.
@@ -130,6 +132,30 @@ func listPlayerErrors() []knownError {
 	}
 }
 
+// listCosmeticErrors returns the errors of the cosmetic slots.
+func listCosmeticErrors() []knownError {
+	return []knownError{
+		{rules.ErrUnknownSlot, problem{
+			http.StatusBadRequest, "unknown_slot", "Diesen Platz für Cosmetics gibt es nicht.",
+		}},
+		{
+			rules.ErrUnknownCosmetic,
+			problem{
+				http.StatusBadRequest,
+				"unknown_cosmetic",
+				"Dieses Cosmetic passt nicht auf diesen Platz.",
+			},
+		},
+		{rules.ErrInvalidCosmeticColor, problem{
+			http.StatusBadRequest, "invalid_cosmetic_color", "Diese Farbe geht hier nicht.",
+		}},
+		{store.ErrCosmeticLocked, problem{
+			http.StatusConflict, "cosmetic_locked",
+			"Dieses Cosmetic ist noch nicht freigeschaltet.",
+		}},
+	}
+}
+
 // listSeatErrors returns the errors of seat codes.
 func listSeatErrors() []knownError {
 	return []knownError{
@@ -151,10 +177,6 @@ func listGameErrors() []knownError {
 		}},
 		{store.ErrNotJoined, problem{
 			http.StatusConflict, "not_joined", "Du nimmst an dieser LAN noch nicht teil.",
-		}},
-		{store.ErrCosmeticLocked, problem{
-			http.StatusConflict, "cosmetic_locked",
-			"Dieses Cosmetic ist noch nicht freigeschaltet.",
 		}},
 		{store.ErrEventCodeInvalid, problem{
 			http.StatusBadRequest, "invalid_event_code", "Dieser Event-Code gilt gerade nicht.",

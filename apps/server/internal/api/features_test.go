@@ -163,24 +163,32 @@ func TestEventCodes(t *testing.T) {
 func TestCosmeticsRequireUnlock(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
-	response := testFixture.callAPI("PATCH", "/v1/players/me", token, `{"cosmetic":"crown"}`)
+	response := testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"head","key":"crown"}`)
 	requireProblem(t, response, http.StatusConflict, "cosmetic_locked")
 
 	testFixture.createEventCode("HUT")
 	testFixture.callAPI("POST", "/v1/event-codes/redemptions", token, `{"code":"HUT"}`)
-	response = testFixture.callAPI("PATCH", "/v1/players/me", token,
-		`{"cosmetic":"party-hat","color":"peach"}`)
+	response = testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"head","key":"party-hat"}`)
 	state := decodeBody[store.PlayerState](t, response)
-	if state.Cosmetic == nil || *state.Cosmetic != "party-hat" || state.Color != "peach" {
-		t.Fatalf("profile: %s", response.body)
+	if state.Equipped["head"].Key != "party-hat" {
+		t.Fatalf("equipped: %s", response.body)
 	}
 	if !slices.Contains(findAchievementKeys(state), "styled") {
 		t.Fatalf("achievement is missing: %+v", state.Achievements)
 	}
-	response = testFixture.callAPI("PATCH", "/v1/players/me", token, `{"cosmetic":""}`)
-	if decodeBody[store.PlayerState](t, response).Cosmetic != nil {
+	response = testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token, `{"slot":"head"}`)
+	if len(decodeBody[store.PlayerState](t, response).Equipped) != 0 {
 		t.Fatalf("cosmetic stays on: %s", response.body)
 	}
+	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"tail"}`), http.StatusBadRequest, "unknown_slot")
+	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"face","key":"party-hat"}`), http.StatusBadRequest, "unknown_cosmetic")
+	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"head","key":"party-hat","color":"#ffffff"}`),
+		http.StatusBadRequest, "invalid_cosmetic_color")
 }
 
 func TestNewLANRestartsXPAndKeepsHistory(t *testing.T) {

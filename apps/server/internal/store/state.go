@@ -45,25 +45,25 @@ type PlayerState struct {
 	// ServerTime lets a client with a wrong clock show correct countdowns.
 	ServerTime int64 `json:"server_time"`
 	// LastEventID is where a client opens the stream to miss nothing after this state.
-	LastEventID    int64               `json:"last_event_id"`
-	ID             int64               `json:"id"`
-	Name           string              `json:"name"`
-	Color          string              `json:"color"`
-	Cosmetic       *string             `json:"cosmetic"`
-	Hidden         bool                `json:"hidden"`
-	LAN            *LANInfo            `json:"lan"`
-	XP             int                 `json:"xp"`
-	Level          int                 `json:"level"`
-	TotalXP        int                 `json:"total_xp"`
-	NextPokeAt     *int64              `json:"next_poke_at"`
-	Reports        *rules.ReportStatus `json:"reports"`
-	Sign           *string             `json:"sign"`
-	FollowPlayerID *int64              `json:"follow_player_id"`
-	LANsAttended   int                 `json:"lans_attended"`
-	Badges         []Badge             `json:"badges"`
-	Cosmetics      []string            `json:"cosmetics"`
-	Achievements   []EarnedAchievement `json:"achievements"`
-	Awards         []PlayerAward       `json:"awards"`
+	LastEventID    int64                       `json:"last_event_id"`
+	ID             int64                       `json:"id"`
+	Name           string                      `json:"name"`
+	Color          string                      `json:"color"`
+	Equipped       map[string]EquippedCosmetic `json:"equipped"`
+	Hidden         bool                        `json:"hidden"`
+	LAN            *LANInfo                    `json:"lan"`
+	XP             int                         `json:"xp"`
+	Level          int                         `json:"level"`
+	TotalXP        int                         `json:"total_xp"`
+	NextPokeAt     *int64                      `json:"next_poke_at"`
+	Reports        *rules.ReportStatus         `json:"reports"`
+	Sign           *string                     `json:"sign"`
+	FollowPlayerID *int64                      `json:"follow_player_id"`
+	LANsAttended   int                         `json:"lans_attended"`
+	Badges         []Badge                     `json:"badges"`
+	Cosmetics      []string                    `json:"cosmetics"`
+	Achievements   []EarnedAchievement         `json:"achievements"`
+	Awards         []PlayerAward               `json:"awards"`
 }
 
 // entryRow is the latest entry as stored in the database.
@@ -126,24 +126,24 @@ func loadState(ctx context.Context, database querier, playerID, now int64) (Play
 // loadAccount reads the account row with its lifetime totals.
 func loadAccount(ctx context.Context, database querier, playerID int64) (PlayerState, error) {
 	state := PlayerState{ID: playerID}
-	var cosmetic sql.NullString
 	var hiddenAt sql.NullInt64
-	const selectAccountSQL = `SELECT name, color, cosmetic_key, hidden_at,
+	const selectAccountSQL = `SELECT name, color, hidden_at,
 			(SELECT COUNT(*) FROM lan_entries WHERE player_id = players.id),
 			(SELECT COALESCE(SUM(xp), 0) FROM lan_entries WHERE player_id = players.id)
 		FROM players WHERE id = ?`
 	err := database.QueryRowContext(ctx, selectAccountSQL, playerID).
-		Scan(&state.Name, &state.Color, &cosmetic, &hiddenAt, &state.LANsAttended, &state.TotalXP)
+		Scan(&state.Name, &state.Color, &hiddenAt, &state.LANsAttended, &state.TotalXP)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PlayerState{}, ErrUnauthorized
 	}
 	if err != nil {
 		return PlayerState{}, fmt.Errorf("load player: %w", err)
 	}
-	if cosmetic.Valid {
-		state.Cosmetic = &cosmetic.String
-	}
 	state.Hidden = hiddenAt.Valid
+	state.Equipped, err = loadEquipped(ctx, database, playerID)
+	if err != nil {
+		return PlayerState{}, err
+	}
 	return state, nil
 }
 

@@ -17,7 +17,7 @@ function makePlayer(id: number, changes: Partial<StagePlayer> = {}): StagePlayer
     id,
     name: "Glibber",
     color: "mint",
-    cosmetic: null,
+    equipped: {},
     level: 1,
     sign: null,
     follow_player_id: null,

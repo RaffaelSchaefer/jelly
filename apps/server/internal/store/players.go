@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
@@ -14,12 +13,10 @@ import (
 // nameConflictMessage is the driver message for a duplicate name.
 const nameConflictMessage = "UNIQUE constraint failed: players.name_key"
 
-// ProfileUpdate holds optional profile changes. A nil field stays unchanged, and an empty
-// Cosmetic takes the current one off.
+// ProfileUpdate holds optional profile changes. A nil field stays unchanged.
 type ProfileUpdate struct {
-	Name     *string
-	Color    *string
-	Cosmetic *string
+	Name  *string
+	Color *string
 }
 
 // newPlayer is a validated account, ready to be stored.
@@ -47,7 +44,7 @@ func (store *Store) FindPlayerByToken(ctx context.Context, token string) (int64,
 	return playerID, nil
 }
 
-// UpdateProfile changes name, color or cosmetic and returns the new state.
+// UpdateProfile changes name or color and returns the new state.
 func (store *Store) UpdateProfile(
 	ctx context.Context, playerID int64, update ProfileUpdate, now int64,
 ) (PlayerState, error) {
@@ -146,9 +143,6 @@ func applyProfileUpdate(
 			return fmt.Errorf("update color: %w", err)
 		}
 	}
-	if update.Cosmetic != nil {
-		return updatePlayerCosmetic(ctx, transaction, playerID, *update.Cosmetic)
-	}
 	return nil
 }
 
@@ -169,59 +163,6 @@ func updatePlayerName(
 		return fmt.Errorf("update name: %w", err)
 	}
 	return nil
-}
-
-// updatePlayerCosmetic wears an unlocked cosmetic or, with an empty key, takes it off.
-func updatePlayerCosmetic(
-	ctx context.Context, transaction *sql.Tx, playerID int64, cosmeticKey string,
-) error {
-	var stored any
-	if cosmeticKey != "" {
-		unlocked, err := loadUnlockedCosmetics(ctx, transaction, playerID)
-		if err != nil {
-			return err
-		}
-		if !slices.Contains(unlocked, cosmeticKey) {
-			return ErrCosmeticLocked
-		}
-		stored = cosmeticKey
-	}
-	const updateCosmeticSQL = `UPDATE players SET cosmetic_key = ? WHERE id = ?`
-	_, err := transaction.ExecContext(ctx, updateCosmeticSQL, stored, playerID)
-	if err != nil {
-		return fmt.Errorf("update cosmetic: %w", err)
-	}
-	return nil
-}
-
-// removeLockedCosmetic takes off a cosmetic that no longer counts, such as last LAN's crown.
-func removeLockedCosmetic(
-	ctx context.Context, transaction *sql.Tx, playerID, now int64,
-) error {
-	var worn sql.NullString
-	const selectCosmeticSQL = `SELECT cosmetic_key FROM players WHERE id = ?`
-	err := transaction.QueryRowContext(ctx, selectCosmeticSQL, playerID).Scan(&worn)
-	if err != nil {
-		return fmt.Errorf("load cosmetic: %w", err)
-	}
-	if !worn.Valid {
-		return nil
-	}
-	unlocked, err := loadUnlockedCosmetics(ctx, transaction, playerID)
-	if err != nil {
-		return err
-	}
-	if slices.Contains(unlocked, worn.String) {
-		return nil
-	}
-	err = updatePlayerCosmetic(ctx, transaction, playerID, "")
-	if err != nil {
-		return err
-	}
-	return appendEvent(ctx, transaction, eventRecord{
-		lanID: 0, eventType: EventPlayerUpdated, scope: scopePublic,
-		playerID: playerID, payload: struct{}{}, now: now,
-	})
 }
 
 // recordProfileEdit writes the event and evaluates achievements if a LAN is running.

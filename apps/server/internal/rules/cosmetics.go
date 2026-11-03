@@ -1,6 +1,27 @@
 package rules
 
-import "slices"
+import (
+	"errors"
+	"slices"
+)
+
+// The slots of a jelly. A jelly wears at most one cosmetic per slot.
+const (
+	SlotHead  = "head"
+	SlotHands = "hands"
+	SlotBody  = "body"
+	SlotFace  = "face"
+	SlotAura  = "aura"
+)
+
+var (
+	// ErrUnknownSlot reports a slot outside the fixed list.
+	ErrUnknownSlot = errors.New("unknown slot")
+	// ErrUnknownCosmetic reports a cosmetic that is not in the catalog or belongs to another slot.
+	ErrUnknownCosmetic = errors.New("unknown cosmetic")
+	// ErrInvalidCosmeticColor reports a color outside the palette or for a fixed cosmetic.
+	ErrInvalidCosmeticColor = errors.New("invalid cosmetic color")
+)
 
 // Scope says how long something earned stays. Changing one catalog value changes the behavior.
 type Scope string
@@ -22,11 +43,14 @@ const (
 
 // Cosmetic is one item. It unlocks through a level or an event, or only through an award.
 type Cosmetic struct {
-	Key           string `json:"key"`
-	Name          string `json:"name"`
-	Scope         Scope  `json:"scope"`
-	Level         int    `json:"level,omitempty"`
-	RequiresEvent bool   `json:"requires_event,omitempty"`
+	Key   string `json:"key"`
+	Name  string `json:"name"`
+	Scope Scope  `json:"scope"`
+	Slot  string `json:"slot"`
+	// Colorable cosmetics take a color from the palette, the others always look the same.
+	Colorable     bool `json:"colorable"`
+	Level         int  `json:"level,omitempty"`
+	RequiresEvent bool `json:"requires_event,omitempty"`
 }
 
 // UnlockFacts are the facts about a player that decide their cosmetics.
@@ -41,16 +65,75 @@ type UnlockFacts struct {
 // ListCosmetics returns the catalog, matching `apps/client/src/pet/cosmetics.ts`.
 func ListCosmetics() []Cosmetic {
 	return []Cosmetic{
-		{Key: "headset", Name: "Headset", Scope: ScopePermanent, Level: levelHeadset},
-		{Key: "beanie", Name: "Mütze", Scope: ScopePermanent, Level: levelBeanie},
-		{Key: "party-hat", Name: "Party-Hut", Scope: ScopePermanent, RequiresEvent: true},
 		{
-			Key: "pixel-glasses", Name: "Pixel-Brille", Scope: ScopePermanent,
+			Key:   "headset",
+			Name:  "Headset",
+			Scope: ScopePermanent,
+			Slot:  SlotHead,
+			Level: levelHeadset,
+		},
+		{
+			Key: "beanie", Name: "Mütze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
+			Level: levelBeanie,
+		},
+		{
+			Key: "party-hat", Name: "Party-Hut", Scope: ScopePermanent, Slot: SlotHead,
+			RequiresEvent: true,
+		},
+		{
+			Key: "pixel-glasses", Name: "Pixel-Brille", Scope: ScopePermanent, Slot: SlotFace,
 			Level: levelPixelGlasses,
 		},
-		{Key: "hood", Name: "Kapuze", Scope: ScopePermanent, Level: levelHood},
-		{Key: "crown", Name: "Krone", Scope: ScopeLAN, Level: levelCrown},
+		{
+			Key: "hood", Name: "Kapuze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
+			Level: levelHood,
+		},
+		{Key: "crown", Name: "Krone", Scope: ScopeLAN, Slot: SlotHead, Level: levelCrown},
 	}
+}
+
+// ListCosmeticSlots returns the slots of a jelly.
+func ListCosmeticSlots() []CatalogEntry {
+	return []CatalogEntry{
+		{Key: SlotHead, Label: "Kopf"},
+		{Key: SlotHands, Label: "Hände"},
+		{Key: SlotBody, Label: "Körper"},
+		{Key: SlotFace, Label: "Gesicht"},
+		{Key: SlotAura, Label: "Aura"},
+	}
+}
+
+// ListCosmeticColors returns the palette of colorable cosmetics as hex text. The API always speaks
+// hex, so a free color choice later only drops this check.
+func ListCosmeticColors() []string {
+	return []string{
+		"#ffffff", "#2b2d42", "#e5534b", "#ff9f43", "#ffd45c",
+		"#4cd97b", "#4cc9f0", "#7a5cff", "#f59ac9",
+	}
+}
+
+// ValidateEquip checks a change to one slot. An empty key takes off what is in the slot.
+func ValidateEquip(slot, key string, color *string) error {
+	if !containsKey(ListCosmeticSlots(), slot) {
+		return ErrUnknownSlot
+	}
+	if key == "" {
+		return nil
+	}
+	index := slices.IndexFunc(ListCosmetics(), func(cosmetic Cosmetic) bool {
+		return cosmetic.Key == key && cosmetic.Slot == slot
+	})
+	if index < 0 {
+		return ErrUnknownCosmetic
+	}
+	if color == nil {
+		return nil
+	}
+	isAllowed := ListCosmetics()[index].Colorable && slices.Contains(ListCosmeticColors(), *color)
+	if !isAllowed {
+		return ErrInvalidCosmeticColor
+	}
+	return nil
 }
 
 // ListUnlockedCosmetics returns the keys a player may wear, in catalog order.
