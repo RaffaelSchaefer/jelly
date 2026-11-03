@@ -3,6 +3,7 @@ package rules
 import (
 	"errors"
 	"math"
+	"slices"
 )
 
 const (
@@ -14,15 +15,27 @@ const (
 	spreadStepY = 0.5698402909980532
 )
 
-// ErrInvalidArea reports an area outside the stage or without a size.
+// Kinds of areas. Jellies stand on seats, on the stage and in the lounge, walk over cables and
+// walk around desks and the snack bar.
+const (
+	AreaKindSeats    = "seats"
+	AreaKindDesk     = "desk"
+	AreaKindCable    = "cable"
+	AreaKindStage    = "stage"
+	AreaKindLounge   = "lounge"
+	AreaKindSnackbar = "snackbar"
+)
+
+// ErrInvalidArea reports an area outside the stage, without a size or of an unknown kind.
 var ErrInvalidArea = errors.New("invalid area")
 
 // Area is a rectangle on the stage, in percent of its width and height.
 type Area struct {
-	X      int `json:"x"`
-	Y      int `json:"y"`
-	Width  int `json:"width"`
-	Height int `json:"height"`
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	Kind   string `json:"kind"`
 }
 
 // HomeSpot is where a jelly wanders around, in percent of the stage.
@@ -38,12 +51,27 @@ func ValidateArea(area Area) error {
 	if !isInside || area.Width <= 0 || area.Height <= 0 {
 		return ErrInvalidArea
 	}
+	if !slices.Contains(listAreaKinds(), area.Kind) {
+		return ErrInvalidArea
+	}
 	return nil
+}
+
+// listAreaKinds returns every kind an area can have.
+func listAreaKinds() []string {
+	return []string{
+		AreaKindSeats, AreaKindDesk, AreaKindCable, AreaKindStage, AreaKindLounge, AreaKindSnackbar,
+	}
+}
+
+// IsStandingKind reports whether jellies can belong to an area of this kind.
+func IsStandingKind(kind string) bool {
+	return kind == AreaKindSeats || kind == AreaKindStage || kind == AreaKindLounge
 }
 
 // WholeStage returns the area of a jelly that has no area assigned.
 func WholeStage() Area {
-	return Area{X: 0, Y: 0, Width: stageSize, Height: stageSize}
+	return Area{X: 0, Y: 0, Width: stageSize, Height: stageSize, Kind: AreaKindSeats}
 }
 
 // CalculateHomeSpot returns the spot of the jelly with this place in its area, counted from 0.

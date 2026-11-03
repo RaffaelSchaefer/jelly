@@ -1,0 +1,16 @@
+# The image is built from the repository root, so only what the server needs goes in.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/client/package.json
+!apps/server
+!packages/jelly-scene
+**/node_modules
+**/.turbo
+**/dist
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/.local-tests
+**/videos

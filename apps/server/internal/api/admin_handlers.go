@@ -188,7 +188,7 @@ func (server *apiServer) handleCreateArea(writer http.ResponseWriter, request *h
 	server.writeOutcome(writer, request, area, err)
 }
 
-// handleUpdateArea moves or resizes an area. Its jellies stay assigned.
+// handleUpdateArea moves, resizes or retypes an area. Its jellies stay while they can stand there.
 func (server *apiServer) handleUpdateArea(writer http.ResponseWriter, request *http.Request) {
 	lanID, valid := server.readPathID(writer, request)
 	if !valid {

@@ -1,15 +1,15 @@
-// Schreibt die prozedurale Geometrie des Pets (src/scene/jellyGeometry.ts) als
+// Schreibt die prozedurale Geometrie des Pets (packages/jelly-scene/src/jellyGeometry.ts) als
 // blender/pet_reference.obj, den Referenzkörper, um den die Cosmetics modelliert werden.
 // Aufruf: pnpm blender:reference
 // Einheiten und Achsen wie in der App (y nach oben, vorn +z). Blenders OBJ-Import dreht auf z oben.
-import { writeFileSync } from "node:fs";
 
 import {
   createBodyGeometry,
   createHandGeometry,
   createHeadGeometry,
   HAND,
-} from "../src/scene/jellyGeometry.ts";
+} from "@jelly/scene/geometry";
+import { writeFileSync } from "node:fs";
 
 const hand = (side) => createHandGeometry().translate(side * HAND.x, HAND.y, HAND.z);
 const parts = {

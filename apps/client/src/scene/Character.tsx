@@ -1,22 +1,18 @@
 /**
- * Das animierte Pet: Jelly-Körper, Hände, Gesicht und angelegtes Cosmetic.
+ * Das animierte Pet: das Jelly aus `@jelly/scene` und sein angelegtes Cosmetic.
  *
- * Hier wird nur zusammengesteckt und verdrahtet. Die Bewegung selbst steht in `animation.ts`.
+ * Hier wird nur verdrahtet. Bau und Bewegung des Jellys stehen in `packages/jelly-scene`, das auch
+ * die Bühne des Servers nutzt.
  *
  * @module
  */
 
-import type { Group, Mesh } from "three";
+import { animateJelly, createJelly, createMotion, disposeJelly } from "@jelly/scene";
+import { createPortal, useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
 
-import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
-
-import { COSMETICS, type PetColor } from "../pet";
-import { animateBody, animateFace, animateHands, createMotion, startFrame } from "./animation";
+import { COSMETICS, PET_COLORS, type PetColor } from "../pet";
 import Cosmetic from "./Cosmetic";
-import Face from "./Face";
-import JellyBody from "./JellyBody";
-import { HAND, HEAD } from "./jellyGeometry";
 
 /** Eigenschaften des Pets in der Szene. */
 export interface CharacterProps {
@@ -41,46 +37,29 @@ export default function Character({
   cosmetic = null,
 }: CharacterProps) {
   const worn = COSMETICS.find((item) => item.id === cosmetic);
-  const root = useRef<Group>(null);
-  const head = useRef<Group>(null);
-  const hands = useRef<(Group | null)[]>([]);
-  const eyes = useRef<(Group | null)[]>([]);
-  const cheeks = useRef<(Mesh | null)[]>([]);
-  const mouth = useRef<Mesh | null>(null);
+  const jelly = useMemo(() => createJelly(PET_COLORS[color]), [color]);
   const motion = useRef(createMotion(pulse));
 
+  // Fiber gibt `<primitive>`-Objekte nie selbst frei.
+  useEffect(() => () => disposeJelly(jelly), [jelly]);
+
   useFrame(({ clock }, rawDelta) => {
-    if (!root.current || !head.current) return;
-    const s = motion.current;
-    const frame = startFrame(s, { time: clock.elapsedTime, rawDelta, pulse, reducedMotion });
-    animateBody(root.current, head.current, frame);
-    animateFace({ eyes: eyes.current, cheeks: cheeks.current, mouth: mouth.current }, s, frame);
-    animateHands(hands.current, s, frame, holding);
+    animateJelly(jelly, motion.current, {
+      time: clock.elapsedTime,
+      rawDelta,
+      pulse,
+      reducedMotion,
+      holding,
+    });
   });
 
   return (
-    <group ref={root}>
-      {/* Körper, Kopf und Hände sind ein Jelly. Es liest, wo die Kopf- und Handgruppen stehen. */}
-      <JellyBody color={color} head={head} hands={hands} />
-      {[-1, 1].map((side, index) => (
-        <group
-          key={side}
-          ref={(node) => {
-            hands.current[index] = node;
-          }}
-          position={[side * HAND.x, HAND.y, HAND.z]}
-          scale={0}
-          visible={false}
-        />
-      ))}
-      <group ref={head} position={[HEAD.x, HEAD.y, HEAD.z]}>
-        <group position={[-HEAD.x, -HEAD.y, -HEAD.z]}>
-          <Face color={color} eyes={eyes} mouth={mouth} cheeks={cheeks} />
-          {/* Kopf- und Gesichts-Cosmetics wippen mit dem Kopf, Effekte bleiben beim Körper. */}
-          {worn && worn.slot !== "Effekte" ? <Cosmetic id={worn.id} color={color} /> : null}
-        </group>
-      </group>
+    <primitive object={jelly.root}>
+      {/* Kopf- und Gesichts-Cosmetics wippen mit dem Kopf, Effekte bleiben beim Körper. */}
+      {worn && worn.slot !== "Effekte"
+        ? createPortal(<Cosmetic id={worn.id} color={color} />, jelly.faceAnchor)
+        : null}
       {worn?.slot === "Effekte" ? <Cosmetic id={worn.id} color={color} /> : null}
-    </group>
+    </primitive>
   );
 }

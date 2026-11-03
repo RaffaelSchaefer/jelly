@@ -4,6 +4,12 @@
  * @module
  */
 
+/**
+ * What an area is: where jellies stand (seats, stage, lounge), what they walk around (desk,
+ * snackbar) and what they walk over (cable).
+ */
+export type AreaKind = "seats" | "desk" | "cable" | "stage" | "lounge" | "snackbar";
+
 /** A rectangle on the stage in percent. Areas have no names on purpose. */
 export interface StageArea {
   id: number;
@@ -11,6 +17,7 @@ export interface StageArea {
   y: number;
   width: number;
   height: number;
+  kind: AreaKind;
 }
 
 /** A jelly as the server reports it. */
@@ -51,6 +58,8 @@ export interface EventPayload {
   amount?: number;
   level?: number;
   title?: string;
+  /** What the XP of `xp.gained` was for, such as `poke`, `food` or `drink`. */
+  source?: string;
 }
 
 /** The fixed lists of `GET /catalog` the stage needs for its texts. */
