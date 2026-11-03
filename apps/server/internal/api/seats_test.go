@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
@@ -154,4 +156,87 @@ func TestProfilesNeedASecretAndHideHiddenPlayers(t *testing.T) {
 	testFixture.callAdmin("POST", "/admin/api/players/"+shownID+"/hide", "")
 	requireProblem(t, testFixture.callAPI("GET", "/v1/players/"+shownID, reader, ""),
 		http.StatusNotFound, "player_not_found")
+}
+
+// createFutureLAN adds a LAN that starts after the one of the fixture has ended.
+func (testFixture *fixture) createFutureLAN(code string) {
+	testFixture.t.Helper()
+	startsAt := time.UnixMilli(testFixture.clock.Load()).Add(30 * 24 * time.Hour)
+	err := testFixture.database.CreateLAN(testFixture.t.Context(), store.NewLAN{
+		Slug: "next", Name: "Next", Timezone: "Europe/Berlin", JoinCode: code,
+		StartsAt: startsAt.UnixMilli(), EndsAt: startsAt.Add(24 * time.Hour).UnixMilli(),
+		Rules: rules.DefaultRules(),
+	})
+	if err != nil {
+		testFixture.t.Fatal(err)
+	}
+}
+
+// redeemLANCode sends a shared code and returns the answer.
+func (testFixture *fixture) redeemLANCode(code, name string) apiResponse {
+	testFixture.t.Helper()
+	return testFixture.callAPI("POST", "/v1/auth/redeem", "",
+		`{"code":"`+code+`","name":"`+name+`","color":"mint"}`)
+}
+
+func TestLANCodeRegistersBeforeTheLANWithoutAnyXP(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.createFutureLAN("next-code")
+	response := testFixture.redeemLANCode("next-code", "Early")
+	if response.status != http.StatusOK {
+		t.Fatalf("redeem: %d %s", response.status, response.body)
+	}
+	token := decodeBody[registerResponse](t, response).Token
+	state := testFixture.loadMe(token)
+	if len(state.Badges) != 0 || state.LANsAttended != 0 {
+		t.Fatalf("nothing is attended yet: %+v", state)
+	}
+	requireProblem(t, testFixture.callAPI("POST", "/v1/pokes", token, ""),
+		http.StatusConflict, "not_joined")
+
+	testFixture.advanceClock(30*24*time.Hour + time.Hour)
+	if xp := testFixture.pokePlayer(token); xp == 0 {
+		t.Fatal("the entry counts once the LAN runs")
+	}
+	if badges := testFixture.loadMe(token).Badges; len(badges) != 1 {
+		t.Fatalf("badges = %+v", badges)
+	}
+}
+
+func TestRegisteredAccountStaysOffTheStageUntilItActs(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.createFutureLAN("next-code")
+	token := decodeBody[registerResponse](t, testFixture.redeemLANCode("next-code", "Early")).Token
+	testFixture.advanceClock(30*24*time.Hour + time.Hour)
+	if players := testFixture.loadStage().Players; len(players) != 0 {
+		t.Fatalf("players = %+v", players)
+	}
+	testFixture.pokePlayer(token)
+	if players := testFixture.loadStage().Players; len(players) != 1 {
+		t.Fatalf("players = %+v", players)
+	}
+}
+
+func TestLANCodeAfterTheLANOnlyCreatesTheAccount(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.advanceClock(200 * time.Hour)
+	response := testFixture.redeemLANCode(joinCode, "Late")
+	if response.status != http.StatusOK {
+		t.Fatalf("redeem: %d %s", response.status, response.body)
+	}
+	state := testFixture.loadMe(decodeBody[registerResponse](t, response).Token)
+	if state.LAN != nil || len(state.Badges) != 0 {
+		t.Fatalf("state = %+v", state)
+	}
+}
+
+func TestWrongCodeIsRefusedWithoutARunningLAN(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.advanceClock(200 * time.Hour)
+	requireProblem(
+		t,
+		testFixture.redeemLANCode("nope", "Late"),
+		http.StatusForbidden,
+		"invalid_code",
+	)
 }

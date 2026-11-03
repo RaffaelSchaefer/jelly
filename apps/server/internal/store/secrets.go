@@ -3,7 +3,6 @@ package store
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 )
@@ -39,9 +38,4 @@ func generateSeatCode() string {
 func hashSecret(secret string) string {
 	sum := sha256.Sum256([]byte(secret))
 	return hex.EncodeToString(sum[:])
-}
-
-// matchSecret compares a secret with a stored hash in constant time.
-func matchSecret(storedHash, secret string) bool {
-	return subtle.ConstantTimeCompare([]byte(storedHash), []byte(hashSecret(secret))) == 1
 }

@@ -133,7 +133,7 @@ func loadAccount(ctx context.Context, database querier, playerID int64) (PlayerS
 	state := PlayerState{ID: playerID}
 	var hiddenAt sql.NullInt64
 	const selectAccountSQL = `SELECT name, color, hidden_at,
-			(SELECT COUNT(*) FROM lan_entries WHERE player_id = players.id),
+			(SELECT COUNT(*) FROM lan_entries WHERE player_id = players.id AND last_seen_at > 0),
 			(SELECT COALESCE(SUM(xp), 0) FROM lan_entries WHERE player_id = players.id)
 		FROM players WHERE id = ?`
 	err := database.QueryRowContext(ctx, selectAccountSQL, playerID).
@@ -250,7 +250,7 @@ func loadUnlockedCosmetics(
 func loadBadges(ctx context.Context, database querier, playerID int64) ([]Badge, error) {
 	const selectBadgesSQL = `SELECT l.slug, l.name
 		FROM lan_entries e JOIN lans l ON l.id = e.lan_id
-		WHERE e.player_id = ? ORDER BY l.starts_at DESC`
+		WHERE e.player_id = ? AND e.last_seen_at > 0 ORDER BY l.starts_at DESC`
 	rows, err := database.QueryContext(ctx, selectBadgesSQL, playerID)
 	if err != nil {
 		return nil, fmt.Errorf("load badges: %w", err)

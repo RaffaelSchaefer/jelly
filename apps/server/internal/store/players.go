@@ -90,9 +90,47 @@ func insertPlayer(ctx context.Context, transaction *sql.Tx, player newPlayer) (i
 	return playerID, nil
 }
 
+// neverSeen is the last activity of a jelly that has only registered so far.
+const neverSeen int64 = 0
+
 // insertLANEntry writes the entry, which is also the badge, and announces the jelly.
 func insertLANEntry(
 	ctx context.Context, transaction *sql.Tx, lan activeLAN, playerID, now int64,
+) error {
+	err := writeLANEntry(ctx, transaction, lan, newLANEntry{playerID, now, now})
+	if err != nil {
+		return err
+	}
+	err = appendEvent(ctx, transaction, eventRecord{
+		lanID: lan.id, eventType: EventPlayerActive, scope: scopePublic,
+		playerID: playerID, payload: struct{}{}, now: now,
+	})
+	if err != nil {
+		return err
+	}
+	return grantNewAchievements(ctx, transaction, achievementInput{
+		lan: lan, playerID: playerID, now: now, restHours: 0, sessionHours: 0, isPoke: false,
+	})
+}
+
+// insertFutureEntry registers an account for a LAN that has not started. It counts as attended and
+// shows on the stage only once the player does something during the LAN.
+func insertFutureEntry(
+	ctx context.Context, transaction *sql.Tx, lan activeLAN, playerID, now int64,
+) error {
+	return writeLANEntry(ctx, transaction, lan, newLANEntry{playerID, now, neverSeen})
+}
+
+// newLANEntry is an account joining a LAN.
+type newLANEntry struct {
+	playerID   int64
+	joinedAt   int64
+	lastSeenAt int64
+}
+
+// writeLANEntry checks the player limit of the LAN and writes the entry.
+func writeLANEntry(
+	ctx context.Context, transaction *sql.Tx, lan activeLAN, entry newLANEntry,
 ) error {
 	var playerCount int
 	const countEntriesSQL = `SELECT COUNT(*) FROM lan_entries WHERE lan_id = ?`
@@ -106,20 +144,11 @@ func insertLANEntry(
 	const insertEntrySQL = `INSERT INTO lan_entries
 		(lan_id, player_id, joined_at, last_seen_at, session_started_at) VALUES (?, ?, ?, ?, ?)`
 	_, err = transaction.ExecContext(ctx, insertEntrySQL,
-		lan.id, playerID, now, now, now)
+		lan.id, entry.playerID, entry.joinedAt, entry.lastSeenAt, entry.joinedAt)
 	if err != nil {
 		return fmt.Errorf("insert entry: %w", err)
 	}
-	err = appendEvent(ctx, transaction, eventRecord{
-		lanID: lan.id, eventType: EventPlayerActive, scope: scopePublic,
-		playerID: playerID, payload: struct{}{}, now: now,
-	})
-	if err != nil {
-		return err
-	}
-	return grantNewAchievements(ctx, transaction, achievementInput{
-		lan: lan, playerID: playerID, now: now, restHours: 0, sessionHours: 0, isPoke: false,
-	})
+	return nil
 }
 
 // applyProfileUpdate validates and writes the requested changes.

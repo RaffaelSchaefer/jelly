@@ -263,8 +263,6 @@ func TestNoActiveLAN(t *testing.T) {
 
 	response := testFixture.callAPI("POST", "/v1/pokes", token, "")
 	requireProblem(t, response, http.StatusConflict, "no_active_lan")
-	response = testFixture.callAPI("POST", "/v1/auth/redeem", "", buildRegisterBody("B", "mint"))
-	requireProblem(t, response, http.StatusConflict, "no_active_lan")
 
 	// The last state stays readable while no LAN is running.
 	state := testFixture.loadMe(token)

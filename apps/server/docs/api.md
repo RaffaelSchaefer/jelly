@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.7.0**
+Aktuelle Version: **1.8.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.7.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.8.0   | Der LAN-Code legt auch vor und nach der LAN Konten an, XP gibt es weiter nur während der LAN |
 | 1.7.0   | Zonen haben im Admin einen Namen, neue Zuweisungen `visitors` und `none`, Besucher wandern (`is_visitor`), Jellies wählen die nächste Theke mit Platz |
 | 1.6.0   | Annehmen eines Partner-Emotes prüft die Nähe, Stapel sind ohne Regel unbegrenzt, `golden-cup` steht im Katalog, Awards prüfen ihr Cosmetic |
 | 1.5.0   | Jellies machen nach einem Neustart des Servers an ihrer letzten Position weiter |
@@ -139,11 +140,16 @@ Ein einziger Weg tauscht einen Code gegen ein Secret. Danach zählt nur noch das
 | Neuer Sitzplatz | Erzeugt den Code für den Platz | `{"code","name","color"}` | Neues Konto auf dem Platz |
 | Code oder Secret verloren | Erzeugt am Platz einen neuen Code | `{"code"}` | Vorhandenes Konto mit Inventar, altes Secret ungültig |
 | Spätere LAN | Erzeugt einen Code für das Konto | `{"code"}` | Vorhandenes Konto auf dem neuen Platz, altes Secret ungültig |
-| Gemeinsamer Code der LAN | | `{"code","name","color"}` | Neues Konto ohne Platz, für Tests und als Notlösung |
+| Gemeinsamer Code einer LAN | | `{"code","name","color"}` | Neues Konto ohne Platz, für Gäste, Orga, Tests und als Notlösung |
 | Code schon benutzt | | | `409 code_redeemed` |
 
 Ein Sitzplatz ist ein Bereich der Art `seats` mit einem Code. Geht die Antwort verloren, ist der Code
 verbraucht und der Admin vergibt einen neuen.
+
+Der gemeinsame Code gilt auch außerhalb seiner LAN. Vor dem Start legt er das Konto an und meldet es für die LAN an. Der
+Admin kann ihm dann schon einen Platz geben, sonst wandert es als Besucher. XP, Badge und Bühne gibt es erst, wenn der
+Spieler während der LAN aktiv wird. Nach dem Ende legt der Code nur das Konto an. Für eine spätere LAN gibt der Admin
+diesem Konto einen Sitzplatz-Code.
 
 Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie Name, Farbe und Cosmetics
 ändern. Bühne, Stream und alles mit XP antworten `409 no_active_lan` oder `not_joined`.

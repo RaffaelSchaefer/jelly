@@ -45,19 +45,15 @@ type seatClaim struct {
 }
 
 // RedeemCode exchanges a code for a new secret. A seat code creates an account on that seat or
-// brings back the account it belongs to, whose old secret stops working. The shared code of the
-// LAN always creates an account without a seat.
+// brings back the account it belongs to, whose old secret stops working. The shared code of a LAN
+// always creates an account without a seat, also before or after that LAN.
 func (store *Store) RedeemCode(
 	ctx context.Context, request RedeemRequest, now int64,
 ) (string, PlayerState, error) {
 	secret := generateToken()
 	var state PlayerState
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		lan, workErr := loadActiveLAN(ctx, transaction, now)
-		if workErr != nil {
-			return workErr
-		}
-		item := redemption{lan: lan, request: request, secret: secret, now: now}
+		item := redemption{lan: activeLAN{}, request: request, secret: secret, now: now}
 		playerID, workErr := redeemForPlayer(ctx, transaction, item)
 		if workErr != nil {
 			return workErr
@@ -71,26 +67,40 @@ func (store *Store) RedeemCode(
 	return secret, state, nil
 }
 
-// redeemForPlayer tells seat codes from the shared code and returns the account.
-func redeemForPlayer(
-	ctx context.Context, transaction *sql.Tx, item redemption,
-) (int64, error) {
-	claim, found, err := findSeatClaim(ctx, transaction, item.lan.id, item.request.Code)
+// redeemForPlayer tells seat codes, which need a running LAN, from the shared code of a LAN.
+func redeemForPlayer(ctx context.Context, transaction *sql.Tx, item redemption) (int64, error) {
+	lan, err := loadActiveLAN(ctx, transaction, item.now)
+	if errors.Is(err, ErrNoActiveLAN) {
+		return redeemLANCode(ctx, transaction, item)
+	}
+	if err != nil {
+		return 0, err
+	}
+	item.lan = lan
+	claim, found, err := findSeatClaim(ctx, transaction, lan.id, item.request.Code)
 	if err != nil {
 		return 0, err
 	}
 	if !found {
-		if !matchSecret(item.lan.joinCodeHash, item.request.Code) {
-			return 0, ErrInvalidCode
-		}
-		return createAccount(ctx, transaction, item)
+		return redeemLANCode(ctx, transaction, item)
 	}
+	return redeemSeatCode(ctx, transaction, item, claim)
+}
+
+// redeemSeatCode creates or brings back the account of a seat and places it there.
+func redeemSeatCode(
+	ctx context.Context, transaction *sql.Tx, item redemption, claim seatClaim,
+) (int64, error) {
 	if claim.isUsed {
 		return 0, ErrCodeRedeemed
 	}
+	var err error
 	playerID := claim.playerID
 	if playerID == noPlayer {
 		playerID, err = createAccount(ctx, transaction, item)
+		if err == nil {
+			err = insertLANEntry(ctx, transaction, item.lan, playerID, item.now)
+		}
 	} else {
 		err = restoreAccount(ctx, transaction, item, playerID)
 	}
@@ -98,6 +108,48 @@ func redeemForPlayer(
 		return 0, err
 	}
 	return playerID, placeOnSeat(ctx, transaction, item, claim.areaID, playerID)
+}
+
+// redeemLANCode creates an account with the shared code of a LAN. Before the LAN starts, the
+// account is registered for it and can already get a seat. After the LAN it only gets the account.
+func redeemLANCode(ctx context.Context, transaction *sql.Tx, item redemption) (int64, error) {
+	codeLAN, period, err := findLANByCode(ctx, transaction, item.request.Code)
+	if err != nil {
+		return 0, err
+	}
+	playerID, err := createAccount(ctx, transaction, item)
+	if err != nil {
+		return 0, err
+	}
+	switch {
+	case item.now < period.StartsAt:
+		return playerID, insertFutureEntry(ctx, transaction, codeLAN, playerID, item.now)
+	case item.now < period.EndsAt:
+		return playerID, insertLANEntry(ctx, transaction, codeLAN, playerID, item.now)
+	default:
+		return playerID, nil
+	}
+}
+
+// findLANByCode returns the newest LAN with this shared code.
+func findLANByCode(
+	ctx context.Context, transaction *sql.Tx, code string,
+) (activeLAN, LANPeriod, error) {
+	var lan activeLAN
+	var period LANPeriod
+	var rulesJSON string
+	const selectLANByCodeSQL = `SELECT id, timezone, rules, starts_at, ends_at FROM lans
+		WHERE join_code_hash = ? ORDER BY starts_at DESC LIMIT 1`
+	err := transaction.QueryRowContext(ctx, selectLANByCodeSQL, hashSecret(code)).Scan(
+		&lan.id, &lan.timezone, &rulesJSON, &period.StartsAt, &period.EndsAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return lan, period, ErrInvalidCode
+	}
+	if err != nil {
+		return lan, period, fmt.Errorf("find LAN by code: %w", err)
+	}
+	lan.gameRules, err = parseRules(rulesJSON)
+	return lan, period, err
 }
 
 // findSeatClaim looks up a seat code. The account is the one named by the code, or else whoever
@@ -123,7 +175,7 @@ func findSeatClaim(
 	return claim, true, nil
 }
 
-// createAccount validates the details of a new account and writes it with its entry.
+// createAccount validates the details of a new account and writes it.
 func createAccount(ctx context.Context, transaction *sql.Tx, item redemption) (int64, error) {
 	name, err := rules.NormalizeName(item.request.Name)
 	if err != nil {
@@ -133,13 +185,9 @@ func createAccount(ctx context.Context, transaction *sql.Tx, item redemption) (i
 	if err != nil {
 		return 0, fmt.Errorf("validate color: %w", err)
 	}
-	playerID, err := insertPlayer(ctx, transaction, newPlayer{
+	return insertPlayer(ctx, transaction, newPlayer{
 		token: item.secret, name: name, color: item.request.Color, now: item.now,
 	})
-	if err != nil {
-		return 0, err
-	}
-	return playerID, insertLANEntry(ctx, transaction, item.lan, playerID, item.now)
 }
 
 // restoreAccount gives an existing account a new secret and, if needed, an entry in this LAN.
