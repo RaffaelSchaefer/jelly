@@ -75,7 +75,7 @@ func (store *Store) JoinStack(ctx context.Context, join StackJoin) (StackAnswer,
 			if workErr != nil {
 				return workErr
 			}
-			if len(stack.MemberIDs) >= action.lan.gameRules.StackMaxMembers {
+			if rules.IsStackFull(action.lan.gameRules, len(stack.MemberIDs)) {
 				return ErrStackFull
 			}
 			point := rules.StagePoint{X: stack.X, Y: stack.Y}

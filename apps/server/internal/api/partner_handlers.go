@@ -72,7 +72,8 @@ func (server *apiServer) addPartnerRoutes(contract huma.API) {
 		OperationID: "answerPartnerEmote", Method: http.MethodPatch, Path: pathPartnerEmotes,
 		Summary: "Accept, decline or cancel a partner emote",
 		Description: "The invited jelly sends `accepted` or `declined`, " +
-			"the one who asked sends `cancelled`.",
+			"the one who asked sends `cancelled`. Accepting further apart than `near_distance` " +
+			"gets `409 too_far`, and the invite stays open.",
 	}, server.handleAnswerPartnerInvite)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "listPartnerEmotes", Method: http.MethodGet, Path: pathPartnerEmotes,
@@ -88,10 +89,7 @@ func (server *apiServer) handleCreatePartnerInvite(
 	server.refreshMovement(ctx, now)
 	return answerWith(server.Store.CreatePartnerInvite(ctx, store.NewPartnerInvite{
 		PlayerID: playerID, EmoteKey: input.Body.Key, PartnerIDs: input.Body.PartnerIDs, Now: now,
-		IsNear: func(partnerID int64, reach float64) bool {
-			distance, ok := server.planner.MeasureDistance(playerID, partnerID, now)
-			return ok && distance <= reach
-		},
+		IsNear: server.buildNearCheck(playerID, now),
 	}))
 }
 
@@ -99,9 +97,23 @@ func (server *apiServer) handleCreatePartnerInvite(
 func (server *apiServer) handleAnswerPartnerInvite(
 	ctx context.Context, playerID int64, input *jsonInput[InviteAnswerBody],
 ) (*jsonOutput[store.PartnerInviteResult], error) {
-	return answerWith(server.Store.AnswerPartnerInvite(
-		ctx, playerID, input.Body.ID, input.Body.State, server.currentMillis(),
-	))
+	now := server.currentMillis()
+	server.refreshMovement(ctx, now)
+	return answerWith(server.Store.AnswerPartnerInvite(ctx, store.PartnerInviteAnswer{
+		PlayerID: playerID, InviteID: input.Body.ID, State: input.Body.State, Now: now,
+		IsNear: server.buildNearCheck(playerID, now),
+	}))
+}
+
+// buildNearCheck returns a check of the distance to this jelly right now. A jelly that is not on
+// the stage counts as too far away.
+func (server *apiServer) buildNearCheck(
+	playerID, now int64,
+) func(partnerID int64, reach float64) bool {
+	return func(partnerID int64, reach float64) bool {
+		distance, ok := server.planner.MeasureDistance(playerID, partnerID, now)
+		return ok && distance <= reach
+	}
 }
 
 // handleListPartnerInvites returns the open invites of the player.

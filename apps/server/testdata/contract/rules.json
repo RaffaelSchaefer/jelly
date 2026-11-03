@@ -22,7 +22,7 @@
     "near_distance": 6,
     "walk_speed": 1.4,
     "stack_seconds": 120,
-    "stack_max_members": 8,
+    "stack_max_members": 0,
     "highlight_seconds": 10,
     "highlight_cooldown": 30
   },

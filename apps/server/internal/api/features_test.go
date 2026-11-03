@@ -451,3 +451,28 @@ func TestRulesCanChangeDuringALAN(t *testing.T) {
 		strings.ReplaceAll(body, `"poke_interval":60`, `"poke_interval":0`))
 	requireProblem(t, response, http.StatusBadRequest, "invalid_rules")
 }
+
+func TestAwardedCupIsWornInTheHands(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	playerID := strconv.FormatInt(testFixture.loadMe(token).ID, 10)
+	response := testFixture.callAdmin("POST", "/admin/api/awards",
+		`{"player_id":`+playerID+`,"title":"Sieg","cosmetic_key":"golden-cup"}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("award: %d %s", response.status, response.body)
+	}
+	response = testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"hands","key":"golden-cup"}`)
+	state := decodeBody[store.PlayerState](t, response)
+	if state.Equipped["hands"].Key != "golden-cup" {
+		t.Fatalf("equipped = %+v", state.Equipped)
+	}
+}
+
+func TestAwardRefusesACosmeticOutsideTheCatalog(t *testing.T) {
+	testFixture := newFixture(t)
+	playerID := strconv.FormatInt(testFixture.loadMe(testFixture.registerPlayer("A")).ID, 10)
+	response := testFixture.callAdmin("POST", "/admin/api/awards",
+		`{"player_id":`+playerID+`,"title":"Sieg","cosmetic_key":"unknown"}`)
+	requireProblem(t, response, http.StatusBadRequest, "unknown_cosmetic")
+}

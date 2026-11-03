@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.5.0**
+Aktuelle Version: **1.6.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.5.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.6.0   | Annehmen eines Partner-Emotes prüft die Nähe, Stapel sind ohne Regel unbegrenzt, `golden-cup` steht im Katalog, Awards prüfen ihr Cosmetic |
 | 1.5.0   | Jellies machen nach einem Neustart des Servers an ihrer letzten Position weiter |
 | 1.4.0   | Stapel (`POST /stacks`, `POST /stacks/members`, `DELETE /stacks/current`, `stacks` in `GET /stage`, `level` im Weg), `POST /highlights`, Achievements `lighthouse` und `lighthouse-light`. Keine Route antwortet mehr mit `501` |
 | 1.3.0   | `POST /trips/goto`, Folgen endet von selbst (`follow_until`, `follow_seconds`), `409 too_far` bei Partner-Emotes (`near_distance`), Achievement `conga`, `trip` im Stand |
@@ -124,7 +125,8 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 - `next_poke_at`, `reports`, `sign` und `follow_player_id` sind außerhalb einer aktiven LAN `null`.
 - `server_time` gilt für Countdowns statt der Uhr des Geräts. `food_ready_at` und `drink_ready_at`
   sind 0, wenn noch nichts gemeldet wurde.
-- `cosmetics` sind die Schlüssel, die der Spieler tragen darf.
+- `cosmetics` sind die Schlüssel, die der Spieler tragen darf. Manche Einträge des Katalogs gibt es nur per Award,
+  etwa `golden-cup` für die Hände.
 - Rekord-Achievements wie Marathon tragen zusätzlich `best` und `record_unit`.
 
 ## Anmeldung
@@ -211,8 +213,8 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 - Beide erhalten `partner_xp` einmal je Partner und LAN. Danach ist `xp_gained` 0.
 - Nach dem Bestätigen folgt `partner.emote` mit B als `player_id` und A als `partner_id`. Ist einer von beiden
   ausgeblendet, gibt es kein Ereignis.
-- Nur wer nah genug steht, kann auffordern: Beim Absenden dürfen beide Jellies höchstens `near_distance` auseinander
-  sein, sonst folgt `409 too_far`. Die Angabe zählt in Jelly-Einheiten. Ein Jelly ist etwa 1,7 breit, die Halle 21
+- Nur wer nah genug steht, kann auffordern und annehmen: In beiden Momenten dürfen die Jellies höchstens
+  `near_distance` auseinander sein, sonst folgt `409 too_far`. Eine Aufforderung bleibt danach offen. Die Angabe zählt in Jelly-Einheiten. Ein Jelly ist etwa 1,7 breit, die Halle 21
   breit und 40 tief. Ein Jelly, das gerade nicht auf der Bühne steht, ist immer zu weit weg.
 
 ### Ausflug und Folgen
@@ -234,7 +236,7 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 - `DELETE /stacks/current` steigt ab, die Jellies darüber rutschen nach. Ausflug und Folgen beenden den Stapelplatz,
   und wer klettert, beendet Ausflug und Folgen.
 - Laufende Stapel stehen als `stacks` in `GET /stage`, `member_ids` geht von unten nach oben. Nach `stack_seconds`
-  fällt ein Stapel auseinander, höher als `stack_max_members` wird er nicht (`409 stack_full`). Ist er weg, folgt
+  fällt ein Stapel auseinander, ohne `stack_max_members` ist er unbegrenzt, mit gesetztem Wert folgt darüber `409 stack_full`. Ist er weg, folgt
   `404 stack_not_found`. Jede Änderung meldet `stack.changed`.
 - `level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
 - `POST /highlights` mit `{"player_id"}` lässt ein Jelly für `highlight_seconds` aufleuchten, auch das eigene.
@@ -243,6 +245,9 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
   Spitze zusätzlich `lighthouse-light`.
 
 ## Bühne
+
+Der Bühnenschlüssel steht bewusst in der Adresse, denn `EventSource` kann im Browser keinen Header senden. Er erlaubt nur
+das Lesen und ist die einzige Ausnahme. Spieler-Secrets gehören immer in den Header.
 
 `GET /stage` nimmt den Bühnenschlüssel oder ein Spieler-Token:
 
@@ -363,7 +368,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `PUT /admin/api/lans/{id}/join-code`             | `{"join_code"}`                           |
 | `GET /admin/api/lans/{id}/event-codes`           |                                           |
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |
-| `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`    |
+| `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`, der Schlüssel muss im Katalog stehen |
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind"}`       |

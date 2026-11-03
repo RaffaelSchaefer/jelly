@@ -1317,7 +1317,7 @@
   },
   "info": {
     "title": "Jelly API",
-    "version": "1.5.0"
+    "version": "1.6.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -1637,7 +1637,7 @@
         "summary": "Read the own open partner emotes, for example after a restart"
       },
       "patch": {
-        "description": "The invited jelly sends `accepted` or `declined`, the one who asked sends `cancelled`.",
+        "description": "The invited jelly sends `accepted` or `declined`, the one who asked sends `cancelled`. Accepting further apart than `near_distance` gets `409 too_far`, and the invite stays open.",
         "operationId": "answerPartnerEmote",
         "requestBody": {
           "content": {

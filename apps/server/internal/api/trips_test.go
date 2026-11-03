@@ -244,3 +244,24 @@ func findPointOf(t *testing.T, answer api.StageAnswer, playerID string) movement
 	move := findMoveOf(t, answer, number)
 	return move.Points[len(move.Points)-1].Point
 }
+
+func TestAcceptingNeedsToStillStandNearby(t *testing.T) {
+	testFixture := newFixture(t)
+	first := testFixture.registerPlayer("A")
+	second := testFixture.registerPlayer("B")
+	inviteID := testFixture.invitePartner(first, second)
+	testFixture.advanceClock(time.Second)
+	gameRules := rules.DefaultRules()
+	gameRules.NearDistance = 0.1
+	body, err := json.Marshal(gameRules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testFixture.callAdmin("PUT", "/admin/api/lans/1/rules", string(body))
+	requireProblem(t, testFixture.answerInvite(second, inviteID, "accepted"),
+		http.StatusConflict, "too_far")
+	response := testFixture.answerInvite(second, inviteID, "declined")
+	if response.status != http.StatusOK {
+		t.Fatalf("a refused answer leaves the invite open: %d %s", response.status, response.body)
+	}
+}

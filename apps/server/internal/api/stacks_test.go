@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"slices"
 	"strconv"
@@ -95,16 +96,26 @@ func TestStartingATripLeavesTheStack(t *testing.T) {
 	}
 }
 
-func TestStackRefusesAFullStack(t *testing.T) {
+func TestStackHasNoLimitUnlessTheAdminSetsOne(t *testing.T) {
 	testFixture := newFixture(t)
 	stackID := testFixture.startStack(testFixture.registerPlayer("Z"))
-	for member := range 7 {
-		name := "A" + strconv.Itoa(member)
-		response := testFixture.joinStack(testFixture.registerPlayer(name), stackID)
+	for member := range 10 {
+		response := testFixture.joinStack(
+			testFixture.registerPlayer("A"+strconv.Itoa(member)),
+			stackID,
+		)
 		if response.status != http.StatusOK {
 			t.Fatalf("join: %d %s", response.status, response.body)
 		}
 	}
+	gameRules := rules.DefaultRules()
+	gameRules.NearDistance = 1000
+	gameRules.StackMaxMembers = 11
+	body, err := json.Marshal(gameRules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testFixture.callAdmin("PUT", "/admin/api/lans/1/rules", string(body))
 	requireProblem(t, testFixture.joinStack(testFixture.registerPlayer("Late"), stackID),
 		http.StatusConflict, "stack_full")
 }

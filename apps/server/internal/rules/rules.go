@@ -11,6 +11,8 @@ import (
 const (
 	// NoPokeYet marks that a player has not earned poke XP in this LAN.
 	NoPokeYet int64 = 0
+	// NoStackLimit lets stacks grow as high as the players can build them.
+	NoStackLimit = 0
 
 	xpPerLevel      = 100
 	millisPerSecond = 1000
@@ -37,7 +39,6 @@ const (
 	defaultNearDistance          = 6.0
 	defaultWalkSpeed             = 1.4
 	defaultStackSeconds          = 120
-	defaultStackMaxMembers       = 8
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
 	maxPercent                   = 100
@@ -94,7 +95,7 @@ type Rules struct {
 	WalkSpeed float64 `json:"walk_speed"`
 	// StackSeconds is how long a stack stands before it falls apart.
 	StackSeconds int64 `json:"stack_seconds"`
-	// StackMaxMembers limits how many jellies fit on one stack.
+	// StackMaxMembers limits how many jellies fit on one stack. 0 means no limit.
 	StackMaxMembers int `json:"stack_max_members"`
 	// HighlightSeconds is how long a highlighted jelly lights up.
 	HighlightSeconds int64 `json:"highlight_seconds"`
@@ -127,7 +128,7 @@ func DefaultRules() Rules {
 		NearDistance:             defaultNearDistance,
 		WalkSpeed:                defaultWalkSpeed,
 		StackSeconds:             defaultStackSeconds,
-		StackMaxMembers:          defaultStackMaxMembers,
+		StackMaxMembers:          NoStackLimit,
 		HighlightSeconds:         defaultHighlightSeconds,
 		HighlightCooldownSeconds: defaultHighlightCooldown,
 	}
@@ -136,7 +137,7 @@ func DefaultRules() Rules {
 // ValidateRules rejects values that would break the game, such as a zero interval.
 func ValidateRules(gameRules Rules) error {
 	isValid := areDurationsValid(gameRules) && areAmountsValid(gameRules) &&
-		areLimitsValid(gameRules) &&
+		areLimitsValid(gameRules) && gameRules.StackMaxMembers >= NoStackLimit &&
 		gameRules.NearDistance > 0 && gameRules.WalkSpeed > 0 &&
 		gameRules.FullHousePercent >= 1 && gameRules.FullHousePercent <= maxPercent
 	if !isValid {
@@ -172,7 +173,6 @@ func areAmountsValid(gameRules Rules) bool {
 func areLimitsValid(gameRules Rules) bool {
 	return !slices.ContainsFunc([]int{
 		gameRules.MaxPlayers, gameRules.MaxStreams, gameRules.MaxPlayerStreams,
-		gameRules.StackMaxMembers,
 	}, func(value int) bool { return value < 1 })
 }
 
@@ -235,6 +235,11 @@ func CalculateFollowCutoff(gameRules Rules, now int64) int64 {
 // CalculateStackEnd returns when a stack started now falls apart.
 func CalculateStackEnd(gameRules Rules, now int64) int64 {
 	return now + gameRules.StackSeconds*millisPerSecond
+}
+
+// IsStackFull reports whether a stack with this many jellies takes no more.
+func IsStackFull(gameRules Rules, members int) bool {
+	return gameRules.StackMaxMembers != NoStackLimit && members >= gameRules.StackMaxMembers
 }
 
 // CalculateHighlightEnd returns when a highlight started now goes out.

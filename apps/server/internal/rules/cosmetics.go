@@ -89,7 +89,19 @@ func ListCosmetics() []Cosmetic {
 			Level: levelHood,
 		},
 		{Key: "crown", Name: "Krone", Scope: ScopeLAN, Slot: SlotHead, Level: levelCrown},
+		{Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands},
 	}
+}
+
+// ValidateAwardCosmetic accepts what the catalog knows, because only that can be worn.
+func ValidateAwardCosmetic(key string) error {
+	isKnown := slices.ContainsFunc(ListCosmetics(), func(cosmetic Cosmetic) bool {
+		return cosmetic.Key == key
+	})
+	if !isKnown {
+		return ErrUnknownCosmetic
+	}
+	return nil
 }
 
 // ListCosmeticSlots returns the slots of a jelly.

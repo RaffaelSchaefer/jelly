@@ -127,33 +127,49 @@ func insertPartnerInvite(
 	return invite, appendVisibleEvent(ctx, action, EventPartnerInvite, invite)
 }
 
+// PartnerInviteAnswer is an answer to a partner emote invite.
+type PartnerInviteAnswer struct {
+	PlayerID int64
+	InviteID int64
+	State    string
+	Now      int64
+	// IsNear says whether the other jelly stands within this distance of the player.
+	IsNear func(partnerID int64, reach float64) bool
+}
+
 // AnswerPartnerInvite accepts, declines or cancels an invite. Only the invited jelly can accept or
-// decline, and only the one who asked can cancel.
+// decline, and only the one who asked can cancel. Accepting needs both to still stand together, an
+// invite stays open until then.
 func (store *Store) AnswerPartnerInvite(
-	ctx context.Context, playerID, inviteID int64, state string, now int64,
+	ctx context.Context, answer PartnerInviteAnswer,
 ) (PartnerInviteResult, error) {
 	var result PartnerInviteResult
 	work := func(action actionContext) error {
-		invite, workErr := loadAnswerableInvite(ctx, action, inviteID, state)
+		invite, workErr := loadAnswerableInvite(ctx, action, answer.InviteID, answer.State)
 		if workErr != nil {
 			return workErr
 		}
-		invite.State = state
+		isAccepting := answer.State == inviteAccepted
+		if isAccepting && !answer.IsNear(invite.FromID, action.lan.gameRules.NearDistance) {
+			return ErrTooFar
+		}
+		invite.State = answer.State
 		result.PartnerEmote = invite
 		const updateInviteSQL = `UPDATE partner_invites SET state = ? WHERE id = ?`
-		_, workErr = action.transaction.ExecContext(ctx, updateInviteSQL, state, inviteID)
+		_, workErr = action.transaction.ExecContext(ctx, updateInviteSQL,
+			answer.State, answer.InviteID)
 		if workErr != nil {
 			return fmt.Errorf("update invite: %w", workErr)
 		}
 		workErr = appendVisibleEvent(ctx, action, EventPartnerInvite, invite)
-		if workErr != nil || state != inviteAccepted {
+		if workErr != nil || !isAccepting {
 			return workErr
 		}
 		result.XPGained, workErr = playAcceptedEmote(ctx, action, invite)
 		return workErr
 	}
 	var err error
-	result.Me, err = store.runPlayerAction(ctx, playerID, now, false, work)
+	result.Me, err = store.runPlayerAction(ctx, answer.PlayerID, answer.Now, false, work)
 	if err != nil {
 		return PartnerInviteResult{}, err
 	}
