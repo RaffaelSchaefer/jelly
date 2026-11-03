@@ -70,16 +70,24 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	return state, nil
 }
 
-// placeStagePlayers gives every jelly its home spot. Without an area, it uses the whole stage.
-// Places follow the player order and count absent jellies, so nobody moves when someone leaves.
+// placeStagePlayers gives every jelly its home spot. A jelly without an area chills in the lounge
+// with the lowest ID, or uses the whole stage when there is no lounge. Places follow the player
+// order and count absent jellies, so nobody moves when someone leaves.
 func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 	areaByID := map[int64]rules.Area{}
 	for _, area := range areas {
 		areaByID[area.ID] = area.Area
 	}
+	loungeIndex := slices.IndexFunc(areas, func(area StageArea) bool {
+		return area.Kind == rules.AreaKindLounge
+	})
 	takenPlaces := map[int64]int{}
 	for index := range players {
 		player := &players[index]
+		if player.AreaID == nil && loungeIndex >= 0 {
+			loungeID := areas[loungeIndex].ID
+			player.AreaID = &loungeID
+		}
 		area := rules.WholeStage()
 		areaKey := noArea
 		if player.AreaID != nil {

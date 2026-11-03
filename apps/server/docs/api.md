@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.0.0**
+Aktuelle Version: **1.1.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.0.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.1.0   | 3D-Bühne: Bereiche haben eine Art (`kind`), `xp.gained` nennt seine Quelle (`source`) |
 | 1.0.0   | Erste Version: Mindestversion, LAN-Status, Konten, Stupser, Lebenszeichen, Berichte, Event-Codes, Emotes, Partner-Emotes, Schilder, Stellen zu einem Jelly, Bühne und Ereignisse |
 
 ### Brechende Änderungen
@@ -60,7 +61,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 415    | `invalid_body`                            | `Content-Type` ist nicht JSON             |
 | 422    | `invalid_body`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
 | 400    | `invalid_input`, `invalid_rules`          | Admin-Angaben oder `since` sind ungültig  |
-| 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne         |
+| 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
 | 400    | `unknown_action`, `unknown_emote`         | Eintrag steht nicht in der festen Liste   |
 | 400    | `unknown_partner_emote`, `unknown_sign`   | Eintrag steht nicht in der festen Liste   |
@@ -80,6 +81,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 409    | `event_code_redeemed`, `event_code_exists` | Event-Code schon eingelöst oder vorhanden |
 | 409    | `emote_cooldown`, `report_cooldown`       | Zu früh wiederholt                        |
 | 409    | `report_limit`, `partner_codes_busy`      | Limit erreicht, später erneut versuchen   |
+| 409    | `area_not_assignable`                     | In diesem Bereich kann kein Jelly stehen  |
 | 429    | `rate_limited`                            | Zu viele Versuche                         |
 | 500    | `internal`                                | Fehler auf dem Server                     |
 
@@ -186,7 +188,7 @@ A startet ein Emote und nennt B den Code. Es gibt keine Einladung, also auch nic
 {
   "last_event_id": 42,
   "server_time": 1795000000000,
-  "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100 }],
+  "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "kind": "seats" }],
   "players": [{
     "id": 1, "name": "Glibber", "color": "mint", "cosmetic": null, "level": 1,
     "sign": null, "follow_player_id": null, "last_seen_at": 1795000000000,
@@ -196,8 +198,13 @@ A startet ein Emote und nennt B den Code. Es gibt keine Einladung, also auch nic
 ```
 
 - Bereiche und Heimplätze sind Prozentwerte der Bühne. Bereiche haben keine Namen.
+- `kind` sagt, was ein Bereich ist. Jellies stehen in `seats` (Plätze an den Spieltischen),
+  `stage` (Bühne für Turniere und Public Gaming) und `lounge` (Chillout-Lounge). Um `desk` (Tisch)
+  und `snackbar` (Theke) laufen sie herum, über `cable` (Kabelkanal am Boden) hinweg.
+- Jellies ohne Bereich stehen in der Lounge mit der kleinsten ID, `area_id` zeigt dann diese
+  Lounge. Ohne Lounge haben sie keinen Bereich.
 - Jeder Jelly bekommt im Bereich den nächsten freien Platz in der Reihenfolge der Spieler-IDs. Ohne
-  Bereich gilt die ganze Bühne. Abwesende behalten ihren Platz, Neue verschieben niemanden.
+  Bereich und ohne Lounge gilt die ganze Bühne. Abwesende behalten ihren Platz, Neue verschieben niemanden.
 - Mit `server_time` berechnen alle Bildschirme denselben Weg.
 
 `GET /events/stream` sendet Ereignisse als SSE und nimmt ebenfalls Schlüssel oder Token. Der Stream ist
@@ -217,7 +224,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | ------------------------------------------------- | ---------------------------------- |
 | `player.active`, `player.updated`                 | Jelly kam dazu oder wurde geändert |
 | `player.hidden`, `player.removed`                 | Jelly ist weg                      |
-| `xp.gained`, `level.up`                           | Fortschritt                        |
+| `xp.gained`, `level.up`                           | Fortschritt, `xp.gained` mit `{"amount","source"}` |
 | `achievement.earned`, `award.given`               | Auszeichnung                       |
 | `emote`, `partner.emote`                          | Emote, Partner-Emote mit `partner_id` |
 | `sign.changed`, `follow.changed`                  | Schild oder Standort               |
@@ -230,7 +237,7 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `player.active`, `player.hidden`                  | Spieler     | `{}`                              |
 | `player.updated`                                  | Spieler     | `{}` oder `{"edited":true}`, wenn der Spieler selbst geändert hat |
 | `player.removed`                                  | `null`      | `{"player_id"}`                   |
-| `xp.gained`                                       | Spieler     | `{"amount"}`                      |
+| `xp.gained`                                       | Spieler     | `{"amount","source"}`             |
 | `level.up`                                        | Spieler     | `{"level"}`                       |
 | `achievement.earned`, `emote`                     | Spieler     | `{"key"}`                         |
 | `award.given`                                     | Spieler     | `{"title"}`, Freitext vom Admin   |
@@ -238,6 +245,8 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `sign.changed`                                    | Spieler     | `{"key"}`, `null` beim Senken     |
 | `follow.changed`                                  | Spieler     | `{"target_id"}`, `null` beim Weggehen |
 | `stage.changed`                                   | `null`      | `{}`                              |
+
+`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`.
 
 ## Admin
 
@@ -261,9 +270,10 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`    |
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
-| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height"}`              |
-| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height"}` bei `PUT`   |
-| `PUT /admin/api/lans/{id}/players/{player}/area` | `{"area_id"}`, `null` entfernt ihn        |
+| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind"}`       |
+| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height","kind"}` bei `PUT` |
+| `PUT /admin/api/lans/{id}/players/{player}/area` | `{"area_id"}` von `seats`, `stage` oder `lounge`, `null` entfernt ihn |
 
-Beim Bearbeiten eines Bereichs bleiben seine Jellies zugeordnet. Wird er gelöscht, stehen sie auf der
-ganzen Bühne, bis ein Admin sie neu zuweist.
+Beim Bearbeiten eines Bereichs bleiben seine Jellies zugeordnet, solange dort Jellies stehen können.
+Wird er gelöscht oder zu `desk`, `cable` oder `snackbar`, verlieren sie ihn und stehen in der Lounge,
+bis ein Admin sie neu zuweist.

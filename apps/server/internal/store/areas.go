@@ -46,7 +46,8 @@ func (store *Store) CreateArea(
 	return stored, nil
 }
 
-// UpdateArea moves or resizes an area. Jellies in it stay assigned.
+// UpdateArea moves, resizes or changes the kind of an area. Jellies in it stay assigned while they
+// can still stand there.
 func (store *Store) UpdateArea(ctx context.Context, lanID int64, area StageArea, now int64) error {
 	err := rules.ValidateArea(area.Area)
 	if err != nil {
@@ -54,9 +55,9 @@ func (store *Store) UpdateArea(ctx context.Context, lanID int64, area StageArea,
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		const updateAreaSQL = `UPDATE lan_areas
-			SET x = ?, y = ?, width = ?, height = ? WHERE id = ? AND lan_id = ?`
+			SET x = ?, y = ?, width = ?, height = ?, kind = ? WHERE id = ? AND lan_id = ?`
 		result, err := transaction.ExecContext(ctx, updateAreaSQL,
-			area.X, area.Y, area.Width, area.Height, area.ID, lanID)
+			area.X, area.Y, area.Width, area.Height, area.Kind, area.ID, lanID)
 		if err != nil {
 			return fmt.Errorf("update area: %w", err)
 		}
@@ -64,11 +65,27 @@ func (store *Store) UpdateArea(ctx context.Context, lanID int64, area StageArea,
 		if err != nil {
 			return err
 		}
+		if !rules.IsStandingKind(area.Kind) {
+			err = clearAreaAssignments(ctx, transaction, lanID, area.ID)
+			if err != nil {
+				return err
+			}
+		}
 		return appendStageChanged(ctx, transaction, lanID, now)
 	})
 }
 
-// DeleteArea removes an area. Its jellies lose their assignment and use the whole stage.
+// clearAreaAssignments sends the jellies of an area where nobody can stand back to the lounge.
+func clearAreaAssignments(ctx context.Context, transaction *sql.Tx, lanID, areaID int64) error {
+	const clearAreaSQL = `UPDATE lan_entries SET area_id = NULL WHERE lan_id = ? AND area_id = ?`
+	_, err := transaction.ExecContext(ctx, clearAreaSQL, lanID, areaID)
+	if err != nil {
+		return fmt.Errorf("clear area assignments: %w", err)
+	}
+	return nil
+}
+
+// DeleteArea removes an area. Its jellies lose their assignment and chill in the lounge.
 func (store *Store) DeleteArea(ctx context.Context, lanID, areaID, now int64) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		const deleteAreaSQL = `DELETE FROM lan_areas WHERE id = ? AND lan_id = ?`
@@ -130,7 +147,7 @@ func (store *Store) AssignArea(
 ) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		if areaID != nil {
-			err := requireAreaInLAN(ctx, transaction, lanID, *areaID)
+			err := requireStandingInLAN(ctx, transaction, lanID, *areaID)
 			if err != nil {
 				return err
 			}
@@ -154,10 +171,10 @@ func (store *Store) AssignArea(
 func insertArea(
 	ctx context.Context, transaction *sql.Tx, lanID int64, area rules.Area,
 ) (int64, error) {
-	const insertAreaSQL = `INSERT INTO lan_areas (lan_id, x, y, width, height)
-		VALUES (?, ?, ?, ?, ?)`
+	const insertAreaSQL = `INSERT INTO lan_areas (lan_id, x, y, width, height, kind)
+		VALUES (?, ?, ?, ?, ?, ?)`
 	result, err := transaction.ExecContext(ctx, insertAreaSQL,
-		lanID, area.X, area.Y, area.Width, area.Height)
+		lanID, area.X, area.Y, area.Width, area.Height, area.Kind)
 	if err != nil && strings.Contains(err.Error(), "FOREIGN KEY") {
 		return 0, ErrLANNotFound
 	}
@@ -173,7 +190,7 @@ func insertArea(
 
 // loadAreas reads the room map of a LAN.
 func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea, error) {
-	const selectAreasSQL = `SELECT id, x, y, width, height FROM lan_areas
+	const selectAreasSQL = `SELECT id, x, y, width, height, kind FROM lan_areas
 		WHERE lan_id = ? ORDER BY id`
 	rows, err := database.QueryContext(ctx, selectAreasSQL, lanID)
 	if err != nil {
@@ -183,7 +200,7 @@ func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea,
 	areas := []StageArea{}
 	for rows.Next() {
 		var area StageArea
-		err := rows.Scan(&area.ID, &area.X, &area.Y, &area.Width, &area.Height)
+		err := rows.Scan(&area.ID, &area.X, &area.Y, &area.Width, &area.Height, &area.Kind)
 		if err != nil {
 			return nil, fmt.Errorf("read area: %w", err)
 		}
@@ -195,16 +212,19 @@ func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea,
 	return areas, nil
 }
 
-// requireAreaInLAN rejects an area that belongs to another LAN.
-func requireAreaInLAN(ctx context.Context, database querier, lanID, areaID int64) error {
-	var found int
-	const findAreaInLANSQL = `SELECT 1 FROM lan_areas WHERE id = ? AND lan_id = ?`
-	err := database.QueryRowContext(ctx, findAreaInLANSQL, areaID, lanID).Scan(&found)
+// requireStandingInLAN rejects an area that belongs to another LAN or where no jelly can stand.
+func requireStandingInLAN(ctx context.Context, database querier, lanID, areaID int64) error {
+	var kind string
+	const findAreaKindSQL = `SELECT kind FROM lan_areas WHERE id = ? AND lan_id = ?`
+	err := database.QueryRowContext(ctx, findAreaKindSQL, areaID, lanID).Scan(&kind)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrAreaNotFound
 	}
 	if err != nil {
 		return fmt.Errorf("check area: %w", err)
+	}
+	if !rules.IsStandingKind(kind) {
+		return ErrAreaNotAssignable
 	}
 	return nil
 }

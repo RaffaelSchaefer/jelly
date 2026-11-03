@@ -2,8 +2,9 @@
  * Maße und Grundformen des Pets in Szenen-Einheiten (y nach oben, vorn ist +z).
  *
  * Der Jelly-Shader (`shaders/jelly.frag.glsl`) bildet dieselbe Form per Raymarching nach. Die
- * Meshes hier dienen als Referenz: `scripts/export-pet-reference.mjs` schreibt sie als
- * `blender/pet_reference.obj`, damit Cosmetics in Blender passgenau modelliert werden können.
+ * Meshes hier dienen als Referenz: `apps/client/scripts/export-pet-reference.mjs` schreibt sie als
+ * `apps/client/blender/pet_reference.obj`, damit Cosmetics in Blender passgenau modelliert werden
+ * können.
  *
  * @module
  */
@@ -56,10 +57,13 @@ export function createBodyGeometry() {
     false,
     "centripetal",
   );
-  const points = curve.getPoints(96).map((p) => new Vector2(Math.max(p.x, 0), p.y));
   // Anfang und Ende exakt auf die Achse legen, damit sich die Drehfläche oben und unten schließt.
-  points[0].x = 0;
-  points[points.length - 1].x = 0;
+  const points = curve
+    .getPoints(96)
+    .map(
+      (p, index, all) =>
+        new Vector2(index === 0 || index === all.length - 1 ? 0 : Math.max(p.x, 0), p.y),
+    );
   const geometry = new LatheGeometry(points, 72);
   geometry.scale(1, 1, BODY_DEPTH);
   return geometry;

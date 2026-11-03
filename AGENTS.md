@@ -7,15 +7,17 @@ Menschen: [apps/client/README.md](apps/client/README.md).
 
 Jelly ist ein Desktop-Begleiter (Tauri 2) für die LAN am Umwelt-Campus Birkenfeld. pnpm-/Turborepo-
 Monorepo mit zwei Apps: `apps/client` mit Rust-Backend (`src-tauri/`) und React-19-/TypeScript-7-
-Oberfläche mit React Three Fiber (`src/`), dazu `apps/server` in Go. Noch sind beide nicht verbunden:
-In der App besitzt Rust den Spielstand, die Oberfläche zeigt nur an. Künftig entscheidet der Server
-über XP. Regeln, Aufbau und Vertrag des Servers stehen in [apps/server/README.md](apps/server/README.md)
-und [apps/server/docs/api.md](apps/server/docs/api.md).
+Oberfläche mit React Three Fiber (`src/`), dazu `apps/server` in Go. Das 3D-Jelly steht in
+`packages/jelly-scene` (`@jelly/scene`), App und Bühne des Servers zeigen damit dasselbe Jelly. Noch
+sind App und Server nicht verbunden: In der App besitzt Rust den Spielstand, die Oberfläche zeigt nur
+an. Künftig entscheidet der Server über XP. Regeln, Aufbau und Vertrag des Servers stehen in
+[apps/server/README.md](apps/server/README.md) und [apps/server/docs/api.md](apps/server/docs/api.md).
 
 ## Befehle
 
-`pnpm install` im Root. Für den Server in `apps/server`: `pnpm test`, `pnpm lint`, `pnpm build`,
-`pnpm format`. Alles andere in `apps/client`:
+`pnpm install` im Root. Für den Server in `apps/server` und für `packages/jelly-scene`: `pnpm test`,
+`pnpm lint`, `pnpm run check-types`, `pnpm format` (Server zusätzlich `pnpm build`). Alles andere in
+`apps/client`:
 
 ```sh
 pnpm test             # Vitest (Frontend und scripts/)
@@ -30,14 +32,19 @@ pnpm run tauri dev        # echte Desktop-App
 ```
 
 Nach Änderungen mindestens `pnpm test`, `pnpm run test:rust`, `pnpm lint` und `pnpm run build`
-ausführen. Cargo immer über die pnpm-Skripte (`scripts/native.mjs` ergänzt den Cargo-Pfad).
+ausführen. Cargo immer über die pnpm-Skripte (`scripts/native.mjs` ergänzt den Cargo-Pfad). Nach
+Änderungen in `packages/jelly-scene` dort `pnpm test`, `pnpm lint` und `pnpm run check-types`
+ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Paket.
 
 ## Wo was liegt
 
 - `src/backend.ts`: einziger Ort mit `invoke()`. Ein Wrapper je Befehl aus `src-tauri/src/commands.rs`.
 - `src/usePet.ts`: Spielstand, Aktionen, Tastatur-Stupser, Größen-Regler.
 - `src/pet/`: reine Logik ohne React/Three. Spiegelt `src-tauri/src/pet.rs`.
-- `src/panels/`, `src/scene/` (3D, Shader in `scene/shaders/*.glsl`), `src/ui/` (Design-System).
+- `src/panels/`, `src/scene/` (Canvas, Cosmetics, ihre Shader), `src/ui/` (Design-System).
+- `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
+  `body.ts` (geraymarchter Körper, Shader in `shaders/`), `face.ts`, `animation.ts`,
+  `jellyGeometry.ts` (Maße), `colors.ts` (Farben).
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `error.rs`, `pet.rs` (Regeln, kein IO),
   `store.rs` (atomares Speichern).
 
@@ -55,7 +62,11 @@ ausführen. Cargo immer über die pnpm-Skripte (`scripts/native.mjs` ergänzt de
 - **`src/ui/*.tsx`**: Jede exportierte Funktion landet als Komponente im Design-System-Bundle
   (`scripts/ds-bundle.mjs`, `window.Jelly`). Hilfsfunktionen gehören in `.ts`-Dateien.
 - **Shader** werden per `?raw` importiert. Werte aus TypeScript kommen über `defines` des
-  `ShaderMaterial` hinein (siehe `HEAD_R` in `JellyBody.tsx`), nicht per String-Interpolation.
+  `ShaderMaterial` hinein (siehe `HEAD_R` in `packages/jelly-scene/src/body.ts`), nicht per
+  String-Interpolation.
+- **Jelly ändern** heißt `packages/jelly-scene` ändern und App und Server-Bühne im Browser ansehen.
+  Im Jelly gibt es nur `Object3D`, keine `Group`: Die Bühne sortiert ganze Jellies über ihre äußere
+  `Group`. `three` hat in Client, Server und Paket dieselbe Version.
 - **Identifier** `de.ucb.jelly` nicht ändern, sonst findet die App vorhandene Spielstände nicht mehr.
 - **Kein TypeDoc**, solange es TypeScript 7 nicht unterstützt (Begründung in der README).
 - **App-Icon** kommt aus `apps/client/public/pet.svg`. Neu erzeugen mit
@@ -98,4 +109,5 @@ feat(server): add registration and pokes
 
 Typen: `feat` (neue Funktion), `fix` (Fehler behoben), `refactor` (Umbau ohne neues Verhalten),
 `docs`, `test`, `style`, `perf`, `build`, `ci`, `chore` (Pflege), `revert`. Bereiche: `server`,
-`client`. Inkompatible Änderungen tragen ein `!` nach Typ oder Bereich.
+`client`, `scene` (das Paket `packages/jelly-scene`). Inkompatible Änderungen tragen ein `!` nach
+Typ oder Bereich.

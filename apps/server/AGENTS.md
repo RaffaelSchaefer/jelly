@@ -129,10 +129,16 @@ SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort b
 
 ## Seiten in `web/`
 
-- Einfaches TypeScript ohne Framework. Kommentare, Namen und `@module`-Kopf wie im Go-Code auf
-  Englisch, sichtbare Texte auf Deutsch.
-- Reine Logik (`wander.ts`, `projection.ts`, `effects.ts`) kennt weder DOM noch Canvas und hat Tests
-  daneben (`*.test.ts`). Alles mit DOM oder Canvas bleibt so dünn wie möglich.
+- Einfaches TypeScript ohne Framework. three.js ist eine Bibliothek und erlaubt, das Jelly kommt aus
+  `@jelly/scene`. Kommentare, Namen und `@module`-Kopf wie im Go-Code auf Englisch, sichtbare Texte
+  auf Deutsch.
+- Reine Logik (`wander.ts`, `world.ts`, `navigation.ts`, `walking.ts`, `crowd.ts`, `zones.ts`,
+  `lens.ts`, `effects.ts`) kennt weder DOM noch Canvas noch three.js und hat Tests daneben (`*.test.ts`). Alles
+  mit DOM, Canvas oder three.js bleibt so dünn wie möglich.
+- Shader stehen in `web/stage/shaders/*.glsl` und werden per `?raw` importiert (esbuild lädt `.glsl`
+  als Text). Werte kommen über `defines` hinein.
+- Gebündelt wird aus `node_modules`, also vor `go generate` einmal `pnpm install` im Root. `three`
+  hat dieselbe Version wie im Client.
 - Die Seiten spiegeln keine Regeln. Was dauerhaft gilt, kommt per `GET /v1/stage`, Ereignisse lösen nur
   ein Neuladen oder eine kurze Animation aus.
 - Neue Einstiegsdateien müssen in die `go:generate`-Zeile von `internal/web/web.go`, neue Seiten

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Sets up the room of a demo server, shaped like a ribcage: a central spine with cables, ribs going
-# left and right, and between two ribs a U of tables that opens outward. A group sits inside its U.
-# Tables, ribs and spine are thin areas nobody sits in, so they only show up on the floor.
+# Sets up the room of a demo server like the hall of the LAN. At the back is the stage with two
+# beamers, in front of it the chillout lounge on the left and the snack bar on the right. Then a
+# spine of desks runs down the middle with rows of desks on each side and aisles between them. Most
+# rows come in threes: gaming desks, a desk row for the network gear, gaming desks again. Each
+# player of a gaming desk stands in the aisle in front of it, and a group is one row of gaming
+# desks in one half.
 # Usage: scripts/demo-room.sh areas|assign <base-url> <admin-secret>
 set -u
 
@@ -10,16 +13,40 @@ base_url="$2"
 admin_secret="$3"
 lan_id=1
 
-bays_per_side=4
-bay_height=24
-first_rib_y=2
-rib_thickness=1
-spine_x=49
-spine_width=2
-# Distance from the stage edge to the outer end of a rib, and how far tables stay off ribs and spine.
-side_margin=4
-table_gap=2
-table_depth=2
+# Columns in percent of the stage width: a margin, four places, the spine, four places, a margin.
+left_half_x=5
+right_half_x=55
+place_width=10
+spine_x=45
+# Depths in percent of the stage depth.
+row_depth=2
+seat_depth=5
+spine_top=22
+spine_bottom=90
+# The front of the hall as x y width height kind: stage, lounge and the snack bar counter.
+front_zones=(
+  "5 1 90 8 stage"
+  "5 12 40 10 lounge"
+  "65 14 20 3 snackbar"
+)
+
+# Rows from the back of the hall to the front: top edge, left half, right half, and the side the
+# players of the gaming desks stand on. D is a desk, G a gaming desk for one player.
+rows=(
+  "24 DDDD DDDD none"
+  "26 GGGG GGGG below"
+  "38 GGGG GGGG above"
+  "40 DDDD DDDD none"
+  "42 GGGG GGGG below"
+  "54 GGGG GGGG above"
+  "56 DDDD DDDD none"
+  "58 GGGG GGGG below"
+  "70 GGGG GGGG above"
+  "72 DDDD DDDD none"
+  "74 GGGG GGGG below"
+  "86 GGGG GGGG above"
+  "88 DDGG GGDD below"
+)
 
 cookie="$(curl -si -X POST "$base_url/admin/api/login" -H 'Content-Type: application/json' \
   -d "{\"secret\":\"$admin_secret\"}" | sed -n 's/^[Ss]et-[Cc]ookie: \([^;]*\).*/\1/p')"
@@ -28,67 +55,83 @@ admin_call() {
   curl -sf -b "$cookie" -H 'Content-Type: application/json' "$@"
 }
 
-# create_area x y width height
+# create_area x y width height kind
 create_area() {
   admin_call -X POST "$base_url/admin/api/lans/$lan_id/areas" \
-    -d "{\"x\":$1,\"y\":$2,\"width\":$3,\"height\":$4}" >/dev/null || exit 2
+    -d "{\"x\":$1,\"y\":$2,\"width\":$3,\"height\":$4,\"kind\":\"$5\"}" >/dev/null || exit 2
 }
 
-# Both helpers take: <bay top> <left end of the bay> <right end> <side of the closed end>.
-# The closed end of a U faces the spine, so the open end points to the outside of the room.
-
-# create_group_seats adds the inside of the U, where the jellies of a group stand.
-create_group_seats() {
-  local top="$1" left="$2" right="$3" closed_side="$4"
-  local seats_left="$left" width=$((right - left - table_depth))
-  [ "$closed_side" = left ] && seats_left=$((left + table_depth))
-  create_area "$seats_left" "$((top + rib_thickness + table_gap + table_depth))" "$width" \
-    "$((bay_height - rib_thickness - 2 * table_gap - 2 * table_depth))"
+# list_runs <pattern> <letter> prints "start length" for every run of the letter in the pattern.
+list_runs() {
+  local pattern="$1" letter="$2" index start=-1
+  for ((index = 0; index <= ${#pattern}; index++)); do
+    if [ "${pattern:index:1}" = "$letter" ]; then
+      [ "$start" -lt 0 ] && start=$index
+    elif [ "$start" -ge 0 ]; then
+      echo "$start $((index - start))"
+      start=-1
+    fi
+  done
 }
 
-# create_group_tables adds the three tables of the U.
-create_group_tables() {
-  local top="$1" left="$2" right="$3" closed_side="$4"
-  local width=$((right - left)) closed_x="$left"
-  local upper_y=$((top + rib_thickness + table_gap)) lower_y=$((top + bay_height - table_gap - table_depth))
-  [ "$closed_side" = right ] && closed_x=$((right - table_depth))
-  create_area "$left" "$upper_y" "$width" "$table_depth"
-  create_area "$closed_x" "$((upper_y + table_depth))" "$table_depth" "$((lower_y - upper_y - table_depth))"
-  create_area "$left" "$lower_y" "$width" "$table_depth"
+# create_half_seats <row top> <half x> <pattern> <side> adds the floor in front of each run of
+# gaming desks, where the group of that run stands.
+create_half_seats() {
+  local top="$1" half_x="$2" pattern="$3" side="$4" start length seats_y
+  [ "$side" = none ] && return
+  seats_y=$((top + row_depth))
+  [ "$side" = above ] && seats_y=$((top - seat_depth))
+  while read -r start length; do
+    create_area "$((half_x + start * place_width))" "$seats_y" "$((length * place_width))" \
+      "$seat_depth" seats
+  done < <(list_runs "$pattern" G)
 }
 
-# for_each_bay <helper> calls the helper for the left and the right bay of every row.
-for_each_bay() {
-  local helper="$1" bay top
-  for ((bay = 0; bay < bays_per_side; bay++)); do
-    top=$((first_rib_y + bay * bay_height))
-    "$helper" "$top" "$side_margin" "$((spine_x - table_gap))" right
-    "$helper" "$top" "$((spine_x + spine_width + table_gap))" "$((100 - side_margin))" left
+# create_half_desks <row top> <half x> <pattern> adds one desk per cell. All desks of the hall have
+# the same size, a gaming desk is just a desk with a player in front of it.
+create_half_desks() {
+  local top="$1" half_x="$2" pattern="$3" place
+  for ((place = 0; place < ${#pattern}; place++)); do
+    create_area "$((half_x + place * place_width))" "$top" "$place_width" "$row_depth" desk
   done
 }
 
 create_areas() {
-  local rib top
-  # Seats come first: assign_players finds the seats of a group by their position in this order.
-  for_each_bay create_group_seats
-  for_each_bay create_group_tables
-  for ((rib = 0; rib <= bays_per_side; rib++)); do
-    top=$((first_rib_y + rib * bay_height))
-    create_area "$side_margin" "$top" "$((spine_x - side_margin))" "$rib_thickness"
-    create_area "$((spine_x + spine_width))" "$top" "$((100 - side_margin - spine_x - spine_width))" \
-      "$rib_thickness"
+  local row top left right side
+  for row in "${rows[@]}"; do
+    read -r top left right side <<<"$row"
+    create_half_seats "$top" "$left_half_x" "$left" "$side"
+    create_half_seats "$top" "$right_half_x" "$right" "$side"
   done
-  create_area "$spine_x" "$first_rib_y" "$spine_width" "$((bays_per_side * bay_height + rib_thickness))"
+  for row in "${rows[@]}"; do
+    read -r top left right side <<<"$row"
+    create_half_desks "$top" "$left_half_x" "$left"
+    create_half_desks "$top" "$right_half_x" "$right"
+  done
+  # The spine is a stack of the same desks, from the back to the front.
+  for ((top = spine_top; top < spine_bottom; top += row_depth)); do
+    create_area "$spine_x" "$top" "$place_width" "$row_depth" desk
+  done
+  local zone
+  for zone in "${front_zones[@]}"; do
+    # shellcheck disable=SC2086 # The zone is split into its five fields on purpose.
+    create_area $zone
+  done
 }
 
-# Deals all registered jellies to the groups in turn.
+# Deals all registered jellies to the places in turn, so a group gets one jelly per gaming desk.
 assign_players() {
-  local position=0 player_id area_id groups=$((2 * bays_per_side))
-  local -a areas
-  mapfile -t areas < <(admin_call "$base_url/admin/api/lans/$lan_id/areas" |
-    grep -o '"areas":\[[^]]*\]' | grep -o '"id":[0-9]*' | cut -d: -f2)
+  local position=0 player_id area_id width place
+  local -a places
+  while read -r area_id width; do
+    for ((place = 0; place < width / place_width; place++)); do
+      places+=("$area_id")
+    done
+  done < <(admin_call "$base_url/admin/api/lans/$lan_id/areas" |
+    grep -o '"areas":\[[^]]*\]' | grep -o '"id":[0-9]*[^}]*"kind":"seats"' |
+    sed 's/"id":\([0-9]*\).*"width":\([0-9]*\).*/\1 \2/')
   for player_id in $(admin_call "$base_url/admin/api/players" | grep -o '"id":[0-9]*' | cut -d: -f2); do
-    area_id="${areas[$((position % groups))]}"
+    area_id="${places[$((position % ${#places[@]}))]}"
     admin_call -X PUT "$base_url/admin/api/lans/$lan_id/players/$player_id/area" \
       -d "{\"area_id\":$area_id}" >/dev/null
     position=$((position + 1))

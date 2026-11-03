@@ -4,7 +4,7 @@
 // innen wird durch das brechende Jelly gesehen, ein Studio spiegelt sich in der Oberfläche, und wo
 // es dünn ist, scheint etwas vom Desktop durch. Gesicht und Cosmetics sind normale Meshes darüber.
 //
-// HEAD_R (Halbachsen des Kopf-Ellipsoids) kommt als #define aus JellyBody.tsx, abgeleitet von
+// HEAD_R (Halbachsen des Kopf-Ellipsoids) kommt als #define aus body.ts, abgeleitet von
 // HEAD in jellyGeometry.ts.
 
 uniform mat4 uModel;

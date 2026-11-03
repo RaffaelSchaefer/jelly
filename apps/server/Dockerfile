@@ -1,9 +1,24 @@
-# Build from apps/server: docker build -t jelly-server .
-FROM golang:1.27-alpine AS build
+# Build from the repository root: docker build -f apps/server/Dockerfile -t jelly-server .
+# The stage page bundles three.js and @jelly/scene, so pnpm installs them first.
+FROM node:24-alpine AS packages
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
 WORKDIR /src
-COPY go.mod go.sum ./
+# The client manifest is only there so the frozen lockfile matches the workspace.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/client/package.json apps/client/
+COPY apps/server/package.json apps/server/
+COPY packages/jelly-scene/package.json packages/jelly-scene/
+RUN --mount=type=cache,id=pnpm,target=/var/cache/pnpm \
+    pnpm install --store-dir /var/cache/pnpm --frozen-lockfile --filter @jelly/server...
+
+FROM golang:1.27-alpine AS build
+WORKDIR /src/apps/server
+COPY apps/server/go.mod apps/server/go.sum ./
 RUN go mod download
-COPY . .
+COPY --from=packages /src /src
+COPY packages/jelly-scene /src/packages/jelly-scene
+COPY apps/server /src/apps/server
 RUN go generate ./internal/web
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/jelly-server ./cmd/jelly-server
 # The volume inherits owner and permissions of this directory on first start.

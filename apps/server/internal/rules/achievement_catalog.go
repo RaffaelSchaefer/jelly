@@ -106,7 +106,7 @@ func listEventAchievements() []Achievement {
 	}
 }
 
-// listNightAchievements covers long nights. The two last ones only track a best value.
+// listNightAchievements covers long nights.
 func listNightAchievements() []Achievement {
 	return []Achievement{
 		{
