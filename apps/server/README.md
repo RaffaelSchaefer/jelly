@@ -1,8 +1,9 @@
 # Jelly-Server
 
 Der Server entscheidet während einer LAN über XP und Freischaltungen. App und Bühne zeigen nur an.
-Er ist in Go geschrieben und speichert in einer SQLite-Datei. Die Schnittstelle steht in
-[docs/api.md](docs/api.md).
+Er ist in Go geschrieben und speichert in einer SQLite-Datei. Die Schnittstelle steht als Überblick
+mit Changelog in [docs/api.md](docs/api.md) und als genauer Vertrag in
+[docs/openapi.json](docs/openapi.json).
 
 Gebaut sind Konten, Stupser, Berichte, Event-Codes, Cosmetics, Achievements, Emotes, Partner-Emotes,
 Schilder, die Raumkarte, Moderation, der Simulator und die 2D-Bühne. Die Admin-Seite folgt.
@@ -17,7 +18,7 @@ JELLY_JOIN_CODE=geheim go run ./cmd/jelly-server create-lan \
   -from 2026-01-01T00:00:00+01:00 -to 2027-01-01T00:00:00+01:00
 JELLY_STAGE_KEY=buehne JELLY_ADMIN_SECRET=admin go run ./cmd/jelly-server
 
-curl -X POST localhost:8080/register \
+curl -X POST localhost:8080/v1/register -H 'Content-Type: application/json' \
   -d '{"code":"geheim","name":"Glibber","color":"mint"}'
 ```
 
@@ -79,8 +80,8 @@ läuft über `go tool esbuild`.
 
 | Ort                | Inhalt                                                  |
 | ------------------ | ------------------------------------------------------- |
-| `cmd/jelly-server` | Einstieg, Serverstart und `create-lan`                  |
-| `internal/api`     | HTTP-Wege und Fehlercodes                               |
+| `cmd/jelly-server` | Einstieg, Serverstart, `create-lan`, `simulate`, `openapi` |
+| `internal/api`     | HTTP-Wege, OpenAPI über huma, Fehlercodes               |
 | `internal/store`   | SQLite, Transaktionen, goose-Migrationen in `migrations/` |
 | `internal/architecture` | Tests für Regeln, die kein Linter prüft            |
 | `internal/rules`   | Spielregeln als reine Funktionen, ohne IO               |

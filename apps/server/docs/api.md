@@ -1,12 +1,38 @@
 # Jelly-Server: API
 
-Dies ist der Vertrag zwischen Server, App und Bühne. Regelfälle zum Mittesten stehen in
-[`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von Tests in
-anderen Sprachen gelesen werden.
+Dies ist der Überblick für Menschen. Der genaue Vertrag zwischen Server, App und Bühne ist
+[`openapi.json`](openapi.json) (OpenAPI 3.0). Er wird aus dem Go-Code erzeugt, ein Test verhindert
+Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi.json`. Regelfälle zum Mittesten
+stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
+Tests in anderen Sprachen gelesen werden.
+
+Aktuelle Version: **1.0.0**
+
+## Versionen
+
+- **Pfad:** Alle Wege für App und Bühne beginnen mit `/v1`. Erweiterungen bleiben dort. Nur eine
+  Änderung, die den Vertrag bricht und ein Umschreiben im Client verlangt, bekommt einen neuen Pfad.
+- **Nummer:** Jedes Feature erhöht die Version im Dokument (1.1, 1.2 und so weiter).
+- **Clients** ignorieren unbekannte Felder in Antworten und unbekannte Ereignisse, denn beides darf
+  jederzeit dazukommen.
+- `/health` und `/admin/api` gehören nicht zum Vertrag. Sie sind nicht versioniert und ändern sich mit
+  der Admin-Seite.
+
+### Changelog
+
+| Version | Änderung |
+| ------- | -------- |
+| 1.0.0   | Erste Version: Konten, Stupser, Berichte, Event-Codes, Emotes, Partner-Emotes, Schilder, Stellen zu einem Jelly, Bühne und Ereignisse |
+
+### Brechende Änderungen
+
+Bisher keine. Jede künftige steht hier mit Begründung.
 
 ## Grundlagen
 
-- Anfragen und Antworten sind JSON. Unbekannte Felder in Anfragen sind ein Fehler.
+- Anfragen und Antworten sind JSON, Anfragen höchstens 4 KiB. Ein anderer `Content-Type` als
+  `application/json` ergibt 415, also auch der Standard von `curl -d`. Unbekannte Felder in Anfragen
+  sind ein Fehler. Wege in den Tabellen stehen ohne das Präfix `/v1`, außer bei `/health` und `/admin/api`.
 - Zeiten sind UTC in Unix-Millisekunden. Nur der Server vergibt sie.
 - Spieler senden `Authorization: Bearer <token>`. Die Bühne nutzt den Bühnenschlüssel als `?key=`.
 - Admins melden sich an und erhalten ein Cookie, siehe [Admin](#admin).
@@ -22,7 +48,9 @@ Jeder Fehler hat diese Form. `code` ist stabil und für Programme gedacht, `mess
 
 | Status | Code                                      | Bedeutung                                 |
 | ------ | ----------------------------------------- | ----------------------------------------- |
-| 400    | `invalid_body`                            | Kein gültiges JSON oder unbekanntes Feld  |
+| 400    | `invalid_body`                            | Kein gültiges JSON                        |
+| 415    | `invalid_body`                            | `Content-Type` ist nicht JSON             |
+| 422    | `invalid_body`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
 | 400    | `invalid_input`, `invalid_rules`          | Admin-Angaben sind ungültig               |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne         |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
@@ -80,7 +108,7 @@ Jeder Fehler hat diese Form. `code` ist stabil und für Programme gedacht, `mess
 
 | Weg                       | Körper                                     | Antwort                        |
 | ------------------------- | ------------------------------------------ | ------------------------------ |
-| `GET /health`             |                                            | `{"status":"ok"}`              |
+| `GET /health` (ohne `/v1`) |                                           | `{"status":"ok"}`              |
 | `GET /catalog`            |                                            | Feste Listen, siehe unten      |
 | `POST /register`          | `{"code","name","color"}`                  | `201 {"token","me"}`           |
 | `POST /lans/current/join` | `{"code"}`                                 | Stand                          |
@@ -97,7 +125,8 @@ Jeder Fehler hat diese Form. `code` ist stabil und für Programme gedacht, `mess
 Das Token gibt es nur in der Antwort von `POST /register`. `GET /catalog` liefert `emotes`,
 `partner_emotes`, `signs`, `cosmetics` und `achievements`, geheime Achievements fehlen dort.
 
-Ein zu früher Stupser ist kein Fehler, sondern ergibt `xp_gained: 0`. Die App muss den Server nur
+Der Server darf ein `PUT /follow` später von sich aus beenden, also zählt immer `follow_player_id` im
+Stand. Ein zu früher Stupser ist kein Fehler, sondern ergibt `xp_gained: 0`. Die App muss den Server nur
 ansprechen, wenn `next_poke_at` erreicht ist.
 
 ### Partner-Emotes
