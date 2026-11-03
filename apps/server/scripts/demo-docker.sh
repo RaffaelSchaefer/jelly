@@ -15,6 +15,11 @@ admin_secret="demo-admin"
 join_code="demo-code"
 health_tries=30
 
+# GNU date takes -d, BSD date on macOS takes -v.
+utc_at() {
+  date -u -d "$1" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v"$2" +%Y-%m-%dT%H:%M:%SZ
+}
+
 stop_demo() {
   docker rm -f "$bots" "$server" >/dev/null 2>&1
   docker volume rm "$volume" >/dev/null 2>&1
@@ -26,8 +31,8 @@ start_demo() {
   docker build -q -f Dockerfile -t "$image" ../.. >/dev/null || exit 2
   docker volume create "$volume" >/dev/null || exit 2
   docker run --rm -v "$volume:/app/data" -e "JELLY_JOIN_CODE=$join_code" "$image" create-lan \
-    -slug demo -name Demo "-from=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)" \
-    "-to=$(date -u -d '1 day' +%Y-%m-%dT%H:%M:%SZ)" 2>/dev/null || exit 2
+    -slug demo -name Demo "-from=$(utc_at '1 hour ago' -1H)" \
+    "-to=$(utc_at '1 day' +1d)" 2>/dev/null || exit 2
   docker run -d --name "$server" -p "127.0.0.1:$port:8080" -v "$volume:/app/data" \
     -e "JELLY_STAGE_KEY=$stage_key" -e "JELLY_ADMIN_SECRET=$admin_secret" "$image" >/dev/null || exit 2
   for _ in $(seq 1 "$health_tries"); do
