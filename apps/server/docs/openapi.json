@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "Achievement": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "description": {
             "type": "string"
@@ -38,10 +38,10 @@
         "type": "object"
       },
       "ActionAnswer": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "me": {
-            "$ref": "#/components/schemas/State"
+            "$ref": "#/components/schemas/PlayerState"
           },
           "xp_gained": {
             "format": "int64",
@@ -67,7 +67,7 @@
         "type": "object"
       },
       "Badge": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "name": {
             "type": "string"
@@ -83,45 +83,47 @@
         "type": "object"
       },
       "Catalog": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "achievements": {
             "items": {
               "$ref": "#/components/schemas/Achievement"
             },
-            "nullable": true,
+            "type": "array"
+          },
+          "colors": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            },
             "type": "array"
           },
           "cosmetics": {
             "items": {
               "$ref": "#/components/schemas/Cosmetic"
             },
-            "nullable": true,
             "type": "array"
           },
           "emotes": {
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
             },
-            "nullable": true,
             "type": "array"
           },
           "partner_emotes": {
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
             },
-            "nullable": true,
             "type": "array"
           },
           "signs": {
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
             },
-            "nullable": true,
             "type": "array"
           }
         },
         "required": [
+          "colors",
           "emotes",
           "partner_emotes",
           "signs",
@@ -131,7 +133,7 @@
         "type": "object"
       },
       "CatalogEntry": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "key": {
             "type": "string"
@@ -159,7 +161,7 @@
         "type": "object"
       },
       "Cosmetic": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "key": {
             "type": "string"
@@ -186,7 +188,7 @@
         "type": "object"
       },
       "EarnedAchievement": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "best": {
             "format": "int64",
@@ -218,8 +220,36 @@
         ],
         "type": "object"
       },
+      "ErrorDetails": {
+        "additionalProperties": true,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetails"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
       "Event": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "created_at": {
             "format": "int64",
@@ -274,7 +304,7 @@
         "type": "object"
       },
       "LANInfo": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "active": {
             "type": "boolean"
@@ -293,8 +323,72 @@
         ],
         "type": "object"
       },
+      "LANPeriod": {
+        "additionalProperties": true,
+        "properties": {
+          "ends_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "starts_at",
+          "ends_at"
+        ],
+        "type": "object"
+      },
+      "LANStatus": {
+        "additionalProperties": true,
+        "properties": {
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LANPeriod"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "joined": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "next": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LANPeriod"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "server_time": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "server_time",
+          "current",
+          "next",
+          "joined"
+        ],
+        "type": "object"
+      },
       "PartnerOffer": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "code": {
             "type": "string"
@@ -305,23 +399,27 @@
           },
           "key": {
             "type": "string"
+          },
+          "me": {
+            "$ref": "#/components/schemas/PlayerState"
           }
         },
         "required": [
           "code",
           "key",
-          "expires_at"
+          "expires_at",
+          "me"
         ],
         "type": "object"
       },
       "PartnerResult": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "key": {
             "type": "string"
           },
           "me": {
-            "$ref": "#/components/schemas/State"
+            "$ref": "#/components/schemas/PlayerState"
           },
           "partner_id": {
             "format": "int64",
@@ -341,7 +439,7 @@
         "type": "object"
       },
       "PlayerAward": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "cosmetic_key": {
             "nullable": true,
@@ -362,19 +460,128 @@
         ],
         "type": "object"
       },
-      "ProblemDetails": {
-        "additionalProperties": false,
+      "PlayerState": {
+        "additionalProperties": true,
         "properties": {
-          "code": {
+          "achievements": {
+            "items": {
+              "$ref": "#/components/schemas/EarnedAchievement"
+            },
+            "type": "array"
+          },
+          "awards": {
+            "items": {
+              "$ref": "#/components/schemas/PlayerAward"
+            },
+            "type": "array"
+          },
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/Badge"
+            },
+            "type": "array"
+          },
+          "color": {
             "type": "string"
           },
-          "message": {
+          "cosmetic": {
+            "nullable": true,
             "type": "string"
+          },
+          "cosmetics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "follow_player_id": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "lan": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LANInfo"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "lans_attended": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "last_event_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "level": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "next_poke_at": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "reports": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportStatus"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "server_time": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sign": {
+            "nullable": true,
+            "type": "string"
+          },
+          "total_xp": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "xp": {
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
-          "code",
-          "message"
+          "server_time",
+          "last_event_id",
+          "id",
+          "name",
+          "color",
+          "cosmetic",
+          "hidden",
+          "lan",
+          "xp",
+          "level",
+          "total_xp",
+          "next_poke_at",
+          "reports",
+          "sign",
+          "follow_player_id",
+          "lans_attended",
+          "badges",
+          "cosmetics",
+          "achievements",
+          "awards"
         ],
         "type": "object"
       },
@@ -394,10 +601,10 @@
         "type": "object"
       },
       "RedeemedCode": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "me": {
-            "$ref": "#/components/schemas/State"
+            "$ref": "#/components/schemas/PlayerState"
           },
           "title": {
             "type": "string"
@@ -415,10 +622,10 @@
         "type": "object"
       },
       "RegisterAnswer": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "me": {
-            "$ref": "#/components/schemas/State"
+            "$ref": "#/components/schemas/PlayerState"
           },
           "token": {
             "type": "string"
@@ -451,7 +658,7 @@
         "type": "object"
       },
       "ReportStatus": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "drink_ready_at": {
             "format": "int64",
@@ -473,20 +680,8 @@
         ],
         "type": "object"
       },
-      "ResponseError": {
-        "additionalProperties": false,
-        "properties": {
-          "error": {
-            "$ref": "#/components/schemas/ProblemDetails"
-          }
-        },
-        "required": [
-          "error"
-        ],
-        "type": "object"
-      },
       "StageArea": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "height": {
             "format": "int64",
@@ -519,7 +714,7 @@
         "type": "object"
       },
       "StagePlayer": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "area_id": {
             "format": "int64",
@@ -582,13 +777,12 @@
         "type": "object"
       },
       "StageState": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "areas": {
             "items": {
               "$ref": "#/components/schemas/StageArea"
             },
-            "nullable": true,
             "type": "array"
           },
           "last_event_id": {
@@ -599,7 +793,6 @@
             "items": {
               "$ref": "#/components/schemas/StagePlayer"
             },
-            "nullable": true,
             "type": "array"
           },
           "server_time": {
@@ -612,113 +805,6 @@
           "server_time",
           "areas",
           "players"
-        ],
-        "type": "object"
-      },
-      "State": {
-        "additionalProperties": false,
-        "properties": {
-          "achievements": {
-            "items": {
-              "$ref": "#/components/schemas/EarnedAchievement"
-            },
-            "nullable": true,
-            "type": "array"
-          },
-          "awards": {
-            "items": {
-              "$ref": "#/components/schemas/PlayerAward"
-            },
-            "nullable": true,
-            "type": "array"
-          },
-          "badges": {
-            "items": {
-              "$ref": "#/components/schemas/Badge"
-            },
-            "nullable": true,
-            "type": "array"
-          },
-          "color": {
-            "type": "string"
-          },
-          "cosmetic": {
-            "nullable": true,
-            "type": "string"
-          },
-          "cosmetics": {
-            "items": {
-              "type": "string"
-            },
-            "nullable": true,
-            "type": "array"
-          },
-          "follow_player_id": {
-            "format": "int64",
-            "nullable": true,
-            "type": "integer"
-          },
-          "hidden": {
-            "type": "boolean"
-          },
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "lan": {
-            "$ref": "#/components/schemas/LANInfo"
-          },
-          "lans_attended": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "level": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "next_poke_at": {
-            "format": "int64",
-            "nullable": true,
-            "type": "integer"
-          },
-          "reports": {
-            "$ref": "#/components/schemas/ReportStatus"
-          },
-          "sign": {
-            "nullable": true,
-            "type": "string"
-          },
-          "total_xp": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "xp": {
-            "format": "int64",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "color",
-          "cosmetic",
-          "hidden",
-          "lan",
-          "xp",
-          "level",
-          "total_xp",
-          "next_poke_at",
-          "reports",
-          "sign",
-          "follow_player_id",
-          "lans_attended",
-          "badges",
-          "cosmetics",
-          "achievements",
-          "awards"
         ],
         "type": "object"
       }
@@ -769,7 +855,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -802,7 +888,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -830,7 +916,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -840,7 +926,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -855,9 +941,78 @@
         "summary": "Play an emote"
       }
     },
+    "/v1/event-codes/redeem": {
+      "post": {
+        "operationId": "redeemEventCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemedCode"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Redeem an event code"
+      }
+    },
     "/v1/events/stream": {
       "get": {
+        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events.",
         "operationId": "streamEvents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "since",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -873,7 +1028,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -899,7 +1054,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -909,7 +1064,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -941,7 +1096,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -951,7 +1106,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -964,6 +1119,41 @@
           }
         ],
         "summary": "Stand next to another jelly"
+      }
+    },
+    "/v1/lans/current": {
+      "get": {
+        "description": "Works without an account. With a token, `joined` says whether this player takes part in the running LAN.",
+        "operationId": "getCurrentLAN",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LANStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read which LAN runs and which comes next"
       }
     },
     "/v1/lans/current/join": {
@@ -984,7 +1174,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -994,7 +1184,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1017,7 +1207,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -1027,7 +1217,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1058,7 +1248,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -1068,7 +1258,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1111,7 +1301,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1154,7 +1344,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1169,25 +1359,16 @@
         "summary": "Join a partner emote with its code"
       }
     },
-    "/v1/redeem": {
+    "/v1/presence": {
       "post": {
-        "operationId": "redeemEventCode",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CodeBody"
-              }
-            }
-          },
-          "required": true
-        },
+        "description": "Send this every few minutes. Without it, a jelly falls asleep once `presence_window` passed since the last action.",
+        "operationId": "recordPresence",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RedeemedCode"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -1197,7 +1378,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1209,12 +1390,12 @@
             "bearer": []
           }
         ],
-        "summary": "Redeem an event code"
+        "summary": "Keep the jelly awake while the app runs, without XP"
       }
     },
     "/v1/register": {
       "post": {
-        "operationId": "register",
+        "operationId": "registerPlayer",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1240,7 +1421,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1258,7 +1439,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -1268,7 +1449,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1299,7 +1480,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "$ref": "#/components/schemas/PlayerState"
                 }
               }
             },
@@ -1309,7 +1490,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -1324,9 +1505,9 @@
         "summary": "Show a sign"
       }
     },
-    "/v1/state": {
+    "/v1/stage": {
       "get": {
-        "operationId": "getState",
+        "operationId": "getStage",
         "responses": {
           "200": {
             "content": {
@@ -1342,7 +1523,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResponseError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },

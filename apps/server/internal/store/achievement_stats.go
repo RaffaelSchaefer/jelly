@@ -30,7 +30,8 @@ func listMetricQueries() []metricQuery {
 			WHERE player_id = ?1 AND action = '` + actionEvent + `'`},
 		{rules.MetricLANsAttended, `SELECT COUNT(*) FROM lan_entries WHERE player_id = ?1`},
 		{rules.MetricProfileEdits, `SELECT COUNT(*) FROM event_log
-			WHERE player_id = ?1 AND type = '` + EventPlayerUpdated + `'`},
+			WHERE player_id = ?1 AND type = '` + EventPlayerUpdated + `'
+			AND json_extract(payload, '$.` + payloadEdited + `') = 1`},
 		{rules.MetricJelliesJoined, `SELECT COUNT(DISTINCT json_extract(payload, '$.target_id'))
 			FROM event_log WHERE player_id = ?1 AND lan_id = ?2
 			AND type = '` + EventFollowChanged + `'

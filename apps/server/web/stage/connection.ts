@@ -7,7 +7,7 @@
 import type { StageCatalog, StageEvent, StageState } from "./types.ts";
 
 const API_PREFIX = "/v1";
-const PATH_STATE = `${API_PREFIX}/state`;
+const PATH_STATE = `${API_PREFIX}/stage`;
 const PATH_STREAM = `${API_PREFIX}/events/stream`;
 const PATH_CATALOG = `${API_PREFIX}/catalog`;
 const QUERY_KEY = "key";

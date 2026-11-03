@@ -25,6 +25,7 @@ const (
 	defaultPartnerCodeSeconds    = 120
 	defaultPartnerXP             = 2
 	defaultFullHousePercent      = 33
+	defaultMaxPlayers            = 120
 	maxPercent                   = 100
 )
 
@@ -59,6 +60,8 @@ type Rules struct {
 	PartnerXP int `json:"partner_xp"`
 	// FullHousePercent is the share of the LAN's players that must redeem one event code together.
 	FullHousePercent int `json:"full_house_percent"`
+	// MaxPlayers limits how many accounts can take part in a LAN.
+	MaxPlayers int `json:"max_players"`
 }
 
 // DefaultRules returns the starting values of a new LAN.
@@ -77,6 +80,7 @@ func DefaultRules() Rules {
 		PartnerCodeSeconds:    defaultPartnerCodeSeconds,
 		PartnerXP:             defaultPartnerXP,
 		FullHousePercent:      defaultFullHousePercent,
+		MaxPlayers:            defaultMaxPlayers,
 	}
 }
 
@@ -103,6 +107,9 @@ func ValidateRules(gameRules Rules) error {
 		return ErrInvalidRules
 	}
 	if gameRules.FullHousePercent < 1 || gameRules.FullHousePercent > maxPercent {
+		return ErrInvalidRules
+	}
+	if gameRules.MaxPlayers < 1 {
 		return ErrInvalidRules
 	}
 	return nil

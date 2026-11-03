@@ -22,7 +22,7 @@ const (
 
 // addSessionRoutes registers logging in and out of the admin page.
 func (server *apiServer) addSessionRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /admin/api/login", server.limitAttempts(server.handleAdminLogin))
+	mux.HandleFunc("POST /admin/api/login", server.limitLogins(server.handleAdminLogin))
 	mux.HandleFunc("POST /admin/api/logout", server.handleAdminLogout)
 }
 

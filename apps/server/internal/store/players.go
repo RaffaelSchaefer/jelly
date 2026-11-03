@@ -41,14 +41,14 @@ type newPlayer struct {
 // RegisterPlayer creates an account with an entry in the current LAN and returns its token.
 func (store *Store) RegisterPlayer(
 	ctx context.Context, request RegisterRequest, now int64,
-) (string, State, error) {
+) (string, PlayerState, error) {
 	name, err := rules.NormalizeName(request.Name)
 	if err != nil {
-		return "", State{}, fmt.Errorf("validate name: %w", err)
+		return "", PlayerState{}, fmt.Errorf("validate name: %w", err)
 	}
 	err = rules.ValidateColor(request.Color)
 	if err != nil {
-		return "", State{}, fmt.Errorf("validate color: %w", err)
+		return "", PlayerState{}, fmt.Errorf("validate color: %w", err)
 	}
 	player := newPlayer{
 		code:  request.Code,
@@ -57,14 +57,14 @@ func (store *Store) RegisterPlayer(
 		color: request.Color,
 		now:   now,
 	}
-	var state State
+	var state PlayerState
 	err = store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		var workErr error
 		state, workErr = registerInTransaction(ctx, transaction, player)
 		return workErr
 	})
 	if err != nil {
-		return "", State{}, err
+		return "", PlayerState{}, err
 	}
 	return player.token, state, nil
 }
@@ -72,8 +72,8 @@ func (store *Store) RegisterPlayer(
 // JoinCurrentLAN adds an existing account to the running LAN.
 func (store *Store) JoinCurrentLAN(
 	ctx context.Context, playerID int64, code string, now int64,
-) (State, error) {
-	var state State
+) (PlayerState, error) {
+	var state PlayerState
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		lan, workErr := loadActiveLAN(ctx, transaction, now)
 		if workErr != nil {
@@ -101,7 +101,7 @@ func (store *Store) JoinCurrentLAN(
 		return workErr
 	})
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	return state, nil
 }
@@ -126,8 +126,11 @@ func (store *Store) FindPlayerByToken(ctx context.Context, token string) (int64,
 // UpdateProfile changes name, color or cosmetic and returns the new state.
 func (store *Store) UpdateProfile(
 	ctx context.Context, playerID int64, update ProfileUpdate, now int64,
-) (State, error) {
-	var state State
+) (PlayerState, error) {
+	if update == (ProfileUpdate{}) {
+		return store.LoadPlayerState(ctx, playerID, now)
+	}
+	var state PlayerState
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		workErr := applyProfileUpdate(ctx, transaction, playerID, update)
 		if workErr != nil {
@@ -141,7 +144,7 @@ func (store *Store) UpdateProfile(
 		return workErr
 	})
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	return state, nil
 }
@@ -149,21 +152,21 @@ func (store *Store) UpdateProfile(
 // registerInTransaction checks the join code and writes the account and its entry.
 func registerInTransaction(
 	ctx context.Context, transaction *sql.Tx, player newPlayer,
-) (State, error) {
+) (PlayerState, error) {
 	lan, err := loadActiveLAN(ctx, transaction, player.now)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	if !matchSecret(lan.joinCodeHash, player.code) {
-		return State{}, ErrInvalidCode
+		return PlayerState{}, ErrInvalidCode
 	}
 	playerID, err := insertPlayer(ctx, transaction, player)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	err = insertLANEntry(ctx, transaction, lan, playerID, player.now)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	return loadState(ctx, transaction, playerID, player.now)
 }
@@ -192,9 +195,18 @@ func insertPlayer(ctx context.Context, transaction *sql.Tx, player newPlayer) (i
 func insertLANEntry(
 	ctx context.Context, transaction *sql.Tx, lan activeLAN, playerID, now int64,
 ) error {
+	var playerCount int
+	const countEntriesSQL = `SELECT COUNT(*) FROM lan_entries WHERE lan_id = ?`
+	err := transaction.QueryRowContext(ctx, countEntriesSQL, lan.id).Scan(&playerCount)
+	if err != nil {
+		return fmt.Errorf("count entries: %w", err)
+	}
+	if playerCount >= lan.gameRules.MaxPlayers {
+		return ErrLANFull
+	}
 	const insertEntrySQL = `INSERT INTO lan_entries
 		(lan_id, player_id, joined_at, last_seen_at, session_started_at) VALUES (?, ?, ?, ?, ?)`
-	_, err := transaction.ExecContext(ctx, insertEntrySQL,
+	_, err = transaction.ExecContext(ctx, insertEntrySQL,
 		lan.id, playerID, now, now, now)
 	if err != nil {
 		return fmt.Errorf("insert entry: %w", err)
@@ -314,7 +326,7 @@ func removeLockedCosmetic(
 func recordProfileEdit(ctx context.Context, transaction *sql.Tx, playerID, now int64) error {
 	err := appendEvent(ctx, transaction, eventRecord{
 		lanID: 0, eventType: EventPlayerUpdated, scope: scopePublic,
-		playerID: playerID, payload: struct{}{}, now: now,
+		playerID: playerID, payload: map[string]bool{payloadEdited: true}, now: now,
 	})
 	if err != nil {
 		return err

@@ -75,7 +75,7 @@ func BenchmarkLoadStageState(b *testing.B) {
 func BenchmarkListEventsAfter(b *testing.B) {
 	database, _, _ := openBenchStore(b)
 	for b.Loop() {
-		_, err := database.ListEventsAfter(b.Context(), 0, 0)
+		_, err := database.ListEventsAfter(b.Context(), 0)
 		if err != nil {
 			b.Fatal(err)
 		}

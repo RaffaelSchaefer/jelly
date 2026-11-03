@@ -7,11 +7,8 @@ import (
 	"fmt"
 )
 
-// Scopes of the event log.
-const (
-	scopePublic = "public"
-	scopePlayer = "player"
-)
+// scopePublic is the scope of all events. The column allows private events later.
+const scopePublic = "public"
 
 // Event types the stream delivers.
 const (
@@ -50,6 +47,9 @@ type eventRecord struct {
 	now       int64
 }
 
+// payloadEdited marks a `player.updated` that the player caused, which counts for achievements.
+const payloadEdited = "edited"
+
 // LoadLatestEventID returns the newest event ID, or 0 for an empty log.
 func (store *Store) LoadLatestEventID(ctx context.Context) (int64, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
@@ -57,18 +57,15 @@ func (store *Store) LoadLatestEventID(ctx context.Context) (int64, error) {
 	return loadLatestEventID(queryCtx, store.readDB)
 }
 
-// ListEventsAfter returns public events and the events of `viewerID` after `afterID`, oldest
-// first. Without a player, `viewerID` is 0.
-func (store *Store) ListEventsAfter(
-	ctx context.Context, afterID, viewerID int64,
-) ([]Event, error) {
+// ListEventsAfter returns the public events after `afterID`, oldest first.
+func (store *Store) ListEventsAfter(ctx context.Context, afterID int64) ([]Event, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
 	const selectEventsAfterSQL = `SELECT
 		id, type, player_id, payload, created_at
-		FROM event_log WHERE id > ? AND (scope = ? OR player_id = ?) ORDER BY id LIMIT ?`
+		FROM event_log WHERE id > ? AND scope = ? ORDER BY id LIMIT ?`
 	rows, err := store.readDB.QueryContext(queryCtx, selectEventsAfterSQL,
-		afterID, scopePublic, viewerID, maxEventsPerQueryRows)
+		afterID, scopePublic, maxEventsPerQueryRows)
 	if err != nil {
 		return nil, fmt.Errorf("list events: %w", err)
 	}

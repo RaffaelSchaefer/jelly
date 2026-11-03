@@ -41,7 +41,7 @@ const (
 	pathEmote     = apiPrefix + "/emote"
 	pathFollow    = apiPrefix + "/follow"
 	pathSign      = apiPrefix + "/sign"
-	pathState     = apiPrefix + "/state"
+	pathState     = apiPrefix + "/stage"
 	pathRegister  = apiPrefix + "/register"
 	pathOffer     = apiPrefix + "/partner-emote"
 	pathJoinOffer = apiPrefix + "/partner-emote/join"

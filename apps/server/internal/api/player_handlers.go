@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	actionPoke = "poke"
 	pathMe     = "/me"
 	pathSign   = "/sign"
 	pathFollow = "/follow"
@@ -40,8 +39,8 @@ type RegisterBody struct {
 
 // RegisterAnswer holds the token, which is only ever sent here.
 type RegisterAnswer struct {
-	Token string      `json:"token"`
-	Me    store.State `json:"me"`
+	Token string            `json:"token"`
+	Me    store.PlayerState `json:"me"`
 }
 
 // ProfileBody changes the profile. Missing fields stay unchanged.
@@ -58,8 +57,8 @@ type ActionBody struct {
 
 // ActionAnswer tells how much XP an action earned.
 type ActionAnswer struct {
-	XPGained int         `json:"xp_gained"`
-	Me       store.State `json:"me"`
+	XPGained int               `json:"xp_gained"`
+	Me       store.PlayerState `json:"me"`
 }
 
 // FollowBody names the jelly to stand next to.
@@ -69,11 +68,31 @@ type FollowBody struct {
 
 // Catalog holds the fixed lists. Secret achievements are not part of it.
 type Catalog struct {
+	Colors        []rules.CatalogEntry `json:"colors"`
 	Emotes        []rules.CatalogEntry `json:"emotes"`
 	PartnerEmotes []rules.CatalogEntry `json:"partner_emotes"`
 	Signs         []rules.CatalogEntry `json:"signs"`
 	Cosmetics     []rules.Cosmetic     `json:"cosmetics"`
 	Achievements  []rules.Achievement  `json:"achievements"`
+}
+
+// addLANRoutes registers what a client reads before it has joined.
+func (server *apiServer) addLANRoutes(contract huma.API) {
+	addOperation(server, contract, huma.Operation{
+		OperationID: "getCurrentLAN", Method: http.MethodGet, Path: "/lans/current",
+		Summary: "Read which LAN runs and which comes next",
+		Description: "Works without an account. With a token, `joined` says whether this " +
+			"player takes part in the running LAN.",
+		Security:    []map[string][]string{{}, {securityBearer: {}}},
+		Middlewares: huma.Middlewares{server.identifyPlayer},
+	}, server.handleCurrentLAN)
+}
+
+// handleCurrentLAN returns the running and the next LAN.
+func (server *apiServer) handleCurrentLAN(
+	ctx context.Context, _ *noInput,
+) (*jsonOutput[store.LANStatus], error) {
+	return answerWith(server.Store.LoadLANStatus(ctx, readPlayerID(ctx), server.currentMillis()))
 }
 
 // addHealthRoute registers the check that infrastructure uses. It is not part of the contract.
@@ -94,14 +113,14 @@ func (server *apiServer) addPlayerRoutes(contract huma.API) {
 		Summary: "Read the fixed lists",
 	}, handleCatalog)
 	addOperation(server, contract, huma.Operation{
-		OperationID: "register", Method: http.MethodPost, Path: "/register",
+		OperationID: "registerPlayer", Method: http.MethodPost, Path: "/register",
 		Summary: "Create an account", DefaultStatus: http.StatusCreated,
-		Middlewares: huma.Middlewares{server.limitContractAttempts},
+		Middlewares: huma.Middlewares{server.limitRegistrations},
 	}, server.handleRegister)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "joinCurrentLAN", Method: http.MethodPost, Path: "/lans/current/join",
 		Summary:     "Join the running LAN with an existing account",
-		Middlewares: huma.Middlewares{server.limitContractAttempts},
+		Middlewares: huma.Middlewares{server.limitCodeAttempts},
 	}, server.handleJoin)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "getMe", Method: http.MethodGet, Path: pathMe,
@@ -116,13 +135,19 @@ func (server *apiServer) addPlayerRoutes(contract huma.API) {
 // addActionRoutes registers what a player does during the LAN.
 func (server *apiServer) addActionRoutes(contract huma.API) {
 	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "recordPresence", Method: http.MethodPost, Path: "/presence",
+		Summary: "Keep the jelly awake while the app runs, without XP",
+		Description: "Send this every few minutes. Without it, a jelly falls asleep once " +
+			"`presence_window` passed since the last action.",
+	}, server.handlePresence)
+	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "applyAction", Method: http.MethodPost, Path: "/actions",
 		Summary: "Poke or report food or drink",
 	}, server.handleAction)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "redeemEventCode", Method: http.MethodPost, Path: "/redeem",
+		OperationID: "redeemEventCode", Method: http.MethodPost, Path: "/event-codes/redeem",
 		Summary:     "Redeem an event code",
-		Middlewares: huma.Middlewares{server.limitContractAttempts},
+		Middlewares: huma.Middlewares{server.limitCodeAttempts},
 	}, server.handleRedeem)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "playEmote", Method: http.MethodPost, Path: "/emote",
@@ -165,6 +190,7 @@ func handleCatalog(_ context.Context, _ *noInput) (*jsonOutput[Catalog], error) 
 		}
 	}
 	return answerWith(Catalog{
+		Colors:        rules.ListColors(),
 		Emotes:        rules.ListEmotes(),
 		PartnerEmotes: rules.ListPartnerEmotes(),
 		Signs:         rules.ListSigns(),
@@ -187,7 +213,7 @@ func (server *apiServer) handleRegister(
 // handleJoin adds an existing account to the running LAN.
 func (server *apiServer) handleJoin(
 	ctx context.Context, playerID int64, input *jsonInput[CodeBody],
-) (*jsonOutput[store.State], error) {
+) (*jsonOutput[store.PlayerState], error) {
 	return answerWith(
 		server.Store.JoinCurrentLAN(ctx, playerID, input.Body.Code, server.currentMillis()),
 	)
@@ -196,18 +222,25 @@ func (server *apiServer) handleJoin(
 // handleMe returns the state of the calling player.
 func (server *apiServer) handleMe(
 	ctx context.Context, playerID int64, _ *noInput,
-) (*jsonOutput[store.State], error) {
+) (*jsonOutput[store.PlayerState], error) {
 	return answerWith(server.Store.LoadPlayerState(ctx, playerID, server.currentMillis()))
 }
 
 // handleUpdateProfile changes name, color or cosmetic.
 func (server *apiServer) handleUpdateProfile(
 	ctx context.Context, playerID int64, input *jsonInput[ProfileBody],
-) (*jsonOutput[store.State], error) {
+) (*jsonOutput[store.PlayerState], error) {
 	update := store.ProfileUpdate{
 		Name: input.Body.Name, Color: input.Body.Color, Cosmetic: input.Body.Cosmetic,
 	}
 	return answerWith(server.Store.UpdateProfile(ctx, playerID, update, server.currentMillis()))
+}
+
+// handlePresence keeps the jelly awake.
+func (server *apiServer) handlePresence(
+	ctx context.Context, playerID int64, _ *noInput,
+) (*jsonOutput[store.PlayerState], error) {
+	return answerWith(server.Store.RecordPresence(ctx, playerID, server.currentMillis()))
 }
 
 // handleAction applies a poke or a food or drink report.
@@ -215,10 +248,10 @@ func (server *apiServer) handleAction(
 	ctx context.Context, playerID int64, input *jsonInput[ActionBody],
 ) (*jsonOutput[ActionAnswer], error) {
 	var gainedXP int
-	var state store.State
+	var state store.PlayerState
 	var err error
 	switch input.Body.Action {
-	case actionPoke:
+	case rules.ActionPoke:
 		gainedXP, state, err = server.Store.ApplyPoke(ctx, playerID, server.currentMillis())
 	case rules.ActionFood, rules.ActionDrink:
 		gainedXP, state, err = server.Store.ApplyReport(
@@ -242,7 +275,7 @@ func (server *apiServer) handleRedeem(
 // handleEmote plays an emote from the fixed list.
 func (server *apiServer) handleEmote(
 	ctx context.Context, playerID int64, input *jsonInput[KeyBody],
-) (*jsonOutput[store.State], error) {
+) (*jsonOutput[store.PlayerState], error) {
 	return answerWith(
 		server.Store.ApplyEmote(ctx, playerID, input.Body.Key, server.currentMillis()),
 	)
@@ -251,7 +284,7 @@ func (server *apiServer) handleEmote(
 // handleSetSign shows a sign from the fixed list.
 func (server *apiServer) handleSetSign(
 	ctx context.Context, playerID int64, input *jsonInput[KeyBody],
-) (*jsonOutput[store.State], error) {
+) (*jsonOutput[store.PlayerState], error) {
 	if input.Body.Key == "" {
 		return nil, rules.ErrUnknownSign
 	}
@@ -263,14 +296,14 @@ func (server *apiServer) handleSetSign(
 // handleClearSign lowers the sign.
 func (server *apiServer) handleClearSign(
 	ctx context.Context, playerID int64, _ *noInput,
-) (*jsonOutput[store.State], error) {
+) (*jsonOutput[store.PlayerState], error) {
 	return answerWith(server.Store.UpdateSign(ctx, playerID, "", server.currentMillis()))
 }
 
 // handleSetFollow stands next to another jelly.
 func (server *apiServer) handleSetFollow(
 	ctx context.Context, playerID int64, input *jsonInput[FollowBody],
-) (*jsonOutput[store.State], error) {
+) (*jsonOutput[store.PlayerState], error) {
 	if input.Body.PlayerID <= 0 {
 		return nil, store.ErrInvalidFollow
 	}
@@ -282,6 +315,6 @@ func (server *apiServer) handleSetFollow(
 // handleClearFollow walks away from the other jelly.
 func (server *apiServer) handleClearFollow(
 	ctx context.Context, playerID int64, _ *noInput,
-) (*jsonOutput[store.State], error) {
+) (*jsonOutput[store.PlayerState], error) {
 	return answerWith(server.Store.UpdateFollow(ctx, playerID, 0, server.currentMillis()))
 }

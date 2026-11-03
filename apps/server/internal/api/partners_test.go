@@ -99,7 +99,7 @@ func TestPartnerEventsAndAchievements(t *testing.T) {
 	if !slices.Contains(findAchievementKeys(state), "sociable") {
 		t.Fatalf("code owner must earn it too: %+v", state.Achievements)
 	}
-	events, err := testFixture.database.ListEventsAfter(t.Context(), 0, 0)
+	events, err := testFixture.database.ListEventsAfter(t.Context(), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,11 +134,11 @@ func TestFullHouseReachesEarlierRedeemers(t *testing.T) {
 		tokens = append(tokens, testFixture.registerPlayer("P"+strconv.Itoa(index)))
 	}
 	testFixture.createEventCode("VOLL")
-	testFixture.callAPI("POST", "/v1/redeem", tokens[0], `{"code":"VOLL"}`)
+	testFixture.callAPI("POST", "/v1/event-codes/redeem", tokens[0], `{"code":"VOLL"}`)
 	if slices.Contains(findAchievementKeys(testFixture.loadMe(tokens[0])), "full-house") {
 		t.Fatal("1 of 6 is not 33 percent")
 	}
-	testFixture.callAPI("POST", "/v1/redeem", tokens[1], `{"code":"VOLL"}`)
+	testFixture.callAPI("POST", "/v1/event-codes/redeem", tokens[1], `{"code":"VOLL"}`)
 	for _, token := range tokens[:2] {
 		if !slices.Contains(findAchievementKeys(testFixture.loadMe(token)), "full-house") {
 			t.Fatal("2 of 6 reach 33 percent and count for both redeemers")

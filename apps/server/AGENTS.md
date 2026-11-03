@@ -133,7 +133,7 @@ SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort b
   Englisch, sichtbare Texte auf Deutsch.
 - Reine Logik (`wander.ts`, `projection.ts`, `effects.ts`) kennt weder DOM noch Canvas und hat Tests
   daneben (`*.test.ts`). Alles mit DOM oder Canvas bleibt so dünn wie möglich.
-- Die Seiten spiegeln keine Regeln. Was dauerhaft gilt, kommt per `GET /state`, Ereignisse lösen nur
+- Die Seiten spiegeln keine Regeln. Was dauerhaft gilt, kommt per `GET /v1/stage`, Ereignisse lösen nur
   ein Neuladen oder eine kurze Animation aus.
 - Neue Einstiegsdateien müssen in die `go:generate`-Zeile von `internal/web/web.go`, neue Seiten
   zusätzlich in `listPagePatterns`.

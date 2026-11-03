@@ -34,6 +34,23 @@ type LANSummary struct {
 	Rules    rules.Rules `json:"rules"`
 }
 
+// LANPeriod says when a LAN runs.
+type LANPeriod struct {
+	Slug     string `json:"slug"`
+	Name     string `json:"name"`
+	StartsAt int64  `json:"starts_at"`
+	EndsAt   int64  `json:"ends_at"`
+}
+
+// LANStatus says which LAN runs and comes next, the response of `GET /lans/current`.
+type LANStatus struct {
+	ServerTime int64      `json:"server_time"`
+	Current    *LANPeriod `json:"current"`
+	Next       *LANPeriod `json:"next"`
+	// Joined tells a logged-in player whether they take part in the running LAN.
+	Joined *bool `json:"joined"`
+}
+
 // activeLAN is the running LAN with its rules.
 type activeLAN struct {
 	id           int64
@@ -119,6 +136,75 @@ func (store *Store) UpdateLANRules(
 		}
 		return recordAdminAction(ctx, transaction, AdminActionRules, lanID, now)
 	})
+}
+
+// UpdateJoinCode replaces the code of a LAN, for example after it reached the wrong people.
+func (store *Store) UpdateJoinCode(
+	ctx context.Context, lanID int64, joinCode string, now int64,
+) error {
+	if joinCode == "" {
+		return ErrInvalidInput
+	}
+	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
+		const updateJoinCodeSQL = `UPDATE lans SET join_code_hash = ? WHERE id = ?`
+		result, err := transaction.ExecContext(ctx, updateJoinCodeSQL, hashSecret(joinCode), lanID)
+		if err != nil {
+			return fmt.Errorf("update join code: %w", err)
+		}
+		err = requireAffectedRow(result, ErrLANNotFound)
+		if err != nil {
+			return err
+		}
+		return recordAdminAction(ctx, transaction, AdminActionJoinCode, lanID, now)
+	})
+}
+
+// LoadLANStatus returns the running and the next LAN. With a player ID above 0, it also says
+// whether this player joined the running LAN.
+func (store *Store) LoadLANStatus(ctx context.Context, playerID, now int64) (LANStatus, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	status := LANStatus{ServerTime: now, Current: nil, Next: nil, Joined: nil}
+	const selectCurrentLANSQL = `SELECT id, slug, name, starts_at, ends_at FROM lans
+		WHERE starts_at <= ?1 AND ends_at > ?1`
+	currentID, current, err := loadLANPeriod(queryCtx, store.readDB, selectCurrentLANSQL, now)
+	if err != nil {
+		return LANStatus{}, err
+	}
+	status.Current = current
+	const selectNextLANSQL = `SELECT id, slug, name, starts_at, ends_at FROM lans
+		WHERE starts_at > ?1 ORDER BY starts_at LIMIT 1`
+	_, status.Next, err = loadLANPeriod(queryCtx, store.readDB, selectNextLANSQL, now)
+	if err != nil {
+		return LANStatus{}, err
+	}
+	if current == nil || playerID <= 0 {
+		return status, nil
+	}
+	err = requireLANEntry(queryCtx, store.readDB, currentID, playerID)
+	if err != nil && !errors.Is(err, ErrNotJoined) {
+		return LANStatus{}, err
+	}
+	joined := err == nil
+	status.Joined = &joined
+	return status, nil
+}
+
+// loadLANPeriod runs a query for one LAN and returns nil if there is none.
+func loadLANPeriod(
+	ctx context.Context, database querier, selectPeriodSQL string, now int64,
+) (int64, *LANPeriod, error) {
+	var lanID int64
+	var period LANPeriod
+	err := database.QueryRowContext(ctx, selectPeriodSQL, now).
+		Scan(&lanID, &period.Slug, &period.Name, &period.StartsAt, &period.EndsAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil, nil
+	}
+	if err != nil {
+		return 0, nil, fmt.Errorf("load LAN period: %w", err)
+	}
+	return lanID, &period, nil
 }
 
 // insertLAN writes the LAN if its period is free.

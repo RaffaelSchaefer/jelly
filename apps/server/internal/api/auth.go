@@ -10,7 +10,7 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
-// noViewerPlayer is the viewer ID of a stage, which sees only public events.
+// noViewerPlayer is the viewer ID of a stage, which has no account.
 const noViewerPlayer int64 = 0
 
 // errForbidden reports a wrong admin secret.
@@ -25,7 +25,8 @@ type viewerHandler func(writer http.ResponseWriter, request *http.Request, viewe
 // requirePlayer verifies the bearer token and passes on the account ID.
 func (server *apiServer) requirePlayer(next authedHandler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		playerID, err := server.findPlayer(request.Context(), request.Header.Get("Authorization"))
+		authorization := request.Header.Get(headerAuthorization)
+		playerID, err := server.findPlayer(request.Context(), authorization)
 		if err != nil {
 			server.writeError(writer, request, err)
 			return
@@ -37,7 +38,7 @@ func (server *apiServer) requirePlayer(next authedHandler) http.HandlerFunc {
 // requireViewer accepts the stage key from the link or a player token.
 func (server *apiServer) requireViewer(next viewerHandler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if matchSecret(server.StageKey, request.URL.Query().Get("key")) {
+		if matchSecret(server.StageKey, request.URL.Query().Get(queryStageKey)) {
 			next(writer, request, noViewerPlayer)
 			return
 		}
@@ -58,10 +59,10 @@ func (server *apiServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// limitAttempts protects routes that check guessable codes.
-func (server *apiServer) limitAttempts(next http.HandlerFunc) http.HandlerFunc {
+// limitLogins protects the admin secret from guessing.
+func (server *apiServer) limitLogins(next http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if !server.attempts.Allow() {
+		if !server.logins.Allow() {
 			server.writeProblem(writer, problemRateLimited())
 			return
 		}

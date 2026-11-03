@@ -146,13 +146,13 @@ func (testFixture *fixture) pokePlayer(token string) int {
 	return decodeBody[pokeResponse](testFixture.t, response).XPGained
 }
 
-func (testFixture *fixture) loadMe(token string) store.State {
+func (testFixture *fixture) loadMe(token string) store.PlayerState {
 	testFixture.t.Helper()
 	response := testFixture.callAPI("GET", "/v1/me", token, "")
 	if response.status != http.StatusOK {
 		testFixture.t.Fatalf("load state: %d %s", response.status, response.body)
 	}
-	return decodeBody[store.State](testFixture.t, response)
+	return decodeBody[store.PlayerState](testFixture.t, response)
 }
 
 func decodeBody[Target any](t *testing.T, response apiResponse) Target {

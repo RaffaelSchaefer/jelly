@@ -19,20 +19,29 @@ const (
 	streamPollInterval  = 500 * time.Millisecond
 	streamKeepAliveTick = 30
 	pathStream          = versionPrefix + "/events/stream"
+	querySince          = "since"
+	paramInQuery        = "query"
+	paramInHeader       = "header"
+	headerLastEventID   = "Last-Event-ID"
+	// Enough to bridge a short outage on a busy LAN.
+	maxPlayerReplayEvents = 1000
 )
 
 // addStageRoutes registers what the stage and other viewers read.
 func (server *apiServer) addStageRoutes(contract huma.API) {
 	addOperation(server, contract, huma.Operation{
-		OperationID: "getState", Method: http.MethodGet, Path: "/state",
+		OperationID: "getStage", Method: http.MethodGet, Path: "/stage",
 		Summary:     "Read all visible jellies and areas",
 		Security:    listViewerSecurity(),
 		Middlewares: huma.Middlewares{server.authenticateViewer},
 	}, server.handleState)
 	contract.OpenAPI().AddOperation(&huma.Operation{
 		OperationID: "streamEvents", Method: http.MethodGet, Path: pathStream,
-		Summary:  "Receive events as server-sent events",
-		Security: listViewerSecurity(),
+		Summary: "Receive events as server-sent events",
+		Description: "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. " +
+			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events.",
+		Security:   listViewerSecurity(),
+		Parameters: buildStreamParameters(),
 		Responses: map[string]*huma.Response{
 			"200":           buildStreamResponse(contract),
 			responseDefault: buildErrorResponse(contract),
@@ -45,6 +54,16 @@ func (server *apiServer) addStreamRoute(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+pathStream, server.requireViewer(server.handleStream))
 }
 
+// buildStreamParameters documents where a stream resumes.
+func buildStreamParameters() []*huma.Param {
+	integer := &huma.Schema{Type: huma.TypeInteger, Format: "int64"}
+	return []*huma.Param{
+		{Name: querySince, In: paramInQuery, Schema: integer},
+		{Name: headerLastEventID, In: paramInHeader, Schema: integer},
+		{Name: queryStageKey, In: paramInQuery, Schema: &huma.Schema{Type: huma.TypeString}},
+	}
+}
+
 // listViewerSecurity documents the two ways to read the stage.
 func listViewerSecurity() []map[string][]string {
 	return []map[string][]string{{securityBearer: {}}, {securityStageKey: {}}}
@@ -53,7 +72,7 @@ func listViewerSecurity() []map[string][]string {
 // buildStreamResponse documents one event of the stream.
 func buildStreamResponse(contract huma.API) *huma.Response {
 	schema := contract.OpenAPI().Components.Schemas.Schema(
-		reflect.TypeFor[store.Event](), true, "Event",
+		reflect.TypeFor[store.Event](), true, "",
 	)
 	return &huma.Response{
 		Description: "A stream where the data of each message is one event",
@@ -73,7 +92,7 @@ func (server *apiServer) handleState(
 func (server *apiServer) handleStream(
 	writer http.ResponseWriter, request *http.Request, viewerID int64,
 ) {
-	afterID, err := server.findStreamStart(request)
+	afterID, err := server.findStreamStart(request, viewerID)
 	if err != nil {
 		server.writeError(writer, request, err)
 		return
@@ -97,7 +116,7 @@ func (server *apiServer) handleStream(
 		if server.IsStopping() {
 			return
 		}
-		events, err := server.Store.ListEventsAfter(request.Context(), afterID, viewerID)
+		events, err := server.Store.ListEventsAfter(request.Context(), afterID)
 		if err != nil {
 			return
 		}
@@ -127,17 +146,25 @@ func writeStreamTick(
 }
 
 // findStreamStart uses `Last-Event-ID` from a reconnect, then `?since=`, then the newest event.
-func (server *apiServer) findStreamStart(request *http.Request) (int64, error) {
-	start := request.Header.Get("Last-Event-ID")
+// Players only get recent events, so the log does not tell them who was active when.
+func (server *apiServer) findStreamStart(request *http.Request, viewerID int64) (int64, error) {
+	latestID, err := server.Store.LoadLatestEventID(request.Context())
+	if err != nil {
+		return 0, fmt.Errorf("find stream start: %w", err)
+	}
+	start := request.Header.Get(headerLastEventID)
 	if start == "" {
-		start = request.URL.Query().Get("since")
+		start = request.URL.Query().Get(querySince)
 	}
 	if start == "" {
-		return server.Store.LoadLatestEventID(request.Context())
+		return latestID, nil
 	}
 	afterID, err := strconv.ParseInt(start, 10, 64)
 	if err != nil || afterID < 0 {
 		return 0, store.ErrInvalidInput
+	}
+	if viewerID != noViewerPlayer {
+		return max(afterID, latestID-maxPlayerReplayEvents), nil
 	}
 	return afterID, nil
 }

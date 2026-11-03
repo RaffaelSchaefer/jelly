@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"slices"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
@@ -20,11 +22,14 @@ const (
 	versionPrefix = "/v1"
 	openAPIPath   = versionPrefix + "/openapi"
 
-	securityBearer   = "bearer"
-	securityStageKey = "stage_key"
-	queryStageKey    = "key"
-	contentTypeJSON  = "application/json"
-	responseDefault  = "default"
+	headerAuthorization = "Authorization"
+	securityBearer      = "bearer"
+	securityStageKey    = "stage_key"
+	queryStageKey       = "key"
+	contentTypeJSON     = "application/json"
+	responseDefault     = "default"
+	// Request types end like this. All other schemas describe responses.
+	requestSchemaSuffix = "Body"
 )
 
 // jsonOutput is a response with a JSON body.
@@ -58,7 +63,7 @@ func buildContractAPI(mux *http.ServeMux) huma.API {
 	config.Transformers = []huma.Transformer{translateLibraryError}
 	config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		securityBearer:   {Type: "http", Scheme: "bearer"},
-		securityStageKey: {Type: "apiKey", In: "query", Name: queryStageKey},
+		securityStageKey: {Type: "apiKey", In: paramInQuery, Name: queryStageKey},
 	}
 	return humago.New(mux, config)
 }
@@ -98,7 +103,7 @@ func addOperation[Input, Output any](
 // buildErrorResponse documents the uniform error form.
 func buildErrorResponse(contract huma.API) *huma.Response {
 	schema := contract.OpenAPI().Components.Schemas.Schema(
-		reflect.TypeFor[responseError](), true, "Error",
+		reflect.TypeFor[ErrorResponse](), true, "",
 	)
 	return &huma.Response{
 		Description: "Error with a stable code",
@@ -114,7 +119,9 @@ func addPlayerOperation[Input, Output any](
 	handler func(context.Context, int64, *Input) (*Output, error),
 ) {
 	operation.Security = []map[string][]string{{securityBearer: {}}}
-	operation.Middlewares = append(operation.Middlewares, server.authenticatePlayer)
+	// The token comes first, so that limits count per player and strangers cannot use them up.
+	operation.Middlewares = append(huma.Middlewares{server.authenticatePlayer},
+		operation.Middlewares...)
 	addOperation(server, contract, operation,
 		func(ctx context.Context, input *Input) (*Output, error) {
 			return handler(ctx, readPlayerID(ctx), input)
@@ -132,13 +139,26 @@ func readPlayerID(ctx context.Context) int64 {
 
 // authenticatePlayer verifies the bearer token before the handler runs.
 func (server *apiServer) authenticatePlayer(ctx huma.Context, next func(huma.Context)) {
-	playerID, err := server.findPlayer(ctx.Context(), ctx.Header("Authorization"))
+	playerID, err := server.findPlayer(ctx.Context(), ctx.Header(headerAuthorization))
 	if err != nil {
 		answer := server.translateError(ctx.Context(), ctx.Operation().OperationID, err)
 		server.writeContractProblem(ctx, answer)
 		return
 	}
+	if !server.playerRequests.allowAttempt(playerID) {
+		server.writeContractProblem(ctx, problemRateLimited())
+		return
+	}
 	next(huma.WithValue(ctx, contextPlayerID, playerID))
+}
+
+// identifyPlayer verifies a token if there is one, for routes that also work without an account.
+func (server *apiServer) identifyPlayer(ctx huma.Context, next func(huma.Context)) {
+	if ctx.Header(headerAuthorization) == "" {
+		next(ctx)
+		return
+	}
+	server.authenticatePlayer(ctx, next)
 }
 
 // authenticateViewer accepts the stage key from the link or a player token.
@@ -150,9 +170,18 @@ func (server *apiServer) authenticateViewer(ctx huma.Context, next func(huma.Con
 	server.authenticatePlayer(ctx, next)
 }
 
-// limitContractAttempts protects routes that check guessable codes.
-func (server *apiServer) limitContractAttempts(ctx huma.Context, next func(huma.Context)) {
-	if !server.attempts.Allow() {
+// limitRegistrations protects registration, where no player is known yet.
+func (server *apiServer) limitRegistrations(ctx huma.Context, next func(huma.Context)) {
+	if !server.registrations.Allow() {
+		server.writeContractProblem(ctx, problemRateLimited())
+		return
+	}
+	next(ctx)
+}
+
+// limitCodeAttempts stops one player from guessing codes. It runs after the player is known.
+func (server *apiServer) limitCodeAttempts(ctx huma.Context, next func(huma.Context)) {
+	if !server.codeAttempts.allowAttempt(readPlayerID(ctx.Context())) {
 		server.writeContractProblem(ctx, problemRateLimited())
 		return
 	}
@@ -169,11 +198,42 @@ func (server *apiServer) writeContractProblem(ctx huma.Context, answer problem) 
 	}
 }
 
+// finishContract corrects what the library derives from Go types. It runs after all routes exist.
+func finishContract(contract huma.API) {
+	for name, schema := range contract.OpenAPI().Components.Schemas.Map() {
+		if strings.HasSuffix(name, requestSchemaSuffix) {
+			continue
+		}
+		// Responses may gain fields in any version, so generated clients must accept unknown ones.
+		schema.AdditionalProperties = true
+		for field, property := range schema.Properties {
+			if property.Type == huma.TypeArray {
+				// Lists are empty rather than null.
+				property.Nullable = false
+			}
+			if property.Ref != "" && slices.Contains(listNullableFields(), name+"."+field) {
+				schema.Properties[field] = &huma.Schema{
+					Type: huma.TypeObject, Nullable: true,
+					AllOf: []*huma.Schema{{Ref: property.Ref}},
+				}
+			}
+		}
+	}
+}
+
+// listNullableFields names the object fields that can be null. Go tags cannot express this.
+func listNullableFields() []string {
+	return []string{
+		"PlayerState.lan", "PlayerState.reports", "LANStatus.current", "LANStatus.next",
+	}
+}
+
 // BuildOpenAPI returns the contract in OpenAPI 3.0, which most client generators read.
 func BuildOpenAPI() ([]byte, error) {
 	server := newAPIServer(Dependencies{})
 	contract := buildContractAPI(http.NewServeMux())
 	server.addContractRoutes(contract)
+	finishContract(contract)
 	document, err := contract.OpenAPI().Downgrade()
 	if err != nil {
 		return nil, fmt.Errorf("build OpenAPI document: %w", err)

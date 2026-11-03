@@ -40,8 +40,12 @@ type PlayerAward struct {
 	GivenAt     int64   `json:"given_at"`
 }
 
-// State is the state of one player, the response of `GET /me`.
-type State struct {
+// PlayerState is the state of one player, the response of `GET /me`.
+type PlayerState struct {
+	// ServerTime lets a client with a wrong clock show correct countdowns.
+	ServerTime int64 `json:"server_time"`
+	// LastEventID is where a client opens the stream to miss nothing after this state.
+	LastEventID    int64               `json:"last_event_id"`
 	ID             int64               `json:"id"`
 	Name           string              `json:"name"`
 	Color          string              `json:"color"`
@@ -76,45 +80,52 @@ type entryRow struct {
 }
 
 // LoadPlayerState returns the state of a player.
-func (store *Store) LoadPlayerState(ctx context.Context, playerID, now int64) (State, error) {
+func (store *Store) LoadPlayerState(ctx context.Context, playerID, now int64) (PlayerState, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
 	return loadState(queryCtx, store.readDB, playerID, now)
 }
 
 // loadState builds the state from the account, its latest entry and its history.
-func loadState(ctx context.Context, database querier, playerID, now int64) (State, error) {
+func loadState(ctx context.Context, database querier, playerID, now int64) (PlayerState, error) {
+	// Read first, so a later change is replayed rather than lost.
+	latestID, err := loadLatestEventID(ctx, database)
+	if err != nil {
+		return PlayerState{}, err
+	}
 	state, err := loadAccount(ctx, database, playerID)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
+	state.ServerTime = now
+	state.LastEventID = latestID
 	state.Level = rules.CalculateLevel(0)
 	err = loadProgress(ctx, database, &state, now)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	state.Cosmetics, err = loadUnlockedCosmetics(ctx, database, playerID)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	state.Badges, err = loadBadges(ctx, database, playerID)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	state.Achievements, err = loadAchievementHistory(ctx, database, playerID)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	state.Awards, err = loadPlayerAwards(ctx, database, playerID)
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	return state, nil
 }
 
 // loadAccount reads the account row with its lifetime totals.
-func loadAccount(ctx context.Context, database querier, playerID int64) (State, error) {
-	state := State{ID: playerID}
+func loadAccount(ctx context.Context, database querier, playerID int64) (PlayerState, error) {
+	state := PlayerState{ID: playerID}
 	var cosmetic sql.NullString
 	var hiddenAt sql.NullInt64
 	const selectAccountSQL = `SELECT name, color, cosmetic_key, hidden_at,
@@ -124,10 +135,10 @@ func loadAccount(ctx context.Context, database querier, playerID int64) (State, 
 	err := database.QueryRowContext(ctx, selectAccountSQL, playerID).
 		Scan(&state.Name, &state.Color, &cosmetic, &hiddenAt, &state.LANsAttended, &state.TotalXP)
 	if errors.Is(err, sql.ErrNoRows) {
-		return State{}, ErrUnauthorized
+		return PlayerState{}, ErrUnauthorized
 	}
 	if err != nil {
-		return State{}, fmt.Errorf("load player: %w", err)
+		return PlayerState{}, fmt.Errorf("load player: %w", err)
 	}
 	if cosmetic.Valid {
 		state.Cosmetic = &cosmetic.String
@@ -137,7 +148,7 @@ func loadAccount(ctx context.Context, database querier, playerID int64) (State, 
 }
 
 // loadProgress adds the latest entry. After a LAN its last state stays visible.
-func loadProgress(ctx context.Context, database querier, state *State, now int64) error {
+func loadProgress(ctx context.Context, database querier, state *PlayerState, now int64) error {
 	var row entryRow
 	const selectLatestEntrySQL = `SELECT l.id, l.slug, l.name, l.starts_at, l.ends_at,
 			l.rules, e.joined_at, e.xp, e.sign_key, e.follow_player_id
@@ -170,7 +181,7 @@ func loadProgress(ctx context.Context, database querier, state *State, now int64
 
 // loadActiveTimers adds when the next poke and reports earn XP in a running LAN.
 func loadActiveTimers(
-	ctx context.Context, database querier, state *State, row entryRow, now int64,
+	ctx context.Context, database querier, state *PlayerState, row entryRow, now int64,
 ) error {
 	gameRules, err := parseRules(row.rulesJSON)
 	if err != nil {

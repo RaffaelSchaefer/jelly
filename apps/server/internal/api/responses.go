@@ -13,15 +13,13 @@ import (
 
 const maxBodyBytes = 4 << 10
 
-// errRateLimited reports too many attempts.
-var errRateLimited = errors.New("rate limited")
-
 // Field names shared by several responses.
 const (
 	fieldCreated = "created"
 	fieldDeleted = "deleted"
 	fieldHidden  = "hidden"
 	fieldToken   = "token"
+	fieldUpdated = "updated"
 )
 
 // problem is an error response with a stable code. `message` is shown in the German app.
@@ -31,33 +29,41 @@ type problem struct {
 	message string
 }
 
-// problemDetails is the content of the uniform error response.
-type problemDetails struct {
+// ErrorDetails is the content of the uniform error response.
+type ErrorDetails struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 
-// responseError is the uniform error response. As an error, it tells the API library its status.
-type responseError struct {
-	status  int
-	Details problemDetails `json:"error"`
+// ErrorResponse is the uniform error response.
+type ErrorResponse struct {
+	Error ErrorDetails `json:"error"`
+}
+
+// problemError is an error response that tells the API library its status.
+type problemError struct {
+	ErrorResponse
+
+	status int
 }
 
 // GetStatus returns the HTTP status.
-func (response *responseError) GetStatus() int {
+func (response *problemError) GetStatus() int {
 	return response.status
 }
 
 // Error returns the stable code.
-func (response *responseError) Error() string {
-	return response.Details.Code
+func (response *problemError) Error() string {
+	return response.ErrorResponse.Error.Code
 }
 
 // toResponse turns a problem into its response.
-func (answer problem) toResponse() *responseError {
-	return &responseError{
-		status:  answer.status,
-		Details: problemDetails{Code: answer.code, Message: answer.message},
+func (answer problem) toResponse() *problemError {
+	return &problemError{
+		ErrorResponse: ErrorResponse{
+			Error: ErrorDetails{Code: answer.code, Message: answer.message},
+		},
+		status: answer.status,
 	}
 }
 
@@ -90,6 +96,9 @@ func listPlayerErrors() []knownError {
 		}},
 		{store.ErrLANNotFound, problem{
 			http.StatusNotFound, "lan_not_found", "Diese LAN gibt es nicht.",
+		}},
+		{store.ErrLANFull, problem{
+			http.StatusConflict, "lan_full", "Diese LAN ist schon voll.",
 		}},
 		{store.ErrLANOverlap, problem{
 			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
@@ -174,7 +183,6 @@ func listGameErrors() []knownError {
 			http.StatusBadRequest, "unknown_sign", "Dieses Schild gibt es nicht.",
 		}},
 		{errUnknownAction, problemUnknownAction()},
-		{errRateLimited, problemRateLimited()},
 	}
 }
 
@@ -186,6 +194,11 @@ func problemUnknownAction() problem {
 // problemInvalidBody is the response to an invalid request.
 func problemInvalidBody() problem {
 	return problem{http.StatusBadRequest, "invalid_body", "Die Anfrage ist ungültig."}
+}
+
+// problemNotFound is the response to a path outside the contract.
+func problemNotFound() problem {
+	return problem{http.StatusNotFound, "not_found", "Diesen Weg gibt es nicht."}
 }
 
 // problemRateLimited is the response when too many attempts arrive at once.

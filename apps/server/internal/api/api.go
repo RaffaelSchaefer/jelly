@@ -13,8 +13,14 @@ import (
 )
 
 const (
-	attemptsPerSecond = 10
-	attemptBurst      = 100
+	registrationsPerSecond  = 10
+	registrationBurst       = 100
+	loginsPerSecond         = 1
+	loginBurst              = 10
+	codeAttemptsPerMinute   = 10
+	codeAttemptBurst        = 5
+	playerRequestsPerMinute = 300
+	playerRequestBurst      = 60
 )
 
 // Dependencies are everything the handlers need. `Now` is their only source of time.
@@ -34,18 +40,24 @@ type Dependencies struct {
 type apiServer struct {
 	Dependencies
 
-	// attempts limits guesses of join codes, event codes and the admin secret.
-	attempts *rate.Limiter
-	// partnerAttempts limits guesses of the short partner codes per player.
-	partnerAttempts *playerLimiters
+	// registrations limits new accounts. Nobody is known yet, so one limit is shared by all.
+	registrations *rate.Limiter
+	// logins limits guesses of the admin secret and cannot be used up through other routes.
+	logins *rate.Limiter
+	// codeAttempts limits guesses of join, event and partner codes per player.
+	codeAttempts *playerLimiters
+	// playerRequests keeps one script from slowing the database down for everyone.
+	playerRequests *playerLimiters
 }
 
 // newAPIServer creates the state that all routes share.
 func newAPIServer(dependencies Dependencies) *apiServer {
 	return &apiServer{
-		Dependencies:    dependencies,
-		attempts:        rate.NewLimiter(attemptsPerSecond, attemptBurst),
-		partnerAttempts: newPlayerLimiters(),
+		Dependencies:   dependencies,
+		registrations:  rate.NewLimiter(registrationsPerSecond, registrationBurst),
+		logins:         rate.NewLimiter(loginsPerSecond, loginBurst),
+		codeAttempts:   newPlayerLimiters(codeAttemptsPerMinute, codeAttemptBurst),
+		playerRequests: newPlayerLimiters(playerRequestsPerMinute, playerRequestBurst),
 	}
 }
 
@@ -53,19 +65,26 @@ func newAPIServer(dependencies Dependencies) *apiServer {
 func NewHandler(dependencies Dependencies) http.Handler {
 	server := newAPIServer(dependencies)
 	mux := http.NewServeMux()
-	server.addContractRoutes(buildContractAPI(mux))
+	contract := buildContractAPI(mux)
+	server.addContractRoutes(contract)
+	finishContract(contract)
 	server.addStreamRoute(mux)
+	mux.HandleFunc(versionPrefix+"/", func(writer http.ResponseWriter, _ *http.Request) {
+		server.writeProblem(writer, problemNotFound())
+	})
 	server.addHealthRoute(mux)
 	server.addSessionRoutes(mux)
 	server.addAdminRoutes(mux)
 	if dependencies.Web != nil {
-		mux.Handle("GET /", dependencies.Web)
+		// Without a method, so that it does not collide with the catch-all of the version above.
+		mux.Handle("/", dependencies.Web)
 	}
 	return mux
 }
 
 // addContractRoutes registers everything the OpenAPI document describes.
 func (server *apiServer) addContractRoutes(contract huma.API) {
+	server.addLANRoutes(contract)
 	server.addPlayerRoutes(contract)
 	server.addActionRoutes(contract)
 	server.addPartnerRoutes(contract)

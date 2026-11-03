@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -41,6 +42,50 @@ func TestOpenAPIFileIsValid(t *testing.T) {
 	}
 }
 
+func TestServerServesTheStoredFile(t *testing.T) {
+	stored, err := os.ReadFile(openAPIFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := newFixture(t).callAPI("GET", "/v1/openapi-3.0.json", "", "")
+	var served, want any
+	if err = json.Unmarshal(response.body, &served); err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(stored, &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(served, want) {
+		t.Fatal("the server serves a different contract than docs/openapi.json")
+	}
+}
+
+func TestContractAllowsResponsesToGrowAndNullsWhereTheyHappen(t *testing.T) {
+	generated, err := api.BuildOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := openapi3.NewLoader().LoadFromData(generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemas := document.Components.Schemas
+	state := schemas["PlayerState"].Value
+	if state.AdditionalProperties.Has != nil && !*state.AdditionalProperties.Has {
+		t.Error("responses must accept new fields")
+	}
+	if !state.Properties["reports"].Value.Nullable || !state.Properties["lan"].Value.Nullable {
+		t.Error("`reports` and `lan` are null outside a LAN")
+	}
+	if state.Properties["badges"].Value.Nullable {
+		t.Error("lists are empty rather than null")
+	}
+	body := schemas["RegisterBody"].Value
+	if body.AdditionalProperties.Has == nil || *body.AdditionalProperties.Has {
+		t.Error("requests must reject unknown fields")
+	}
+}
+
 func TestServerServesItsContract(t *testing.T) {
 	response := newFixture(t).callAPI("GET", "/v1/openapi.json", "", "")
 	if response.status != http.StatusOK {
@@ -59,7 +104,7 @@ func TestServerServesItsContract(t *testing.T) {
 	if document.Info.Version != api.APIVersion {
 		t.Errorf("version = %q", document.Info.Version)
 	}
-	for _, path := range []string{"/v1/register", "/v1/state", "/v1/events/stream"} {
+	for _, path := range []string{"/v1/register", "/v1/stage", "/v1/events/stream"} {
 		if _, found := document.Paths[path]; !found {
 			t.Errorf("contract misses %s", path)
 		}
@@ -101,9 +146,12 @@ func TestOtherContentTypesAreRejected(t *testing.T) {
 		http.StatusUnsupportedMediaType, "invalid_body")
 }
 
-func TestOldPathsAreGone(t *testing.T) {
-	response := newFixture(t).callAPI("POST", "/register", "", `{}`)
-	if response.status != http.StatusNotFound && response.status != http.StatusMethodNotAllowed {
-		t.Fatalf("status %d", response.status)
+func TestUnknownPathsAnswerInTheCommonForm(t *testing.T) {
+	testFixture := newFixture(t)
+	for _, call := range [][2]string{
+		{"GET", "/v1/nope"}, {"POST", "/v1/nope"}, {"GET", "/v1/actions"}, {"PUT", "/v1/me"},
+	} {
+		response := testFixture.callAPI(call[0], call[1], "", "")
+		requireProblem(t, response, http.StatusNotFound, "not_found")
 	}
 }
