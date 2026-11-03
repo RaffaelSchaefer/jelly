@@ -13,6 +13,7 @@ pnpm test      # go test ./... und die Tests der Seiten
 pnpm check-types  # tsc für web/
 pnpm bench     # Benchmarks der Datenbankzugriffe
 pnpm bench:load  # Lasttest mit dem Simulator, siehe benchmarks/README.md
+pnpm openapi   # docs/openapi.json aus dem Code erzeugen, nach jeder Änderung an /v1
 pnpm build     # Seiten bauen (go generate ./internal/web), dann go build
 pnpm demo      # Wegwerf-Server mit 70 simulierten Jellies, um die Bühne anzusehen
 go test -race -count=1 ./...   # vor jedem Abschluss, sobald Nebenläufigkeit beteiligt ist
@@ -106,6 +107,12 @@ Kommentare helfen beim Orientieren oder machen schwer Lesbares klar.
 - Länger nur, wenn der Code mehr Kontext braucht, etwa bei einem schwierigen Randfall. Dann nennt der
   Kommentar das Problem, ein Beispiel und die Lösung.
 
+## Wiederverwenden
+
+Modul-Code nutzt vorhandene Logik oder abstrahiert sie gut, statt sie zu kopieren. Handler bleiben
+dünn und rufen dieselben Funktionen aus `internal/store` und `internal/rules`, egal ob ein Spieler,
+ein Bot oder ein Admin die Aktion auslöst.
+
 ## Keine magischen Werte
 
 Zahlen und Texte mit Bedeutung bekommen einen Namen: `registerRetryLimit` statt `5 * time.Second`,
@@ -126,7 +133,7 @@ SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort b
   Englisch, sichtbare Texte auf Deutsch.
 - Reine Logik (`wander.ts`, `projection.ts`, `effects.ts`) kennt weder DOM noch Canvas und hat Tests
   daneben (`*.test.ts`). Alles mit DOM oder Canvas bleibt so dünn wie möglich.
-- Die Seiten spiegeln keine Regeln. Was dauerhaft gilt, kommt per `GET /state`, Ereignisse lösen nur
+- Die Seiten spiegeln keine Regeln. Was dauerhaft gilt, kommt per `GET /v1/stage`, Ereignisse lösen nur
   ein Neuladen oder eine kurze Animation aus.
 - Neue Einstiegsdateien müssen in die `go:generate`-Zeile von `internal/web/web.go`, neue Seiten
   zusätzlich in `listPagePatterns`.
@@ -138,13 +145,25 @@ Skripte, die man wiederholen will, liegen im Repo statt nur im Terminal, Hilfen 
 Lasttests in `benchmarks/`, die Baselines in [benchmarks/README.md](benchmarks/README.md). Nach einer Änderung,
 die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit dort eintragen.
 
+## Feature-Branches und API-Versionen
+
+- Jedes Feature entsteht in einem eigenen Branch `feature/<name>` und geht per Pull Request nach `main`.
+- `docs/openapi.json` wird mit `pnpm openapi` aus dem fertigen Code erzeugt und mitgemergt. Sie wird nie
+  von Hand geändert, ein Test vergleicht sie mit dem Code.
+- `internal/api` beschreibt die Wege für App und Bühne mit huma unter `/v1`. Handler geben einfache
+  Fehler zurück, `addOperation` übersetzt sie über `listKnownErrors`. `/health` und `/admin/api` nutzen
+  weiter `net/http` und stehen nicht im Vertrag. `GET /version` steht im Vertrag, aber außerhalb von
+  `/v1` (`addRootOperation`), damit auch alte Apps ihn nach einem Wechsel des Pfads noch finden.
+- Jedes Feature erhöht `APIVersion` und bekommt eine Zeile im Changelog von `docs/api.md`. Erweiterungen
+  bleiben in `/v1`. Was den Vertrag bricht, bekommt einen neuen Pfad und eine Begründung in `docs/api.md`.
+
 ## Weitere Regeln
 
 - Schemaänderungen sind neue, nummerierte [goose](https://github.com/pressly/goose)-Dateien in
   `internal/store/migrations/` mit `-- +goose Up` und `-- +goose Down`. Bestehende bleiben unverändert.
   Der Server führt sie beim Start aus, ein Test prüft auch das Zurückrollen.
 - Neue Spielwerte gehören in `rules.Rules`, damit sie sich je LAN ändern lassen.
-- Jede Änderung an der Schnittstelle kommt auch in `docs/api.md`.
+- Jede Änderung an der Schnittstelle kommt auch in `docs/api.md`, in der Übersicht und im Changelog.
 
 ## Was prüft der Linter?
 

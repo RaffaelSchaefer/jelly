@@ -20,6 +20,7 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"GET /admin/api/lans":                            server.handleListLANs,
 		"POST /admin/api/lans":                           server.handleCreateLAN,
 		"PUT /admin/api/lans/{id}/rules":                 server.handleUpdateRules,
+		"PUT /admin/api/lans/{id}/join-code":             server.handleUpdateJoinCode,
 		"GET /admin/api/lans/{id}/event-codes":           server.handleListEventCodes,
 		"POST /admin/api/event-codes":                    server.handleCreateEventCode,
 		"GET /admin/api/actions":                         server.handleListAdminActions,
@@ -258,4 +259,24 @@ func (server *apiServer) handleGiveAward(writer http.ResponseWriter, request *ht
 	}
 	err := server.Store.GiveAward(request.Context(), body, server.currentMillis())
 	server.writeOutcome(writer, request, map[string]bool{"given": true}, err)
+}
+
+// handleUpdateJoinCode replaces the join code of a LAN.
+func (server *apiServer) handleUpdateJoinCode(
+	writer http.ResponseWriter, request *http.Request,
+) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var body struct {
+		JoinCode string `json:"join_code"`
+	}
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	err := server.Store.UpdateJoinCode(
+		request.Context(), lanID, body.JoinCode, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
 }

@@ -15,6 +15,7 @@ const (
 	AdminActionDelete      = "player.delete"
 	AdminActionAward       = "award.give"
 	AdminActionRules       = "lan.rules"
+	AdminActionJoinCode    = "lan.join_code"
 	AdminActionEventCode   = "event_code.create"
 
 	maxAdminActionRows = 200

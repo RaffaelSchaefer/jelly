@@ -12,10 +12,10 @@ import (
 // ApplyEmote plays an emote from the fixed list on the stage.
 func (store *Store) ApplyEmote(
 	ctx context.Context, playerID int64, emoteKey string, now int64,
-) (State, error) {
+) (PlayerState, error) {
 	err := rules.ValidateEmote(emoteKey)
 	if err != nil {
-		return State{}, fmt.Errorf("validate emote: %w", err)
+		return PlayerState{}, fmt.Errorf("validate emote: %w", err)
 	}
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
 		lastEmoteAt, err := loadLastEmoteTime(ctx, action.transaction, playerID)
@@ -32,12 +32,12 @@ func (store *Store) ApplyEmote(
 // UpdateSign shows a sign from the fixed list or, with an empty key, lowers it.
 func (store *Store) UpdateSign(
 	ctx context.Context, playerID int64, signKey string, now int64,
-) (State, error) {
+) (PlayerState, error) {
 	var stored any
 	if signKey != "" {
 		err := rules.ValidateSign(signKey)
 		if err != nil {
-			return State{}, fmt.Errorf("validate sign: %w", err)
+			return PlayerState{}, fmt.Errorf("validate sign: %w", err)
 		}
 		stored = signKey
 	}
@@ -56,11 +56,22 @@ func (store *Store) UpdateSign(
 // UpdateFollow stands next to another jelly or, with a target of 0, walks away.
 func (store *Store) UpdateFollow(
 	ctx context.Context, playerID, targetID, now int64,
-) (State, error) {
+) (PlayerState, error) {
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
+		var current sql.NullInt64
+		const selectFollowSQL = `SELECT follow_player_id FROM lan_entries
+			WHERE lan_id = ? AND player_id = ?`
+		err := action.transaction.QueryRowContext(ctx, selectFollowSQL,
+			action.lan.id, playerID).Scan(&current)
+		if err != nil {
+			return fmt.Errorf("load follow: %w", err)
+		}
+		if current.Int64 == targetID {
+			return nil
+		}
 		var stored any
 		if targetID != 0 {
-			err := requireFollowTarget(ctx, action, targetID)
+			err = requireFollowTarget(ctx, action, targetID)
 			if err != nil {
 				return err
 			}
@@ -68,7 +79,7 @@ func (store *Store) UpdateFollow(
 		}
 		const updateFollowSQL = `UPDATE lan_entries SET follow_player_id = ?
 			WHERE lan_id = ? AND player_id = ?`
-		_, err := action.transaction.ExecContext(ctx, updateFollowSQL,
+		_, err = action.transaction.ExecContext(ctx, updateFollowSQL,
 			stored, action.lan.id, playerID)
 		if err != nil {
 			return fmt.Errorf("update follow: %w", err)

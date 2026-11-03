@@ -4,6 +4,7 @@ import "errors"
 
 // Report actions a player can send for XP.
 const (
+	ActionPoke  = "poke"
 	ActionFood  = "food"
 	ActionDrink = "drink"
 )

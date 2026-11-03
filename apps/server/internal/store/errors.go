@@ -42,6 +42,8 @@ var (
 	ErrPartnerSelf = errors.New("cannot be your own partner")
 	// ErrPartnerCodesBusy reports that no free partner code was found.
 	ErrPartnerCodesBusy = errors.New("no free partner code")
+	// ErrLANFull reports that a LAN reached its player limit.
+	ErrLANFull = errors.New("LAN is full")
 	// ErrInvalidInput reports admin input that is empty or inconsistent.
 	ErrInvalidInput = errors.New("invalid input")
 )

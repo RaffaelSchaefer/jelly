@@ -282,3 +282,31 @@ func findKeys(achievements []rules.Achievement) []string {
 	}
 	return keys
 }
+
+func TestRulesNeedRoomForStreams(t *testing.T) {
+	broken := rules.DefaultRules()
+	broken.MaxStreams = 0
+	if !errors.Is(rules.ValidateRules(broken), rules.ErrInvalidRules) {
+		t.Error("a LAN without any stream must be rejected")
+	}
+	broken = rules.DefaultRules()
+	broken.MaxPlayerStreams = 0
+	if !errors.Is(rules.ValidateRules(broken), rules.ErrInvalidRules) {
+		t.Error("a LAN without streams per player must be rejected")
+	}
+}
+
+func TestValidateClientVersion(t *testing.T) {
+	for _, version := range []string{"", "1.2.3", "0.0.1", "12.0.40"} {
+		if err := rules.ValidateClientVersion(version); err != nil {
+			t.Errorf("%q: %v", version, err)
+		}
+	}
+	for _, version := range []string{
+		"1", "1.2", "1.2.3.4", "v1.2.3", "1.2.x", "1..3", "1.2.3-beta",
+	} {
+		if !errors.Is(rules.ValidateClientVersion(version), rules.ErrInvalidClientVersion) {
+			t.Errorf("%q must be rejected", version)
+		}
+	}
+}

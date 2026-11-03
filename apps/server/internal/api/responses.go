@@ -18,8 +18,8 @@ const (
 	fieldCreated = "created"
 	fieldDeleted = "deleted"
 	fieldHidden  = "hidden"
-	fieldMe      = "me"
 	fieldToken   = "token"
+	fieldUpdated = "updated"
 )
 
 // problem is an error response with a stable code. `message` is shown in the German app.
@@ -27,6 +27,44 @@ type problem struct {
 	status  int
 	code    string
 	message string
+}
+
+// ErrorDetails is the content of the uniform error response.
+type ErrorDetails struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// ErrorResponse is the uniform error response.
+type ErrorResponse struct {
+	Error ErrorDetails `json:"error"`
+}
+
+// problemError is an error response that tells the API library its status.
+type problemError struct {
+	ErrorResponse
+
+	status int
+}
+
+// GetStatus returns the HTTP status.
+func (response *problemError) GetStatus() int {
+	return response.status
+}
+
+// Error returns the stable code.
+func (response *problemError) Error() string {
+	return response.ErrorResponse.Error.Code
+}
+
+// toResponse turns a problem into its response.
+func (answer problem) toResponse() *problemError {
+	return &problemError{
+		ErrorResponse: ErrorResponse{
+			Error: ErrorDetails{Code: answer.code, Message: answer.message},
+		},
+		status: answer.status,
+	}
 }
 
 // knownError maps an error to its error response.
@@ -58,6 +96,9 @@ func listPlayerErrors() []knownError {
 		}},
 		{store.ErrLANNotFound, problem{
 			http.StatusNotFound, "lan_not_found", "Diese LAN gibt es nicht.",
+		}},
+		{store.ErrLANFull, problem{
+			http.StatusConflict, "lan_full", "Diese LAN ist schon voll.",
 		}},
 		{store.ErrLANOverlap, problem{
 			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
@@ -141,6 +182,7 @@ func listGameErrors() []knownError {
 		{rules.ErrUnknownSign, problem{
 			http.StatusBadRequest, "unknown_sign", "Dieses Schild gibt es nicht.",
 		}},
+		{errUnknownAction, problemUnknownAction()},
 	}
 }
 
@@ -152,6 +194,11 @@ func problemUnknownAction() problem {
 // problemInvalidBody is the response to an invalid request.
 func problemInvalidBody() problem {
 	return problem{http.StatusBadRequest, "invalid_body", "Die Anfrage ist ungültig."}
+}
+
+// problemNotFound is the response to a path outside the contract.
+func problemNotFound() problem {
+	return problem{http.StatusNotFound, "not_found", "Diesen Weg gibt es nicht."}
 }
 
 // problemRateLimited is the response when too many attempts arrive at once.
@@ -177,36 +224,38 @@ func (server *apiServer) readJSON(
 	return true
 }
 
-// writeError translates an error. Unknown errors go to the log, not to the client.
+// writeError answers with the translation of an error.
 func (server *apiServer) writeError(
 	writer http.ResponseWriter, request *http.Request, err error,
 ) {
+	server.writeProblem(writer, server.translateError(request.Context(), request.Pattern, err))
+}
+
+// translateError finds the answer to an error. Unknown errors go to the log, not to the client.
+func (server *apiServer) translateError(ctx context.Context, route string, err error) problem {
 	for _, known := range listKnownErrors() {
 		if errors.Is(err, known.target) {
-			server.writeProblem(writer, known.answer)
-			return
+			return known.answer
 		}
 	}
 	logFailure := server.Logger.ErrorContext
-	if isClientGone(request, err) {
+	if isClientGone(ctx, err) {
 		logFailure = server.Logger.DebugContext
 	}
-	logFailure(request.Context(), "request failed", "route", request.Pattern, "error", err)
-	server.writeProblem(writer, problem{
+	logFailure(ctx, "request failed", "route", route, "error", err)
+	return problem{
 		http.StatusInternalServerError, "internal", "Auf dem Server ist ein Fehler aufgetreten.",
-	})
+	}
 }
 
 // isClientGone reports a request cancelled by its own client, which is no fault of the server.
-func isClientGone(request *http.Request, err error) bool {
-	return errors.Is(err, context.Canceled) && errors.Is(request.Context().Err(), context.Canceled)
+func isClientGone(ctx context.Context, err error) bool {
+	return errors.Is(err, context.Canceled) && errors.Is(ctx.Err(), context.Canceled)
 }
 
 // writeProblem writes the uniform error response.
 func (server *apiServer) writeProblem(writer http.ResponseWriter, answer problem) {
-	server.writeJSON(writer, answer.status, map[string]any{
-		"error": map[string]string{"code": answer.code, "message": answer.message},
-	})
+	server.writeJSON(writer, answer.status, answer.toResponse())
 }
 
 // writeJSON writes a JSON response.

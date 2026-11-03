@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/subtle"
 	"errors"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
-// noViewerPlayer is the viewer ID of a stage, which sees only public events.
+// noViewerPlayer is the viewer ID of a stage, which has no account.
 const noViewerPlayer int64 = 0
 
 // errForbidden reports a wrong admin secret.
@@ -24,12 +25,8 @@ type viewerHandler func(writer http.ResponseWriter, request *http.Request, viewe
 // requirePlayer verifies the bearer token and passes on the account ID.
 func (server *apiServer) requirePlayer(next authedHandler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		token := readBearerToken(request)
-		if token == "" {
-			server.writeError(writer, request, store.ErrUnauthorized)
-			return
-		}
-		playerID, err := server.Store.FindPlayerByToken(request.Context(), token)
+		authorization := request.Header.Get(headerAuthorization)
+		playerID, err := server.findPlayer(request.Context(), authorization)
 		if err != nil {
 			server.writeError(writer, request, err)
 			return
@@ -41,7 +38,7 @@ func (server *apiServer) requirePlayer(next authedHandler) http.HandlerFunc {
 // requireViewer accepts the stage key from the link or a player token.
 func (server *apiServer) requireViewer(next viewerHandler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if matchSecret(server.StageKey, request.URL.Query().Get("key")) {
+		if matchSecret(server.StageKey, request.URL.Query().Get(queryStageKey)) {
 			next(writer, request, noViewerPlayer)
 			return
 		}
@@ -62,10 +59,10 @@ func (server *apiServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// limitAttempts protects routes that check guessable codes.
-func (server *apiServer) limitAttempts(next http.HandlerFunc) http.HandlerFunc {
+// limitLogins protects the admin secret from guessing.
+func (server *apiServer) limitLogins(next http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if !server.attempts.Allow() {
+		if !server.logins.Allow() {
 			server.writeProblem(writer, problemRateLimited())
 			return
 		}
@@ -73,13 +70,13 @@ func (server *apiServer) limitAttempts(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// readBearerToken returns the token of the Authorization header, or an empty string.
-func readBearerToken(request *http.Request) string {
-	token, found := strings.CutPrefix(request.Header.Get("Authorization"), "Bearer ")
-	if !found {
-		return ""
+// findPlayer returns the player of an Authorization header.
+func (server *apiServer) findPlayer(ctx context.Context, authorization string) (int64, error) {
+	token, found := strings.CutPrefix(authorization, "Bearer ")
+	if !found || token == "" {
+		return 0, store.ErrUnauthorized
 	}
-	return token
+	return server.Store.FindPlayerByToken(ctx, token)
 }
 
 // matchSecret compares in constant time. An unconfigured secret never matches.

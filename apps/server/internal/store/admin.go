@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
@@ -16,7 +15,6 @@ const updatePlayerNameSQL = `UPDATE players SET name = ?, name_key = ? WHERE id 
 
 const (
 	maxPlayerListRows = 200
-	resetNamePrefix   = "Jelly-"
 )
 
 // PlayerSummary is a player as the admin page shows it.
@@ -87,7 +85,7 @@ func (store *Store) ShowPlayer(ctx context.Context, playerID, now int64) error {
 
 // ResetPlayerName replaces a name with a neutral one built from the player ID.
 func (store *Store) ResetPlayerName(ctx context.Context, playerID, now int64) error {
-	name := resetNamePrefix + strconv.FormatInt(playerID, 10)
+	name := rules.BuildResetName(playerID)
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		result, err := transaction.ExecContext(ctx, updatePlayerNameSQL,
 			name, rules.BuildNameKey(name), playerID)
@@ -106,7 +104,7 @@ func (store *Store) ResetPlayerName(ctx context.Context, playerID, now int64) er
 			return err
 		}
 		return appendEvent(ctx, transaction, eventRecord{
-			lanID: 0, eventType: EventPlayerUpdated, scope: scopePlayer,
+			lanID: 0, eventType: EventPlayerUpdated, scope: scopePublic,
 			playerID: playerID, payload: struct{}{}, now: now,
 		})
 	})

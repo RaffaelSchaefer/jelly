@@ -65,7 +65,7 @@ func TestRunFillsTheStage(t *testing.T) {
 	}
 
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet,
-		server.URL+"/state?key="+testStageKey, http.NoBody)
+		server.URL+"/v1/stage?key="+testStageKey, http.NoBody)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestRunFillsTheStage(t *testing.T) {
 	if len(stage.Players) != testPlayers {
 		t.Fatalf("stage has %d jellies", len(stage.Players))
 	}
-	events, err := database.ListEventsAfter(t.Context(), 0, 0)
+	events, err := database.ListEventsAfter(t.Context(), 0)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -29,19 +29,22 @@ const (
 	actionPartner = "partner"
 )
 
+// apiPrefix is the version of the API that the simulator speaks.
+const apiPrefix = "/v1"
+
 // Field names and paths of the API.
 const (
 	fieldCode     = "code"
 	fieldKey      = "key"
 	fieldAction   = "action"
-	pathActions   = "/actions"
-	pathEmote     = "/emote"
-	pathFollow    = "/follow"
-	pathSign      = "/sign"
-	pathState     = "/state"
-	pathRegister  = "/register"
-	pathOffer     = "/partner-emote"
-	pathJoinOffer = "/partner-emote/join"
+	pathActions   = apiPrefix + "/actions"
+	pathEmote     = apiPrefix + "/emote"
+	pathFollow    = apiPrefix + "/follow"
+	pathSign      = apiPrefix + "/sign"
+	pathState     = apiPrefix + "/stage"
+	pathRegister  = apiPrefix + "/register"
+	pathOffer     = apiPrefix + "/partner-emote"
+	pathJoinOffer = apiPrefix + "/partner-emote/join"
 )
 
 const (

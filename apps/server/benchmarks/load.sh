@@ -32,7 +32,7 @@ echo "load:     $players players, $min_delay to $max_delay between actions, ${se
   -min-delay "$min_delay" -max-delay "$max_delay" -duration "${seconds}s" </dev/null 2>&1 |
   grep -E 'simulation ended|level=ERROR' | sed -E 's/^time=[^ ]+ //'
 curl -s -o /dev/null -w 'state:    %{http_code} in %{time_total}s\n' \
-  "http://$address/state?key=$JELLY_STAGE_KEY"
+  "http://$address/v1/stage?key=$JELLY_STAGE_KEY"
 
 kill "$server_pid"
 wait "$server_pid" 2>/dev/null

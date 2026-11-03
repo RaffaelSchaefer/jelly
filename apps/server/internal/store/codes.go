@@ -98,9 +98,9 @@ func (store *Store) ListEventCodes(ctx context.Context, lanID int64) ([]EventCod
 
 // RedeemedCode is the result of redeeming an event code.
 type RedeemedCode struct {
-	Title    string `json:"title"`
-	XPGained int    `json:"xp_gained"`
-	State    State  `json:"me"`
+	Title    string      `json:"title"`
+	XPGained int         `json:"xp_gained"`
+	Me       PlayerState `json:"me"`
 }
 
 // RedeemEventCode grants the XP of a valid code once per player.
@@ -127,7 +127,7 @@ func (store *Store) RedeemEventCode(
 	if err != nil {
 		return RedeemedCode{}, err
 	}
-	return RedeemedCode{Title: redeemed.title, XPGained: redeemed.xp, State: state}, nil
+	return RedeemedCode{Title: redeemed.title, XPGained: redeemed.xp, Me: state}, nil
 }
 
 // findRedeemableCode checks the code, its time window and earlier redemptions.

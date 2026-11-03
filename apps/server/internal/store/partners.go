@@ -22,17 +22,18 @@ const (
 
 // PartnerOffer is a spoken code that another player can enter.
 type PartnerOffer struct {
-	Code      string `json:"code"`
-	EmoteKey  string `json:"key"`
-	ExpiresAt int64  `json:"expires_at"`
+	Code      string      `json:"code"`
+	EmoteKey  string      `json:"key"`
+	ExpiresAt int64       `json:"expires_at"`
+	Me        PlayerState `json:"me"`
 }
 
 // PartnerResult is the outcome of entering a partner code.
 type PartnerResult struct {
-	EmoteKey  string `json:"key"`
-	PartnerID int64  `json:"partner_id"`
-	XPGained  int    `json:"xp_gained"`
-	State     State  `json:"me"`
+	EmoteKey  string      `json:"key"`
+	PartnerID int64       `json:"partner_id"`
+	XPGained  int         `json:"xp_gained"`
+	Me        PlayerState `json:"me"`
 }
 
 // CreatePartnerOffer starts a partner emote and replaces an older code of this player.
@@ -44,14 +45,16 @@ func (store *Store) CreatePartnerOffer(
 		return PartnerOffer{}, fmt.Errorf("validate partner emote: %w", err)
 	}
 	var offer PartnerOffer
-	_, err = store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
+	insertOffer := func(action actionContext) error {
 		var workErr error
 		offer, workErr = insertPartnerOffer(ctx, action, emoteKey)
 		return workErr
-	})
+	}
+	state, err := store.runPlayerAction(ctx, playerID, now, false, insertOffer)
 	if err != nil {
 		return PartnerOffer{}, err
 	}
+	offer.Me = state
 	return offer, nil
 }
 
@@ -69,7 +72,7 @@ func (store *Store) AcceptPartnerOffer(
 	if err != nil {
 		return PartnerResult{}, err
 	}
-	result.State = state
+	result.Me = state
 	return result, nil
 }
 

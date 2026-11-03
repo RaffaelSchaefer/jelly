@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	actionPoke    = "poke"
+	actionPoke    = rules.ActionPoke
 	actionEvent   = "event"
 	millisPerHour = 3_600_000
 	maxReportRows = 500
@@ -35,7 +35,7 @@ type xpEntry struct {
 }
 
 // ApplyPoke applies a poke and returns the granted XP with the new state.
-func (store *Store) ApplyPoke(ctx context.Context, playerID, now int64) (int, State, error) {
+func (store *Store) ApplyPoke(ctx context.Context, playerID, now int64) (int, PlayerState, error) {
 	var gainedXP int
 	work := func(action actionContext) error {
 		lastPokeAt, err := loadLastPokeTime(ctx, action.transaction, action.lan.id, playerID)
@@ -50,7 +50,7 @@ func (store *Store) ApplyPoke(ctx context.Context, playerID, now int64) (int, St
 	}
 	state, err := store.runPlayerAction(ctx, playerID, now, true, work)
 	if err != nil {
-		return 0, State{}, err
+		return 0, PlayerState{}, err
 	}
 	return gainedXP, state, nil
 }
@@ -58,7 +58,7 @@ func (store *Store) ApplyPoke(ctx context.Context, playerID, now int64) (int, St
 // ApplyReport applies a food or drink report and returns the granted XP with the new state.
 func (store *Store) ApplyReport(
 	ctx context.Context, playerID int64, report string, now int64,
-) (int, State, error) {
+) (int, PlayerState, error) {
 	var gainedXP int
 	work := func(action actionContext) error {
 		history, err := loadReportHistory(ctx, action.transaction, action.lan.id, playerID)
@@ -77,7 +77,7 @@ func (store *Store) ApplyReport(
 	}
 	state, err := store.runPlayerAction(ctx, playerID, now, false, work)
 	if err != nil {
-		return 0, State{}, err
+		return 0, PlayerState{}, err
 	}
 	return gainedXP, state, nil
 }
@@ -86,8 +86,8 @@ func (store *Store) ApplyReport(
 // achievements in the same transaction.
 func (store *Store) runPlayerAction(
 	ctx context.Context, playerID, now int64, isPoke bool, work func(actionContext) error,
-) (State, error) {
-	var state State
+) (PlayerState, error) {
+	var state PlayerState
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		action, workErr := beginPlayerAction(ctx, transaction, playerID, now)
 		if workErr != nil {
@@ -108,9 +108,18 @@ func (store *Store) runPlayerAction(
 		return workErr
 	})
 	if err != nil {
-		return State{}, err
+		return PlayerState{}, err
 	}
 	return state, nil
+}
+
+// RecordPresence keeps a jelly awake without any XP, while the app of its player runs.
+func (store *Store) RecordPresence(
+	ctx context.Context, playerID, now int64,
+) (PlayerState, error) {
+	return store.runPlayerAction(ctx, playerID, now, false, func(actionContext) error {
+		return nil
+	})
 }
 
 // beginPlayerAction checks the entry and refreshes the presence of the jelly.
