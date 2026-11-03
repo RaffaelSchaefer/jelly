@@ -101,8 +101,8 @@ scripts/              Hilfsskripte (Rust-Pfad, Design-System-Bundle, Blender-Exp
 ```
 
 Die Oberfläche übermittelt nur die Aktion oder die Anpassung an Rust; sie kann keinen beliebigen
-XP-Wert oder Dateipfad setzen. Es gibt keine Accounts, keinen Server und keine externe Kauf- oder
-Veranstaltungsprüfung.
+XP-Wert oder Dateipfad setzen. Die App hat noch keine Accounts und spricht noch nicht mit dem Server
+in `apps/server`. Eine externe Kauf- oder Veranstaltungsprüfung gibt es nicht.
 
 ## Dokumentation und Konventionen
 

@@ -3,8 +3,8 @@
  * Bild.
  *
  * Client (React Three Fiber) und Server-Bühne (reines Three.js) bauen ihr Jelly hier. Innen gibt es
- * nur `Object3D` und keine `Group`: Three.js sortiert die Zeichenreihenfolge nach der äußersten
- * `Group`, und die Bühne braucht das, um viele Jellies von hinten nach vorn zu zeichnen.
+ * nur `Object3D` und keine `Group`: Three.js sortiert die Zeichenreihenfolge nach der nächsten
+ * umschließenden `Group`, und die Bühne braucht das, um viele Jellies von hinten nach vorn zu zeichnen.
  *
  * @module
  */

@@ -10,8 +10,8 @@ pnpm-/Turborepo-Monorepo für Jelly, den Desktop-Begleiter für die LAN am Umwel
 ```sh
 pnpm install                              # Abhängigkeiten für alle Apps
 pnpm --filter @jelly/client tauri dev     # Desktop-App starten
-pnpm lint                                 # oxlint und clippy
-pnpm test                                 # Frontend-Tests (Rust: pnpm --filter @jelly/client test:rust)
+pnpm lint                                 # oxlint, clippy und golangci-lint in allen Apps
+pnpm test                                 # Tests aller Apps und Pakete (Rust: pnpm --filter @jelly/client test:rust)
 ```
 
 Details, Aufbau und Konventionen: [apps/client/README.md](apps/client/README.md).

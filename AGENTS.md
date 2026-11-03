@@ -32,7 +32,9 @@ pnpm run tauri dev        # echte Desktop-App
 ```
 
 Nach Änderungen mindestens `pnpm test`, `pnpm run test:rust`, `pnpm lint` und `pnpm run build`
-ausführen. Cargo immer über die pnpm-Skripte (`scripts/native.mjs` ergänzt den Cargo-Pfad).
+ausführen. Cargo immer über die pnpm-Skripte (`scripts/native.mjs` ergänzt den Cargo-Pfad). Nach
+Änderungen in `packages/jelly-scene` dort `pnpm test`, `pnpm lint` und `pnpm run check-types`
+ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Paket.
 
 ## Wo was liegt
 
