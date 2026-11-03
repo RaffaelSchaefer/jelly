@@ -252,6 +252,20 @@ func loadActiveLAN(ctx context.Context, database querier, now int64) (activeLAN,
 	return lan, nil
 }
 
+// LoadCurrentRules returns the rules of the running LAN, and the defaults between LANs.
+func (store *Store) LoadCurrentRules(ctx context.Context, now int64) (rules.Rules, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	lan, err := loadActiveLAN(queryCtx, store.readDB, now)
+	if errors.Is(err, ErrNoActiveLAN) {
+		return rules.DefaultRules(), nil
+	}
+	if err != nil {
+		return rules.Rules{}, err
+	}
+	return lan.gameRules, nil
+}
+
 // parseRules reads the rules of a LAN. Missing fields keep their default.
 func parseRules(rulesJSON string) (rules.Rules, error) {
 	gameRules := rules.DefaultRules()

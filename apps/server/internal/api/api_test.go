@@ -22,10 +22,11 @@ import (
 )
 
 const (
-	joinCode    = "glibber-2026"
-	pokeBody    = `{"action":"poke"}`
-	stageKey    = "stage-key"
-	adminSecret = "admin-secret"
+	joinCode         = "glibber-2026"
+	pokeBody         = `{"action":"poke"}`
+	stageKey         = "stage-key"
+	adminSecret      = "admin-secret"
+	minClientVersion = "1.2.3"
 )
 
 // apiResponse is a response that was read completely.
@@ -85,13 +86,14 @@ func (testFixture *fixture) openDatabase() {
 	testFixture.database = opened
 	readClock := func() time.Time { return time.UnixMilli(testFixture.clock.Load()) }
 	testFixture.handler = api.NewHandler(api.Dependencies{
-		Store:       opened,
-		Now:         readClock,
-		Logger:      slog.New(slog.DiscardHandler),
-		StageKey:    stageKey,
-		AdminSecret: adminSecret,
-		IsStopping:  testFixture.stopping.Load,
-		Web:         nil,
+		Store:            opened,
+		Now:              readClock,
+		Logger:           slog.New(slog.DiscardHandler),
+		StageKey:         stageKey,
+		AdminSecret:      adminSecret,
+		MinClientVersion: minClientVersion,
+		IsStopping:       testFixture.stopping.Load,
+		Web:              nil,
 	})
 }
 

@@ -13,6 +13,10 @@ Aktuelle Version: **1.0.0**
 - **Pfad:** Alle Wege für App und Bühne beginnen mit `/v1`. Erweiterungen bleiben dort. Nur eine
   Änderung, die den Vertrag bricht und ein Umschreiben im Client verlangt, bekommt einen neuen Pfad.
 - **Nummer:** Jedes Feature erhöht die Version im Dokument (1.1, 1.2 und so weiter).
+- **Mindestversion:** `GET /version` nennt `api_version` und `min_client_version` und braucht kein
+  Konto. Die App fragt den Weg beim Start ab und bittet um ein Update, wenn sie älter ist. Leer heißt
+  keine Vorgabe, sonst hat der Wert die Form `1.2.3`. Der Weg liegt absichtlich außerhalb von `/v1`,
+  bleibt in jeder Version gleich und gehört trotzdem zum Vertrag.
 - **Clients** ignorieren unbekannte Felder in Antworten, unbekannte Ereignisse, Katalog-Einträge und
   Fehlercodes, denn alles das darf jederzeit dazukommen. Bei einem unbekannten Fehlercode zeigen sie
   `message`.
@@ -23,7 +27,7 @@ Aktuelle Version: **1.0.0**
 
 | Version | Änderung |
 | ------- | -------- |
-| 1.0.0   | Erste Version: LAN-Status, Konten, Stupser, Lebenszeichen, Berichte, Event-Codes, Emotes, Partner-Emotes, Schilder, Stellen zu einem Jelly, Bühne und Ereignisse |
+| 1.0.0   | Erste Version: Mindestversion, LAN-Status, Konten, Stupser, Lebenszeichen, Berichte, Event-Codes, Emotes, Partner-Emotes, Schilder, Stellen zu einem Jelly, Bühne und Ereignisse |
 
 ### Brechende Änderungen
 
@@ -35,7 +39,7 @@ Bisher keine. Jede künftige steht hier mit Begründung.
   `application/json` ergibt 415, also auch der Standard von `curl -d`. Unbekannte Felder in Anfragen
   sind ein Fehler. Ein zu großer Körper ergibt 413, ein zu langsamer 408.
 - Jeder Spieler hat ein Limit von 300 Anfragen pro Minute. Code-Versuche (Beitritt, Event-Code,
-  Partner-Code) sind auf 10 pro Minute begrenzt. Darüber folgt `429 rate_limited`. Wege in den Tabellen stehen ohne das Präfix `/v1`, außer bei `/health` und `/admin/api`.
+  Partner-Code) sind auf 10 pro Minute begrenzt. Darüber folgt `429 rate_limited`. Wege in den Tabellen stehen ohne das Präfix `/v1`, außer bei `/health`, `/version` und `/admin/api`.
 - Zeiten sind UTC in Unix-Millisekunden. Nur der Server vergibt sie.
 - Spieler senden `Authorization: Bearer <token>`. Die Bühne nutzt den Bühnenschlüssel als `?key=`.
 - Admins melden sich an und erhalten ein Cookie, siehe [Admin](#admin).
@@ -121,6 +125,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | Weg                       | Körper                                     | Antwort                        |
 | ------------------------- | ------------------------------------------ | ------------------------------ |
 | `GET /health` (ohne `/v1`) |                                           | `{"status":"ok"}`              |
+| `GET /version` (ohne `/v1`) |                                          | `{"api_version","min_client_version"}` |
 | `GET /catalog`            |                                            | Feste Listen, siehe unten      |
 | `GET /lans/current`       |                                            | `{"server_time","current","next","joined"}` |
 | `POST /register`          | `{"code","name","color"}`                  | `201 {"token","me"}`           |
@@ -202,7 +207,10 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
   So geht nichts verloren. Ohne Angabe beginnt er beim neuesten Ereignis.
 - **Wiederverbinden:** `Last-Event-ID` hat Vorrang vor `since`. Spieler können höchstens 1000 Ereignisse
   zurückgehen, danach zählt wieder der Stand aus `GET /me`.
-- **Abbruch:** Alle 15 Sekunden kommt ein Kommentar als Lebenszeichen. Beim Herunterfahren endet die
+- **Grenzen:** Eine App hält einen Stream offen. Je LAN gelten `max_player_streams` je Spieler und
+  `max_streams` für alle Spieler zusammen, darüber folgt `429 rate_limited`. Jeder Versuch zählt zudem
+  zum Limit von 300 Anfragen pro Minute. Die Bühne zählt nicht mit.
+- **Abbruch:** Wer zehn Sekunden lang keine Daten annimmt, verliert die Verbindung. Alle 15 Sekunden kommt ein Kommentar als Lebenszeichen. Beim Herunterfahren endet die
   Verbindung ohne Meldung, also mit Pause neu verbinden, aber nach `401` nicht.
 
 | Ereignis                                          | Bedeutung                          |

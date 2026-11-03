@@ -152,7 +152,8 @@ die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit do
   von Hand geändert, ein Test vergleicht sie mit dem Code.
 - `internal/api` beschreibt die Wege für App und Bühne mit huma unter `/v1`. Handler geben einfache
   Fehler zurück, `addOperation` übersetzt sie über `listKnownErrors`. `/health` und `/admin/api` nutzen
-  weiter `net/http` und stehen nicht im Vertrag.
+  weiter `net/http` und stehen nicht im Vertrag. `GET /version` steht im Vertrag, aber außerhalb von
+  `/v1` (`addRootOperation`), damit auch alte Apps ihn nach einem Wechsel des Pfads noch finden.
 - Jedes Feature erhöht `APIVersion` und bekommt eine Zeile im Changelog von `docs/api.md`. Erweiterungen
   bleiben in `/v1`. Was den Vertrag bricht, bekommt einen neuen Pfad und eine Begründung in `docs/api.md`.
 

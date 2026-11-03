@@ -110,7 +110,8 @@ func TestServerServesItsContract(t *testing.T) {
 		}
 	}
 	for path := range document.Paths {
-		if !strings.HasPrefix(path, "/v1/") {
+		// The version route outlives every path version on purpose.
+		if !strings.HasPrefix(path, "/v1/") && path != "/version" {
 			t.Errorf("%s is outside the version", path)
 		}
 	}

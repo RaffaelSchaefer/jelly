@@ -5,8 +5,8 @@
 //	jelly-server simulate ...     plays many jellies against a server, see -h for options
 //	jelly-server openapi          prints the API contract as OpenAPI
 //
-// Settings come from the environment variables JELLY_DB, JELLY_ADDR, JELLY_STAGE_KEY and
-// JELLY_ADMIN_SECRET.
+// Settings come from the environment variables JELLY_DB, JELLY_ADDR, JELLY_STAGE_KEY,
+// JELLY_ADMIN_SECRET and JELLY_MIN_CLIENT_VERSION.
 package main
 
 import (

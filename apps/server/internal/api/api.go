@@ -23,13 +23,15 @@ const (
 	playerRequestBurst      = 60
 )
 
-// Dependencies are everything the handlers need. `Now` is their only source of time.
+// Dependencies are everything the handlers need. `Now` is the source of all game times.
 type Dependencies struct {
 	Store       *store.Store
 	Now         func() time.Time
 	Logger      *slog.Logger
 	StageKey    string
 	AdminSecret string
+	// MinClientVersion is the oldest app that still works. Empty means no minimum.
+	MinClientVersion string
 	// IsStopping tells long-running streams to end, so a shutdown does not wait for them.
 	IsStopping func() bool
 	// Web serves the stage, admin and test pages.
@@ -48,6 +50,8 @@ type apiServer struct {
 	codeAttempts *playerLimiters
 	// playerRequests keeps one script from slowing the database down for everyone.
 	playerRequests *playerLimiters
+	// streams limits the open event streams.
+	streams *streamSlots
 }
 
 // newAPIServer creates the state that all routes share.
@@ -58,6 +62,7 @@ func newAPIServer(dependencies Dependencies) *apiServer {
 		logins:         rate.NewLimiter(loginsPerSecond, loginBurst),
 		codeAttempts:   newPlayerLimiters(codeAttemptsPerMinute, codeAttemptBurst),
 		playerRequests: newPlayerLimiters(playerRequestsPerMinute, playerRequestBurst),
+		streams:        newStreamSlots(),
 	}
 }
 

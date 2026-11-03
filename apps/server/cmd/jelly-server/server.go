@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/api"
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/web"
 )
 
@@ -19,6 +20,8 @@ const (
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 15 * time.Second
 	idleTimeout       = 2 * time.Minute
+	// Streams extend this themselves for every message.
+	writeTimeout = 30 * time.Second
 	// Below the 10 second limit of `docker stop`, which kills the process after that.
 	shutdownTimeout = 8 * time.Second
 )
@@ -32,6 +35,11 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 	if stageKey == "" || adminSecret == "" {
 		return errMissingSecret
 	}
+	minClientVersion := os.Getenv("JELLY_MIN_CLIENT_VERSION")
+	err := rules.ValidateClientVersion(minClientVersion)
+	if err != nil {
+		return fmt.Errorf("JELLY_MIN_CLIENT_VERSION: %w", err)
+	}
 	database, err := openDatabase(appCtx)
 	if err != nil {
 		return err
@@ -43,13 +51,14 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 		return fmt.Errorf("load pages: %w", err)
 	}
 	handler := api.NewHandler(api.Dependencies{
-		Store:       database,
-		Now:         time.Now,
-		Logger:      logger,
-		StageKey:    stageKey,
-		AdminSecret: adminSecret,
-		IsStopping:  func() bool { return appCtx.Err() != nil },
-		Web:         pages,
+		Store:            database,
+		Now:              time.Now,
+		Logger:           logger,
+		StageKey:         stageKey,
+		AdminSecret:      adminSecret,
+		MinClientVersion: minClientVersion,
+		IsStopping:       func() bool { return appCtx.Err() != nil },
+		Web:              pages,
 	})
 	return serveHTTP(appCtx, handler, readEnv("JELLY_ADDR", ":8080"), logger)
 }
@@ -69,6 +78,7 @@ func serveHTTP(
 		BaseContext:       func(net.Listener) context.Context { return requestsCtx },
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
 	}
 	serverCtx, stopServer := context.WithCancel(appCtx)

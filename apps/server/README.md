@@ -75,6 +75,7 @@ läuft über `go tool esbuild`.
 | `JELLY_JOIN_CODE` | keiner     | Anmeldecode, nur für `create-lan` nötig     |
 | `JELLY_STAGE_KEY` | keiner     | Pflicht: Schlüssel der Bühne                |
 | `JELLY_ADMIN_SECRET` | keiner  | Pflicht: Geheimnis der Admin-Anmeldung      |
+| `JELLY_MIN_CLIENT_VERSION` | keine | Älteste App, die noch funktioniert, Form `1.2.3` |
 
 ## Aufbau
 

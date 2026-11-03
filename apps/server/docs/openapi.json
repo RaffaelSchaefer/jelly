@@ -807,6 +807,22 @@
           "players"
         ],
         "type": "object"
+      },
+      "VersionInfo": {
+        "additionalProperties": true,
+        "properties": {
+          "api_version": {
+            "type": "string"
+          },
+          "min_client_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_version",
+          "min_client_version"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -986,7 +1002,7 @@
     },
     "/v1/events/stream": {
       "get": {
-        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events.",
+        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
         "operationId": "streamEvents",
         "parameters": [
           {
@@ -1539,6 +1555,35 @@
           }
         ],
         "summary": "Read all visible jellies and areas"
+      }
+    },
+    "/version": {
+      "get": {
+        "description": "Works without an account and stays at this path for every API version, so old apps can always find out that they need an update.",
+        "operationId": "getVersion",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionInfo"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "summary": "Read the API version and the oldest app that still works"
       }
     }
   }

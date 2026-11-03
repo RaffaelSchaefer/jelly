@@ -79,8 +79,7 @@ func translateLibraryError(ctx huma.Context, _ string, value any) (any, error) {
 	return problemInvalidBody().toResponse(), nil
 }
 
-// addOperation registers a documented route. Handlers return plain errors, which are translated
-// here, so every route answers the same way.
+// addOperation registers a documented route under the version.
 func addOperation[Input, Output any](
 	server *apiServer,
 	contract huma.API,
@@ -88,6 +87,17 @@ func addOperation[Input, Output any](
 	handler func(context.Context, *Input) (*Output, error),
 ) {
 	operation.Path = versionPrefix + operation.Path
+	addRootOperation(server, contract, operation, handler)
+}
+
+// addRootOperation registers a documented route as it is, for what must outlive the version.
+// Handlers return plain errors, which are translated here, so every route answers the same way.
+func addRootOperation[Input, Output any](
+	server *apiServer,
+	contract huma.API,
+	operation huma.Operation,
+	handler func(context.Context, *Input) (*Output, error),
+) {
 	operation.MaxBodyBytes = maxBodyBytes
 	operation.Responses = map[string]*huma.Response{responseDefault: buildErrorResponse(contract)}
 	huma.Register(contract, operation,

@@ -66,6 +66,13 @@ type FollowBody struct {
 	PlayerID int64 `json:"player_id"`
 }
 
+// VersionInfo tells an app whether it can still talk to this server.
+type VersionInfo struct {
+	APIVersion string `json:"api_version"`
+	// MinClientVersion is in the form 1.2.3. Empty means no minimum.
+	MinClientVersion string `json:"min_client_version"`
+}
+
 // Catalog holds the fixed lists. Secret achievements are not part of it.
 type Catalog struct {
 	Colors        []rules.CatalogEntry `json:"colors"`
@@ -86,6 +93,21 @@ func (server *apiServer) addLANRoutes(contract huma.API) {
 		Security:    []map[string][]string{{}, {securityBearer: {}}},
 		Middlewares: huma.Middlewares{server.identifyPlayer},
 	}, server.handleCurrentLAN)
+	addRootOperation(server, contract, huma.Operation{
+		OperationID: "getVersion", Method: http.MethodGet, Path: "/version",
+		Summary: "Read the API version and the oldest app that still works",
+		Description: "Works without an account and stays at this path for every API version, " +
+			"so old apps can always find out that they need an update.",
+	}, server.handleVersion)
+}
+
+// handleVersion names the current API version and the oldest app that still works.
+func (server *apiServer) handleVersion(
+	context.Context, *noInput,
+) (*jsonOutput[VersionInfo], error) {
+	return &jsonOutput[VersionInfo]{Body: VersionInfo{
+		APIVersion: APIVersion, MinClientVersion: server.MinClientVersion,
+	}}, nil
 }
 
 // handleCurrentLAN returns the running and the next LAN.

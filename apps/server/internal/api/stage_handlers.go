@@ -18,11 +18,13 @@ import (
 const (
 	streamPollInterval  = 500 * time.Millisecond
 	streamKeepAliveTick = 30
-	pathStream          = versionPrefix + "/events/stream"
-	querySince          = "since"
-	paramInQuery        = "query"
-	paramInHeader       = "header"
-	headerLastEventID   = "Last-Event-ID"
+	// A client that takes longer to accept data has stalled and loses its stream.
+	streamWriteTimeout = 10 * time.Second
+	pathStream         = versionPrefix + "/events/stream"
+	querySince         = "since"
+	paramInQuery       = "query"
+	paramInHeader      = "header"
+	headerLastEventID  = "Last-Event-ID"
 	// Enough to bridge a short outage on a busy LAN.
 	maxPlayerReplayEvents = 1000
 )
@@ -39,7 +41,8 @@ func (server *apiServer) addStageRoutes(contract huma.API) {
 		OperationID: "streamEvents", Method: http.MethodGet, Path: pathStream,
 		Summary: "Receive events as server-sent events",
 		Description: "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. " +
-			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events.",
+			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events. " +
+			"Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
 		Security:   listViewerSecurity(),
 		Parameters: buildStreamParameters(),
 		Responses: map[string]*huma.Response{
@@ -92,19 +95,33 @@ func (server *apiServer) handleState(
 func (server *apiServer) handleStream(
 	writer http.ResponseWriter, request *http.Request, viewerID int64,
 ) {
+	if !server.claimStream(writer, request, viewerID) {
+		return
+	}
+	defer server.streams.releaseSlot(viewerID)
 	afterID, err := server.findStreamStart(request, viewerID)
 	if err != nil {
 		server.writeError(writer, request, err)
 		return
 	}
 	controller := http.NewResponseController(writer)
+	if extendWriteDeadline(controller) != nil {
+		return
+	}
 	writer.Header().Set("Content-Type", "text/event-stream")
 	writer.Header().Set("Cache-Control", "no-store")
 	writer.WriteHeader(http.StatusOK)
 	if controller.Flush() != nil {
 		return
 	}
+	server.sendStreamTicks(writer, request, controller, afterID)
+}
 
+// sendStreamTicks regularly writes new events until the client or the server stops.
+func (server *apiServer) sendStreamTicks(
+	writer http.ResponseWriter, request *http.Request,
+	controller *http.ResponseController, afterID int64,
+) {
 	ticker := time.NewTicker(streamPollInterval)
 	defer ticker.Stop()
 	for tick := 1; ; tick++ {
@@ -117,7 +134,7 @@ func (server *apiServer) handleStream(
 			return
 		}
 		events, err := server.Store.ListEventsAfter(request.Context(), afterID)
-		if err != nil {
+		if err != nil || extendWriteDeadline(controller) != nil {
 			return
 		}
 		afterID, err = writeStreamTick(writer, events, afterID, tick)
@@ -125,6 +142,37 @@ func (server *apiServer) handleStream(
 			return
 		}
 	}
+}
+
+// claimStream checks the limits of a new stream and answers if it is refused. Every attempt
+// counts as a request, so a client that keeps reconnecting cannot keep the database busy.
+func (server *apiServer) claimStream(
+	writer http.ResponseWriter, request *http.Request, viewerID int64,
+) bool {
+	if viewerID != noViewerPlayer && !server.playerRequests.allowAttempt(viewerID) {
+		server.writeProblem(writer, problemRateLimited())
+		return false
+	}
+	gameRules, err := server.Store.LoadCurrentRules(request.Context(), server.currentMillis())
+	if err != nil {
+		server.writeError(writer, request, err)
+		return false
+	}
+	if !server.streams.claimSlot(viewerID, gameRules) {
+		server.writeProblem(writer, problemRateLimited())
+		return false
+	}
+	return true
+}
+
+// extendWriteDeadline replaces the deadline of normal responses, which a stream would outlive.
+func extendWriteDeadline(controller *http.ResponseController) error {
+	//nolint:forbidigo // A socket deadline needs the real clock, even with a fake game clock.
+	err := controller.SetWriteDeadline(time.Now().Add(streamWriteTimeout))
+	if err != nil {
+		return fmt.Errorf("extend write deadline: %w", err)
+	}
+	return nil
 }
 
 // writeStreamTick writes new events. Without events, a regular comment keeps proxies from

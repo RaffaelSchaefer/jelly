@@ -88,3 +88,18 @@ func TestCancelledContextStopsDatabaseWork(t *testing.T) {
 		t.Errorf("CreateLAN() = %v, want context.Canceled", err)
 	}
 }
+
+func TestLoadCurrentRulesFallsBackToTheDefaultsBetweenLANs(t *testing.T) {
+	database, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "jelly.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	got, err := database.LoadCurrentRules(t.Context(), 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != rules.DefaultRules() {
+		t.Errorf("rules = %+v", got)
+	}
+}
