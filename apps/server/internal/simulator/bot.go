@@ -36,11 +36,13 @@ const apiPrefix = "/v1"
 const (
 	fieldCode     = "code"
 	fieldKey      = "key"
-	fieldAction   = "action"
-	pathActions   = apiPrefix + "/actions"
-	pathEmote     = apiPrefix + "/emote"
-	pathFollow    = apiPrefix + "/follow"
-	pathSign      = apiPrefix + "/sign"
+	fieldKind     = "kind"
+	pathPokes     = apiPrefix + "/pokes"
+	pathReports   = apiPrefix + "/reports"
+	pathEmote     = apiPrefix + "/emotes"
+	pathFollow    = apiPrefix + "/trips/follow"
+	pathTrip      = apiPrefix + "/trips/current"
+	pathSign      = apiPrefix + "/signs/current"
 	pathState     = apiPrefix + "/stage"
 	pathRegister  = apiPrefix + "/register"
 	pathOffer     = apiPrefix + "/partner-emote"
@@ -237,7 +239,7 @@ func (player *bot) register(ctx context.Context) error {
 func (player *bot) act(ctx context.Context, action string) (int, error) {
 	switch action {
 	case actionReport:
-		return player.post(ctx, pathActions, map[string]string{fieldAction: pickKey(listReports())})
+		return player.post(ctx, pathReports, map[string]string{fieldKind: pickKey(listReports())})
 	case actionEmote:
 		return player.post(ctx, pathEmote, map[string]string{fieldKey: pickKey(listEmotes())})
 	case actionSign:
@@ -247,7 +249,7 @@ func (player *bot) act(ctx context.Context, action string) (int, error) {
 	case actionPartner:
 		return player.doPartnerEmote(ctx)
 	default:
-		return player.post(ctx, pathActions, map[string]string{fieldAction: actionPoke})
+		return player.post(ctx, pathPokes, nil)
 	}
 }
 
@@ -299,7 +301,7 @@ func (player *bot) changeSign(ctx context.Context) (int, error) {
 // changeFollow stands next to a random other jelly from the stage, or walks away.
 func (player *bot) changeFollow(ctx context.Context) (int, error) {
 	if pickNumber(followChoices) == 0 {
-		return player.remove(ctx, pathFollow)
+		return player.remove(ctx, pathTrip)
 	}
 	var stage struct {
 		Players []struct {
@@ -320,7 +322,7 @@ func (player *bot) changeFollow(ctx context.Context) (int, error) {
 		return status, nil
 	}
 	target := others[pickNumber(len(others))]
-	return player.put(ctx, pathFollow, map[string]int64{"player_id": target})
+	return player.post(ctx, pathFollow, map[string]int64{"player_id": target})
 }
 
 // doPartnerEmote enters the code of another bot, or leaves a new one if none is waiting.

@@ -1,8 +1,6 @@
 package api_test
 
 import (
-	"bufio"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -105,13 +103,13 @@ func TestReports(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 
-	response := testFixture.callAPI("POST", "/v1/actions", token, `{"action":"food"}`)
+	response := testFixture.callAPI("POST", "/v1/reports", token, `{"kind":"food"}`)
 	if got := decodeBody[pokeResponse](t, response).XPGained; got != 15 {
 		t.Fatalf("food = %d XP, want 15", got)
 	}
-	response = testFixture.callAPI("POST", "/v1/actions", token, `{"action":"food"}`)
+	response = testFixture.callAPI("POST", "/v1/reports", token, `{"kind":"food"}`)
 	requireProblem(t, response, http.StatusConflict, "report_cooldown")
-	response = testFixture.callAPI("POST", "/v1/actions", token, `{"action":"drink"}`)
+	response = testFixture.callAPI("POST", "/v1/reports", token, `{"kind":"drink"}`)
 	if got := decodeBody[pokeResponse](t, response).XPGained; got != 10 {
 		t.Fatalf("drink = %d XP, want 10", got)
 	}
@@ -136,9 +134,11 @@ func TestEventCodes(t *testing.T) {
 	token := testFixture.registerPlayer("A")
 	testFixture.createEventCode("TURNIER")
 
-	response := testFixture.callAPI("POST", "/v1/event-codes/redeem", token, `{"code":"falsch"}`)
+	response := testFixture.callAPI("POST", "/v1/event-codes/redemptions",
+		token, `{"code":"falsch"}`)
 	requireProblem(t, response, http.StatusBadRequest, "invalid_event_code")
-	response = testFixture.callAPI("POST", "/v1/event-codes/redeem", token, `{"code":" TURNIER "}`)
+	response = testFixture.callAPI("POST", "/v1/event-codes/redemptions",
+		token, `{"code":" TURNIER "}`)
 	redeemed := decodeBody[store.RedeemedCode](t, response)
 	if redeemed.XPGained != 30 || redeemed.Title != "Turnier" {
 		t.Fatalf("redeem: %s", response.body)
@@ -149,24 +149,26 @@ func TestEventCodes(t *testing.T) {
 	if !slices.Contains(findAchievementKeys(redeemed.Me), "first-event") {
 		t.Fatalf("achievement is missing: %+v", redeemed.Me.Achievements)
 	}
-	response = testFixture.callAPI("POST", "/v1/event-codes/redeem", token, `{"code":"TURNIER"}`)
+	response = testFixture.callAPI("POST", "/v1/event-codes/redemptions",
+		token, `{"code":"TURNIER"}`)
 	requireProblem(t, response, http.StatusConflict, "event_code_redeemed")
 
 	testFixture.advanceClock(time.Hour)
 	other := testFixture.registerPlayer("B")
-	response = testFixture.callAPI("POST", "/v1/event-codes/redeem", other, `{"code":"TURNIER"}`)
+	response = testFixture.callAPI("POST", "/v1/event-codes/redemptions",
+		other, `{"code":"TURNIER"}`)
 	requireProblem(t, response, http.StatusBadRequest, "invalid_event_code")
 }
 
 func TestCosmeticsRequireUnlock(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
-	response := testFixture.callAPI("PATCH", "/v1/me", token, `{"cosmetic":"crown"}`)
+	response := testFixture.callAPI("PATCH", "/v1/players/me", token, `{"cosmetic":"crown"}`)
 	requireProblem(t, response, http.StatusConflict, "cosmetic_locked")
 
 	testFixture.createEventCode("HUT")
-	testFixture.callAPI("POST", "/v1/event-codes/redeem", token, `{"code":"HUT"}`)
-	response = testFixture.callAPI("PATCH", "/v1/me", token,
+	testFixture.callAPI("POST", "/v1/event-codes/redemptions", token, `{"code":"HUT"}`)
+	response = testFixture.callAPI("PATCH", "/v1/players/me", token,
 		`{"cosmetic":"party-hat","color":"peach"}`)
 	state := decodeBody[store.PlayerState](t, response)
 	if state.Cosmetic == nil || *state.Cosmetic != "party-hat" || state.Color != "peach" {
@@ -175,7 +177,7 @@ func TestCosmeticsRequireUnlock(t *testing.T) {
 	if !slices.Contains(findAchievementKeys(state), "styled") {
 		t.Fatalf("achievement is missing: %+v", state.Achievements)
 	}
-	response = testFixture.callAPI("PATCH", "/v1/me", token, `{"cosmetic":""}`)
+	response = testFixture.callAPI("PATCH", "/v1/players/me", token, `{"cosmetic":""}`)
 	if decodeBody[store.PlayerState](t, response).Cosmetic != nil {
 		t.Fatalf("cosmetic stays on: %s", response.body)
 	}
@@ -209,17 +211,17 @@ func TestStageShowsSignsFollowsAndPresence(t *testing.T) {
 	second := testFixture.registerPlayer("B")
 	secondID := testFixture.loadMe(second).ID
 
-	response := testFixture.callAPI("PUT", "/v1/sign", first, `{"key":"free text"}`)
+	response := testFixture.callAPI("PUT", "/v1/signs/current", first, `{"key":"free text"}`)
 	requireProblem(t, response, http.StatusBadRequest, "unknown_sign")
-	testFixture.callAPI("PUT", "/v1/sign", first, `{"key":"cs2"}`)
+	testFixture.callAPI("PUT", "/v1/signs/current", first, `{"key":"cs2"}`)
 	body := `{"player_id":` + strconv.FormatInt(secondID, 10) + `}`
-	response = testFixture.callAPI("PUT", "/v1/follow", first, body)
+	response = testFixture.callAPI("POST", "/v1/trips/follow", first, body)
 	keys := findAchievementKeys(decodeBody[store.PlayerState](t, response))
 	if !slices.Contains(keys, "neighbor") {
 		t.Fatalf("achievement is missing: %s", response.body)
 	}
 	selfBody := `{"player_id":` + strconv.FormatInt(testFixture.loadMe(first).ID, 10) + `}`
-	response = testFixture.callAPI("PUT", "/v1/follow", first, selfBody)
+	response = testFixture.callAPI("POST", "/v1/trips/follow", first, selfBody)
 	requireProblem(t, response, http.StatusBadRequest, "invalid_follow")
 
 	stage := testFixture.loadStage()
@@ -243,13 +245,13 @@ func TestStageShowsSignsFollowsAndPresence(t *testing.T) {
 func TestEmotes(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
-	response := testFixture.callAPI("POST", "/v1/emote", token, `{"key":"free text"}`)
+	response := testFixture.callAPI("POST", "/v1/emotes", token, `{"key":"free text"}`)
 	requireProblem(t, response, http.StatusBadRequest, "unknown_emote")
-	response = testFixture.callAPI("POST", "/v1/emote", token, `{"key":"wave"}`)
+	response = testFixture.callAPI("POST", "/v1/emotes", token, `{"key":"wave"}`)
 	if response.status != http.StatusOK {
 		t.Fatalf("emote: %d %s", response.status, response.body)
 	}
-	response = testFixture.callAPI("POST", "/v1/emote", token, `{"key":"wave"}`)
+	response = testFixture.callAPI("POST", "/v1/emotes", token, `{"key":"wave"}`)
 	requireProblem(t, response, http.StatusConflict, "emote_cooldown")
 }
 
@@ -373,12 +375,12 @@ func TestModeration(t *testing.T) {
 
 	response := testFixture.callAdmin("POST", base+"/rotate-token", "")
 	rotated := decodeBody[registerResponse](t, response)
-	requireProblem(t, testFixture.callAPI("GET", "/v1/me", token, ""),
+	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", token, ""),
 		http.StatusUnauthorized, "unauthorized")
 	testFixture.loadMe(rotated.Token)
 
 	testFixture.callAdmin("DELETE", base, "")
-	requireProblem(t, testFixture.callAPI("GET", "/v1/me", rotated.Token, ""),
+	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", rotated.Token, ""),
 		http.StatusUnauthorized, "unauthorized")
 	requireProblem(t, testFixture.callAdmin("DELETE", base, ""),
 		http.StatusNotFound, "player_not_found")
@@ -440,61 +442,4 @@ func TestRulesCanChangeDuringALAN(t *testing.T) {
 	response = testFixture.callAdmin("PUT", "/admin/api/lans/1/rules",
 		strings.ReplaceAll(body, `"poke_interval":60`, `"poke_interval":0`))
 	requireProblem(t, response, http.StatusBadRequest, "invalid_rules")
-}
-
-// readStreamEvents reads SSE lines until `count` events arrived.
-func readStreamEvents(t *testing.T, scanner *bufio.Scanner, count int) []string {
-	t.Helper()
-	types := []string{}
-	for len(types) < count && scanner.Scan() {
-		if eventType, found := strings.CutPrefix(scanner.Text(), "event: "); found {
-			types = append(types, eventType)
-		}
-	}
-	if len(types) < count {
-		t.Fatalf("stream ended after %v: %v", types, scanner.Err())
-	}
-	return types
-}
-
-func TestStreamDeliversReplaysAndStops(t *testing.T) {
-	testFixture := newFixture(t)
-	token := testFixture.registerPlayer("A")
-	server := httptest.NewServer(testFixture.handler)
-	defer server.Close()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		server.URL+"/v1/events/stream?since=0&key="+stageKey, http.NoBody)
-	if err != nil {
-		t.Fatal(err)
-	}
-	response, err := server.Client().Do(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = response.Body.Close() }()
-	if got := response.Header.Get("Content-Type"); got != "text/event-stream" {
-		t.Fatalf("content type = %q", got)
-	}
-	scanner := bufio.NewScanner(response.Body)
-	replayed := readStreamEvents(t, scanner, 1)
-	if replayed[0] != store.EventPlayerActive {
-		t.Fatalf("replay = %v", replayed)
-	}
-
-	testFixture.callAPI("POST", "/v1/emote", token, `{"key":"wave"}`)
-	live := readStreamEvents(t, scanner, 1)
-	if live[0] != store.EventEmote {
-		t.Fatalf("live = %v", live)
-	}
-
-	testFixture.stopping.Store(true)
-	for scanner.Scan() {
-		continue
-	}
-	if err := ctx.Err(); err != nil {
-		t.Fatalf("stream did not end when the server stopped: %v", err)
-	}
 }

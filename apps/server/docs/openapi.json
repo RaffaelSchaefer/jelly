@@ -54,18 +54,6 @@
         ],
         "type": "object"
       },
-      "ActionBody": {
-        "additionalProperties": false,
-        "properties": {
-          "action": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "action"
-        ],
-        "type": "object"
-      },
       "Badge": {
         "additionalProperties": true,
         "properties": {
@@ -657,6 +645,18 @@
         ],
         "type": "object"
       },
+      "ReportBody": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
       "ReportStatus": {
         "additionalProperties": true,
         "properties": {
@@ -847,49 +847,6 @@
   },
   "openapi": "3.0.3",
   "paths": {
-    "/v1/actions": {
-      "post": {
-        "operationId": "applyAction",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ActionBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionAnswer"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Poke or report food or drink"
-      }
-    },
     "/v1/catalog": {
       "get": {
         "operationId": "getCatalog",
@@ -918,7 +875,7 @@
         "summary": "Read the fixed lists"
       }
     },
-    "/v1/emote": {
+    "/v1/emotes": {
       "post": {
         "operationId": "playEmote",
         "requestBody": {
@@ -961,7 +918,7 @@
         "summary": "Play an emote"
       }
     },
-    "/v1/event-codes/redeem": {
+    "/v1/event-codes/redemptions": {
       "post": {
         "operationId": "redeemEventCode",
         "requestBody": {
@@ -1002,143 +959,6 @@
           }
         ],
         "summary": "Redeem an event code"
-      }
-    },
-    "/v1/events/stream": {
-      "get": {
-        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
-        "operationId": "streamEvents",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "since",
-            "schema": {
-              "format": "int64",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Last-Event-ID",
-            "schema": {
-              "format": "int64",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "key",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/Event"
-                }
-              }
-            },
-            "description": "A stream where the data of each message is one event"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          },
-          {
-            "stage_key": []
-          }
-        ],
-        "summary": "Receive events as server-sent events"
-      }
-    },
-    "/v1/follow": {
-      "delete": {
-        "operationId": "stopFollowing",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlayerState"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Walk away from the other jelly"
-      },
-      "put": {
-        "description": "The server may end this by itself later, so read `follow_player_id` instead of assuming it stays set.",
-        "operationId": "followPlayer",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FollowBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlayerState"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Stand next to another jelly"
       }
     },
     "/v1/lans/current": {
@@ -1217,80 +1037,6 @@
           }
         ],
         "summary": "Join the running LAN with an existing account"
-      }
-    },
-    "/v1/me": {
-      "get": {
-        "operationId": "getMe",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlayerState"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Read the state of the player"
-      },
-      "patch": {
-        "operationId": "updateMe",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProfileBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlayerState"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Change name, color or cosmetic"
       }
     },
     "/v1/partner-emote": {
@@ -1379,6 +1125,114 @@
         "summary": "Join a partner emote with its code"
       }
     },
+    "/v1/players/me": {
+      "get": {
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerState"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read the state of the player"
+      },
+      "patch": {
+        "operationId": "updateMe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerState"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change name, color or cosmetic"
+      }
+    },
+    "/v1/pokes": {
+      "post": {
+        "description": "A poke that comes too early is no error, it earns `xp_gained: 0`.",
+        "operationId": "pokeJelly",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionAnswer"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Poke the jelly"
+      }
+    },
     "/v1/presence": {
       "post": {
         "description": "Send this every few minutes. Without it, a jelly falls asleep once `presence_window` passed since the last action.",
@@ -1451,7 +1305,50 @@
         "summary": "Create an account"
       }
     },
-    "/v1/sign": {
+    "/v1/reports": {
+      "post": {
+        "operationId": "createReport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionAnswer"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report food or drink"
+      }
+    },
+    "/v1/signs/current": {
       "delete": {
         "operationId": "lowerSign",
         "responses": {
@@ -1559,6 +1456,145 @@
           }
         ],
         "summary": "Read all visible jellies and areas"
+      }
+    },
+    "/v1/stage/events": {
+      "get": {
+        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
+        "operationId": "streamEvents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "since",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "A stream where the data of each message is one event"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "stage_key": []
+          }
+        ],
+        "summary": "Receive events as server-sent events"
+      }
+    },
+    "/v1/trips/current": {
+      "delete": {
+        "operationId": "endTrip",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerState"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Go back to the own place"
+      }
+    },
+    "/v1/trips/follow": {
+      "post": {
+        "description": "The server may end this by itself later, so read `follow_player_id` instead of assuming it stays set.",
+        "operationId": "followPlayer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerState"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Follow another jelly"
       }
     },
     "/version": {

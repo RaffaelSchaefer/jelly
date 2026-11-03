@@ -87,7 +87,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 
 ### Stand eines Spielers
 
-`GET /me` und die meisten Aktionen liefern diesen Stand.
+`GET /players/me` und die meisten Aktionen liefern diesen Stand.
 
 ```json
 {
@@ -132,35 +132,36 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | `GET /lans/current`       |                                            | `{"server_time","current","next","joined"}` |
 | `POST /register`          | `{"code","name","color"}`                  | `201 {"token","me"}`           |
 | `POST /lans/current/join` | `{"code"}`                                 | Stand                          |
-| `GET /me`                 |                                            | Stand                          |
-| `PATCH /me`               | `{"name","color","cosmetic"}`, alle optional | Stand                        |
+| `GET /players/me`         |                                            | Stand                          |
+| `PATCH /players/me`       | `{"name","color","cosmetic"}`, alle optional | Stand                        |
 | `POST /presence`          |                                            | Stand                          |
-| `POST /actions`           | `{"action":"poke"}`, auch `food`, `drink`  | `{"xp_gained","me"}`           |
-| `POST /event-codes/redeem` | `{"code"}`                                | `{"title","xp_gained","me"}`   |
-| `POST /emote`             | `{"key"}`                                  | Stand                          |
-| `PUT /sign`               | `{"key"}`                                  | Stand                          |
-| `DELETE /sign`            |                                            | Stand                          |
-| `PUT /follow`             | `{"player_id"}`                            | Stand                          |
-| `DELETE /follow`          |                                            | Stand                          |
+| `POST /pokes`             |                                            | `{"xp_gained","me"}`           |
+| `POST /reports`           | `{"kind"}`, `food` oder `drink`            | `{"xp_gained","me"}`           |
+| `POST /event-codes/redemptions` | `{"code"}`                                | `{"title","xp_gained","me"}`   |
+| `POST /emotes`            | `{"key"}`                                  | Stand                          |
+| `PUT /signs/current`      | `{"key"}`                                  | Stand                          |
+| `DELETE /signs/current`   |                                            | Stand                          |
+| `POST /trips/follow`      | `{"player_id"}`                            | Stand                          |
+| `DELETE /trips/current`   |                                            | Stand                          |
 
 Das Token gibt es nur in der Antwort von `POST /register`. `GET /catalog` liefert `colors`,
 `emotes`, `partner_emotes`, `signs`, `cosmetics` und `achievements`, geheime Achievements fehlen dort.
 
 Namen haben 1 bis 24 Zeichen aus lateinischen Buchstaben, Umlauten, `ß`, Ziffern, Leerzeichen und
 `. _ ' -`, darunter mindestens ein Buchstabe oder eine Ziffer. Der Präfix `Jelly-` ist für den Admin
-reserviert. `"cosmetic":""` legt ein Cosmetic ab, `null` lässt es unverändert. Ein leeres `PATCH /me`
+reserviert. `"cosmetic":""` legt ein Cosmetic ab, `null` lässt es unverändert. Ein leeres `PATCH /players/me`
 ändert nichts und sendet nichts.
 
-**Anwesenheit:** XP gibt es nur per `POST /actions`, also per Klick. Solange die App läuft, sendet sie
+**Anwesenheit:** XP gibt es nur per `POST /pokes`, also per Klick. Solange die App läuft, sendet sie
 alle paar Minuten `POST /presence`. Das gibt keine XP und hält das Jelly auf der Bühne. Spätestens
 `presence_window` nach der letzten Aktion gilt es sonst als abwesend.
 
-**Nach einem Netzfehler** zuerst `GET /me` lesen und nicht blind wiederholen. Die Aktion kann schon
+**Nach einem Netzfehler** zuerst `GET /players/me` lesen und nicht blind wiederholen. Die Aktion kann schon
 gezählt haben, eine Wiederholung ergibt dann einen Fehler wie `report_cooldown`. `401` heißt, das Token
 gilt nicht mehr. Der Admin kann ein neues erzeugen, die App löscht ihres aber nie wegen eines
 Netzfehlers.
 
-Der Server darf ein `PUT /follow` später von sich aus beenden, also zählt immer `follow_player_id` im
+Der Server darf ein `POST /trips/follow` später von sich aus beenden, also zählt immer `follow_player_id` im
 Stand. Ein zu früher Stupser ist kein Fehler, sondern ergibt `xp_gained: 0`. Die App muss den Server nur
 ansprechen, wenn `next_poke_at` erreicht ist.
 
@@ -177,7 +178,7 @@ A startet ein Emote und nennt B den Code. Es gibt keine Einladung, also auch nic
 - Beide erhalten `partner_xp` einmal je Partner und LAN. Danach ist `xp_gained` 0.
 - Versuche sind je Spieler begrenzt, danach folgt `429 rate_limited`.
 - A erfährt vom Beitritt aus dem Stream: `partner.emote` trägt B als `player_id` und A als `partner_id`.
-  Danach `GET /me` lesen, die XP kommen als eigenes `xp.gained`. Ist einer von beiden ausgeblendet,
+  Danach `GET /players/me` lesen, die XP kommen als eigenes `xp.gained`. Ist einer von beiden ausgeblendet,
   gibt es kein Ereignis.
 
 ## Bühne
@@ -207,13 +208,13 @@ A startet ein Emote und nennt B den Code. Es gibt keine Einladung, also auch nic
   Bereich und ohne Lounge gilt die ganze Bühne. Abwesende behalten ihren Platz, Neue verschieben niemanden.
 - Mit `server_time` berechnen alle Bildschirme denselben Weg.
 
-`GET /events/stream` sendet Ereignisse als SSE und nimmt ebenfalls Schlüssel oder Token. Der Stream ist
+`GET /stage/events` sendet Ereignisse als SSE und nimmt ebenfalls Schlüssel oder Token. Der Stream ist
 für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 
-- **Start:** erst `GET /me` oder `GET /stage` lesen, dann den Stream mit `?since=<last_event_id>` öffnen.
+- **Start:** erst `GET /players/me` oder `GET /stage` lesen, dann den Stream mit `?since=<last_event_id>` öffnen.
   So geht nichts verloren. Ohne Angabe beginnt er beim neuesten Ereignis.
 - **Wiederverbinden:** `Last-Event-ID` hat Vorrang vor `since`. Spieler können höchstens 1000 Ereignisse
-  zurückgehen, danach zählt wieder der Stand aus `GET /me`.
+  zurückgehen, danach zählt wieder der Stand aus `GET /players/me`.
 - **Grenzen:** Eine App hält einen Stream offen. Je LAN gelten `max_player_streams` je Spieler und
   `max_streams` für alle Spieler zusammen, darüber folgt `429 rate_limited`. Jeder Versuch zählt zudem
   zum Limit von 300 Anfragen pro Minute. Die Bühne zählt nicht mit.

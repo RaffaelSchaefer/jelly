@@ -20,7 +20,7 @@ const (
 	streamKeepAliveTick = 30
 	// A client that takes longer to accept data has stalled and loses its stream.
 	streamWriteTimeout = 10 * time.Second
-	pathStream         = versionPrefix + "/events/stream"
+	pathStream         = versionPrefix + "/stage/events"
 	querySince         = "since"
 	paramInQuery       = "query"
 	paramInHeader      = "header"

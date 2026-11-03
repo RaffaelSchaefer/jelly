@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	pathMe     = "/me"
-	pathSign   = "/sign"
-	pathFollow = "/follow"
+	pathMe          = "/players/me"
+	pathSign        = "/signs/current"
+	pathCurrentTrip = "/trips/current"
 )
 
 // errUnknownAction reports an action that the server does not know.
@@ -50,9 +50,9 @@ type ProfileBody struct {
 	Cosmetic *string `json:"cosmetic,omitempty"`
 }
 
-// ActionBody names a poke or a food or drink report.
-type ActionBody struct {
-	Action string `json:"action"`
+// ReportBody names a food or drink report.
+type ReportBody struct {
+	Kind string `json:"kind"`
 }
 
 // ActionAnswer tells how much XP an action earned.
@@ -163,16 +163,21 @@ func (server *apiServer) addActionRoutes(contract huma.API) {
 			"`presence_window` passed since the last action.",
 	}, server.handlePresence)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "applyAction", Method: http.MethodPost, Path: "/actions",
-		Summary: "Poke or report food or drink",
-	}, server.handleAction)
+		OperationID: "pokeJelly", Method: http.MethodPost, Path: "/pokes",
+		Summary:     "Poke the jelly",
+		Description: "A poke that comes too early is no error, it earns `xp_gained: 0`.",
+	}, server.handlePoke)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "redeemEventCode", Method: http.MethodPost, Path: "/event-codes/redeem",
+		OperationID: "createReport", Method: http.MethodPost, Path: "/reports",
+		Summary: "Report food or drink",
+	}, server.handleReport)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "redeemEventCode", Method: http.MethodPost, Path: "/event-codes/redemptions",
 		Summary:     "Redeem an event code",
 		Middlewares: huma.Middlewares{server.limitCodeAttempts},
 	}, server.handleRedeem)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "playEmote", Method: http.MethodPost, Path: "/emote",
+		OperationID: "playEmote", Method: http.MethodPost, Path: "/emotes",
 		Summary: "Play an emote",
 	}, server.handleEmote)
 	addPlayerOperation(server, contract, huma.Operation{
@@ -184,14 +189,14 @@ func (server *apiServer) addActionRoutes(contract huma.API) {
 		Summary: "Lower the sign", DefaultStatus: http.StatusOK,
 	}, server.handleClearSign)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "followPlayer", Method: http.MethodPut, Path: pathFollow,
-		Summary: "Stand next to another jelly",
+		OperationID: "followPlayer", Method: http.MethodPost, Path: "/trips/follow",
+		Summary: "Follow another jelly",
 		Description: "The server may end this by itself later, " +
 			"so read `follow_player_id` instead of assuming it stays set.",
 	}, server.handleSetFollow)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "stopFollowing", Method: http.MethodDelete, Path: pathFollow,
-		Summary: "Walk away from the other jelly", DefaultStatus: http.StatusOK,
+		OperationID: "endTrip", Method: http.MethodDelete, Path: pathCurrentTrip,
+		Summary: "Go back to the own place", DefaultStatus: http.StatusOK,
 	}, server.handleClearFollow)
 }
 
@@ -265,23 +270,23 @@ func (server *apiServer) handlePresence(
 	return answerWith(server.Store.RecordPresence(ctx, playerID, server.currentMillis()))
 }
 
-// handleAction applies a poke or a food or drink report.
-func (server *apiServer) handleAction(
-	ctx context.Context, playerID int64, input *jsonInput[ActionBody],
+// handlePoke applies a poke.
+func (server *apiServer) handlePoke(
+	ctx context.Context, playerID int64, _ *noInput,
 ) (*jsonOutput[ActionAnswer], error) {
-	var gainedXP int
-	var state store.PlayerState
-	var err error
-	switch input.Body.Action {
-	case rules.ActionPoke:
-		gainedXP, state, err = server.Store.ApplyPoke(ctx, playerID, server.currentMillis())
-	case rules.ActionFood, rules.ActionDrink:
-		gainedXP, state, err = server.Store.ApplyReport(
-			ctx, playerID, input.Body.Action, server.currentMillis(),
-		)
-	default:
-		err = errUnknownAction
+	gainedXP, state, err := server.Store.ApplyPoke(ctx, playerID, server.currentMillis())
+	return answerWith(ActionAnswer{XPGained: gainedXP, Me: state}, err)
+}
+
+// handleReport applies a food or drink report.
+func (server *apiServer) handleReport(
+	ctx context.Context, playerID int64, input *jsonInput[ReportBody],
+) (*jsonOutput[ActionAnswer], error) {
+	kind := input.Body.Kind
+	if kind != rules.ActionFood && kind != rules.ActionDrink {
+		return nil, errUnknownAction
 	}
+	gainedXP, state, err := server.Store.ApplyReport(ctx, playerID, kind, server.currentMillis())
 	return answerWith(ActionAnswer{XPGained: gainedXP, Me: state}, err)
 }
 
@@ -322,7 +327,7 @@ func (server *apiServer) handleClearSign(
 	return answerWith(server.Store.UpdateSign(ctx, playerID, "", server.currentMillis()))
 }
 
-// handleSetFollow stands next to another jelly.
+// handleSetFollow follows another jelly.
 func (server *apiServer) handleSetFollow(
 	ctx context.Context, playerID int64, input *jsonInput[FollowBody],
 ) (*jsonOutput[store.PlayerState], error) {
@@ -334,7 +339,7 @@ func (server *apiServer) handleSetFollow(
 	)
 }
 
-// handleClearFollow walks away from the other jelly.
+// handleClearFollow ends the trip and goes back to the own place.
 func (server *apiServer) handleClearFollow(
 	ctx context.Context, playerID int64, _ *noInput,
 ) (*jsonOutput[store.PlayerState], error) {

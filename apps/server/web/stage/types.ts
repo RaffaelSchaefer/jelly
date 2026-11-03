@@ -42,7 +42,7 @@ export interface StageState {
   players: StagePlayer[];
 }
 
-/** One entry of `GET /events/stream`. The payload depends on the event type. */
+/** One entry of `GET /v1/stage/events`. The payload depends on the event type. */
 export interface StageEvent {
   id: number;
   type: string;
@@ -62,7 +62,7 @@ export interface EventPayload {
   source?: string;
 }
 
-/** The fixed lists of `GET /catalog` the stage needs for its texts. */
+/** The fixed lists of `GET /v1/catalog` the stage needs for its texts. */
 export interface StageCatalog {
   signs: CatalogEntry[];
   achievements: { key: string; title: string }[];
