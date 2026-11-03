@@ -42,6 +42,10 @@ func (store *Store) StartTrip(
 		return PlayerState{}, ErrInvalidTrip
 	}
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
+		err := removeStackMember(ctx, action)
+		if err != nil {
+			return err
+		}
 		trip := Trip{
 			X: point.X, Y: point.Y,
 			Until: rules.CalculateTripEnd(action.lan.gameRules, now),
@@ -49,7 +53,7 @@ func (store *Store) StartTrip(
 		const updateTripSQL = `UPDATE lan_entries
 			SET trip_x = ?, trip_y = ?, trip_until = ?, follow_player_id = NULL
 			WHERE lan_id = ? AND player_id = ?`
-		_, err := action.transaction.ExecContext(ctx, updateTripSQL,
+		_, err = action.transaction.ExecContext(ctx, updateTripSQL,
 			trip.X, trip.Y, trip.Until, action.lan.id, playerID)
 		if err != nil {
 			return fmt.Errorf("update trip: %w", err)
@@ -103,20 +107,7 @@ func (store *Store) StartFollow(
 		if !rules.IsFollowAllowed(action.lan.gameRules, startedAt, now) {
 			return ErrFollowCooldown
 		}
-		const updateFollowSQL = `UPDATE lan_entries SET follow_player_id = ?, follow_started_at = ?,
-				trip_x = NULL, trip_y = NULL, trip_until = NULL
-			WHERE lan_id = ? AND player_id = ?`
-		_, err = action.transaction.ExecContext(ctx, updateFollowSQL,
-			targetID, now, action.lan.id, playerID)
-		if err != nil {
-			return fmt.Errorf("update follow: %w", err)
-		}
-		err = appendVisibleEvent(
-			ctx,
-			action,
-			EventFollowChanged,
-			map[string]any{payloadTargetID: targetID},
-		)
+		err = writeFollow(ctx, action, targetID)
 		if err != nil {
 			return err
 		}
@@ -126,6 +117,24 @@ func (store *Store) StartFollow(
 		}
 		return grantConga(ctx, action, targetID)
 	})
+}
+
+// writeFollow stores the new target. The jelly leaves its stack and ends a running trip.
+func writeFollow(ctx context.Context, action actionContext, targetID int64) error {
+	err := removeStackMember(ctx, action)
+	if err != nil {
+		return err
+	}
+	const updateFollowSQL = `UPDATE lan_entries SET follow_player_id = ?, follow_started_at = ?,
+			trip_x = NULL, trip_y = NULL, trip_until = NULL
+		WHERE lan_id = ? AND player_id = ?`
+	_, err = action.transaction.ExecContext(ctx, updateFollowSQL,
+		targetID, action.now, action.lan.id, action.playerID)
+	if err != nil {
+		return fmt.Errorf("update follow: %w", err)
+	}
+	payload := map[string]any{payloadTargetID: targetID}
+	return appendVisibleEvent(ctx, action, EventFollowChanged, payload)
 }
 
 // loadFollow returns whom a jelly follows and when it last started to follow someone.
@@ -148,19 +157,30 @@ func requireFollowTarget(ctx context.Context, action actionContext, targetID int
 	if targetID == action.playerID {
 		return ErrInvalidFollow
 	}
-	var found int
-	const findFollowTargetSQL = `SELECT 1
-		FROM lan_entries e JOIN players p ON p.id = e.player_id
-		WHERE e.lan_id = ? AND e.player_id = ? AND p.hidden_at IS NULL`
-	err := action.transaction.QueryRowContext(ctx, findFollowTargetSQL,
-		action.lan.id, targetID).Scan(&found)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrInvalidFollow
-	}
+	err := requireVisibleJelly(ctx, action, targetID, ErrInvalidFollow)
 	if err != nil {
-		return fmt.Errorf("check follow target: %w", err)
+		return err
 	}
 	return requireNoFollowCircle(ctx, action, targetID)
+}
+
+// requireVisibleJelly returns `missing` unless the jelly is a visible part of the running LAN.
+func requireVisibleJelly(
+	ctx context.Context, action actionContext, targetID int64, missing error,
+) error {
+	var found int
+	const findVisibleJellySQL = `SELECT 1
+		FROM lan_entries e JOIN players p ON p.id = e.player_id
+		WHERE e.lan_id = ? AND e.player_id = ? AND p.hidden_at IS NULL`
+	err := action.transaction.QueryRowContext(ctx, findVisibleJellySQL,
+		action.lan.id, targetID).Scan(&found)
+	if errors.Is(err, sql.ErrNoRows) {
+		return missing
+	}
+	if err != nil {
+		return fmt.Errorf("check jelly: %w", err)
+	}
+	return nil
 }
 
 // requireNoFollowCircle walks along the line in front of the target and looks for this jelly.

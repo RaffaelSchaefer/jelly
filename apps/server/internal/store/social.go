@@ -17,7 +17,7 @@ func (store *Store) ApplyEmote(
 		return PlayerState{}, fmt.Errorf("validate emote: %w", err)
 	}
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		lastEmoteAt, err := loadLastEmoteTime(ctx, action.transaction, playerID)
+		lastEmoteAt, err := loadLastEventTime(ctx, action.transaction, playerID, EventEmote)
 		if err != nil {
 			return err
 		}
@@ -55,6 +55,9 @@ func (store *Store) UpdateSign(
 // congaFollowers is how many jellies behind the same one make a line.
 const congaFollowers = 2
 
+// lighthouseMembers is how many jellies make a stack a lighthouse.
+const lighthouseMembers = 2
+
 // grantFoundCompany rewards the visitor and the visited jelly if its search sign is up.
 func grantFoundCompany(ctx context.Context, action actionContext, targetID int64) error {
 	var sign sql.NullString
@@ -79,15 +82,16 @@ func grantFoundCompany(ctx context.Context, action actionContext, targetID int64
 	return grantAchievementOnce(ctx, target, rules.AchievementFoundCompany)
 }
 
-// loadLastEmoteTime returns the last emote of a player, or 0 without one.
-func loadLastEmoteTime(ctx context.Context, database querier, playerID int64) (int64, error) {
-	var lastEmoteAt int64
-	const selectLastEmoteSQL = `SELECT COALESCE(MAX(created_at), 0) FROM event_log
+// loadLastEventTime returns when a player last caused this kind of event, or 0 if never.
+func loadLastEventTime(
+	ctx context.Context, database querier, playerID int64, eventType string,
+) (int64, error) {
+	var lastAt int64
+	const selectLastEventSQL = `SELECT COALESCE(MAX(created_at), 0) FROM event_log
 		WHERE player_id = ? AND type = ?`
-	err := database.QueryRowContext(ctx, selectLastEmoteSQL,
-		playerID, EventEmote).Scan(&lastEmoteAt)
+	err := database.QueryRowContext(ctx, selectLastEventSQL, playerID, eventType).Scan(&lastAt)
 	if err != nil {
-		return 0, fmt.Errorf("load last emote: %w", err)
+		return 0, fmt.Errorf("load last event: %w", err)
 	}
-	return lastEmoteAt, nil
+	return lastAt, nil
 }

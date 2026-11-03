@@ -59,6 +59,16 @@ func listSocialAchievements() []Achievement {
 			Scope:       ScopeLAN, Metric: MetricGrantedDirectly, Goal: 1,
 		},
 		{
+			Key: AchievementLighthouse, Title: "Leuchtturm",
+			Description: "Du warst Teil eines Stapels, dessen Spitze aufleuchtete.",
+			Scope:       ScopeLAN, Metric: MetricGrantedDirectly, Goal: 1,
+		},
+		{
+			Key: AchievementLighthouseLight, Title: "Das Licht oben",
+			Description: "Du warst die Spitze des Leuchtturms.",
+			Scope:       ScopeLAN, Metric: MetricGrantedDirectly, Goal: 1,
+		},
+		{
 			Key: "matching", Title: "Partnerlook", Description: "Zufall? Wohl kaum.",
 			Scope: ScopeLAN, Secret: true, Metric: MetricSameColor, Goal: 1,
 		},

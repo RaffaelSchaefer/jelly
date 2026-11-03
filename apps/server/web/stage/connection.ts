@@ -28,6 +28,7 @@ const STATE_EVENTS = [
   "sign.changed",
   "follow.changed",
   "stage.changed",
+  "stack.changed",
 ];
 /** Events that only trigger animations. */
 const ANIMATION_EVENTS = [
@@ -36,6 +37,7 @@ const ANIMATION_EVENTS = [
   "award.given",
   "emote",
   "partner.emote",
+  "highlight",
 ];
 
 /** Reports a failed request with its HTTP status. */

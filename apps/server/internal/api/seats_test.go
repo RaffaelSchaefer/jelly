@@ -155,16 +155,3 @@ func TestProfilesNeedASecretAndHideHiddenPlayers(t *testing.T) {
 	requireProblem(t, testFixture.callAPI("GET", "/v1/players/"+shownID, reader, ""),
 		http.StatusNotFound, "player_not_found")
 }
-
-func TestPlannedRoutesAnswerInTheCommonForm(t *testing.T) {
-	testFixture := newFixture(t)
-	token := testFixture.registerPlayer("A")
-	for _, call := range [][2]string{
-		{"/v1/highlights", `{"player_id":1}`},
-		{"/v1/stacks", ""},
-		{"/v1/stacks/members", `{"stack_id":1}`},
-	} {
-		requireProblem(t, testFixture.callAPI("POST", call[0], token, call[1]),
-			http.StatusNotImplemented, "not_implemented")
-	}
-}

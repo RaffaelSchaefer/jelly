@@ -117,21 +117,23 @@ func (server *apiServer) refreshMovement(ctx context.Context, now int64) {
 // buildRoster translates the stage for the planner.
 func buildRoster(state store.StageState) movement.Roster {
 	roster := movement.Roster{
-		Areas:   make([]rules.Area, 0, len(state.Areas)),
-		Players: make([]movement.Player, 0, len(state.Players)),
+		WalkSpeed: state.WalkSpeed,
+		Areas:     make([]rules.Area, 0, len(state.Areas)),
+		Players:   make([]movement.Player, 0, len(state.Players)),
 	}
 	areaByID := make(map[int64]rules.Area, len(state.Areas))
 	for _, area := range state.Areas {
 		roster.Areas = append(roster.Areas, area.Area)
 		areaByID[area.ID] = area.Area
 	}
+	stackPlaces := listStackPlaces(state.Stacks)
 	for _, player := range state.Players {
 		area := rules.WholeStage()
 		if player.AreaID != nil {
 			area = areaByID[*player.AreaID]
 		}
 		planned := movement.Player{
-			ID: player.ID, Area: area, FollowID: 0, Trip: nil,
+			ID: player.ID, Area: area, FollowID: 0, Trip: nil, Stack: nil,
 			Home:       movement.Point{X: player.X, Y: player.Y},
 			SnackUntil: player.SnackUntil,
 		}
@@ -141,7 +143,23 @@ func buildRoster(state store.StageState) movement.Roster {
 		if player.Trip != nil {
 			planned.Trip = &movement.Point{X: player.Trip.X, Y: player.Trip.Y}
 		}
+		if place, ok := stackPlaces[player.ID]; ok {
+			planned.Stack = &place
+		}
 		roster.Players = append(roster.Players, planned)
 	}
 	return roster
+}
+
+// listStackPlaces returns where each jelly on a stack stands.
+func listStackPlaces(stacks []store.Stack) map[int64]movement.StackPlace {
+	places := map[int64]movement.StackPlace{}
+	for _, stack := range stacks {
+		for level, playerID := range stack.MemberIDs {
+			places[playerID] = movement.StackPlace{
+				Point: movement.Point{X: stack.X, Y: stack.Y}, Level: level,
+			}
+		}
+	}
+	return places
 }

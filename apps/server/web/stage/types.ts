@@ -49,6 +49,8 @@ export interface StageMove {
   kind: string;
   start_at: number;
   points: MovePoint[];
+  /** How many jellies stand below this one, once it has arrived on a stack. */
+  level: number;
 }
 
 /** Response of `GET /v1/stage`. */
@@ -79,6 +81,9 @@ export interface EventPayload {
   title?: string;
   /** What the XP of `xp.gained` was for, such as `poke`, `food` or `drink`. */
   source?: string;
+  /** Whom `highlight` lights up, and when it goes out. */
+  target_id?: number;
+  until?: number;
 }
 
 /** The fixed lists of `GET /v1/catalog` the stage needs for its texts. */

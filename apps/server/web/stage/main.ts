@@ -23,7 +23,7 @@ import { applyLens, createLensPass, type LensPass } from "./lensPass.ts";
 import { createStageScene, findViewer, projectToScreen, resizeStageScene } from "./scene.ts";
 import { disposeProps } from "./props.ts";
 import { createVenue, updateVenue } from "./venue.ts";
-import { findMovePosition, findSnackRunners, keepNewerMove } from "./walking.ts";
+import { findMovePosition, findSnackRunners, findStackLevel, keepNewerMove } from "./walking.ts";
 import { calculateCanvasDensity, toFloorPoint } from "./world.ts";
 import { listStageRects } from "./zones.ts";
 
@@ -108,6 +108,16 @@ function findPositions(memory: StageMemory, now: number): Map<number, FloorPoint
     );
   }
   return positions;
+}
+
+/** Returns how many jellies stand below each jelly. */
+function findLevels(memory: StageMemory, now: number): Map<number, number> {
+  const serverTime = now + memory.clockOffset;
+  const levels = new Map<number, number>();
+  for (const move of memory.moves.values()) {
+    levels.set(move.player_id, findStackLevel(move, serverTime));
+  }
+  return levels;
 }
 
 /** Builds furniture, venue and stages again when the areas changed. */
@@ -221,6 +231,7 @@ function paintFrame(
     effects: memory.effects,
     visitors: findSnackRunners(memory.moves),
     stages: memory.stages,
+    levels: findLevels(memory, now),
     seconds,
     time,
     now,

@@ -42,6 +42,14 @@ var (
 	ErrInvalidTrip = errors.New("point is outside the stage")
 	// ErrTooFar reports two jellies that do not stand next to each other.
 	ErrTooFar = errors.New("jellies are too far apart")
+	// ErrStackNotFound reports a stack that does not exist or has fallen apart.
+	ErrStackNotFound = errors.New("stack not found")
+	// ErrStackFull reports a stack that reached its height.
+	ErrStackFull = errors.New("stack is full")
+	// ErrInvalidHighlight reports a jelly that cannot be highlighted.
+	ErrInvalidHighlight = errors.New("cannot highlight this jelly")
+	// ErrHighlightCooldown reports a highlight sent too soon after the last one.
+	ErrHighlightCooldown = errors.New("highlight is on cooldown")
 	// ErrAreaNotFound reports an area that is not part of this LAN.
 	ErrAreaNotFound = errors.New("area not found")
 	// ErrAreaNotAssignable reports an area such as a desk, where no jelly can stand.

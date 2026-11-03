@@ -38,6 +38,9 @@ type StageState struct {
 	Room        rules.Room    `json:"room"`
 	Areas       []StageArea   `json:"areas"`
 	Players     []StagePlayer `json:"players"`
+	Stacks      []Stack       `json:"stacks"`
+	// WalkSpeed tells the movement planner how fast jellies walk in this LAN.
+	WalkSpeed float64 `json:"-"`
 }
 
 // LoadStageState returns all visible jellies of the running LAN. The event ID is read first, so
@@ -51,7 +54,7 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	}
 	state := StageState{
 		LastEventID: latestID, ServerTime: now, Room: rules.DescribeRoom(),
-		Areas: []StageArea{}, Players: []StagePlayer{},
+		Areas: []StageArea{}, Players: []StagePlayer{}, Stacks: []Stack{},
 	}
 	lan, err := loadActiveLAN(queryCtx, store.readDB, now)
 	if errors.Is(err, ErrNoActiveLAN) {
@@ -60,7 +63,12 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	if err != nil {
 		return StageState{}, err
 	}
+	state.WalkSpeed = lan.gameRules.WalkSpeed
 	state.Areas, err = loadAreas(queryCtx, store.readDB, lan.id)
+	if err != nil {
+		return StageState{}, err
+	}
+	state.Stacks, err = loadRunningStacks(queryCtx, store.readDB, lan.id, now)
 	if err != nil {
 		return StageState{}, err
 	}

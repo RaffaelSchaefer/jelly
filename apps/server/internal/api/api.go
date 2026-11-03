@@ -98,7 +98,7 @@ func (server *apiServer) addContractRoutes(contract huma.API) {
 	server.addActionRoutes(contract)
 	server.addPartnerRoutes(contract)
 	server.addStageRoutes(contract)
-	server.addPlannedRoutes(contract)
+	server.addStackRoutes(contract)
 }
 
 // currentMillis returns the current server time in Unix milliseconds.

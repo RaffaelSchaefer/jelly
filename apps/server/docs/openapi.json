@@ -489,6 +489,10 @@
           "kind": {
             "type": "string"
           },
+          "level": {
+            "format": "int64",
+            "type": "integer"
+          },
           "player_id": {
             "format": "int64",
             "type": "integer"
@@ -508,7 +512,8 @@
           "player_id",
           "kind",
           "start_at",
-          "points"
+          "points",
+          "level"
         ],
         "type": "object"
       },
@@ -990,6 +995,58 @@
         ],
         "type": "object"
       },
+      "Stack": {
+        "additionalProperties": true,
+        "properties": {
+          "ends_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "member_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "x": {
+            "format": "double",
+            "type": "number"
+          },
+          "y": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "x",
+          "y",
+          "ends_at",
+          "member_ids"
+        ],
+        "type": "object"
+      },
+      "StackAnswer": {
+        "additionalProperties": true,
+        "properties": {
+          "me": {
+            "$ref": "#/components/schemas/PlayerState"
+          },
+          "stack": {
+            "$ref": "#/components/schemas/Stack"
+          }
+        },
+        "required": [
+          "stack",
+          "me"
+        ],
+        "type": "object"
+      },
       "StackMemberBody": {
         "additionalProperties": false,
         "properties": {
@@ -1034,6 +1091,12 @@
           "server_time": {
             "format": "int64",
             "type": "integer"
+          },
+          "stacks": {
+            "items": {
+              "$ref": "#/components/schemas/Stack"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -1042,7 +1105,8 @@
           "server_time",
           "room",
           "areas",
-          "players"
+          "players",
+          "stacks"
         ],
         "type": "object"
       },
@@ -1247,7 +1311,7 @@
   },
   "info": {
     "title": "Jelly API",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -1457,7 +1521,7 @@
     },
     "/v1/highlights": {
       "post": {
-        "description": "Not available yet, answers `501 not_implemented`.",
+        "description": "Lights up the top of a stack and everyone on it earns `lighthouse`, the top also `lighthouse-light`.",
         "operationId": "highlightJelly",
         "requestBody": {
           "content": {
@@ -1496,7 +1560,7 @@
             "bearer": []
           }
         ],
-        "summary": "Highlight a jelly on the stage"
+        "summary": "Light up a jelly on the stage, so it can be found"
       }
     },
     "/v1/lans/current": {
@@ -2013,14 +2077,13 @@
     },
     "/v1/stacks": {
       "post": {
-        "description": "Not available yet, answers `501 not_implemented`.",
         "operationId": "startStack",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlayerState"
+                  "$ref": "#/components/schemas/StackAnswer"
                 }
               }
             },
@@ -2045,20 +2108,9 @@
         "summary": "Start a stack where the jelly stands"
       }
     },
-    "/v1/stacks/members": {
-      "post": {
-        "description": "Not available yet, answers `501 not_implemented`.",
-        "operationId": "joinStack",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StackMemberBody"
-              }
-            }
-          },
-          "required": true
-        },
+    "/v1/stacks/current": {
+      "delete": {
+        "operationId": "leaveStack",
         "responses": {
           "200": {
             "content": {
@@ -2086,7 +2138,51 @@
             "bearer": []
           }
         ],
-        "summary": "Join a stack nearby"
+        "summary": "Climb down from the stack"
+      }
+    },
+    "/v1/stacks/members": {
+      "post": {
+        "description": "A stack further away than `near_distance` answers `409 too_far`.",
+        "operationId": "joinStack",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackMemberBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackAnswer"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Climb on top of a stack nearby"
       }
     },
     "/v1/stage": {

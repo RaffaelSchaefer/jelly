@@ -48,6 +48,8 @@ const SHADOW_TURN = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0))
 /** Room for this many shadows at first. More jellies get a larger mesh. */
 const SHADOW_CAPACITY = 64;
 const FIRST_JELLY_ORDER = 1;
+/** How high one jelly on a stack stands over the one below: they squeeze together a bit. */
+const STACK_STEP = JELLY_HEIGHT * 0.7;
 /** How fast a jelly steps up onto the stage or down from it, per second. */
 const STEP_RATE = 10;
 
@@ -86,6 +88,8 @@ export interface JellyFrame {
   visitors: Set<number>;
   /** Raised floors: jellies on them stand higher. */
   stages: FloorRect[];
+  /** How many jellies stand below each jelly, by player ID. */
+  levels: Map<number, number>;
   /** Seconds since the last frame and since the page opened. */
   seconds: number;
   time: number;
@@ -176,7 +180,8 @@ function updateJelly(shown: StageJelly, frame: JellyFrame): void {
     viewer: frame.viewer,
     seconds: frame.seconds,
   });
-  const floor = findFloorHeight(walker.position, frame.stages);
+  const level = frame.levels.get(shown.player.id) ?? 0;
+  const floor = findFloorHeight(walker.position, frame.stages) + level * STACK_STEP;
   shown.elevation += (floor - shown.elevation) * (1 - Math.exp(-STEP_RATE * frame.seconds));
   const walk = calculateWalkPose(walker);
   const motion = findMotionPose(frame.effects, shown.player.id, frame.now);

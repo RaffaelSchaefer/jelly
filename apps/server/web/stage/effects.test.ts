@@ -110,3 +110,18 @@ test("rewards make a jelly bounce, emotes do not", () => {
   assert.equal(isPulseEvent({ ...event, type: "level.up" }), true);
   assert.equal(isPulseEvent({ ...event, type: "emote" }), false);
 });
+
+test("a highlight lights up the named jelly, not the one who asked", () => {
+  const catalog = { signs: [], achievements: [] };
+  const event = {
+    id: 1,
+    type: "highlight",
+    player_id: 4,
+    payload: { target_id: 9, until: 10_500 },
+    created_at: 500,
+  };
+  assert.deepEqual(createEffects(event, catalog, 1000), [
+    { playerId: 9, startedAt: 1000, endsAt: 11_000, kind: "spotlight" },
+  ]);
+  assert.deepEqual(createEffects({ ...event, payload: {} }, catalog, 1000), []);
+});

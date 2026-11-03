@@ -78,7 +78,7 @@ type knownError struct {
 func listKnownErrors() []knownError {
 	return slices.Concat(
 		listPlayerErrors(), listSeatErrors(), listCosmeticErrors(), listInviteErrors(),
-		listGameErrors(), listPlannedErrors(),
+		listGameErrors(), listStackErrors(),
 	)
 }
 
@@ -157,9 +157,22 @@ func listCosmeticErrors() []knownError {
 	}
 }
 
-// listPlannedErrors returns the answer of routes that do not work yet.
-func listPlannedErrors() []knownError {
-	return []knownError{{errNotImplemented, problemNotImplemented()}}
+// listStackErrors returns the errors of stacks and highlights.
+func listStackErrors() []knownError {
+	return []knownError{
+		{store.ErrStackNotFound, problem{
+			http.StatusNotFound, "stack_not_found", "Diesen Stapel gibt es nicht mehr.",
+		}},
+		{store.ErrStackFull, problem{
+			http.StatusConflict, "stack_full", "Dieser Stapel ist schon hoch genug.",
+		}},
+		{store.ErrInvalidHighlight, problem{
+			http.StatusBadRequest, "invalid_highlight", "Dieses Jelly kannst du nicht hervorheben.",
+		}},
+		{store.ErrHighlightCooldown, problem{
+			http.StatusConflict, "highlight_cooldown", "Warte kurz bis zum nächsten Hervorheben.",
+		}},
+	}
 }
 
 // listInviteErrors returns the errors of partner emote invites.

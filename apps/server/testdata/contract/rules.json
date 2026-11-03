@@ -19,7 +19,12 @@
     "snack_run_seconds": 14,
     "trip_seconds": 300,
     "follow_cooldown": 1800,
-    "near_distance": 6
+    "near_distance": 6,
+    "walk_speed": 1.4,
+    "stack_seconds": 120,
+    "stack_max_members": 8,
+    "highlight_seconds": 10,
+    "highlight_cooldown": 30
   },
   "poke": [
     { "name": "first poke counts immediately", "elapsed_seconds": null, "xp": 3 },

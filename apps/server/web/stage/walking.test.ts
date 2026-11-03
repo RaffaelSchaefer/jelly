@@ -8,6 +8,7 @@ import {
   createWalker,
   findMovePosition,
   findSnackRunners,
+  findStackLevel,
   keepNewerMove,
   stepWalker,
 } from "./walking.ts";
@@ -16,6 +17,7 @@ import { toFloorPoint } from "./world.ts";
 const move: StageMove = {
   player_id: 5,
   kind: "wander",
+  level: 0,
   start_at: 1000,
   points: [
     { x: 10, y: 10, t: 0 },
@@ -74,4 +76,10 @@ test("a walking jelly looks where it goes and hops, a standing one looks at the 
   assert.ok(Math.abs(calculateWalkPose(walker).lift) < 0.01);
   const toViewer = Math.atan2(viewer.x - standing.x, viewer.z - standing.z);
   assert.ok(Math.abs(walker.yaw - toViewer) < 0.01, "looks at the camera");
+});
+
+test("a jelly climbs its stack only after it has arrived", () => {
+  const climbing = { ...move, kind: "stack", level: 2 };
+  assert.equal(findStackLevel(climbing, 2000), 0);
+  assert.equal(findStackLevel(climbing, 4000), 2);
 });

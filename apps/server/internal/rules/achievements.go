@@ -31,9 +31,11 @@ const (
 
 // Keys of achievements that their action grants directly.
 const (
-	AchievementFoundCompany = "found-company"
-	AchievementFullHouse    = "full-house"
-	AchievementConga        = "conga"
+	AchievementFoundCompany    = "found-company"
+	AchievementFullHouse       = "full-house"
+	AchievementConga           = "conga"
+	AchievementLighthouse      = "lighthouse"
+	AchievementLighthouseLight = "lighthouse-light"
 )
 
 const (

@@ -13,7 +13,7 @@ const start = int64(1_000_000)
 func makeRoster(playerIDs ...int64) movement.Roster {
 	lounge := rules.Area{X: 10, Y: 10, Width: 60, Height: 30, Kind: rules.AreaKindLounge}
 	desk := rules.Area{X: 0, Y: 45, Width: 80, Height: 3, Kind: rules.AreaKindDesk}
-	roster := movement.Roster{Areas: []rules.Area{lounge, desk}}
+	roster := movement.Roster{WalkSpeed: 1.4, Areas: []rules.Area{lounge, desk}}
 	for index, playerID := range playerIDs {
 		roster.Players = append(roster.Players, movement.Player{
 			ID: playerID, Area: lounge,
@@ -106,9 +106,25 @@ func TestTripWalksAroundTheDeskAndEndsAtThePoint(t *testing.T) {
 	if endOf(move) != (movement.Point{X: 50, Y: 60}) {
 		t.Fatalf("ends at %+v", endOf(move))
 	}
-	duration := move.Points[len(move.Points)-1].T
-	if duration <= 0 || duration > 13000 {
-		t.Fatalf("takes %d ms", duration)
+}
+
+func TestWalkingTimeIsTheDistanceDividedByTheSpeed(t *testing.T) {
+	durationAt := func(speed float64) int64 {
+		planner := movement.NewPlanner()
+		roster := makeRoster(1)
+		roster.WalkSpeed = speed
+		planner.Advance(start, roster)
+		roster.Players[0].Trip = &movement.Point{X: 60, Y: 20}
+		planner.Advance(start+1000, roster)
+		move := findMove(t, planner)
+		return move.Points[len(move.Points)-1].T
+	}
+	// From 20 % to 60 % of a room 21 units wide: 8.4 units.
+	if got := durationAt(1.4); got != 6000 {
+		t.Fatalf("at 1.4 units per second it takes %d ms", got)
+	}
+	if got := durationAt(2.8); got != 3000 {
+		t.Fatalf("at 2.8 units per second it takes %d ms", got)
 	}
 }
 
@@ -172,7 +188,12 @@ func TestSnackRunGoesToTheCounterAndBack(t *testing.T) {
 	if end.X < 60 || end.X > 80 || end.Y > 60 {
 		t.Fatalf("waits at %+v", end)
 	}
-	planner.Advance(start+14_000, roster)
+	arrival := move.StartAt + move.Points[len(move.Points)-1].T
+	planner.Advance(arrival+1000, roster)
+	if kind := findMove(t, planner).Kind; kind != movement.KindSnack {
+		t.Fatalf("a jelly waits at the counter after a long walk, kind = %s", kind)
+	}
+	planner.Advance(arrival+6000, roster)
 	if kind := findMove(t, planner).Kind; kind != movement.KindWander {
 		t.Fatalf("kind = %s", kind)
 	}

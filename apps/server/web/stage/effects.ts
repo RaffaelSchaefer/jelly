@@ -55,6 +55,7 @@ export type StageEffect = { playerId: number; startedAt: number; endsAt: number 
   | { kind: "bubble"; glyph: string }
   | { kind: "toast"; text: string }
   | { kind: "motion"; motion: MotionKey }
+  | { kind: "spotlight" }
 );
 
 /** Reports whether an event rewards its jelly, which then bounces. */
@@ -78,7 +79,7 @@ export function createEffects(
     return [];
   }
   const start = { playerId, startedAt: now };
-  const { key, level, title, partner_id: partnerId } = event.payload;
+  const { key, partner_id: partnerId } = event.payload;
   switch (event.type) {
     case "emote":
       return createEmoteEffects(playerId, key ?? "", now);
@@ -86,15 +87,39 @@ export function createEffects(
       return createPartnerEffects([playerId, partnerId ?? playerId], key ?? "", now);
     case "xp.gained":
       return createXPEffects(start, event.payload);
-    case "level.up":
-      return [{ ...start, endsAt: now + TOAST_MS, kind: "toast", text: `Level ${level}!` }];
-    case "achievement.earned":
-      return [{ ...start, endsAt: now + TOAST_MS, kind: "toast", text: findTitle(catalog, key) }];
-    case "award.given":
-      return [{ ...start, endsAt: now + TOAST_MS, kind: "toast", text: title ?? "" }];
+    case "highlight":
+      return createSpotlight(event, now);
     default:
-      return [];
+      return createRewardEffects(event, catalog, start);
   }
+}
+
+/** Rewards show their name over the jelly. Other events show nothing. */
+function createRewardEffects(
+  event: StageEvent,
+  catalog: StageCatalog,
+  start: { playerId: number; startedAt: number },
+): StageEffect[] {
+  const texts: Record<string, string | undefined> = {
+    "level.up": `Level ${event.payload.level}!`,
+    "achievement.earned": findTitle(catalog, event.payload.key),
+    "award.given": event.payload.title ?? "",
+  };
+  const text = texts[event.type];
+  if (text === undefined) {
+    return [];
+  }
+  return [{ ...start, endsAt: start.startedAt + TOAST_MS, kind: "toast", text }];
+}
+
+/** A beam of light shines on the highlighted jelly until the server says it goes out. */
+function createSpotlight(event: StageEvent, now: number): StageEffect[] {
+  const { target_id: playerId, until } = event.payload;
+  if (playerId === undefined || until === undefined) {
+    return [];
+  }
+  const endsAt = now + (until - event.created_at);
+  return [{ playerId, startedAt: now, endsAt, kind: "spotlight" }];
 }
 
 /** XP rises as a short text. */

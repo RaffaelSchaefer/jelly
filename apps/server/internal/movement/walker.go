@@ -10,25 +10,23 @@ const (
 	// Goals keep half a body from the edges of an area.
 	edgeMargin = jellyRadius / 2
 	// Closest distance between two goals. A jelly is about 1.7 wide.
-	personalSpace = 1.8
-	// Usual walking speed in jelly units per second.
-	walkSpeed = 1.4
-	// Long ways go faster, so no walk takes much longer than this.
-	longestWalkSeconds = 12.0
-	millisPerSecond    = 1000
+	personalSpace   = 1.8
+	millisPerSecond = 1000
 	// A wandering jelly picks a spot this far around its place, or further in a large area.
-	wanderReach      = 1.0
-	wanderAreaShare  = 0.1
-	wanderTries      = 6
-	shortestWander   = 0.6
-	shortestPause    = 8000
-	longestPause     = 25000
-	replanDistance   = 0.75
-	spotCandidates   = 64
-	spotSpacing      = personalSpace * half
-	goldenAngle      = 2.399963
-	fullShare        = 1.0
-	snackGap         = 1.1
+	wanderReach     = 1.0
+	wanderAreaShare = 0.1
+	wanderTries     = 6
+	shortestWander  = 0.6
+	shortestPause   = 8000
+	longestPause    = 25000
+	replanDistance  = 0.75
+	spotCandidates  = 64
+	spotSpacing     = personalSpace * half
+	goldenAngle     = 2.399963
+	fullShare       = 1.0
+	snackGap        = 1.1
+	// A jelly from the far end of the hall still waits this long at the counter.
+	snackWaitMillis  = 5000
 	snackSpreadShare = 0.8
 	sidesPerJelly    = 2
 )
@@ -45,6 +43,7 @@ type walkPlan struct {
 	kind     string
 	trip     Point
 	followID int64
+	stack    StackPlace
 }
 
 // walker is the state of one jelly.
@@ -71,7 +70,10 @@ func (walker *walker) setRoute(kind string, startAt int64, route []routePoint) {
 		points = append(points, Waypoint{Point: toPoint(point.floorPoint), T: point.at - startAt})
 	}
 	walker.route = route
-	walker.move = Move{PlayerID: walker.playerID, Kind: kind, StartAt: startAt, Points: points}
+	walker.move = Move{
+		PlayerID: walker.playerID, Kind: kind, StartAt: startAt, Points: points,
+		Level: walker.plan.stack.Level,
+	}
 }
 
 // findPositionAt returns the position on the route at a time.
@@ -120,10 +122,15 @@ func (planner *Planner) updateWalker(now int64, player Player) {
 	}
 }
 
-// findPlan returns what a jelly should do now. A snack comes first, then the trip, then the jelly
-// it follows. A followed jelly that left the stage ends the following.
+// findPlan returns what a jelly should do now. A stack comes first, then a snack, then the trip,
+// then the jelly it follows. A followed jelly that left the stage ends the following.
 func (planner *Planner) findPlan(now int64, player Player) walkPlan {
-	if planner.snackBar != nil && player.SnackUntil > now {
+	if player.Stack != nil {
+		return walkPlan{kind: KindStack, stack: *player.Stack}
+	}
+	walker := planner.walkers[player.ID]
+	isAtSnack := walker.plan.kind == KindSnack && now < walker.findArrival()+snackWaitMillis
+	if planner.snackBar != nil && (player.SnackUntil > now || isAtSnack) {
 		return walkPlan{kind: KindSnack}
 	}
 	if player.Trip != nil {
@@ -146,6 +153,8 @@ func (planner *Planner) startPlan(now int64, walker *walker) {
 		goal = planner.findFreeSpot(walker, toFloorPoint(walker.plan.trip), room)
 	case KindFollow:
 		goal = planner.findFollowGoal(walker)
+	case KindStack:
+		goal = planner.floor.findNearestWalkable(toFloorPoint(walker.plan.stack.Point))
 	default:
 		goal = planner.findFreeSpot(walker, walker.anchor, walker.bounds)
 		walker.nextWanderAt = now + planner.drawPause()
@@ -162,22 +171,15 @@ func (planner *Planner) startWalk(now int64, walker *walker, goal floorPoint) {
 	startAt := now + moveLeadMillis
 	from := walker.findPositionAt(startAt)
 	path := planner.floor.findPath(from, goal)
-	walker.setRoute(walker.plan.kind, startAt, buildRoute(from, path, startAt))
+	walker.setRoute(walker.plan.kind, startAt, buildRoute(from, path, startAt, planner.walkSpeed))
 	planner.publish(walker.move)
 }
 
 // buildRoute adds the times to a path.
-func buildRoute(from floorPoint, path []floorPoint, startAt int64) []routePoint {
-	length := 0.0
-	last := from
-	for _, waypoint := range path {
-		length += measureDistance(last, waypoint)
-		last = waypoint
-	}
-	speed := max(walkSpeed, length/longestWalkSeconds)
+func buildRoute(from floorPoint, path []floorPoint, startAt int64, speed float64) []routePoint {
 	route := []routePoint{{floorPoint: from, at: startAt}}
 	walked := 0.0
-	last = from
+	last := from
 	for _, waypoint := range path {
 		walked += measureDistance(last, waypoint)
 		last = waypoint

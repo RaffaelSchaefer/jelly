@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.3.0**
+Aktuelle Version: **1.4.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.3.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.4.0   | Stapel (`POST /stacks`, `POST /stacks/members`, `DELETE /stacks/current`, `stacks` in `GET /stage`, `level` im Weg), `POST /highlights`, Achievements `lighthouse` und `lighthouse-light`. Keine Route antwortet mehr mit `501` |
 | 1.3.0   | `POST /trips/goto`, Folgen mit Abklingzeit (`next_follow_at`, `follow_cooldown`), `409 too_far` bei Partner-Emotes (`near_distance`), Achievement `conga`, `trip` im Stand |
 | 1.2.0   | Der Server plant die Wege: `moves` in `GET /stage`, Nachricht `move` und `?topics=` im Stream, Regel `snack_run_seconds` |
 | 1.1.0   | 3D-Bühne: Bereiche haben eine Art (`kind`), `xp.gained` nennt seine Quelle (`source`) |
@@ -164,6 +165,10 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `PUT /signs/current`      | `{"key"}`                                  | Stand                          |
 | `DELETE /signs/current`   |                                            | Stand                          |
 | `POST /trips/goto`        | `{"x","y"}`                                | Stand                          |
+| `POST /stacks`            |                                            | `{"stack","me"}`               |
+| `POST /stacks/members`    | `{"stack_id"}`                             | `{"stack","me"}`               |
+| `DELETE /stacks/current`  |                                            | Stand                          |
+| `POST /highlights`        | `{"player_id"}`                            | Stand                          |
 | `POST /trips/follow`      | `{"player_id"}`                            | Stand                          |
 | `DELETE /trips/current`   |                                            | Stand                          |
 
@@ -220,11 +225,20 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 - `DELETE /trips/current` beendet beides sofort. Ausflug und Folgen schließen sich aus, das Neue beendet das Alte.
 - Das Achievement `conga` gibt es, wenn mehrere demselben Jelly folgen oder man jemandem folgt, der selbst folgt.
 
-### Noch nicht verfügbar
+### Stapel und Hervorheben
 
-Diese Wege stehen schon im Vertrag und antworten mit `501 not_implemented`, bis der Server die Bewegung plant:
-`POST /highlights` mit `{"player_id"}`, `POST /stacks` und
-`POST /stacks/members` mit `{"stack_id"}`.
+- `POST /stacks` beginnt einen Stapel an der eigenen Stelle, `POST /stacks/members` mit `{"stack_id"}` klettert oben
+  auf einen Stapel in der Nähe, sonst `409 too_far`. Beide antworten mit `{"stack","me"}`.
+- `DELETE /stacks/current` steigt ab, die Jellies darüber rutschen nach. Ausflug und Folgen beenden den Stapelplatz,
+  und wer klettert, beendet Ausflug und Folgen.
+- Laufende Stapel stehen als `stacks` in `GET /stage`, `member_ids` geht von unten nach oben. Nach `stack_seconds`
+  fällt ein Stapel auseinander, höher als `stack_max_members` wird er nicht (`409 stack_full`). Ist er weg, folgt
+  `404 stack_not_found`. Jede Änderung meldet `stack.changed`.
+- `level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
+- `POST /highlights` mit `{"player_id"}` lässt ein Jelly für `highlight_seconds` aufleuchten, auch das eigene.
+  Danach folgt das nächste erst nach `highlight_cooldown`, sonst `409 highlight_cooldown`.
+- Wird die Spitze eines Stapels mit mindestens zwei Jellies hervorgehoben, bekommen alle darauf `lighthouse` und die
+  Spitze zusätzlich `lighthouse-light`.
 
 ## Bühne
 
@@ -267,9 +281,12 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
 - `points` sind Prozentwerte der Bühne, `t` zählt Millisekunden ab `start_at`. Zwischen zwei Punkten läuft das Jelly
   geradeaus, nach dem letzten steht es dort. Ein einzelner Punkt heißt: Es steht.
 - Ein neuer Weg desselben Jellys ersetzt den alten. Er beginnt dort, wo das Jelly zu seinem `start_at` ist.
-- `kind` nennt den Grund: `wander` (bummelt um seinen Platz oder geht dorthin zurück), `follow`, `trip` und `snack`.
+- `kind` nennt den Grund: `wander` (bummelt um seinen Platz oder geht dorthin zurück), `follow`, `trip`, `snack` und `stack`.
   Weitere Werte können dazukommen und sind wie `wander` zu behandeln.
-- Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur Theke und danach zurück.
+- Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Jelly-Einheiten pro Sekunde. Ein Jelly ist etwa
+  1,7 breit, die Halle 21 breit und 40 tief.
+- Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur Theke und danach zurück. War der Weg lang, wartet
+  es ab seiner Ankunft noch kurz.
 - Wo ein Jelly läuft, bestimmt nur der Server. Nach einem Neustart stehen alle Jellies wieder an ihrem Platz.
 
 `GET /stage/events` sendet Ereignisse und Wege als SSE und nimmt ebenfalls Schlüssel oder Token. Der Stream ist
@@ -298,6 +315,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `achievement.earned`, `award.given`               | Auszeichnung                       |
 | `emote`, `partner.emote`                          | Emote, Partner-Emote mit `partner_id` |
 | `sign.changed`, `follow.changed`, `trip.changed`  | Schild oder Standort               |
+| `stack.changed`, `highlight`                      | Stapel, ein Jelly leuchtet auf     |
 | `stage.changed`                                   | Raumkarte geändert, Stand neu laden |
 
 Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` hängt vom Typ ab:
@@ -316,6 +334,8 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `sign.changed`                                    | Spieler     | `{"key"}`, `null` beim Senken     |
 | `follow.changed`                                  | Spieler     | `{"target_id"}`, `null` beim Weggehen |
 | `trip.changed`                                    | Spieler     | `{"x","y","until"}`                |
+| `stack.changed`                                   | Spieler     | Der Stapel, nach dem Absteigen nur `{"id"}` |
+| `highlight`                                       | Spieler     | `{"target_id","until"}`            |
 | `stage.changed`                                   | `null`      | `{}`                              |
 
 `source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`.

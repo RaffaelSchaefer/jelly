@@ -66,7 +66,7 @@ func TestFoodReportSendsTheJellyToTheSnackBar(t *testing.T) {
 	if kind := findOnlyMove(t, testFixture.readStage(token)).Kind; kind != movement.KindSnack {
 		t.Fatalf("kind = %s", kind)
 	}
-	testFixture.advanceClock(15 * time.Second)
+	testFixture.advanceClock(time.Minute)
 	if kind := findOnlyMove(t, testFixture.readStage(token)).Kind; kind != movement.KindWander {
 		t.Fatalf("after the run, kind = %s", kind)
 	}

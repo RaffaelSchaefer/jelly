@@ -14,6 +14,7 @@ const (
 	KindTrip   = "trip"
 	KindFollow = "follow"
 	KindSnack  = "snack"
+	KindStack  = "stack"
 )
 
 const (
@@ -40,6 +41,8 @@ type Move struct {
 	Kind     string     `json:"kind"`
 	StartAt  int64      `json:"start_at"`
 	Points   []Waypoint `json:"points"`
+	// Level counts the jellies below this one, once it has arrived on a stack.
+	Level int `json:"level"`
 }
 
 // Player is what the planner has to know about a jelly on the stage.
@@ -52,12 +55,22 @@ type Player struct {
 	Trip *Point
 	// SnackUntil is when a snack run ends. It is in the past without a snack run.
 	SnackUntil int64
+	// Stack is the place on a stack, or nil.
+	Stack *StackPlace
+}
+
+// StackPlace is where a jelly stands on a stack.
+type StackPlace struct {
+	Point Point
+	Level int
 }
 
 // Roster is everyone on the stage and the room they stand in, in the order of their IDs.
 type Roster struct {
-	Areas   []rules.Area
-	Players []Player
+	// WalkSpeed is how fast jellies walk, in jelly units per second.
+	WalkSpeed float64
+	Areas     []rules.Area
+	Players   []Player
 }
 
 // Planner decides where the jellies walk. It lives as long as the server and all methods can be
@@ -66,6 +79,7 @@ type Planner struct {
 	mutex       sync.Mutex
 	random      *rand.Rand
 	lastAdvance int64
+	walkSpeed   float64
 	areas       []rules.Area
 	floor       *grid
 	snackBar    *floorRect
@@ -101,6 +115,7 @@ func (planner *Planner) ClaimAdvance(now int64) bool {
 func (planner *Planner) Advance(now int64, roster Roster) {
 	planner.mutex.Lock()
 	defer planner.mutex.Unlock()
+	planner.walkSpeed = roster.WalkSpeed
 	planner.syncRoom(roster.Areas)
 	planner.syncWalkers(now, roster.Players)
 	for _, player := range roster.Players {
@@ -151,6 +166,17 @@ func (planner *Planner) MeasureDistance(firstID, secondID, now int64) (float64, 
 		return 0, false
 	}
 	return measureDistance(first.findPositionAt(now), second.findPositionAt(now)), true
+}
+
+// MeasureDistanceTo returns the distance of a jelly to a point in jelly units.
+func (planner *Planner) MeasureDistanceTo(playerID int64, point Point, now int64) (float64, bool) {
+	planner.mutex.Lock()
+	defer planner.mutex.Unlock()
+	walker, ok := planner.walkers[playerID]
+	if !ok {
+		return 0, false
+	}
+	return measureDistance(walker.findPositionAt(now), toFloorPoint(point)), true
 }
 
 // collectCurrentMoves reads the latest moves for callers that hold the lock.
