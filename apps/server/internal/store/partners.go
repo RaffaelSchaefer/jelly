@@ -2,171 +2,228 @@ package store
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/big"
-	"strings"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
 
 const (
-	partnerCodeRange    = 10_000
-	partnerCodeFormat   = "%04d"
-	partnerCodeAttempts = 20
-	millisPerSecond     = 1000
-	actionPartner       = "partner"
+	millisPerSecond = 1000
+	actionPartner   = "partner"
+
+	// The states of a partner emote invite. Only a pending one can change.
+	invitePending   = "pending"
+	inviteAccepted  = "accepted"
+	inviteDeclined  = "declined"
+	inviteCancelled = "cancelled"
+	// Only a list of one partner works so far. Group emotes will raise this limit.
+	maxInvitedPartners = 1
 )
 
-// PartnerOffer is a spoken code that another player can enter.
-type PartnerOffer struct {
-	Code      string      `json:"code"`
-	EmoteKey  string      `json:"key"`
-	ExpiresAt int64       `json:"expires_at"`
-	Me        PlayerState `json:"me"`
+// PartnerInvite asks other jellies for a partner emote.
+type PartnerInvite struct {
+	ID         int64   `json:"id"`
+	EmoteKey   string  `json:"key"`
+	FromID     int64   `json:"from_id"`
+	PartnerIDs []int64 `json:"partner_ids"`
+	State      string  `json:"state"`
+	ExpiresAt  int64   `json:"expires_at"`
 }
 
-// PartnerResult is the outcome of entering a partner code.
-type PartnerResult struct {
-	EmoteKey  string      `json:"key"`
-	PartnerID int64       `json:"partner_id"`
-	XPGained  int         `json:"xp_gained"`
-	Me        PlayerState `json:"me"`
+// PartnerInviteResult is an invite after a change, with the XP that change earned.
+type PartnerInviteResult struct {
+	PartnerEmote PartnerInvite `json:"partner_emote"`
+	XPGained     int           `json:"xp_gained"`
+	Me           PlayerState   `json:"me"`
 }
 
-// CreatePartnerOffer starts a partner emote and replaces an older code of this player.
-func (store *Store) CreatePartnerOffer(
-	ctx context.Context, playerID int64, emoteKey string, now int64,
-) (PartnerOffer, error) {
+// PartnerInviteList holds the open invites of a player.
+type PartnerInviteList struct {
+	Items      []PartnerInvite `json:"items"`
+	NextCursor *string         `json:"next_cursor"`
+}
+
+// CreatePartnerInvite asks another jelly for a partner emote.
+func (store *Store) CreatePartnerInvite(
+	ctx context.Context, playerID int64, emoteKey string, partnerIDs []int64, now int64,
+) (PartnerInviteResult, error) {
 	err := rules.ValidatePartnerEmote(emoteKey)
 	if err != nil {
-		return PartnerOffer{}, fmt.Errorf("validate partner emote: %w", err)
+		return PartnerInviteResult{}, fmt.Errorf("validate partner emote: %w", err)
 	}
-	var offer PartnerOffer
-	insertOffer := func(action actionContext) error {
-		var workErr error
-		offer, workErr = insertPartnerOffer(ctx, action, emoteKey)
-		return workErr
+	if len(partnerIDs) != maxInvitedPartners {
+		return PartnerInviteResult{}, ErrInvalidPartner
 	}
-	state, err := store.runPlayerAction(ctx, playerID, now, false, insertOffer)
-	if err != nil {
-		return PartnerOffer{}, err
-	}
-	offer.Me = state
-	return offer, nil
-}
-
-// AcceptPartnerOffer plays the emote for both players and pays XP for a new partner.
-func (store *Store) AcceptPartnerOffer(
-	ctx context.Context, playerID int64, code string, now int64,
-) (PartnerResult, error) {
-	var result PartnerResult
+	var result PartnerInviteResult
 	work := func(action actionContext) error {
 		var workErr error
-		result, workErr = applyPartnerOffer(ctx, action, strings.TrimSpace(code))
+		result.PartnerEmote, workErr = insertPartnerInvite(ctx, action, emoteKey, partnerIDs[0])
 		return workErr
 	}
-	state, err := store.runPlayerAction(ctx, playerID, now, false, work)
+	result.Me, err = store.runPlayerAction(ctx, playerID, now, false, work)
 	if err != nil {
-		return PartnerResult{}, err
+		return PartnerInviteResult{}, err
 	}
-	result.Me = state
 	return result, nil
 }
 
-// insertPartnerOffer removes expired and own codes, so codes stay free for others.
-func insertPartnerOffer(
-	ctx context.Context, action actionContext, emoteKey string,
-) (PartnerOffer, error) {
-	const deleteStaleOffersSQL = `DELETE FROM partner_offers
-		WHERE lan_id = ? AND (expires_at <= ? OR player_id = ?)`
-	_, err := action.transaction.ExecContext(ctx, deleteStaleOffersSQL,
-		action.lan.id, action.now, action.playerID)
+// insertPartnerInvite checks the partner and writes the invite. One open invite per pair is enough.
+func insertPartnerInvite(
+	ctx context.Context, action actionContext, emoteKey string, partnerID int64,
+) (PartnerInvite, error) {
+	if partnerID == action.playerID {
+		return PartnerInvite{}, ErrPartnerSelf
+	}
+	err := requireLANEntry(ctx, action.transaction, action.lan.id, partnerID)
+	if errors.Is(err, ErrNotJoined) {
+		return PartnerInvite{}, ErrInvalidPartner
+	}
 	if err != nil {
-		return PartnerOffer{}, fmt.Errorf("delete partner offers: %w", err)
+		return PartnerInvite{}, err
 	}
-	code, err := findFreePartnerCode(ctx, action)
+	var found int
+	const findOpenInviteSQL = `SELECT 1 FROM partner_invites
+		WHERE lan_id = ? AND state = ? AND from_id = ? AND to_id = ? AND expires_at > ?`
+	err = action.transaction.QueryRowContext(ctx, findOpenInviteSQL, action.lan.id, invitePending,
+		action.playerID, partnerID, action.now).Scan(&found)
+	if err == nil {
+		return PartnerInvite{}, ErrInviteOpen
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return PartnerInvite{}, fmt.Errorf("find open invite: %w", err)
+	}
+	invite := PartnerInvite{
+		ID: 0, EmoteKey: emoteKey, FromID: action.playerID, PartnerIDs: []int64{partnerID},
+		State:     invitePending,
+		ExpiresAt: action.now + action.lan.gameRules.PartnerInviteSeconds*millisPerSecond,
+	}
+	const insertInviteSQL = `INSERT INTO partner_invites
+		(lan_id, from_id, to_id, emote_key, state, expires_at) VALUES (?, ?, ?, ?, ?, ?)`
+	inserted, err := action.transaction.ExecContext(ctx, insertInviteSQL, action.lan.id,
+		invite.FromID, partnerID, invite.EmoteKey, invite.State, invite.ExpiresAt)
 	if err != nil {
-		return PartnerOffer{}, err
+		return PartnerInvite{}, fmt.Errorf("insert invite: %w", err)
 	}
-	offer := PartnerOffer{
-		Code: code, EmoteKey: emoteKey,
-		ExpiresAt: action.now + action.lan.gameRules.PartnerCodeSeconds*millisPerSecond,
-	}
-	const insertOfferSQL = `INSERT INTO partner_offers
-		(lan_id, player_id, code, emote_key, expires_at) VALUES (?, ?, ?, ?, ?)`
-	_, err = action.transaction.ExecContext(ctx, insertOfferSQL,
-		action.lan.id, action.playerID, offer.Code, offer.EmoteKey, offer.ExpiresAt)
+	invite.ID, err = inserted.LastInsertId()
 	if err != nil {
-		return PartnerOffer{}, fmt.Errorf("insert partner offer: %w", err)
+		return PartnerInvite{}, fmt.Errorf("read invite ID: %w", err)
 	}
-	return offer, nil
+	return invite, appendVisibleEvent(ctx, action, EventPartnerInvite, invite)
 }
 
-// findFreePartnerCode picks a random code that nobody in this LAN is using.
-func findFreePartnerCode(ctx context.Context, action actionContext) (string, error) {
-	for range partnerCodeAttempts {
-		number, err := rand.Int(rand.Reader, big.NewInt(partnerCodeRange))
-		if err != nil {
-			return "", fmt.Errorf("generate partner code: %w", err)
+// AnswerPartnerInvite accepts, declines or cancels an invite. Only the invited jelly can accept or
+// decline, and only the one who asked can cancel.
+func (store *Store) AnswerPartnerInvite(
+	ctx context.Context, playerID, inviteID int64, state string, now int64,
+) (PartnerInviteResult, error) {
+	var result PartnerInviteResult
+	work := func(action actionContext) error {
+		invite, workErr := loadAnswerableInvite(ctx, action, inviteID, state)
+		if workErr != nil {
+			return workErr
 		}
-		code := fmt.Sprintf(partnerCodeFormat, number.Int64())
-		var found int
-		const findUsedCodeSQL = `SELECT 1 FROM partner_offers WHERE lan_id = ? AND code = ?`
-		err = action.transaction.QueryRowContext(ctx, findUsedCodeSQL,
-			action.lan.id, code).Scan(&found)
-		if errors.Is(err, sql.ErrNoRows) {
-			return code, nil
+		invite.State = state
+		result.PartnerEmote = invite
+		const updateInviteSQL = `UPDATE partner_invites SET state = ? WHERE id = ?`
+		_, workErr = action.transaction.ExecContext(ctx, updateInviteSQL, state, inviteID)
+		if workErr != nil {
+			return fmt.Errorf("update invite: %w", workErr)
 		}
-		if err != nil {
-			return "", fmt.Errorf("check partner code: %w", err)
+		workErr = appendVisibleEvent(ctx, action, EventPartnerInvite, invite)
+		if workErr != nil || state != inviteAccepted {
+			return workErr
 		}
+		result.XPGained, workErr = playAcceptedEmote(ctx, action, invite)
+		return workErr
 	}
-	return "", ErrPartnerCodesBusy
+	var err error
+	result.Me, err = store.runPlayerAction(ctx, playerID, now, false, work)
+	if err != nil {
+		return PartnerInviteResult{}, err
+	}
+	return result, nil
 }
 
-// applyPartnerOffer uses up a code and updates both players.
-func applyPartnerOffer(
-	ctx context.Context, action actionContext, code string,
-) (PartnerResult, error) {
-	var result PartnerResult
-	const findValidOfferSQL = `SELECT player_id, emote_key FROM partner_offers
-		WHERE lan_id = ? AND code = ? AND expires_at > ?`
-	err := action.transaction.QueryRowContext(ctx, findValidOfferSQL,
-		action.lan.id, code, action.now).
-		Scan(&result.PartnerID, &result.EmoteKey)
+// loadAnswerableInvite returns an invite if this player may give it this answer now.
+func loadAnswerableInvite(
+	ctx context.Context, action actionContext, inviteID int64, state string,
+) (PartnerInvite, error) {
+	invite := PartnerInvite{ID: inviteID, PartnerIDs: []int64{0}}
+	const selectInviteSQL = `SELECT emote_key, from_id, to_id, state, expires_at
+		FROM partner_invites WHERE id = ? AND lan_id = ?`
+	err := action.transaction.QueryRowContext(ctx, selectInviteSQL, inviteID, action.lan.id).Scan(
+		&invite.EmoteKey, &invite.FromID, &invite.PartnerIDs[0], &invite.State, &invite.ExpiresAt,
+	)
 	if errors.Is(err, sql.ErrNoRows) {
-		return PartnerResult{}, ErrPartnerCodeInvalid
+		return PartnerInvite{}, ErrInviteNotFound
 	}
 	if err != nil {
-		return PartnerResult{}, fmt.Errorf("find partner offer: %w", err)
+		return PartnerInvite{}, fmt.Errorf("load invite: %w", err)
 	}
-	if result.PartnerID == action.playerID {
-		return PartnerResult{}, ErrPartnerSelf
+	isInvited := invite.PartnerIDs[0] == action.playerID
+	if !isInvited && invite.FromID != action.playerID {
+		return PartnerInvite{}, ErrInviteNotFound
 	}
-	const deleteUsedOfferSQL = `DELETE FROM partner_offers WHERE lan_id = ? AND code = ?`
-	_, err = action.transaction.ExecContext(ctx, deleteUsedOfferSQL, action.lan.id, code)
+	isAllowed := (isInvited && (state == inviteAccepted || state == inviteDeclined)) ||
+		(!isInvited && state == inviteCancelled)
+	if !isAllowed {
+		return PartnerInvite{}, ErrInvalidInviteAnswer
+	}
+	if invite.State != invitePending || invite.ExpiresAt <= action.now {
+		return PartnerInvite{}, ErrInviteClosed
+	}
+	return invite, nil
+}
+
+// playAcceptedEmote plays the emote for both players and pays XP for a new partner.
+func playAcceptedEmote(
+	ctx context.Context, action actionContext, invite PartnerInvite,
+) (int, error) {
+	partner, err := loadOtherPlayerAction(ctx, action, invite.FromID)
 	if err != nil {
-		return PartnerResult{}, fmt.Errorf("use partner offer: %w", err)
+		return 0, err
 	}
-	partner, err := loadOtherPlayerAction(ctx, action, result.PartnerID)
+	gainedXP, err := recordPartnerEmote(ctx, action, partner, invite.EmoteKey)
 	if err != nil {
-		return PartnerResult{}, err
+		return 0, err
 	}
-	result.XPGained, err = recordPartnerEmote(ctx, action, partner, result.EmoteKey)
-	if err != nil {
-		return PartnerResult{}, err
-	}
-	err = grantNewAchievements(ctx, action.transaction, achievementInput{
+	return gainedXP, grantNewAchievements(ctx, action.transaction, achievementInput{
 		lan: partner.lan, playerID: partner.playerID, now: partner.now,
 		restHours: 0, sessionHours: 0, isPoke: false,
 	})
+}
+
+// ListOpenPartnerInvites returns what a player can still answer, for example after a restart.
+func (store *Store) ListOpenPartnerInvites(
+	ctx context.Context, playerID, now int64,
+) (PartnerInviteList, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	list := PartnerInviteList{Items: []PartnerInvite{}, NextCursor: nil}
+	const selectOpenInvitesSQL = `SELECT id, emote_key, from_id, to_id, state, expires_at
+		FROM partner_invites
+		WHERE state = ? AND expires_at > ? AND (from_id = ? OR to_id = ?) ORDER BY id`
+	rows, err := store.readDB.QueryContext(queryCtx, selectOpenInvitesSQL,
+		invitePending, now, playerID, playerID)
 	if err != nil {
-		return PartnerResult{}, err
+		return list, fmt.Errorf("load invites: %w", err)
 	}
-	return result, nil
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		invite := PartnerInvite{PartnerIDs: []int64{0}}
+		err = rows.Scan(&invite.ID, &invite.EmoteKey, &invite.FromID, &invite.PartnerIDs[0],
+			&invite.State, &invite.ExpiresAt)
+		if err != nil {
+			return list, fmt.Errorf("read invite: %w", err)
+		}
+		list.Items = append(list.Items, invite)
+	}
+	if err := rows.Err(); err != nil {
+		return list, fmt.Errorf("load invites: %w", err)
+	}
+	return list, nil
 }
 
 // recordPartnerEmote writes the history and event, and pays both players for a new partner.

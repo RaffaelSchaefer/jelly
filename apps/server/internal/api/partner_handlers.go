@@ -13,6 +13,9 @@ import (
 
 const secondsPerMinute = 60
 
+// pathPartnerEmotes is the topic of partner emote invites.
+const pathPartnerEmotes = "/partner-emotes"
+
 // playerLimiters keeps one rate limiter per player, since one shared limiter would let a single
 // guesser lock out everyone.
 type playerLimiters struct {
@@ -43,33 +46,60 @@ func (limiters *playerLimiters) allowAttempt(playerID int64) bool {
 	return limiter.Allow()
 }
 
+// InviteBody asks other jellies for a partner emote.
+type InviteBody struct {
+	Key        string  `json:"key"`
+	PartnerIDs []int64 `json:"partner_ids"`
+}
+
+// InviteAnswerBody accepts, declines or cancels an invite.
+type InviteAnswerBody struct {
+	ID    int64  `json:"id"`
+	State string `json:"state"`
+}
+
 // addPartnerRoutes registers the partner emote flow.
 func (server *apiServer) addPartnerRoutes(contract huma.API) {
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "createPartnerEmote", Method: http.MethodPost, Path: "/partner-emote",
-		Summary: "Start a partner emote and get a code to tell someone",
-	}, server.handleCreatePartnerOffer)
-	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "joinPartnerEmote", Method: http.MethodPost, Path: "/partner-emote/join",
-		Summary:     "Join a partner emote with its code",
+		OperationID: "createPartnerEmote", Method: http.MethodPost, Path: pathPartnerEmotes,
+		Summary: "Ask another jelly for a partner emote",
+		Description: "The other client learns about it from `partner_emote.updated` and answers " +
+			"with PATCH. `partner_ids` holds exactly one jelly for now.",
 		Middlewares: huma.Middlewares{server.limitCodeAttempts},
-	}, server.handleJoinPartnerOffer)
+	}, server.handleCreatePartnerInvite)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "answerPartnerEmote", Method: http.MethodPatch, Path: pathPartnerEmotes,
+		Summary: "Accept, decline or cancel a partner emote",
+		Description: "The invited jelly sends `accepted` or `declined`, " +
+			"the one who asked sends `cancelled`.",
+	}, server.handleAnswerPartnerInvite)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "listPartnerEmotes", Method: http.MethodGet, Path: pathPartnerEmotes,
+		Summary: "Read the own open partner emotes, for example after a restart",
+	}, server.handleListPartnerInvites)
 }
 
-// handleCreatePartnerOffer returns a code that the player tells someone else.
-func (server *apiServer) handleCreatePartnerOffer(
-	ctx context.Context, playerID int64, input *jsonInput[KeyBody],
-) (*jsonOutput[store.PartnerOffer], error) {
-	return answerWith(
-		server.Store.CreatePartnerOffer(ctx, playerID, input.Body.Key, server.currentMillis()),
-	)
+// handleCreatePartnerInvite asks another jelly for a partner emote.
+func (server *apiServer) handleCreatePartnerInvite(
+	ctx context.Context, playerID int64, input *jsonInput[InviteBody],
+) (*jsonOutput[store.PartnerInviteResult], error) {
+	return answerWith(server.Store.CreatePartnerInvite(
+		ctx, playerID, input.Body.Key, input.Body.PartnerIDs, server.currentMillis(),
+	))
 }
 
-// handleJoinPartnerOffer plays the emote for the player who entered the code and its owner.
-func (server *apiServer) handleJoinPartnerOffer(
-	ctx context.Context, playerID int64, input *jsonInput[CodeBody],
-) (*jsonOutput[store.PartnerResult], error) {
-	return answerWith(
-		server.Store.AcceptPartnerOffer(ctx, playerID, input.Body.Code, server.currentMillis()),
-	)
+// handleAnswerPartnerInvite accepts, declines or cancels an invite.
+func (server *apiServer) handleAnswerPartnerInvite(
+	ctx context.Context, playerID int64, input *jsonInput[InviteAnswerBody],
+) (*jsonOutput[store.PartnerInviteResult], error) {
+	return answerWith(server.Store.AnswerPartnerInvite(
+		ctx, playerID, input.Body.ID, input.Body.State, server.currentMillis(),
+	))
+}
+
+// handleListPartnerInvites returns the open invites of the player.
+func (server *apiServer) handleListPartnerInvites(
+	ctx context.Context, playerID int64, _ *noInput,
+) (*jsonOutput[store.PartnerInviteList], error) {
+	return answerWith(server.Store.ListOpenPartnerInvites(ctx, playerID, server.currentMillis()))
 }

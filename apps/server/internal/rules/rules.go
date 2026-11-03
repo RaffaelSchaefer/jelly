@@ -22,7 +22,7 @@ const (
 	defaultReportsPerWindow      = 8
 	defaultPresenceWindowSeconds = 5400
 	defaultEmoteCooldownSeconds  = 3
-	defaultPartnerCodeSeconds    = 120
+	defaultPartnerInviteSeconds  = 120
 	defaultPartnerXP             = 2
 	defaultFullHousePercent      = 33
 	defaultMaxPlayers            = 120
@@ -56,8 +56,8 @@ type Rules struct {
 	PresenceWindowSeconds int64 `json:"presence_window"`
 	// EmoteCooldownSeconds is the time between two emotes of one player.
 	EmoteCooldownSeconds int64 `json:"emote_cooldown"`
-	// PartnerCodeSeconds is how long a partner emote code can be entered.
-	PartnerCodeSeconds int64 `json:"partner_code_seconds"`
+	// PartnerInviteSeconds is how long a partner emote invite can be answered.
+	PartnerInviteSeconds int64 `json:"partner_invite_seconds"`
 	// PartnerXP is the XP both players get for a partner emote with someone new in this LAN.
 	PartnerXP int `json:"partner_xp"`
 	// FullHousePercent is the share of the LAN's players that must redeem one event code together.
@@ -83,7 +83,7 @@ func DefaultRules() Rules {
 		ReportsPerWindow:      defaultReportsPerWindow,
 		PresenceWindowSeconds: defaultPresenceWindowSeconds,
 		EmoteCooldownSeconds:  defaultEmoteCooldownSeconds,
-		PartnerCodeSeconds:    defaultPartnerCodeSeconds,
+		PartnerInviteSeconds:  defaultPartnerInviteSeconds,
 		PartnerXP:             defaultPartnerXP,
 		FullHousePercent:      defaultFullHousePercent,
 		MaxPlayers:            defaultMaxPlayers,
@@ -97,7 +97,7 @@ func ValidateRules(gameRules Rules) error {
 	for _, duration := range []int64{
 		gameRules.PokeIntervalSeconds, gameRules.PokeMaxTicks, gameRules.ReportCooldownSeconds,
 		gameRules.ReportWindowSeconds, gameRules.PresenceWindowSeconds,
-		gameRules.PartnerCodeSeconds,
+		gameRules.PartnerInviteSeconds,
 	} {
 		if duration <= 0 {
 			return ErrInvalidRules

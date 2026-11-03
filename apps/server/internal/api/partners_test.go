@@ -10,82 +10,117 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
-// createPartnerCode starts a partner emote and returns its code.
-func (testFixture *fixture) createPartnerCode(token string) string {
+// invitePartner asks another jelly for a partner emote and returns the invite ID.
+func (testFixture *fixture) invitePartner(token, partner string) string {
 	testFixture.t.Helper()
-	response := testFixture.callAPI("POST", "/v1/partner-emote", token, `{"key":"hop"}`)
+	partnerID := strconv.FormatInt(testFixture.loadMe(partner).ID, 10)
+	response := testFixture.callAPI("POST", "/v1/partner-emotes", token,
+		`{"key":"hop","partner_ids":[`+partnerID+`]}`)
 	if response.status != http.StatusOK {
-		testFixture.t.Fatalf("offer: %d %s", response.status, response.body)
+		testFixture.t.Fatalf("invite: %d %s", response.status, response.body)
 	}
-	return decodeBody[store.PartnerOffer](testFixture.t, response).Code
+	invite := decodeBody[store.PartnerInviteResult](testFixture.t, response).PartnerEmote
+	return strconv.FormatInt(invite.ID, 10)
 }
 
-// joinPartnerCode enters a code.
-func (testFixture *fixture) joinPartnerCode(token, code string) apiResponse {
+// answerInvite sends an answer to an invite.
+func (testFixture *fixture) answerInvite(token, inviteID, state string) apiResponse {
 	testFixture.t.Helper()
-	return testFixture.callAPI("POST", "/v1/partner-emote/join", token, `{"code":"`+code+`"}`)
+	return testFixture.callAPI("PATCH", "/v1/partner-emotes", token,
+		`{"id":`+inviteID+`,"state":"`+state+`"}`)
 }
 
 func TestPartnerEmoteFlow(t *testing.T) {
 	testFixture := newFixture(t)
 	first := testFixture.registerPlayer("A")
 	second := testFixture.registerPlayer("B")
+	secondID := strconv.FormatInt(testFixture.loadMe(second).ID, 10)
+	firstID := strconv.FormatInt(testFixture.loadMe(first).ID, 10)
 
-	response := testFixture.callAPI("POST", "/v1/partner-emote", first, `{"key":"wave"}`)
+	response := testFixture.callAPI("POST", "/v1/partner-emotes", first,
+		`{"key":"wave","partner_ids":[`+secondID+`]}`)
 	requireProblem(t, response, http.StatusBadRequest, "unknown_partner_emote")
+	response = testFixture.callAPI("POST", "/v1/partner-emotes", first,
+		`{"key":"hop","partner_ids":[`+firstID+`]}`)
+	requireProblem(t, response, http.StatusBadRequest, "partner_self")
 
-	code := testFixture.createPartnerCode(first)
-	if len(code) != 4 {
-		t.Fatalf("code = %q", code)
+	inviteID := testFixture.invitePartner(first, second)
+	response = testFixture.callAPI("POST", "/v1/partner-emotes", first,
+		`{"key":"hop","partner_ids":[`+secondID+`]}`)
+	requireProblem(t, response, http.StatusConflict, "partner_emote_open")
+
+	list := decodeBody[store.PartnerInviteList](t,
+		testFixture.callAPI("GET", "/v1/partner-emotes", second, ""))
+	if len(list.Items) != 1 || list.Items[0].FromID == 0 {
+		t.Fatalf("open invites: %+v", list)
 	}
-	requireProblem(t, testFixture.joinPartnerCode(first, code),
-		http.StatusBadRequest, "partner_self")
+	requireProblem(t, testFixture.answerInvite(first, inviteID, "accepted"),
+		http.StatusBadRequest, "invalid_partner_emote_state")
 
-	response = testFixture.joinPartnerCode(second, code)
-	result := decodeBody[store.PartnerResult](t, response)
-	if result.XPGained != 2 || result.EmoteKey != "hop" {
+	response = testFixture.answerInvite(second, inviteID, "accepted")
+	result := decodeBody[store.PartnerInviteResult](t, response)
+	if result.XPGained != 2 || result.PartnerEmote.State != "accepted" {
 		t.Fatalf("result: %s", response.body)
 	}
 	if got := testFixture.loadMe(first).XP; got != 2 {
-		t.Fatalf("code owner XP = %d", got)
+		t.Fatalf("XP of the one who asked = %d", got)
 	}
-	requireProblem(t, testFixture.joinPartnerCode(second, code),
-		http.StatusBadRequest, "invalid_partner_code")
+	requireProblem(t, testFixture.answerInvite(second, inviteID, "accepted"),
+		http.StatusConflict, "partner_emote_closed")
 }
 
 func TestPartnerXPOnlyForNewPartner(t *testing.T) {
 	testFixture := newFixture(t)
 	first := testFixture.registerPlayer("A")
 	second := testFixture.registerPlayer("B")
-	testFixture.joinPartnerCode(second, testFixture.createPartnerCode(first))
+	testFixture.answerInvite(second, testFixture.invitePartner(first, second), "accepted")
 
-	response := testFixture.joinPartnerCode(first, testFixture.createPartnerCode(second))
-	if got := decodeBody[store.PartnerResult](t, response).XPGained; got != 0 {
+	response := testFixture.answerInvite(
+		first,
+		testFixture.invitePartner(second, first),
+		"accepted",
+	)
+	if got := decodeBody[store.PartnerInviteResult](t, response).XPGained; got != 0 {
 		t.Fatalf("second emote with the same partner = %d XP", got)
 	}
 }
 
-func TestPartnerCodeExpires(t *testing.T) {
+func TestPartnerInviteExpiresAndConcernsOnlyTheTwo(t *testing.T) {
 	testFixture := newFixture(t)
 	first := testFixture.registerPlayer("A")
 	second := testFixture.registerPlayer("B")
-	code := testFixture.createPartnerCode(first)
+	stranger := testFixture.registerPlayer("C")
+	inviteID := testFixture.invitePartner(first, second)
+	requireProblem(t, testFixture.answerInvite(stranger, inviteID, "accepted"),
+		http.StatusNotFound, "partner_emote_not_found")
 	testFixture.advanceClock(3 * time.Minute)
-	requireProblem(t, testFixture.joinPartnerCode(second, code),
-		http.StatusBadRequest, "invalid_partner_code")
+	requireProblem(t, testFixture.answerInvite(second, inviteID, "accepted"),
+		http.StatusConflict, "partner_emote_closed")
 }
 
-func TestPartnerGuessingIsLimitedPerPlayer(t *testing.T) {
+func TestDeclinedInviteEarnsNothing(t *testing.T) {
 	testFixture := newFixture(t)
-	guesser := testFixture.registerPlayer("A")
-	other := testFixture.registerPlayer("B")
+	first := testFixture.registerPlayer("A")
+	second := testFixture.registerPlayer("B")
+	response := testFixture.answerInvite(
+		second,
+		testFixture.invitePartner(first, second),
+		"declined",
+	)
+	if got := decodeBody[store.PartnerInviteResult](t, response).XPGained; got != 0 {
+		t.Fatalf("XP for declining = %d", got)
+	}
+}
+
+func TestInvitesAreLimitedPerPlayer(t *testing.T) {
+	testFixture := newFixture(t)
+	asker := testFixture.registerPlayer("A")
 	var last apiResponse
 	for range 6 {
-		last = testFixture.joinPartnerCode(guesser, "abcd")
+		last = testFixture.callAPI("POST", "/v1/partner-emotes", asker,
+			`{"key":"hop","partner_ids":[999]}`)
 	}
 	requireProblem(t, last, http.StatusTooManyRequests, "rate_limited")
-	requireProblem(t, testFixture.joinPartnerCode(other, "abcd"),
-		http.StatusBadRequest, "invalid_partner_code")
 }
 
 func TestPartnerEventsAndAchievements(t *testing.T) {
@@ -93,7 +128,7 @@ func TestPartnerEventsAndAchievements(t *testing.T) {
 	hub := testFixture.registerPlayer("Hub")
 	for index := range 3 {
 		guest := testFixture.registerPlayer("Gast" + strconv.Itoa(index))
-		testFixture.joinPartnerCode(guest, testFixture.createPartnerCode(hub))
+		testFixture.answerInvite(guest, testFixture.invitePartner(hub, guest), "accepted")
 	}
 	state := testFixture.loadMe(hub)
 	if !slices.Contains(findAchievementKeys(state), "sociable") {

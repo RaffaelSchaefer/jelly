@@ -77,7 +77,8 @@ type knownError struct {
 // listKnownErrors returns all errors the client may learn about.
 func listKnownErrors() []knownError {
 	return slices.Concat(
-		listPlayerErrors(), listSeatErrors(), listCosmeticErrors(), listGameErrors(),
+		listPlayerErrors(), listSeatErrors(), listCosmeticErrors(), listInviteErrors(),
+		listGameErrors(),
 	)
 }
 
@@ -156,6 +157,32 @@ func listCosmeticErrors() []knownError {
 	}
 }
 
+// listInviteErrors returns the errors of partner emote invites.
+func listInviteErrors() []knownError {
+	return []knownError{
+		{store.ErrInvalidPartner, problem{
+			http.StatusBadRequest, "invalid_partner", "Dieses Jelly kannst du nicht auffordern.",
+		}},
+		{store.ErrInviteOpen, problem{
+			http.StatusConflict, "partner_emote_open", "Du hast dieses Jelly schon aufgefordert.",
+		}},
+		{store.ErrInviteNotFound, problem{
+			http.StatusNotFound, "partner_emote_not_found", "Diese Aufforderung gibt es nicht.",
+		}},
+		{store.ErrInviteClosed, problem{
+			http.StatusConflict, "partner_emote_closed", "Diese Aufforderung ist schon vorbei.",
+		}},
+		{
+			store.ErrInvalidInviteAnswer,
+			problem{
+				http.StatusBadRequest,
+				"invalid_partner_emote_state",
+				"Das geht bei dieser Aufforderung nicht.",
+			},
+		},
+	}
+}
+
 // listSeatErrors returns the errors of seat codes.
 func listSeatErrors() []knownError {
 	return []knownError{
@@ -195,14 +222,8 @@ func listGameErrors() []knownError {
 			http.StatusBadRequest, "invalid_follow",
 			"Zu diesem Jelly kannst du dich nicht stellen.",
 		}},
-		{store.ErrPartnerCodeInvalid, problem{
-			http.StatusBadRequest, "invalid_partner_code", "Dieser Code gilt gerade nicht.",
-		}},
 		{store.ErrPartnerSelf, problem{
 			http.StatusBadRequest, "partner_self", "Dafür brauchst du ein anderes Jelly.",
-		}},
-		{store.ErrPartnerCodesBusy, problem{
-			http.StatusConflict, "partner_codes_busy", "Gerade sind alle Codes belegt.",
 		}},
 		{rules.ErrUnknownPartnerEmote, problem{
 			http.StatusBadRequest, "unknown_partner_emote", "Dieses Partner-Emote gibt es nicht.",

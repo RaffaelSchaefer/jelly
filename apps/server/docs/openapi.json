@@ -336,6 +336,44 @@
         ],
         "type": "object"
       },
+      "InviteAnswerBody": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ],
+        "type": "object"
+      },
+      "InviteBody": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "partner_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "partner_ids"
+        ],
+        "type": "object"
+      },
       "KeyBody": {
         "additionalProperties": false,
         "properties": {
@@ -432,43 +470,73 @@
         ],
         "type": "object"
       },
-      "PartnerOffer": {
+      "PartnerInvite": {
         "additionalProperties": true,
         "properties": {
-          "code": {
-            "type": "string"
-          },
           "expires_at": {
             "format": "int64",
             "type": "integer"
           },
+          "from_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
           "key": {
             "type": "string"
           },
-          "me": {
-            "$ref": "#/components/schemas/PlayerState"
+          "partner_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "state": {
+            "type": "string"
           }
         },
         "required": [
-          "code",
+          "id",
           "key",
-          "expires_at",
-          "me"
+          "from_id",
+          "partner_ids",
+          "state",
+          "expires_at"
         ],
         "type": "object"
       },
-      "PartnerResult": {
+      "PartnerInviteList": {
         "additionalProperties": true,
         "properties": {
-          "key": {
-            "type": "string"
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PartnerInvite"
+            },
+            "type": "array"
           },
+          "next_cursor": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "type": "object"
+      },
+      "PartnerInviteResult": {
+        "additionalProperties": true,
+        "properties": {
           "me": {
             "$ref": "#/components/schemas/PlayerState"
           },
-          "partner_id": {
-            "format": "int64",
-            "type": "integer"
+          "partner_emote": {
+            "$ref": "#/components/schemas/PartnerInvite"
           },
           "xp_gained": {
             "format": "int64",
@@ -476,8 +544,7 @@
           }
         },
         "required": [
-          "key",
-          "partner_id",
+          "partner_emote",
           "xp_gained",
           "me"
         ],
@@ -1142,14 +1209,88 @@
         "summary": "Read which LAN runs and which comes next"
       }
     },
-    "/v1/partner-emote": {
+    "/v1/partner-emotes": {
+      "get": {
+        "operationId": "listPartnerEmotes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerInviteList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read the own open partner emotes, for example after a restart"
+      },
+      "patch": {
+        "description": "The invited jelly sends `accepted` or `declined`, the one who asked sends `cancelled`.",
+        "operationId": "answerPartnerEmote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteAnswerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerInviteResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept, decline or cancel a partner emote"
+      },
       "post": {
+        "description": "The other client learns about it from `partner_emote.updated` and answers with PATCH. `partner_ids` holds exactly one jelly for now.",
         "operationId": "createPartnerEmote",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/KeyBody"
+                "$ref": "#/components/schemas/InviteBody"
               }
             }
           },
@@ -1160,7 +1301,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PartnerOffer"
+                  "$ref": "#/components/schemas/PartnerInviteResult"
                 }
               }
             },
@@ -1182,50 +1323,7 @@
             "bearer": []
           }
         ],
-        "summary": "Start a partner emote and get a code to tell someone"
-      }
-    },
-    "/v1/partner-emote/join": {
-      "post": {
-        "operationId": "joinPartnerEmote",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CodeBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PartnerResult"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Join a partner emote with its code"
+        "summary": "Ask another jelly for a partner emote"
       }
     },
     "/v1/players/me": {

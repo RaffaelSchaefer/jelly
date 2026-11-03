@@ -39,8 +39,7 @@ Bisher keine. Jede künftige steht hier mit Begründung.
 - Anfragen und Antworten sind JSON, Anfragen höchstens 4 KiB. Ein anderer `Content-Type` als
   `application/json` ergibt 415, also auch der Standard von `curl -d`. Unbekannte Felder in Anfragen
   sind ein Fehler. Ein zu großer Körper ergibt 413, ein zu langsamer 408.
-- Jeder Spieler hat ein Limit von 300 Anfragen pro Minute. Code-Versuche (Beitritt, Event-Code,
-  Partner-Code) sind auf 10 pro Minute begrenzt. Darüber folgt `429 rate_limited`. Wege in den Tabellen stehen ohne das Präfix `/v1`, außer bei `/health`, `/version` und `/admin/api`.
+- Jeder Spieler hat ein Limit von 300 Anfragen pro Minute. Code-Versuche (Event-Code, Partner-Aufforderung) sind auf 10 pro Minute begrenzt. Darüber folgt `429 rate_limited`. Wege in den Tabellen stehen ohne das Präfix `/v1`, außer bei `/health`, `/version` und `/admin/api`.
 - Zeiten sind UTC in Unix-Millisekunden. Nur der Server vergibt sie.
 - Spieler senden `Authorization: Bearer <secret>`. Die Bühne nutzt den Bühnenschlüssel als `?key=`.
 - Admins melden sich an und erhalten ein Cookie, siehe [Admin](#admin).
@@ -67,7 +66,6 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 400    | `unknown_action`, `unknown_emote`         | Eintrag steht nicht in der festen Liste   |
 | 400    | `unknown_partner_emote`, `unknown_sign`   | Eintrag steht nicht in der festen Liste   |
 | 400    | `invalid_event_code`                      | Code unbekannt oder außerhalb seiner Zeit |
-| 400    | `invalid_partner_code`, `partner_self`    | Code gilt nicht oder ist der eigene       |
 | 400    | `invalid_follow`                          | Zu diesem Jelly kann man sich nicht stellen |
 | 401    | `unauthorized`                            | Token oder Schlüssel fehlt oder ist falsch |
 | 403    | `invalid_code`                            | Anmeldecode stimmt nicht                  |
@@ -82,7 +80,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 409    | `area_occupied`                           | Bereich hat mehrere Jellies, kein Sitzplatz-Code möglich |
 | 409    | `event_code_redeemed`, `event_code_exists` | Event-Code schon eingelöst oder vorhanden |
 | 409    | `emote_cooldown`, `report_cooldown`       | Zu früh wiederholt                        |
-| 409    | `report_limit`, `partner_codes_busy`      | Limit erreicht, später erneut versuchen   |
+| 409    | `report_limit`      | Limit erreicht, später erneut versuchen   |
 | 409    | `area_not_assignable`                     | In diesem Bereich kann kein Jelly stehen  |
 | 429    | `rate_limited`                            | Zu viele Versuche                         |
 | 500    | `internal`                                | Fehler auf dem Server                     |
@@ -187,19 +185,21 @@ ansprechen, wenn `next_poke_at` erreicht ist.
 
 ### Partner-Emotes
 
-A startet ein Emote und nennt B den Code. Es gibt keine Einladung, also auch nichts zu spammen.
+A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 
-| Weg                       | Körper    | Antwort                                  |
-| ------------------------- | --------- | ---------------------------------------- |
-| `POST /partner-emote`     | `{"key"}` | `{"code","key","expires_at","me"}`       |
-| `POST /partner-emote/join` | `{"code"}` | `{"key","partner_id","xp_gained","me"}` |
+| Weg                       | Körper                                     | Antwort                        |
+| ------------------------- | ------------------------------------------ | ------------------------------ |
+| `POST /partner-emotes`    | `{"key","partner_ids"}`, vorerst genau ein Jelly | `{"partner_emote","xp_gained","me"}` |
+| `PATCH /partner-emotes`   | `{"id","state"}`                           | `{"partner_emote","xp_gained","me"}` |
+| `GET /partner-emotes`     |                                            | `{"items","next_cursor"}`      |
 
-- Der Code hat 4 Ziffern und gilt `partner_code_seconds` lang. Ein neuer Code ersetzt den alten.
+- B erfährt davon aus dem Stream über `partner_emote.updated` und zeigt sein Pop-up, die App filtert über `partner_ids`.
+- B sendet `accepted` oder `declined`, A kann mit `cancelled` zurückziehen. Eine Aufforderung gilt `partner_invite_seconds` lang.
+- Je Paar gibt es eine offene Aufforderung, sonst `409 partner_emote_open`. Vorbei ergibt `409 partner_emote_closed`.
 - Beide erhalten `partner_xp` einmal je Partner und LAN. Danach ist `xp_gained` 0.
-- Versuche sind je Spieler begrenzt, danach folgt `429 rate_limited`.
-- A erfährt vom Beitritt aus dem Stream: `partner.emote` trägt B als `player_id` und A als `partner_id`.
-  Danach `GET /players/me` lesen, die XP kommen als eigenes `xp.gained`. Ist einer von beiden ausgeblendet,
-  gibt es kein Ereignis.
+- Nach dem Bestätigen folgt `partner.emote` mit B als `player_id` und A als `partner_id`. Ist einer von beiden
+  ausgeblendet, gibt es kein Ereignis.
+- Die Nähe wird noch nicht geprüft, das kommt mit der Bewegung auf dem Server. Dann antwortet der Server `409 too_far`.
 
 ## Bühne
 
@@ -263,6 +263,7 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `achievement.earned`, `emote`                     | Spieler     | `{"key"}`                         |
 | `award.given`                                     | Spieler     | `{"title"}`, Freitext vom Admin   |
 | `partner.emote`                                   | B           | `{"key","partner_id"}`, `partner_id` ist A |
+| `partner_emote.updated`                           | Handelnder  | `{"id","key","from_id","partner_ids","state","expires_at"}` |
 | `sign.changed`                                    | Spieler     | `{"key"}`, `null` beim Senken     |
 | `follow.changed`                                  | Spieler     | `{"target_id"}`, `null` beim Weggehen |
 | `stage.changed`                                   | `null`      | `{}`                              |

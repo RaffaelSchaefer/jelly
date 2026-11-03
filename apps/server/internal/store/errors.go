@@ -40,12 +40,18 @@ var (
 	ErrAreaNotFound = errors.New("area not found")
 	// ErrAreaNotAssignable reports an area such as a desk, where no jelly can stand.
 	ErrAreaNotAssignable = errors.New("no jelly can stand in this area")
-	// ErrPartnerCodeInvalid reports an unknown or expired partner emote code.
-	ErrPartnerCodeInvalid = errors.New("invalid partner code")
-	// ErrPartnerSelf reports someone entering their own partner emote code.
+	// ErrPartnerSelf reports someone inviting themselves to a partner emote.
 	ErrPartnerSelf = errors.New("cannot be your own partner")
-	// ErrPartnerCodesBusy reports that no free partner code was found.
-	ErrPartnerCodesBusy = errors.New("no free partner code")
+	// ErrInvalidPartner reports a partner list that is not one jelly of this LAN.
+	ErrInvalidPartner = errors.New("invalid partner")
+	// ErrInviteOpen reports that this pair already has an open invite.
+	ErrInviteOpen = errors.New("invite is already open")
+	// ErrInviteNotFound reports an invite that does not exist or concerns someone else.
+	ErrInviteNotFound = errors.New("invite not found")
+	// ErrInviteClosed reports an invite that was answered or has expired.
+	ErrInviteClosed = errors.New("invite is closed")
+	// ErrInvalidInviteAnswer reports an answer this player cannot give to this invite.
+	ErrInvalidInviteAnswer = errors.New("invalid invite answer")
 	// ErrLANFull reports that a LAN reached its player limit.
 	ErrLANFull = errors.New("LAN is full")
 	// ErrInvalidInput reports admin input that is empty or inconsistent.

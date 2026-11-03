@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"slices"
 	"time"
 )
 
@@ -29,24 +30,29 @@ const (
 	actionPartner = "partner"
 )
 
+const (
+	// noJelly marks that the stage has no other jelly yet.
+	noJelly        int64 = 0
+	inviteAccepted       = "accepted"
+)
+
 // apiPrefix is the version of the API that the simulator speaks.
 const apiPrefix = "/v1"
 
 // Field names and paths of the API.
 const (
-	fieldCode     = "code"
-	fieldKey      = "key"
-	fieldKind     = "kind"
-	pathPokes     = apiPrefix + "/pokes"
-	pathReports   = apiPrefix + "/reports"
-	pathEmote     = apiPrefix + "/emotes"
-	pathFollow    = apiPrefix + "/trips/follow"
-	pathTrip      = apiPrefix + "/trips/current"
-	pathSign      = apiPrefix + "/signs/current"
-	pathState     = apiPrefix + "/stage"
-	pathRegister  = apiPrefix + "/auth/redeem"
-	pathOffer     = apiPrefix + "/partner-emote"
-	pathJoinOffer = apiPrefix + "/partner-emote/join"
+	fieldCode    = "code"
+	fieldKey     = "key"
+	fieldKind    = "kind"
+	pathPokes    = apiPrefix + "/pokes"
+	pathReports  = apiPrefix + "/reports"
+	pathEmote    = apiPrefix + "/emotes"
+	pathFollow   = apiPrefix + "/trips/follow"
+	pathTrip     = apiPrefix + "/trips/current"
+	pathSign     = apiPrefix + "/signs/current"
+	pathState    = apiPrefix + "/stage"
+	pathRegister = apiPrefix + "/auth/redeem"
+	pathInvites  = apiPrefix + "/partner-emotes"
 )
 
 const (
@@ -65,7 +71,6 @@ var errRegisterRejected = errors.New("server rejected the registration")
 // bot is one simulated player.
 type bot struct {
 	client   apiClient
-	board    *offerBoard
 	results  *counters
 	config   Config
 	index    int
@@ -269,6 +274,13 @@ func (player *bot) postForAnswer(
 	})
 }
 
+// patch sends a change.
+func (player *bot) patch(ctx context.Context, path string, body any) (int, error) {
+	return player.client.send(ctx, apiCall{
+		method: http.MethodPatch, path: path, token: player.token, body: body,
+	})
+}
+
 // put sends a body that replaces a value.
 func (player *bot) put(ctx context.Context, path string, body any) (int, error) {
 	return player.client.send(ctx, apiCall{
@@ -298,11 +310,20 @@ func (player *bot) changeSign(ctx context.Context) (int, error) {
 	return player.remove(ctx, pathSign)
 }
 
-// changeFollow stands next to a random other jelly from the stage, or walks away.
+// changeFollow follows a random other jelly from the stage, or goes back.
 func (player *bot) changeFollow(ctx context.Context) (int, error) {
 	if pickNumber(followChoices) == 0 {
 		return player.remove(ctx, pathTrip)
 	}
+	target, status, err := player.pickOtherJelly(ctx)
+	if err != nil || target == noJelly {
+		return status, err
+	}
+	return player.post(ctx, pathFollow, map[string]int64{"player_id": target})
+}
+
+// pickOtherJelly returns a random other jelly from the stage, if there is one.
+func (player *bot) pickOtherJelly(ctx context.Context) (int64, int, error) {
 	var stage struct {
 		Players []struct {
 			ID int64 `json:"id"`
@@ -310,7 +331,7 @@ func (player *bot) changeFollow(ctx context.Context) (int, error) {
 	}
 	status, err := player.get(ctx, pathState, &stage)
 	if err != nil || status != http.StatusOK {
-		return status, err
+		return noJelly, status, err
 	}
 	others := make([]int64, 0, len(stage.Players))
 	for _, other := range stage.Players {
@@ -319,37 +340,35 @@ func (player *bot) changeFollow(ctx context.Context) (int, error) {
 		}
 	}
 	if len(others) == 0 {
-		return status, nil
+		return noJelly, status, nil
 	}
-	target := others[pickNumber(len(others))]
-	return player.post(ctx, pathFollow, map[string]int64{"player_id": target})
+	return others[pickNumber(len(others))], status, nil
 }
 
-// doPartnerEmote enters the code of another bot, or leaves a new one if none is waiting.
+// doPartnerEmote accepts an invite that waits for this bot, or asks another jelly.
 func (player *bot) doPartnerEmote(ctx context.Context) (int, error) {
-	offer, found := player.board.takeOffer(player.index, player.config.Now().UnixMilli())
-	if found {
-		return player.enterOffer(ctx, offer)
+	var open struct {
+		Items []struct {
+			ID         int64   `json:"id"`
+			PartnerIDs []int64 `json:"partner_ids"`
+		} `json:"items"`
 	}
-	var answer struct {
-		Code      string `json:"code"`
-		ExpiresAt int64  `json:"expires_at"`
+	status, err := player.get(ctx, pathInvites, &open)
+	if err != nil || status != http.StatusOK {
+		return status, err
 	}
-	body := map[string]string{fieldKey: pickKey(listPartnerEmotes())}
-	status, err := player.postForAnswer(ctx, pathOffer, body, &answer)
-	if err == nil && status == http.StatusOK {
-		player.board.addOffer(partnerOffer{
-			code: answer.Code, botIndex: player.index, expiresAt: answer.ExpiresAt,
-		})
+	for _, invite := range open.Items {
+		if slices.Contains(invite.PartnerIDs, player.playerID) {
+			return player.patch(ctx, pathInvites, map[string]any{
+				"id": invite.ID, "state": inviteAccepted,
+			})
+		}
 	}
-	return status, err
-}
-
-// enterOffer sends a code. A limited attempt never reached the code, so another bot can try it.
-func (player *bot) enterOffer(ctx context.Context, offer partnerOffer) (int, error) {
-	status, err := player.post(ctx, pathJoinOffer, map[string]string{fieldCode: offer.code})
-	if err == nil && status == http.StatusTooManyRequests {
-		player.board.returnOffer(offer)
+	target, status, err := player.pickOtherJelly(ctx)
+	if err != nil || target == noJelly {
+		return status, err
 	}
-	return status, err
+	return player.post(ctx, pathInvites, map[string]any{
+		fieldKey: pickKey(listPartnerEmotes()), "partner_ids": []int64{target},
+	})
 }

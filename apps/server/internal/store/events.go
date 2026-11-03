@@ -25,6 +25,7 @@ const (
 	EventFollowChanged    = "follow.changed"
 	EventStageChanged     = "stage.changed"
 	EventPartnerEmote     = "partner.emote"
+	EventPartnerInvite    = "partner_emote.updated"
 	maxEventsPerQueryRows = 200
 )
 
