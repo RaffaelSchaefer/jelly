@@ -70,9 +70,25 @@ func newAPIServer(dependencies Dependencies) *apiServer {
 	}
 }
 
-// NewHandler builds the HTTP handler.
+// NewHandler builds the HTTP handler without the background work, which is enough for tests.
 func NewHandler(dependencies Dependencies) http.Handler {
+	return NewService(dependencies).Handler
+}
+
+// Service is the HTTP handler together with the work that runs without any request.
+type Service struct {
+	Handler http.Handler
+	server  *apiServer
+}
+
+// NewService builds the handler and prepares the background work.
+func NewService(dependencies Dependencies) *Service {
 	server := newAPIServer(dependencies)
+	return &Service{Handler: server.buildHandler(), server: server}
+}
+
+// buildHandler registers all routes.
+func (server *apiServer) buildHandler() http.Handler {
 	mux := http.NewServeMux()
 	contract := buildContractAPI(mux)
 	server.addContractRoutes(contract)
@@ -84,9 +100,9 @@ func NewHandler(dependencies Dependencies) http.Handler {
 	server.addHealthRoute(mux)
 	server.addSessionRoutes(mux)
 	server.addAdminRoutes(mux)
-	if dependencies.Web != nil {
+	if server.Web != nil {
 		// Without a method, so that it does not collide with the catch-all of the version above.
-		mux.Handle("/", dependencies.Web)
+		mux.Handle("/", server.Web)
 	}
 	return mux
 }

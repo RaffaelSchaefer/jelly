@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -185,5 +186,26 @@ func TestRestartKeepsTheStack(t *testing.T) {
 	answer := testFixture.readStage(token)
 	if len(answer.Stacks) != 1 || findOnlyMove(t, answer).Kind != movement.KindStack {
 		t.Fatalf("stage = %+v", answer)
+	}
+}
+
+func TestJelliesKeepMovingWithoutAnyViewer(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.registerPlayer("A")
+	service := api.NewService(api.Dependencies{
+		Store:      testFixture.database,
+		Now:        func() time.Time { return time.UnixMilli(testFixture.clock.Load()) },
+		Logger:     slog.New(slog.DiscardHandler),
+		IsStopping: testFixture.stopping.Load,
+	})
+	ctx, cancel := context.WithTimeout(t.Context(), 1200*time.Millisecond)
+	defer cancel()
+	service.RunMovement(ctx)
+	state, err := testFixture.database.LoadStageState(t.Context(), testFixture.clock.Load())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Players[0].LastSpot == nil {
+		t.Fatal("the planner ran without a viewer and should have saved the position")
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/movement"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
@@ -14,10 +15,11 @@ import (
 )
 
 const (
-	queryTopics    = "topics"
-	topicEvents    = "events"
-	topicMoves     = "moves"
-	topicSeparator = ","
+	movementInterval = time.Second
+	queryTopics      = "topics"
+	topicEvents      = "events"
+	topicMoves       = "moves"
+	topicSeparator   = ","
 )
 
 // streamTopics says what a stream wants to receive.
@@ -94,8 +96,23 @@ func writeStreamMoves(writer io.Writer, moves []movement.Move) error {
 	return nil
 }
 
-// advanceMovement brings the plans up to date. Everyone who looks at the stage does this, so
-// nothing is planned while nobody is watching and no goroutine has to run.
+// RunMovement keeps the jellies moving while nobody looks at the stage, until `ctx` ends. Otherwise
+// positions would stand still and all jellies would start walking at once for the next viewer.
+func (service *Service) RunMovement(ctx context.Context) {
+	ticker := time.NewTicker(movementInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			service.server.advanceMovement(ctx)
+		}
+	}
+}
+
+// advanceMovement brings the plans up to date. Everyone who reads the stage asks for this too, so
+// their answer is current, and the planner lets only the first one through.
 func (server *apiServer) advanceMovement(ctx context.Context) {
 	now := server.currentMillis()
 	if !server.planner.ClaimAdvance(now) {
@@ -108,7 +125,9 @@ func (server *apiServer) advanceMovement(ctx context.Context) {
 func (server *apiServer) refreshMovement(ctx context.Context, now int64) {
 	state, err := server.Store.LoadStageState(ctx, now)
 	if err != nil {
-		server.Logger.WarnContext(ctx, "plan movement", "error", err)
+		if ctx.Err() == nil {
+			server.Logger.WarnContext(ctx, "plan movement", "error", err)
+		}
 		return
 	}
 	server.planner.Advance(now, buildRoster(state))
@@ -130,7 +149,7 @@ func (server *apiServer) saveJellySpots(ctx context.Context, now int64) {
 		})
 	}
 	err := server.Store.SaveJellySpots(ctx, saved, now)
-	if err != nil {
+	if err != nil && ctx.Err() == nil {
 		server.Logger.WarnContext(ctx, "save jelly spots", "error", err)
 	}
 }
