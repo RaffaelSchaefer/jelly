@@ -53,9 +53,9 @@ func (columns tripColumns) findRunningTrip(now int64) *Trip {
 
 // StartTrip sends a jelly to a point on the stage. It replaces following or an earlier trip.
 func (store *Store) StartTrip(
-	ctx context.Context, playerID int64, point rules.TripPoint, now int64,
+	ctx context.Context, playerID int64, point rules.StagePoint, now int64,
 ) (PlayerState, error) {
-	if !rules.IsTripPointValid(point) {
+	if !rules.IsOnStage(point) {
 		return PlayerState{}, ErrInvalidTrip
 	}
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {

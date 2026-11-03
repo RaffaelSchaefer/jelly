@@ -419,7 +419,7 @@ func (server *apiServer) handleSetFollow(
 
 // handleStartTrip sends the jelly to a point on the stage.
 func (server *apiServer) handleStartTrip(
-	ctx context.Context, playerID int64, input *jsonInput[rules.TripPoint],
+	ctx context.Context, playerID int64, input *jsonInput[rules.StagePoint],
 ) (*jsonOutput[store.PlayerState], error) {
 	return answerWith(server.Store.StartTrip(ctx, playerID, input.Body, server.currentMillis()))
 }

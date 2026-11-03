@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.4.0**
+Aktuelle Version: **1.5.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.4.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.5.0   | Jellies machen nach einem Neustart des Servers an ihrer letzten Position weiter |
 | 1.4.0   | Stapel (`POST /stacks`, `POST /stacks/members`, `DELETE /stacks/current`, `stacks` in `GET /stage`, `level` im Weg), `POST /highlights`, Achievements `lighthouse` und `lighthouse-light`. Keine Route antwortet mehr mit `501` |
 | 1.3.0   | `POST /trips/goto`, Folgen endet von selbst (`follow_until`, `follow_seconds`), `409 too_far` bei Partner-Emotes (`near_distance`), Achievement `conga`, `trip` im Stand |
 | 1.2.0   | Der Server plant die Wege: `moves` in `GET /stage`, Nachricht `move` und `?topics=` im Stream, Regel `snack_run_seconds` |
@@ -288,7 +289,9 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
   1,7 breit, die Halle 21 breit und 40 tief.
 - Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur Theke und danach zurück. War der Weg lang, wartet
   es ab seiner Ankunft noch kurz.
-- Wo ein Jelly läuft, bestimmt nur der Server. Nach einem Neustart stehen alle Jellies wieder an ihrem Platz.
+- Wo ein Jelly läuft, bestimmt nur der Server. Er merkt sich die Positionen alle 30 Sekunden. Nach einem Neustart macht
+  jedes Jelly dort weiter, ein neuer `move` kann also um bis zu 30 Sekunden Weg springen. Ausflug, Folgen, Stapel und
+  Thekenlauf laufen auch während eines Ausfalls ab. Danach läuft das Jelly von selbst zurück zu seinem Platz.
 
 `GET /stage/events` sendet Ereignisse und Wege als SSE und nimmt ebenfalls Schlüssel oder Token. Der Stream ist
 für alle gleich, das eigene Jelly filtert der Client über `player_id`.

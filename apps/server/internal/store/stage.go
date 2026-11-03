@@ -28,6 +28,8 @@ type StagePlayer struct {
 	Trip           *Trip                       `json:"trip"`
 	// SnackUntil tells the movement planner when a snack run ends.
 	SnackUntil int64 `json:"-"`
+	// LastSpot tells the movement planner where the jelly stood before a restart, or nil.
+	LastSpot *rules.StagePoint `json:"-"`
 	rules.HomeSpot
 }
 
@@ -94,6 +96,36 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	return state, nil
 }
 
+// JellySpot is where a jelly stands right now.
+type JellySpot struct {
+	PlayerID int64
+	Point    rules.StagePoint
+}
+
+// SaveJellySpots remembers where the jellies of the running LAN stand. Without a running LAN there
+// is nothing to remember.
+func (store *Store) SaveJellySpots(ctx context.Context, spots []JellySpot, now int64) error {
+	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
+		lan, err := loadActiveLAN(ctx, transaction, now)
+		if errors.Is(err, ErrNoActiveLAN) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		const updateSpotSQL = `UPDATE lan_entries SET spot_x = ?, spot_y = ?
+			WHERE lan_id = ? AND player_id = ?`
+		for _, spot := range spots {
+			_, err = transaction.ExecContext(ctx, updateSpotSQL,
+				spot.Point.X, spot.Point.Y, lan.id, spot.PlayerID)
+			if err != nil {
+				return fmt.Errorf("save jelly spot: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
 // placeStagePlayers gives every jelly its home spot. A jelly without an area chills in the lounge
 // with the lowest ID, or uses the whole stage when there is no lounge. Places follow the player
 // order and count absent jellies, so nobody moves when someone leaves.
@@ -129,7 +161,7 @@ func loadStagePlayers(
 ) ([]StagePlayer, error) {
 	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, e.xp,
 			e.sign_key, e.follow_player_id, e.follow_started_at, e.last_seen_at, e.area_id,
-			e.trip_x, e.trip_y, e.trip_until,
+			e.trip_x, e.trip_y, e.trip_until, e.spot_x, e.spot_y,
 			COALESCE((SELECT MAX(x.created_at) FROM xp_log x
 				WHERE x.player_id = p.id AND x.lan_id = e.lan_id AND x.action IN (?, ?)), 0)
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
@@ -160,16 +192,35 @@ func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePla
 	var lanXP int
 	var lastSnackAt, followStartedAt int64
 	var trip tripColumns
+	var spotX, spotY sql.NullFloat64
 	var sign sql.NullString
 	var follow, area sql.NullInt64
-	err := rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP, &sign, &follow,
-		&followStartedAt, &player.LastSeenAt, &area, &trip.x, &trip.y, &trip.until, &lastSnackAt)
+	err := rows.Scan(
+		&player.ID,
+		&player.Name,
+		&player.Color,
+		&lanXP,
+		&sign,
+		&follow,
+		&followStartedAt,
+		&player.LastSeenAt,
+		&area,
+		&trip.x,
+		&trip.y,
+		&trip.until,
+		&spotX,
+		&spotY,
+		&lastSnackAt,
+	)
 	if err != nil {
 		return StagePlayer{}, fmt.Errorf("read stage player: %w", err)
 	}
 	player.Level = rules.CalculateLevel(lanXP)
 	player.SnackUntil = rules.CalculateSnackRunEnd(gameRules, lastSnackAt)
 	player.Trip = trip.findRunningTrip(now)
+	if spotX.Valid && spotY.Valid {
+		player.LastSpot = &rules.StagePoint{X: spotX.Float64, Y: spotY.Float64}
+	}
 	if sign.Valid {
 		player.Sign = &sign.String
 	}

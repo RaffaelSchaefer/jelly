@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -27,6 +28,16 @@ func (testFixture *fixture) readStage(token string) api.StageAnswer {
 		testFixture.t.Fatal(err)
 	}
 	return answer
+}
+
+// restartServer closes the database and builds a new server, whose planner knows nothing yet.
+func (testFixture *fixture) restartServer() {
+	testFixture.t.Helper()
+	err := testFixture.database.Close()
+	if err != nil {
+		testFixture.t.Fatal(err)
+	}
+	testFixture.openDatabase()
 }
 
 // findOnlyMove returns the move of the only jelly in these tests.
@@ -117,5 +128,62 @@ func TestStreamRefusesAnUnknownTopic(t *testing.T) {
 	_, status := openTopicStream(t.Context(), t, server, "&topics=gossip")
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d", status)
+	}
+}
+
+func TestJellyContinuesWhereItStoodAfterARestart(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	testFixture.readStage(token)
+	testFixture.advanceClock(time.Second)
+	testFixture.callAPI("POST", "/v1/trips/goto", token, `{"x":40,"y":60}`)
+	testFixture.readStage(token)
+	testFixture.advanceClock(time.Minute)
+	testFixture.readStage(token)
+
+	testFixture.restartServer()
+	testFixture.advanceClock(time.Second)
+	move := findOnlyMove(t, testFixture.readStage(token))
+	first := move.Points[0]
+	if move.Kind != movement.KindTrip || first.X != 40 || first.Y != 60 {
+		t.Fatalf("move = %+v", move)
+	}
+}
+
+func TestRestartAfterTheTripWasOverWalksHome(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	home := testFixture.readStage(token).Players[0].HomeSpot
+	testFixture.advanceClock(time.Second)
+	testFixture.callAPI("POST", "/v1/trips/goto", token, `{"x":40,"y":60}`)
+	testFixture.readStage(token)
+	testFixture.advanceClock(time.Minute)
+	testFixture.readStage(token)
+
+	testFixture.restartServer()
+	testFixture.advanceClock(10 * time.Minute)
+	testFixture.pokePlayer(token)
+	move := findOnlyMove(t, testFixture.readStage(token))
+	if first := move.Points[0]; first.X != 40 || first.Y != 60 {
+		t.Fatalf("the jelly starts where it stood, got %+v", move)
+	}
+	testFixture.advanceClock(time.Minute)
+	move = findOnlyMove(t, testFixture.readStage(token))
+	end := move.Points[len(move.Points)-1]
+	if math.Abs(end.X-home.X) > 15 || math.Abs(end.Y-home.Y) > 15 {
+		t.Fatalf("still far from home %+v: %+v", home, move)
+	}
+}
+
+func TestRestartKeepsTheStack(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	testFixture.startStack(token)
+	testFixture.readStage(token)
+	testFixture.restartServer()
+	testFixture.advanceClock(time.Second)
+	answer := testFixture.readStage(token)
+	if len(answer.Stacks) != 1 || findOnlyMove(t, answer).Kind != movement.KindStack {
+		t.Fatalf("stage = %+v", answer)
 	}
 }

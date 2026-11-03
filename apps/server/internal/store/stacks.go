@@ -26,7 +26,7 @@ type StackAnswer struct {
 
 // StartStack starts a new stack at this point with the player at the bottom.
 func (store *Store) StartStack(
-	ctx context.Context, playerID int64, point rules.TripPoint, now int64,
+	ctx context.Context, playerID int64, point rules.StagePoint, now int64,
 ) (StackAnswer, error) {
 	var answer StackAnswer
 	var err error
@@ -62,7 +62,7 @@ type StackJoin struct {
 	StackID  int64
 	Now      int64
 	// IsNear says whether the jelly stands within this distance of the point.
-	IsNear func(point rules.TripPoint, reach float64) bool
+	IsNear func(point rules.StagePoint, reach float64) bool
 }
 
 // JoinStack puts a jelly on top of a running stack nearby.
@@ -78,7 +78,7 @@ func (store *Store) JoinStack(ctx context.Context, join StackJoin) (StackAnswer,
 			if len(stack.MemberIDs) >= action.lan.gameRules.StackMaxMembers {
 				return ErrStackFull
 			}
-			point := rules.TripPoint{X: stack.X, Y: stack.Y}
+			point := rules.StagePoint{X: stack.X, Y: stack.Y}
 			if !join.IsNear(point, action.lan.gameRules.NearDistance) {
 				return ErrTooFar
 			}

@@ -63,7 +63,7 @@ func (server *apiServer) handleStartStack(
 	if !ok {
 		return nil, store.ErrTooFar
 	}
-	point := rules.TripPoint{X: position.X, Y: position.Y}
+	point := rules.StagePoint{X: position.X, Y: position.Y}
 	return answerWith(server.Store.StartStack(ctx, playerID, point, now))
 }
 
@@ -75,7 +75,7 @@ func (server *apiServer) handleJoinStack(
 	server.refreshMovement(ctx, now)
 	return answerWith(server.Store.JoinStack(ctx, store.StackJoin{
 		PlayerID: playerID, StackID: input.Body.StackID, Now: now,
-		IsNear: func(point rules.TripPoint, reach float64) bool {
+		IsNear: func(point rules.StagePoint, reach float64) bool {
 			target := movement.Point{X: point.X, Y: point.Y}
 			distance, known := server.planner.MeasureDistanceTo(playerID, target, now)
 			return known && distance <= reach

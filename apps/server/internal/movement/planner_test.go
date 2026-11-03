@@ -261,3 +261,43 @@ func TestJellyLeavingTheStageIsForgotten(t *testing.T) {
 		t.Fatal("jelly 2 left")
 	}
 }
+
+func TestJellyContinuesWhereItStoodBeforeARestart(t *testing.T) {
+	planner := movement.NewPlanner()
+	roster := makeRoster(1)
+	roster.Players[0].LastSpot = &movement.Point{X: 50, Y: 30}
+	planner.Advance(start, roster)
+	move := findMove(t, planner)
+	if move.Kind != movement.KindWander || endOf(move) != (movement.Point{X: 50, Y: 30}) {
+		t.Fatalf("move = %+v", move)
+	}
+}
+
+func TestRestoredJellyWalksOnToItsRunningTrip(t *testing.T) {
+	planner := movement.NewPlanner()
+	roster := makeRoster(1)
+	roster.Players[0].LastSpot = &movement.Point{X: 50, Y: 30}
+	roster.Players[0].Trip = &movement.Point{X: 60, Y: 20}
+	planner.Advance(start, roster)
+	move := findMove(t, planner)
+	if move.Kind != movement.KindTrip || move.Points[0].Point != (movement.Point{X: 50, Y: 30}) {
+		t.Fatalf("move = %+v", move)
+	}
+	if endOf(move) != (movement.Point{X: 60, Y: 20}) {
+		t.Fatalf("ends at %+v", endOf(move))
+	}
+}
+
+func TestPositionsAreSavedAtTheirOwnRate(t *testing.T) {
+	planner := movement.NewPlanner()
+	planner.Advance(start, makeRoster(1, 2))
+	if spots := planner.ListSpotsToSave(start); len(spots) != 2 {
+		t.Fatalf("spots = %+v", spots)
+	}
+	if spots := planner.ListSpotsToSave(start + 29_000); spots != nil {
+		t.Fatalf("too early: %+v", spots)
+	}
+	if spots := planner.ListSpotsToSave(start + 30_000); len(spots) != 2 {
+		t.Fatalf("spots = %+v", spots)
+	}
+}

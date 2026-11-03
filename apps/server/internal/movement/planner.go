@@ -22,6 +22,8 @@ const (
 	moveLeadMillis = 1000
 	// Jellies get new plans at this rate, however many streams ask for them.
 	advanceIntervalMillis = 1000
+	// Positions are saved at this rate, so a restart loses at most this much of the walking.
+	saveIntervalMillis = 30_000
 	// Old moves are kept this long for streams that fell behind, about ten minutes on a full LAN.
 	journalLimit = 5000
 	seedStream   = 1
@@ -57,6 +59,14 @@ type Player struct {
 	SnackUntil int64
 	// Stack is the place on a stack, or nil.
 	Stack *StackPlace
+	// LastSpot is where the jelly stood before a restart, or nil.
+	LastSpot *Point
+}
+
+// Spot is where a jelly stands at one moment.
+type Spot struct {
+	PlayerID int64
+	Point    Point
 }
 
 // StackPlace is where a jelly stands on a stack.
@@ -74,11 +84,12 @@ type Roster struct {
 }
 
 // Planner decides where the jellies walk. It lives as long as the server and all methods can be
-// called at the same time. Positions are not stored: After a restart, everyone stands at home.
+// called at the same time. The caller saves the positions and hands them back after a restart.
 type Planner struct {
 	mutex       sync.Mutex
 	random      *rand.Rand
 	lastAdvance int64
+	lastSave    int64
 	walkSpeed   float64
 	areas       []rules.Area
 	floor       *grid
@@ -121,6 +132,21 @@ func (planner *Planner) Advance(now int64, roster Roster) {
 	for _, player := range roster.Players {
 		planner.updateWalker(now, player)
 	}
+}
+
+// ListSpotsToSave returns where all jellies stand, if it is time to save that again.
+func (planner *Planner) ListSpotsToSave(now int64) []Spot {
+	planner.mutex.Lock()
+	defer planner.mutex.Unlock()
+	if now-planner.lastSave < saveIntervalMillis {
+		return nil
+	}
+	planner.lastSave = now
+	spots := make([]Spot, 0, len(planner.walkers))
+	for playerID, walker := range planner.walkers {
+		spots = append(spots, Spot{PlayerID: playerID, Point: toPoint(walker.findPositionAt(now))})
+	}
+	return spots
 }
 
 // ListCurrentMoves returns the latest move of every jelly, in the order of their IDs.
@@ -235,17 +261,20 @@ func (planner *Planner) syncWalkers(now int64, players []Player) {
 	}
 }
 
-// addWalker lets a new jelly appear at its place, or at the point of its running trip.
+// addWalker lets a new jelly appear at its place or at the point of its running trip. After a
+// restart it appears where it stood and walks on from there.
 func (planner *Planner) addWalker(now int64, player Player) {
 	walker := &walker{playerID: player.ID}
 	planner.walkers[player.ID] = walker
 	planner.placeWalker(walker, player)
 	spot := walker.anchor
-	if player.Trip != nil {
+	walker.plan = walkPlan{kind: KindWander}
+	switch {
+	case player.LastSpot != nil:
+		spot = planner.floor.findNearestWalkable(toFloorPoint(*player.LastSpot))
+	case player.Trip != nil:
 		spot = planner.findFreeSpot(walker, toFloorPoint(*player.Trip), listRoomRect())
 		walker.plan = walkPlan{kind: KindTrip, trip: *player.Trip}
-	} else {
-		walker.plan = walkPlan{kind: KindWander}
 	}
 	walker.setRoute(walker.plan.kind, now, []routePoint{{floorPoint: spot, at: now}})
 	walker.nextWanderAt = now + planner.drawPause()

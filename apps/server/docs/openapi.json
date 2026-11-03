@@ -1222,6 +1222,24 @@
         ],
         "type": "object"
       },
+      "StagePoint": {
+        "additionalProperties": true,
+        "properties": {
+          "x": {
+            "format": "double",
+            "type": "number"
+          },
+          "y": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "type": "object"
+      },
       "Trip": {
         "additionalProperties": true,
         "properties": {
@@ -1242,24 +1260,6 @@
           "x",
           "y",
           "until"
-        ],
-        "type": "object"
-      },
-      "TripPoint": {
-        "additionalProperties": true,
-        "properties": {
-          "x": {
-            "format": "double",
-            "type": "number"
-          },
-          "y": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "x",
-          "y"
         ],
         "type": "object"
       },
@@ -1317,7 +1317,7 @@
   },
   "info": {
     "title": "Jelly API",
-    "version": "1.4.0"
+    "version": "1.5.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -2381,7 +2381,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TripPoint"
+                "$ref": "#/components/schemas/StagePoint"
               }
             }
           },

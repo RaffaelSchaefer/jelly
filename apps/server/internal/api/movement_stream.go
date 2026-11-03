@@ -112,6 +112,27 @@ func (server *apiServer) refreshMovement(ctx context.Context, now int64) {
 		return
 	}
 	server.planner.Advance(now, buildRoster(state))
+	server.saveJellySpots(ctx, now)
+}
+
+// saveJellySpots remembers the positions now and then. A failure only costs some of the walking
+// after a restart, so it does not stop anything.
+func (server *apiServer) saveJellySpots(ctx context.Context, now int64) {
+	spots := server.planner.ListSpotsToSave(now)
+	if len(spots) == 0 {
+		return
+	}
+	saved := make([]store.JellySpot, 0, len(spots))
+	for _, spot := range spots {
+		saved = append(saved, store.JellySpot{
+			PlayerID: spot.PlayerID,
+			Point:    rules.StagePoint{X: spot.Point.X, Y: spot.Point.Y},
+		})
+	}
+	err := server.Store.SaveJellySpots(ctx, saved, now)
+	if err != nil {
+		server.Logger.WarnContext(ctx, "save jelly spots", "error", err)
+	}
 }
 
 // buildRoster translates the stage for the planner.
@@ -133,7 +154,7 @@ func buildRoster(state store.StageState) movement.Roster {
 			area = areaByID[*player.AreaID]
 		}
 		planned := movement.Player{
-			ID: player.ID, Area: area, FollowID: 0, Trip: nil, Stack: nil,
+			ID: player.ID, Area: area, FollowID: 0, Trip: nil, Stack: nil, LastSpot: nil,
 			Home:       movement.Point{X: player.X, Y: player.Y},
 			SnackUntil: player.SnackUntil,
 		}
@@ -142,6 +163,9 @@ func buildRoster(state store.StageState) movement.Roster {
 		}
 		if player.Trip != nil {
 			planned.Trip = &movement.Point{X: player.Trip.X, Y: player.Trip.Y}
+		}
+		if player.LastSpot != nil {
+			planned.LastSpot = &movement.Point{X: player.LastSpot.X, Y: player.LastSpot.Y}
 		}
 		if place, ok := stackPlaces[player.ID]; ok {
 			planned.Stack = &place
