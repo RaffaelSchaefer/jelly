@@ -301,3 +301,82 @@ func TestPositionsAreSavedAtTheirOwnRate(t *testing.T) {
 		t.Fatalf("spots = %+v", spots)
 	}
 }
+
+func TestSnackRunsPreferTheClosestCounterUntilItIsFull(t *testing.T) {
+	planner := movement.NewPlanner()
+	roster := makeRoster(1, 2, 3, 4, 5)
+	roster.Areas = append(roster.Areas,
+		rules.Area{X: 10, Y: 42, Width: 20, Height: 2, Kind: rules.AreaKindSnackbar},
+		rules.Area{X: 60, Y: 42, Width: 20, Height: 2, Kind: rules.AreaKindSnackbar},
+	)
+	for index := range roster.Players {
+		roster.Players[index].Home = movement.Point{X: 20, Y: 20 + 3*float64(index)}
+	}
+	planner.Advance(start, roster)
+	for index := range roster.Players {
+		roster.Players[index].SnackUntil = start + 60_000
+	}
+	planner.Advance(start+1000, roster)
+	atFirst, atSecond := 0, 0
+	for _, move := range planner.ListCurrentMoves() {
+		if endOf(move).X < 45 {
+			atFirst++
+		} else {
+			atSecond++
+		}
+	}
+	if atFirst != 4 || atSecond != 1 {
+		t.Fatalf("%d at the first counter, %d at the second", atFirst, atSecond)
+	}
+}
+
+func TestFullCountersLetJelliesStandAroundThem(t *testing.T) {
+	planner := movement.NewPlanner()
+	roster := makeRoster(1, 2, 3, 4, 5, 6)
+	roster.Areas = append(roster.Areas,
+		rules.Area{X: 40, Y: 60, Width: 5, Height: 2, Kind: rules.AreaKindSnackbar},
+	)
+	planner.Advance(start, roster)
+	for index := range roster.Players {
+		roster.Players[index].SnackUntil = start + 60_000
+	}
+	planner.Advance(start+1000, roster)
+	ends := map[movement.Point]bool{}
+	for _, move := range planner.ListCurrentMoves() {
+		end := endOf(move)
+		ends[end] = true
+		if end.X < 15 || end.X > 70 || end.Y < 45 || end.Y > 75 {
+			t.Fatalf("too far from the counter: %+v", end)
+		}
+	}
+	if len(ends) != 6 {
+		t.Fatalf("jellies share spots: %v", ends)
+	}
+}
+
+func TestVisitorsWanderThroughAllVisitorZones(t *testing.T) {
+	planner := movement.NewPlanner()
+	left := rules.Area{X: 5, Y: 60, Width: 20, Height: 20, Kind: rules.AreaKindVisitors}
+	right := rules.Area{X: 70, Y: 60, Width: 20, Height: 20, Kind: rules.AreaKindVisitors}
+	roster := movement.Roster{
+		WalkSpeed: 1.4,
+		Areas:     []rules.Area{left, right},
+		Players: []movement.Player{{
+			ID: 1, Area: left, Home: movement.Point{X: 15, Y: 70}, IsVisitor: true,
+		}},
+	}
+	planner.Advance(start, roster)
+	visitedLeft, visitedRight := false, false
+	for second := range int64(600) {
+		planner.Advance(start+second*1000, roster)
+		end := endOf(findMove(t, planner))
+		visitedLeft = visitedLeft || end.X < 30
+		visitedRight = visitedRight || end.X > 65
+		if end.Y < 60 || end.Y > 80 {
+			t.Fatalf("left the zones: %+v", end)
+		}
+	}
+	if !visitedLeft || !visitedRight {
+		t.Fatalf("left %v, right %v", visitedLeft, visitedRight)
+	}
+}

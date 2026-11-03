@@ -25,7 +25,9 @@ type StagePlayer struct {
 	FollowUntil    *int64                      `json:"follow_until"`
 	LastSeenAt     int64                       `json:"last_seen_at"`
 	AreaID         *int64                      `json:"area_id"`
-	Trip           *Trip                       `json:"trip"`
+	// IsVisitor marks a jelly without a place of its own, which wanders through the visitor zones.
+	IsVisitor bool  `json:"is_visitor"`
+	Trip      *Trip `json:"trip"`
 	// SnackUntil tells the movement planner when a snack run ends.
 	SnackUntil int64 `json:"-"`
 	// LastSpot tells the movement planner where the jelly stood before a restart, or nil.
@@ -126,23 +128,32 @@ func (store *Store) SaveJellySpots(ctx context.Context, spots []JellySpot, now i
 	})
 }
 
-// placeStagePlayers gives every jelly its home spot. A jelly without an area chills in the lounge
-// with the lowest ID, or uses the whole stage when there is no lounge. Places follow the player
-// order and count absent jellies, so nobody moves when someone leaves.
+// findVisitorArea returns the ID of the area visitors start in: the first visitor zone, else the
+// first lounge. Without both it returns nil, and visitors use the whole stage.
+func findVisitorArea(areas []StageArea) *int64 {
+	for _, kind := range []string{rules.AreaKindVisitors, rules.AreaKindLounge} {
+		index := slices.IndexFunc(areas, func(area StageArea) bool { return area.Kind == kind })
+		if index >= 0 {
+			return &areas[index].ID
+		}
+	}
+	return nil
+}
+
+// placeStagePlayers gives every jelly its home spot. A jelly without an area is a visitor. Places
+// follow the player order and count absent jellies, so nobody moves when someone leaves.
 func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 	areaByID := map[int64]rules.Area{}
 	for _, area := range areas {
 		areaByID[area.ID] = area.Area
 	}
-	loungeIndex := slices.IndexFunc(areas, func(area StageArea) bool {
-		return area.Kind == rules.AreaKindLounge
-	})
+	visitorArea := findVisitorArea(areas)
 	takenPlaces := map[int64]int{}
 	for index := range players {
 		player := &players[index]
-		if player.AreaID == nil && loungeIndex >= 0 {
-			loungeID := areas[loungeIndex].ID
-			player.AreaID = &loungeID
+		if player.AreaID == nil {
+			player.IsVisitor = true
+			player.AreaID = visitorArea
 		}
 		area := rules.WholeStage()
 		areaKey := noArea

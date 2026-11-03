@@ -16,6 +16,14 @@ type StageArea struct {
 	rules.Area
 }
 
+// AdminArea is a zone as the admin sees it. Its name helps whoever builds the map and stays out of
+// the public stage.
+type AdminArea struct {
+	StageArea
+
+	Name string `json:"name"`
+}
+
 // AreaAssignment says which area of a LAN a player belongs to.
 type AreaAssignment struct {
 	PlayerID int64  `json:"player_id"`
@@ -25,13 +33,13 @@ type AreaAssignment struct {
 
 // CreateArea adds an area to the room map of a LAN.
 func (store *Store) CreateArea(
-	ctx context.Context, lanID int64, area rules.Area, now int64,
-) (StageArea, error) {
-	err := rules.ValidateArea(area)
+	ctx context.Context, lanID int64, area AdminArea, now int64,
+) (AdminArea, error) {
+	err := rules.ValidateArea(area.Area)
 	if err != nil {
-		return StageArea{}, fmt.Errorf("validate area: %w", err)
+		return AdminArea{}, fmt.Errorf("validate area: %w", err)
 	}
-	stored := StageArea{ID: 0, Area: area}
+	stored := area
 	err = store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		var workErr error
 		stored.ID, workErr = insertArea(ctx, transaction, lanID, area)
@@ -41,23 +49,23 @@ func (store *Store) CreateArea(
 		return appendStageChanged(ctx, transaction, lanID, now)
 	})
 	if err != nil {
-		return StageArea{}, err
+		return AdminArea{}, err
 	}
 	return stored, nil
 }
 
-// UpdateArea moves, resizes or changes the kind of an area. Jellies in it stay assigned while they
-// can still stand there.
-func (store *Store) UpdateArea(ctx context.Context, lanID int64, area StageArea, now int64) error {
+// UpdateArea moves, resizes, renames or changes the assignment of an area. Jellies in it stay
+// assigned while they can still stand there.
+func (store *Store) UpdateArea(ctx context.Context, lanID int64, area AdminArea, now int64) error {
 	err := rules.ValidateArea(area.Area)
 	if err != nil {
 		return fmt.Errorf("validate area: %w", err)
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		const updateAreaSQL = `UPDATE lan_areas
-			SET x = ?, y = ?, width = ?, height = ?, kind = ? WHERE id = ? AND lan_id = ?`
+			SET x = ?, y = ?, width = ?, height = ?, kind = ?, name = ? WHERE id = ? AND lan_id = ?`
 		result, err := transaction.ExecContext(ctx, updateAreaSQL,
-			area.X, area.Y, area.Width, area.Height, area.Kind, area.ID, lanID)
+			area.X, area.Y, area.Width, area.Height, area.Kind, area.Name, area.ID, lanID)
 		if err != nil {
 			return fmt.Errorf("update area: %w", err)
 		}
@@ -101,11 +109,39 @@ func (store *Store) DeleteArea(ctx context.Context, lanID, areaID, now int64) er
 	})
 }
 
-// ListAreas returns the room map of a LAN.
-func (store *Store) ListAreas(ctx context.Context, lanID int64) ([]StageArea, error) {
+// ListAreas returns the room map of a LAN with the names of its zones.
+func (store *Store) ListAreas(ctx context.Context, lanID int64) ([]AdminArea, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	return loadAreas(queryCtx, store.readDB, lanID)
+	const selectAdminAreasSQL = `SELECT id, x, y, width, height, kind, name FROM lan_areas
+		WHERE lan_id = ? ORDER BY id`
+	rows, err := store.readDB.QueryContext(queryCtx, selectAdminAreasSQL, lanID)
+	if err != nil {
+		return nil, fmt.Errorf("list areas: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	areas := []AdminArea{}
+	for rows.Next() {
+		var area AdminArea
+		err = rows.Scan(
+			&area.ID,
+			&area.X,
+			&area.Y,
+			&area.Width,
+			&area.Height,
+			&area.Kind,
+			&area.Name,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("read area: %w", err)
+		}
+		areas = append(areas, area)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("list areas: %w", err)
+	}
+	return areas, nil
 }
 
 // ListAreaAssignments returns all players of a LAN with their area.
@@ -169,12 +205,12 @@ func (store *Store) AssignArea(
 
 // insertArea writes one area, reports an unknown LAN and returns the new ID.
 func insertArea(
-	ctx context.Context, transaction *sql.Tx, lanID int64, area rules.Area,
+	ctx context.Context, transaction *sql.Tx, lanID int64, area AdminArea,
 ) (int64, error) {
-	const insertAreaSQL = `INSERT INTO lan_areas (lan_id, x, y, width, height, kind)
-		VALUES (?, ?, ?, ?, ?, ?)`
+	const insertAreaSQL = `INSERT INTO lan_areas (lan_id, x, y, width, height, kind, name)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`
 	result, err := transaction.ExecContext(ctx, insertAreaSQL,
-		lanID, area.X, area.Y, area.Width, area.Height, area.Kind)
+		lanID, area.X, area.Y, area.Width, area.Height, area.Kind, area.Name)
 	if err != nil && strings.Contains(err.Error(), "FOREIGN KEY") {
 		return 0, ErrLANNotFound
 	}

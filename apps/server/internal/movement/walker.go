@@ -25,6 +25,7 @@ const (
 	goldenAngle     = 2.399963
 	fullShare       = 1.0
 	snackGap        = 1.1
+	snackRows       = 2
 	// A jelly from the far end of the hall still waits this long at the counter.
 	snackWaitMillis  = 5000
 	snackSpreadShare = 0.8
@@ -59,6 +60,9 @@ type walker struct {
 	route        []routePoint
 	move         Move
 	nextWanderAt int64
+	isVisitor    bool
+	// snackBar is the index of the counter it went to on its last snack run.
+	snackBar int
 	// followedEnd is where the followed jelly was heading when this jelly last planned.
 	followedEnd floorPoint
 }
@@ -130,7 +134,7 @@ func (planner *Planner) findPlan(now int64, player Player) walkPlan {
 	}
 	walker := planner.walkers[player.ID]
 	isAtSnack := walker.plan.kind == KindSnack && now < walker.findArrival()+snackWaitMillis
-	if planner.snackBar != nil && (player.SnackUntil > now || isAtSnack) {
+	if len(planner.snackBars) > 0 && (player.SnackUntil > now || isAtSnack) {
 		return walkPlan{kind: KindSnack}
 	}
 	if player.Trip != nil {
@@ -148,7 +152,7 @@ func (planner *Planner) startPlan(now int64, walker *walker) {
 	var goal floorPoint
 	switch walker.plan.kind {
 	case KindSnack:
-		goal = planner.findFreeSpot(walker, planner.findSnackSpot(), room)
+		goal = planner.findFreeSpot(walker, planner.findSnackSpot(now, walker), room)
 	case KindTrip:
 		goal = planner.findFreeSpot(walker, toFloorPoint(walker.plan.trip), room)
 	case KindFollow:
@@ -206,8 +210,24 @@ func (planner *Planner) keepWandering(now int64, walker *walker) {
 	}
 }
 
+// drawVisitorSpot returns a random spot in a random visitor zone. Without any, the jelly wanders
+// through all of its own area.
+func (planner *Planner) drawVisitorSpot(walker *walker) floorPoint {
+	zone := walker.bounds
+	if len(planner.visitorZones) > 0 {
+		zone = planner.visitorZones[planner.random.IntN(len(planner.visitorZones))]
+	}
+	return floorPoint{
+		X: zone.MinX + (zone.MaxX-zone.MinX)*planner.random.Float64(),
+		Z: zone.MinZ + (zone.MaxZ-zone.MinZ)*planner.random.Float64(),
+	}
+}
+
 // drawWanderSpot returns a random spot around the place of a jelly, inside its area.
 func (planner *Planner) drawWanderSpot(walker *walker) floorPoint {
+	if walker.isVisitor {
+		return planner.drawVisitorSpot(walker)
+	}
 	reachX := max(wanderReach, (walker.bounds.MaxX-walker.bounds.MinX)*wanderAreaShare)
 	reachZ := max(wanderReach, (walker.bounds.MaxZ-walker.bounds.MinZ)*wanderAreaShare)
 	spot := floorPoint{
@@ -236,11 +256,50 @@ func (planner *Planner) findFollowGoal(walker *walker) floorPoint {
 	return planner.findFreeSpot(walker, beside, listRoomRect())
 }
 
-// findSnackSpot returns a random place behind the counter, seen from the camera.
-func (planner *Planner) findSnackSpot() floorPoint {
-	bar := planner.snackBar
+// findSnackSpot returns a random place behind a counter, seen from the camera.
+func (planner *Planner) findSnackSpot(now int64, walker *walker) floorPoint {
+	walker.snackBar = planner.pickSnackBar(now, walker)
+	bar := planner.snackBars[walker.snackBar]
 	share := (fullShare-snackSpreadShare)*half + snackSpreadShare*planner.random.Float64()
 	return floorPoint{X: bar.MinX + share*(bar.MaxX-bar.MinX), Z: bar.MinZ - snackGap}
+}
+
+// pickSnackBar returns the closest counter with room left. If all are full, it returns the closest
+// one, and the jellies stand around it.
+func (planner *Planner) pickSnackBar(now int64, walker *walker) int {
+	position := walker.findPositionAt(now)
+	closest, closestFree := 0, noCell
+	for index, bar := range planner.snackBars {
+		distance := measureRectDistance(position, bar)
+		if distance < measureRectDistance(position, planner.snackBars[closest]) {
+			closest = index
+		}
+		isCloserFree := closestFree == noCell ||
+			distance < measureRectDistance(position, planner.snackBars[closestFree])
+		if isCloserFree && planner.countSnackVisitors(walker, index) < countSnackPlaces(bar) {
+			closestFree = index
+		}
+	}
+	if closestFree != noCell {
+		return closestFree
+	}
+	return closest
+}
+
+// countSnackVisitors returns how many other jellies are at this counter or on their way there.
+func (planner *Planner) countSnackVisitors(walker *walker, bar int) int {
+	visitors := 0
+	for playerID, other := range planner.walkers {
+		if playerID != walker.playerID && other.plan.kind == KindSnack && other.snackBar == bar {
+			visitors++
+		}
+	}
+	return visitors
+}
+
+// countSnackPlaces returns how many jellies fit behind a counter.
+func countSnackPlaces(bar floorRect) int {
+	return max(1, int((bar.MaxX-bar.MinX)/personalSpace)) * snackRows
 }
 
 // drawPause returns how long a jelly stands before it wanders on.

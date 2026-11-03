@@ -16,9 +16,13 @@ const (
 	spreadStepY = 0.5698402909980532
 )
 
-// Kinds of areas. Jellies stand on seats, on the stage and in the lounge, walk over cables and
-// walk around desks and the snack bar.
+// What a zone is assigned to. Jellies stand on seats, on the stage, in the lounge and in visitor
+// zones, walk over cables and around desks and the snack bar. The code only looks at this, never at
+// the name of a zone. A zone without an assignment means nothing yet.
 const (
+	AreaKindVisitors = "visitors"
+	AreaKindNone     = "none"
+
 	AreaKindSeats    = "seats"
 	AreaKindDesk     = "desk"
 	AreaKindCable    = "cable"
@@ -85,12 +89,14 @@ func ValidateArea(area Area) error {
 func listAreaKinds() []string {
 	return []string{
 		AreaKindSeats, AreaKindDesk, AreaKindCable, AreaKindStage, AreaKindLounge, AreaKindSnackbar,
+		AreaKindVisitors, AreaKindNone,
 	}
 }
 
 // IsStandingKind reports whether jellies can belong to an area of this kind.
 func IsStandingKind(kind string) bool {
-	return kind == AreaKindSeats || kind == AreaKindStage || kind == AreaKindLounge
+	return kind == AreaKindSeats || kind == AreaKindStage || kind == AreaKindLounge ||
+		kind == AreaKindVisitors
 }
 
 // WholeStage returns the area of a jelly that has no area assigned.

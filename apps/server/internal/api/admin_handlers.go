@@ -214,7 +214,7 @@ func (server *apiServer) handleCreateArea(writer http.ResponseWriter, request *h
 	if !valid {
 		return
 	}
-	var body rules.Area
+	var body store.AdminArea
 	if !server.readJSON(writer, request, &body) {
 		return
 	}
@@ -222,7 +222,8 @@ func (server *apiServer) handleCreateArea(writer http.ResponseWriter, request *h
 	server.writeOutcome(writer, request, area, err)
 }
 
-// handleUpdateArea moves, resizes or retypes an area. Its jellies stay while they can stand there.
+// handleUpdateArea moves, resizes, renames or reassigns an area. Its jellies stay while they can
+// stand there.
 func (server *apiServer) handleUpdateArea(writer http.ResponseWriter, request *http.Request) {
 	lanID, valid := server.readPathID(writer, request)
 	if !valid {
@@ -232,13 +233,13 @@ func (server *apiServer) handleUpdateArea(writer http.ResponseWriter, request *h
 	if !valid {
 		return
 	}
-	var body rules.Area
+	var body store.AdminArea
 	if !server.readJSON(writer, request, &body) {
 		return
 	}
-	area := store.StageArea{ID: areaID, Area: body}
-	err := server.Store.UpdateArea(request.Context(), lanID, area, server.currentMillis())
-	server.writeOutcome(writer, request, area, err)
+	body.ID = areaID
+	err := server.Store.UpdateArea(request.Context(), lanID, body, server.currentMillis())
+	server.writeOutcome(writer, request, body, err)
 }
 
 // handleDeleteArea removes an area and the assignments to it.

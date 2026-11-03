@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -154,6 +155,10 @@ func TestJellyContinuesWhereItStoodAfterARestart(t *testing.T) {
 func TestRestartAfterTheTripWasOverWalksHome(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
+	zoneID := testFixture.createArea(`{"x":60,"y":50,"width":20,"height":20,"kind":"seats"}`)
+	playerID := strconv.FormatInt(testFixture.loadMe(token).ID, 10)
+	testFixture.callAdmin("PUT", "/admin/api/lans/1/players/"+playerID+"/area",
+		`{"area_id":`+zoneID+`}`)
 	home := testFixture.readStage(token).Players[0].HomeSpot
 	testFixture.advanceClock(time.Second)
 	testFixture.callAPI("POST", "/v1/trips/goto", token, `{"x":40,"y":60}`)

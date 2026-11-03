@@ -5,10 +5,18 @@
  */
 
 /**
- * What an area is: where jellies stand (seats, stage, lounge), what they walk around (desk,
- * snackbar) and what they walk over (cable).
+ * What an area is assigned to: where jellies stand (seats, stage, lounge, visitors), what they walk
+ * around (desk, snackbar) and what they walk over (cable). `none` means nothing yet.
  */
-export type AreaKind = "seats" | "desk" | "cable" | "stage" | "lounge" | "snackbar";
+export type AreaKind =
+  | "seats"
+  | "desk"
+  | "cable"
+  | "stage"
+  | "lounge"
+  | "snackbar"
+  | "visitors"
+  | "none";
 
 /** A rectangle on the stage in percent. Areas have no names on purpose. */
 export interface StageArea {

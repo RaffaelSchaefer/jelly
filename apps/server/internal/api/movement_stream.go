@@ -173,7 +173,8 @@ func buildRoster(state store.StageState) movement.Roster {
 			area = areaByID[*player.AreaID]
 		}
 		planned := movement.Player{
-			ID: player.ID, Area: area, FollowID: 0, Trip: nil, Stack: nil, LastSpot: nil,
+			IsVisitor: player.IsVisitor,
+			ID:        player.ID, Area: area, FollowID: 0, Trip: nil, Stack: nil, LastSpot: nil,
 			Home:       movement.Point{X: player.X, Y: player.Y},
 			SnackUntil: player.SnackUntil,
 		}

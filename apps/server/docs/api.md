@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.6.0**
+Aktuelle Version: **1.7.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.6.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.7.0   | Zonen haben im Admin einen Namen, neue Zuweisungen `visitors` und `none`, Besucher wandern (`is_visitor`), Jellies wählen die nächste Theke mit Platz |
 | 1.6.0   | Annehmen eines Partner-Emotes prüft die Nähe, Stapel sind ohne Regel unbegrenzt, `golden-cup` steht im Katalog, Awards prüfen ihr Cosmetic |
 | 1.5.0   | Jellies machen nach einem Neustart des Servers an ihrer letzten Position weiter |
 | 1.4.0   | Stapel (`POST /stacks`, `POST /stacks/members`, `DELETE /stacks/current`, `stacks` in `GET /stage`, `level` im Weg), `POST /highlights`, Achievements `lighthouse` und `lighthouse-light`. Keine Route antwortet mehr mit `501` |
@@ -270,11 +271,14 @@ das Lesen und ist die einzige Ausnahme. Spieler-Secrets gehören immer in den He
 ```
 
 - Bereiche und Heimplätze sind Prozentwerte der Bühne. Bereiche haben keine Namen.
-- `kind` sagt, was ein Bereich ist. Jellies stehen in `seats` (Plätze an den Spieltischen),
-  `stage` (Bühne für Turniere und Public Gaming) und `lounge` (Chillout-Lounge). Um `desk` (Tisch)
-  und `snackbar` (Theke) laufen sie herum, über `cable` (Kabelkanal am Boden) hinweg.
-- Jellies ohne Bereich stehen in der Lounge mit der kleinsten ID, `area_id` zeigt dann diese
-  Lounge. Ohne Lounge haben sie keinen Bereich.
+- `kind` ist die Zuweisung einer Zone. Jellies stehen in `seats` (Plätze an den Spieltischen, mit Code ein Sitzplatz),
+  `stage` (Bühne für Turniere und Public Gaming), `lounge` (Chillout-Lounge) und `visitors` (Besucher-Zone). Um `desk`
+  (Tisch) und `snackbar` (Theke) laufen sie herum, über `cable` (Kabelkanal am Boden) hinweg. `none` heißt: noch
+  nichts zugewiesen. Die Art entscheidet auch, was die Bühne zeichnet, und sie passt die Deko dem Rechteck an.
+- Der Admin vergibt die Zuweisung und einen freien Namen. Der Name bleibt beim Admin, der Code schaut nur auf `kind`.
+- Jellies ohne eigenen Bereich sind Besucher (`is_visitor`). Sie wandern durch alle Zonen der Art `visitors`, ohne solche
+  Zonen durch die Lounge mit der kleinsten ID, ohne Lounge über die ganze Bühne. `area_id` nennt dabei die erste
+  dieser Zonen oder bleibt `null`.
 - Jeder Jelly bekommt im Bereich den nächsten freien Platz in der Reihenfolge der Spieler-IDs. Ohne
   Bereich und ohne Lounge gilt die ganze Bühne. Abwesende behalten ihren Platz, Neue verschieben niemanden.
 
@@ -292,8 +296,9 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
   Weitere Werte können dazukommen und sind wie `wander` zu behandeln.
 - Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Jelly-Einheiten pro Sekunde. Ein Jelly ist etwa
   1,7 breit, die Halle 21 breit und 40 tief.
-- Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur Theke und danach zurück. War der Weg lang, wartet
-  es ab seiner Ankunft noch kurz.
+- Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur nächsten Theke und danach zurück. War der Weg lang,
+  wartet es ab seiner Ankunft noch kurz. Wie viele hinter eine Theke passen, folgt aus ihrer Breite. Ist sie voll, geht
+  das Jelly zur nächsten mit Platz. Sind alle voll, stellt es sich nah dazu.
 - Wo ein Jelly läuft, bestimmt nur der Server. Er merkt sich die Positionen alle 30 Sekunden. Nach einem Neustart macht
   jedes Jelly dort weiter, ein neuer `move` kann also um bis zu 30 Sekunden Weg springen. Ausflug, Folgen, Stapel und
   Thekenlauf laufen auch während eines Ausfalls ab. Danach läuft das Jelly von selbst zurück zu seinem Platz.
@@ -371,9 +376,9 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`, der Schlüssel muss im Katalog stehen |
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
-| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind"}`       |
-| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height","kind"}` bei `PUT` |
-| `PUT /admin/api/lans/{id}/players/{player}/area` | `{"area_id"}` von `seats`, `stage` oder `lounge`, `null` entfernt ihn |
+| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind","name"}` |
+| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height","kind","name"}` bei `PUT` |
+| `PUT /admin/api/lans/{id}/players/{player}/area` | `{"area_id"}` von `seats`, `stage`, `lounge` oder `visitors`, `null` entfernt ihn |
 
 Beim Bearbeiten eines Bereichs bleiben seine Jellies zugeordnet, solange dort Jellies stehen können.
 Wird er gelöscht oder zu `desk`, `cable` oder `snackbar`, verlieren sie ihn und stehen in der Lounge,

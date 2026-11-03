@@ -61,6 +61,8 @@ type Player struct {
 	Stack *StackPlace
 	// LastSpot is where the jelly stood before a restart, or nil.
 	LastSpot *Point
+	// IsVisitor marks a jelly without a place of its own, which wanders through the visitor zones.
+	IsVisitor bool
 }
 
 // Spot is where a jelly stands at one moment.
@@ -93,8 +95,10 @@ type Planner struct {
 	walkSpeed   float64
 	areas       []rules.Area
 	floor       *grid
-	snackBar    *floorRect
-	walkers     map[int64]*walker
+	snackBars   []floorRect
+	// visitorZones are where visitors wander, shrunk so they stay inside.
+	visitorZones []floorRect
+	walkers      map[int64]*walker
 	// journal holds the newest moves. The move at index i has the number firstNumber + i.
 	journal     []Move
 	firstNumber int64
@@ -224,12 +228,16 @@ func (planner *Planner) syncRoom(areas []rules.Area) {
 	}
 	planner.areas = slices.Clone(areas)
 	planner.floor = newGrid(listRoomRect(), listObstacles(areas), jellyRadius)
-	planner.snackBar = nil
+	planner.snackBars = nil
+	planner.visitorZones = nil
 	for _, area := range areas {
-		if area.Kind == rules.AreaKindSnackbar {
-			bar := toFloorRect(area)
-			planner.snackBar = &bar
-			break
+		switch area.Kind {
+		case rules.AreaKindSnackbar:
+			planner.snackBars = append(planner.snackBars, toFloorRect(area))
+		case rules.AreaKindVisitors:
+			planner.visitorZones = append(
+				planner.visitorZones, shrinkRect(toFloorRect(area), edgeMargin),
+			)
 		}
 	}
 	for _, walker := range planner.walkers {
@@ -254,6 +262,7 @@ func (planner *Planner) syncWalkers(now int64, players []Player) {
 			planner.addWalker(now, player)
 			continue
 		}
+		walker.isVisitor = player.IsVisitor
 		if !walker.isPlaced || walker.home != player.Home || walker.area != player.Area {
 			planner.placeWalker(walker, player)
 			walker.plan = walkPlan{}
@@ -264,7 +273,7 @@ func (planner *Planner) syncWalkers(now int64, players []Player) {
 // addWalker lets a new jelly appear at its place or at the point of its running trip. After a
 // restart it appears where it stood and walks on from there.
 func (planner *Planner) addWalker(now int64, player Player) {
-	walker := &walker{playerID: player.ID}
+	walker := &walker{playerID: player.ID, isVisitor: player.IsVisitor}
 	planner.walkers[player.ID] = walker
 	planner.placeWalker(walker, player)
 	spot := walker.anchor
