@@ -98,10 +98,13 @@ func (testFixture *fixture) openDatabase() {
 
 func (testFixture *fixture) createLAN(slug string, startsAt time.Time) {
 	testFixture.t.Helper()
+	// Most tests do not care where their jellies stand.
+	gameRules := rules.DefaultRules()
+	gameRules.NearDistance = 1000
 	err := testFixture.database.CreateLAN(testFixture.t.Context(), store.NewLAN{
 		Slug: slug, Name: slug, Timezone: "Europe/Berlin", JoinCode: joinCode,
 		StartsAt: startsAt.UnixMilli(), EndsAt: startsAt.Add(96 * time.Hour).UnixMilli(),
-		Rules: rules.DefaultRules(),
+		Rules: gameRules,
 	})
 	if err != nil {
 		testFixture.t.Fatal(err)

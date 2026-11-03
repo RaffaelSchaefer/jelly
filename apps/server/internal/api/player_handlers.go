@@ -219,15 +219,22 @@ func (server *apiServer) addActionRoutes(contract huma.API) {
 		Summary: "Lower the sign", DefaultStatus: http.StatusOK,
 	}, server.handleClearSign)
 	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "goToPoint", Method: http.MethodPost, Path: "/trips/goto",
+		Summary: "Walk to a point and come back after a while",
+		Description: "`x` and `y` are percent of the stage. The jelly walks to the free spot " +
+			"closest to the point and back after `trip_seconds`. This ends following.",
+	}, server.handleStartTrip)
+	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "followPlayer", Method: http.MethodPost, Path: "/trips/follow",
 		Summary: "Follow another jelly",
-		Description: "The server may end this by itself later, " +
+		Description: "Someone new can be followed once per `follow_cooldown`, see " +
+			"`next_follow_at`. The server may end this by itself, " +
 			"so read `follow_player_id` instead of assuming it stays set.",
 	}, server.handleSetFollow)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "endTrip", Method: http.MethodDelete, Path: pathCurrentTrip,
 		Summary: "Go back to the own place", DefaultStatus: http.StatusOK,
-	}, server.handleClearFollow)
+	}, server.handleEndTrip)
 }
 
 // answerWith wraps a result for the response, or passes on the error.
@@ -406,13 +413,20 @@ func (server *apiServer) handleSetFollow(
 		return nil, store.ErrInvalidFollow
 	}
 	return answerWith(
-		server.Store.UpdateFollow(ctx, playerID, input.Body.PlayerID, server.currentMillis()),
+		server.Store.StartFollow(ctx, playerID, input.Body.PlayerID, server.currentMillis()),
 	)
 }
 
-// handleClearFollow ends the trip and goes back to the own place.
-func (server *apiServer) handleClearFollow(
+// handleStartTrip sends the jelly to a point on the stage.
+func (server *apiServer) handleStartTrip(
+	ctx context.Context, playerID int64, input *jsonInput[rules.TripPoint],
+) (*jsonOutput[store.PlayerState], error) {
+	return answerWith(server.Store.StartTrip(ctx, playerID, input.Body, server.currentMillis()))
+}
+
+// handleEndTrip ends a trip or following and goes back to the own place.
+func (server *apiServer) handleEndTrip(
 	ctx context.Context, playerID int64, _ *noInput,
 ) (*jsonOutput[store.PlayerState], error) {
-	return answerWith(server.Store.UpdateFollow(ctx, playerID, 0, server.currentMillis()))
+	return answerWith(server.Store.EndTrip(ctx, playerID, server.currentMillis()))
 }

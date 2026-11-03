@@ -64,7 +64,8 @@ func (server *apiServer) addPartnerRoutes(contract huma.API) {
 		OperationID: "createPartnerEmote", Method: http.MethodPost, Path: pathPartnerEmotes,
 		Summary: "Ask another jelly for a partner emote",
 		Description: "The other client learns about it from `partner_emote.updated` and answers " +
-			"with PATCH. `partner_ids` holds exactly one jelly for now.",
+			"with PATCH. `partner_ids` holds exactly one jelly for now. Jellies further apart " +
+			"than `near_distance` get `409 too_far`.",
 		Middlewares: huma.Middlewares{server.limitCodeAttempts},
 	}, server.handleCreatePartnerInvite)
 	addPlayerOperation(server, contract, huma.Operation{
@@ -83,9 +84,15 @@ func (server *apiServer) addPartnerRoutes(contract huma.API) {
 func (server *apiServer) handleCreatePartnerInvite(
 	ctx context.Context, playerID int64, input *jsonInput[InviteBody],
 ) (*jsonOutput[store.PartnerInviteResult], error) {
-	return answerWith(server.Store.CreatePartnerInvite(
-		ctx, playerID, input.Body.Key, input.Body.PartnerIDs, server.currentMillis(),
-	))
+	now := server.currentMillis()
+	server.refreshMovement(ctx, now)
+	return answerWith(server.Store.CreatePartnerInvite(ctx, store.NewPartnerInvite{
+		PlayerID: playerID, EmoteKey: input.Body.Key, PartnerIDs: input.Body.PartnerIDs, Now: now,
+		IsNear: func(partnerID int64, reach float64) bool {
+			distance, ok := server.planner.MeasureDistance(playerID, partnerID, now)
+			return ok && distance <= reach
+		},
+	}))
 }
 
 // handleAnswerPartnerInvite accepts, declines or cancels an invite.

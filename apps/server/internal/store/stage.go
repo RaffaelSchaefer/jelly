@@ -24,6 +24,7 @@ type StagePlayer struct {
 	FollowPlayerID *int64                      `json:"follow_player_id"`
 	LastSeenAt     int64                       `json:"last_seen_at"`
 	AreaID         *int64                      `json:"area_id"`
+	Trip           *Trip                       `json:"trip"`
 	// SnackUntil tells the movement planner when a snack run ends.
 	SnackUntil int64 `json:"-"`
 	rules.HomeSpot
@@ -63,7 +64,7 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	if err != nil {
 		return StageState{}, err
 	}
-	players, err := loadStagePlayers(queryCtx, store.readDB, lan)
+	players, err := loadStagePlayers(queryCtx, store.readDB, lan, now)
 	if err != nil {
 		return StageState{}, err
 	}
@@ -115,10 +116,11 @@ func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 
 // loadStagePlayers reads all visible jellies of a LAN, whether currently present or not.
 func loadStagePlayers(
-	ctx context.Context, database querier, lan activeLAN,
+	ctx context.Context, database querier, lan activeLAN, now int64,
 ) ([]StagePlayer, error) {
 	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, e.xp,
 			e.sign_key, e.follow_player_id, e.last_seen_at, e.area_id,
+			e.trip_x, e.trip_y, e.trip_until,
 			COALESCE((SELECT MAX(x.created_at) FROM xp_log x
 				WHERE x.player_id = p.id AND x.lan_id = e.lan_id AND x.action IN (?, ?)), 0)
 		FROM lan_entries e JOIN players p ON p.id = e.player_id
@@ -131,7 +133,7 @@ func loadStagePlayers(
 	defer func() { _ = rows.Close() }()
 	players := []StagePlayer{}
 	for rows.Next() {
-		player, err := scanStagePlayer(rows, lan.gameRules)
+		player, err := scanStagePlayer(rows, lan.gameRules, now)
 		if err != nil {
 			return nil, err
 		}
@@ -144,19 +146,21 @@ func loadStagePlayers(
 }
 
 // scanStagePlayer reads one jelly row.
-func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules) (StagePlayer, error) {
+func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePlayer, error) {
 	var player StagePlayer
 	var lanXP int
 	var lastSnackAt int64
+	var trip tripColumns
 	var sign sql.NullString
 	var follow, area sql.NullInt64
 	err := rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP, &sign, &follow,
-		&player.LastSeenAt, &area, &lastSnackAt)
+		&player.LastSeenAt, &area, &trip.x, &trip.y, &trip.until, &lastSnackAt)
 	if err != nil {
 		return StagePlayer{}, fmt.Errorf("read stage player: %w", err)
 	}
 	player.Level = rules.CalculateLevel(lanXP)
 	player.SnackUntil = rules.CalculateSnackRunEnd(gameRules, lastSnackAt)
+	player.Trip = trip.findRunningTrip(now)
 	if sign.Valid {
 		player.Sign = &sign.String
 	}

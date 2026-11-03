@@ -13,12 +13,6 @@ import (
 // errNotImplemented answers routes that are in the contract but do not work yet.
 var errNotImplemented = errors.New("not implemented")
 
-// TripPointBody names the point a jelly walks to.
-type TripPointBody struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
-}
-
 // HighlightBody names the jelly to find on the stage.
 type HighlightBody struct {
 	PlayerID int64 `json:"player_id"`
@@ -32,10 +26,6 @@ type StackMemberBody struct {
 // addPlannedRoutes registers routes that clients can already build against. They answer with
 // `501 not_implemented` until the server plans the movement of the jellies.
 func (server *apiServer) addPlannedRoutes(contract huma.API) {
-	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "goToPoint", Method: http.MethodPost, Path: "/trips/goto",
-		Summary: "Walk to a point and come back after a while", Description: plannedNote,
-	}, answerNotImplemented[TripPointBody])
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "highlightJelly", Method: http.MethodPost, Path: "/highlights",
 		Summary: "Highlight a jelly on the stage", Description: plannedNote,

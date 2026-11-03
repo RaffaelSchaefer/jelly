@@ -101,6 +101,11 @@ func (server *apiServer) advanceMovement(ctx context.Context) {
 	if !server.planner.ClaimAdvance(now) {
 		return
 	}
+	server.refreshMovement(ctx, now)
+}
+
+// refreshMovement plans right now, for answers that need to know where the jellies are.
+func (server *apiServer) refreshMovement(ctx context.Context, now int64) {
 	state, err := server.Store.LoadStageState(ctx, now)
 	if err != nil {
 		server.Logger.WarnContext(ctx, "plan movement", "error", err)
@@ -132,6 +137,9 @@ func buildRoster(state store.StageState) movement.Roster {
 		}
 		if player.FollowPlayerID != nil {
 			planned.FollowID = *player.FollowPlayerID
+		}
+		if player.Trip != nil {
+			planned.Trip = &movement.Point{X: player.Trip.X, Y: player.Trip.Y}
 		}
 		roster.Players = append(roster.Players, planned)
 	}

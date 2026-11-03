@@ -54,6 +54,11 @@ func listSocialAchievements() []Achievement {
 			Scope:       ScopeLAN, Metric: MetricGrantedDirectly, Goal: 1,
 		},
 		{
+			Key: AchievementConga, Title: "Konga!",
+			Description: "Ihr seid eine Polonaise durch die Halle gelaufen.",
+			Scope:       ScopeLAN, Metric: MetricGrantedDirectly, Goal: 1,
+		},
+		{
 			Key: "matching", Title: "Partnerlook", Description: "Zufall? Wohl kaum.",
 			Scope: ScopeLAN, Secret: true, Metric: MetricSameColor, Goal: 1,
 		},

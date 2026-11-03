@@ -160,7 +160,6 @@ func TestPlannedRoutesAnswerInTheCommonForm(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 	for _, call := range [][2]string{
-		{"/v1/trips/goto", `{"x":1,"y":2}`},
 		{"/v1/highlights", `{"player_id":1}`},
 		{"/v1/stacks", ""},
 		{"/v1/stacks/members", `{"stack_id":1}`},

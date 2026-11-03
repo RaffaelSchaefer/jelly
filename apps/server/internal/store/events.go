@@ -23,6 +23,7 @@ const (
 	EventEmote            = "emote"
 	EventSignChanged      = "sign.changed"
 	EventFollowChanged    = "follow.changed"
+	EventTripChanged      = "trip.changed"
 	EventStageChanged     = "stage.changed"
 	EventPartnerEmote     = "partner.emote"
 	EventPartnerInvite    = "partner_emote.updated"

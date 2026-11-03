@@ -29,6 +29,9 @@ const (
 	defaultMaxStreams            = 200
 	defaultMaxPlayerStreams      = 3
 	defaultSnackRunSeconds       = 14
+	defaultTripSeconds           = 300
+	defaultFollowCooldownSeconds = 1800
+	defaultNearDistance          = 6.0
 	maxPercent                   = 100
 )
 
@@ -71,6 +74,13 @@ type Rules struct {
 	MaxPlayerStreams int `json:"max_player_streams"`
 	// SnackRunSeconds is how long a jelly stays at the snack bar after a food or drink report.
 	SnackRunSeconds int64 `json:"snack_run_seconds"`
+	// TripSeconds is how long a jelly stays at the point of a trip before it walks back.
+	TripSeconds int64 `json:"trip_seconds"`
+	// FollowCooldownSeconds is the time between starting to follow two different jellies.
+	FollowCooldownSeconds int64 `json:"follow_cooldown"`
+	// NearDistance is how far apart two jellies count as next to each other, in jelly units. A
+	// jelly is about 1.7 wide, the hall 21 wide and 40 deep.
+	NearDistance float64 `json:"near_distance"`
 }
 
 // DefaultRules returns the starting values of a new LAN.
@@ -93,6 +103,9 @@ func DefaultRules() Rules {
 		MaxStreams:            defaultMaxStreams,
 		MaxPlayerStreams:      defaultMaxPlayerStreams,
 		SnackRunSeconds:       defaultSnackRunSeconds,
+		TripSeconds:           defaultTripSeconds,
+		FollowCooldownSeconds: defaultFollowCooldownSeconds,
+		NearDistance:          defaultNearDistance,
 	}
 }
 
@@ -101,7 +114,7 @@ func ValidateRules(gameRules Rules) error {
 	for _, duration := range []int64{
 		gameRules.PokeIntervalSeconds, gameRules.PokeMaxTicks, gameRules.ReportCooldownSeconds,
 		gameRules.ReportWindowSeconds, gameRules.PresenceWindowSeconds,
-		gameRules.PartnerInviteSeconds, gameRules.SnackRunSeconds,
+		gameRules.PartnerInviteSeconds, gameRules.SnackRunSeconds, gameRules.TripSeconds,
 	} {
 		if duration <= 0 {
 			return ErrInvalidRules
@@ -115,7 +128,10 @@ func ValidateRules(gameRules Rules) error {
 			return ErrInvalidRules
 		}
 	}
-	if gameRules.EmoteCooldownSeconds < 0 {
+	if gameRules.EmoteCooldownSeconds < 0 || gameRules.FollowCooldownSeconds < 0 {
+		return ErrInvalidRules
+	}
+	if gameRules.NearDistance <= 0 {
 		return ErrInvalidRules
 	}
 	if gameRules.FullHousePercent < 1 || gameRules.FullHousePercent > maxPercent {
@@ -170,6 +186,25 @@ func CalculateSnackRunEnd(gameRules Rules, lastSnackAt int64) int64 {
 		return 0
 	}
 	return lastSnackAt + gameRules.SnackRunSeconds*millisPerSecond
+}
+
+// CalculateTripEnd returns when a trip started now ends.
+func CalculateTripEnd(gameRules Rules, now int64) int64 {
+	return now + gameRules.TripSeconds*millisPerSecond
+}
+
+// CalculateNextFollowTime returns when a jelly may follow someone new. `startedAt` is 0 if it has
+// not followed anyone in this LAN.
+func CalculateNextFollowTime(gameRules Rules, startedAt int64) int64 {
+	if startedAt == 0 {
+		return 0
+	}
+	return startedAt + gameRules.FollowCooldownSeconds*millisPerSecond
+}
+
+// IsFollowAllowed reports whether a jelly may follow someone new.
+func IsFollowAllowed(gameRules Rules, startedAt, now int64) bool {
+	return now >= CalculateNextFollowTime(gameRules, startedAt)
 }
 
 // IsEmoteAllowed reports whether a player may emote again. `lastEmoteAt` is 0 without an emote.

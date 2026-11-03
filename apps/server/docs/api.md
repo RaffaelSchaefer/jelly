@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.2.0**
+Aktuelle Version: **1.3.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.2.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.3.0   | `POST /trips/goto`, Folgen mit Abklingzeit (`next_follow_at`, `follow_cooldown`), `409 too_far` bei Partner-Emotes (`near_distance`), Achievement `conga`, `trip` im Stand |
 | 1.2.0   | Der Server plant die Wege: `moves` in `GET /stage`, Nachricht `move` und `?topics=` im Stream, Regel `snack_run_seconds` |
 | 1.1.0   | 3D-Bühne: Bereiche haben eine Art (`kind`), `xp.gained` nennt seine Quelle (`source`) |
 | 1.0.0   | Erste Version: Mindestversion, LAN-Status, Konten, Stupser, Lebenszeichen, Berichte, Event-Codes, Emotes, Partner-Emotes, Schilder, Stellen zu einem Jelly, Bühne und Ereignisse |
@@ -162,6 +163,7 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `POST /emotes`            | `{"key"}`                                  | Stand                          |
 | `PUT /signs/current`      | `{"key"}`                                  | Stand                          |
 | `DELETE /signs/current`   |                                            | Stand                          |
+| `POST /trips/goto`        | `{"x","y"}`                                | Stand                          |
 | `POST /trips/follow`      | `{"player_id"}`                            | Stand                          |
 | `DELETE /trips/current`   |                                            | Stand                          |
 
@@ -202,12 +204,26 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 - Beide erhalten `partner_xp` einmal je Partner und LAN. Danach ist `xp_gained` 0.
 - Nach dem Bestätigen folgt `partner.emote` mit B als `player_id` und A als `partner_id`. Ist einer von beiden
   ausgeblendet, gibt es kein Ereignis.
-- Die Nähe wird noch nicht geprüft, das kommt mit der Bewegung auf dem Server. Dann antwortet der Server `409 too_far`.
+- Nur wer nah genug steht, kann auffordern: Beim Absenden dürfen beide Jellies höchstens `near_distance` auseinander
+  sein, sonst folgt `409 too_far`. Die Angabe zählt in Jelly-Einheiten. Ein Jelly ist etwa 1,7 breit, die Halle 21
+  breit und 40 tief. Ein Jelly, das gerade nicht auf der Bühne steht, ist immer zu weit weg.
+
+### Ausflug und Folgen
+
+- `POST /trips/goto` schickt das Jelly zu einem Punkt, `x` und `y` sind Prozentwerte der Bühne. Es läuft zur freien
+  Stelle am nächsten dran und nach `trip_seconds` zurück auf seinen Platz. `trip` im Stand nennt `x`, `y` und `until`.
+  Punkte außerhalb der Bühne ergeben `400 invalid_trip`.
+- `POST /trips/follow` läuft einem anderen Jelly nach. Bekommt das Ziel einen neuen Weg, plant der Server selbst nach.
+  Wer folgt, kann jemand Neuem erst wieder ab `next_follow_at` folgen, sonst `409 follow_cooldown`. Die Abklingzeit
+  `follow_cooldown` beginnt mit dem Start und läuft auch dann weiter, wenn man vorher aufhört. Einen Kreis aus
+  Folgenden lehnt der Server mit `400 invalid_follow` ab.
+- `DELETE /trips/current` beendet beides sofort. Ausflug und Folgen schließen sich aus, das Neue beendet das Alte.
+- Das Achievement `conga` gibt es, wenn mehrere demselben Jelly folgen oder man jemandem folgt, der selbst folgt.
 
 ### Noch nicht verfügbar
 
 Diese Wege stehen schon im Vertrag und antworten mit `501 not_implemented`, bis der Server die Bewegung plant:
-`POST /trips/goto` mit `{"x","y"}`, `POST /highlights` mit `{"player_id"}`, `POST /stacks` und
+`POST /highlights` mit `{"player_id"}`, `POST /stacks` und
 `POST /stacks/members` mit `{"stack_id"}`.
 
 ## Bühne
@@ -223,7 +239,7 @@ Diese Wege stehen schon im Vertrag und antworten mit `501 not_implemented`, bis 
   "players": [{
     "id": 1, "name": "Glibber", "color": "mint", "equipped": {}, "level": 1,
     "sign": null, "follow_player_id": null, "last_seen_at": 1795000000000,
-    "area_id": 1, "home_x": 24.2, "home_y": 61.8
+    "area_id": 1, "trip": null, "home_x": 24.2, "home_y": 61.8
   }],
   "moves": [{
     "player_id": 1, "kind": "wander", "start_at": 1795000001000,
@@ -281,7 +297,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `xp.gained`, `level.up`                           | Fortschritt, `xp.gained` mit `{"amount","source"}` |
 | `achievement.earned`, `award.given`               | Auszeichnung                       |
 | `emote`, `partner.emote`                          | Emote, Partner-Emote mit `partner_id` |
-| `sign.changed`, `follow.changed`                  | Schild oder Standort               |
+| `sign.changed`, `follow.changed`, `trip.changed`  | Schild oder Standort               |
 | `stage.changed`                                   | Raumkarte geändert, Stand neu laden |
 
 Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` hängt vom Typ ab:
@@ -299,6 +315,7 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `partner_emote.updated`                           | Handelnder  | `{"id","key","from_id","partner_ids","state","expires_at"}` |
 | `sign.changed`                                    | Spieler     | `{"key"}`, `null` beim Senken     |
 | `follow.changed`                                  | Spieler     | `{"target_id"}`, `null` beim Weggehen |
+| `trip.changed`                                    | Spieler     | `{"x","y","until"}`                |
 | `stage.changed`                                   | `null`      | `{}`                              |
 
 `source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`.

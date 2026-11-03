@@ -57,6 +57,17 @@ type HomeSpot struct {
 	Y float64 `json:"home_y"`
 }
 
+// TripPoint is a point on the stage a jelly can walk to, in percent.
+type TripPoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+// IsTripPointValid reports whether a point lies on the stage. NaN fails both comparisons.
+func IsTripPointValid(point TripPoint) bool {
+	return point.X >= 0 && point.X <= stageSize && point.Y >= 0 && point.Y <= stageSize
+}
+
 // ValidateArea checks one area. Areas may touch or overlap, the layout is only a rough map.
 func ValidateArea(area Area) error {
 	isInside := area.X >= 0 && area.Y >= 0 &&

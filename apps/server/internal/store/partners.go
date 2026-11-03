@@ -45,24 +45,34 @@ type PartnerInviteList struct {
 	NextCursor *string         `json:"next_cursor"`
 }
 
+// NewPartnerInvite is a request for a partner emote.
+type NewPartnerInvite struct {
+	PlayerID   int64
+	EmoteKey   string
+	PartnerIDs []int64
+	Now        int64
+	// IsNear says whether the partner stands within this distance of the player.
+	IsNear func(partnerID int64, reach float64) bool
+}
+
 // CreatePartnerInvite asks another jelly for a partner emote.
 func (store *Store) CreatePartnerInvite(
-	ctx context.Context, playerID int64, emoteKey string, partnerIDs []int64, now int64,
+	ctx context.Context, request NewPartnerInvite,
 ) (PartnerInviteResult, error) {
-	err := rules.ValidatePartnerEmote(emoteKey)
+	err := rules.ValidatePartnerEmote(request.EmoteKey)
 	if err != nil {
 		return PartnerInviteResult{}, fmt.Errorf("validate partner emote: %w", err)
 	}
-	if len(partnerIDs) != maxInvitedPartners {
+	if len(request.PartnerIDs) != maxInvitedPartners {
 		return PartnerInviteResult{}, ErrInvalidPartner
 	}
 	var result PartnerInviteResult
 	work := func(action actionContext) error {
 		var workErr error
-		result.PartnerEmote, workErr = insertPartnerInvite(ctx, action, emoteKey, partnerIDs[0])
+		result.PartnerEmote, workErr = insertPartnerInvite(ctx, action, request)
 		return workErr
 	}
-	result.Me, err = store.runPlayerAction(ctx, playerID, now, false, work)
+	result.Me, err = store.runPlayerAction(ctx, request.PlayerID, request.Now, false, work)
 	if err != nil {
 		return PartnerInviteResult{}, err
 	}
@@ -71,8 +81,9 @@ func (store *Store) CreatePartnerInvite(
 
 // insertPartnerInvite checks the partner and writes the invite. One open invite per pair is enough.
 func insertPartnerInvite(
-	ctx context.Context, action actionContext, emoteKey string, partnerID int64,
+	ctx context.Context, action actionContext, request NewPartnerInvite,
 ) (PartnerInvite, error) {
+	partnerID := request.PartnerIDs[0]
 	if partnerID == action.playerID {
 		return PartnerInvite{}, ErrPartnerSelf
 	}
@@ -82,6 +93,9 @@ func insertPartnerInvite(
 	}
 	if err != nil {
 		return PartnerInvite{}, err
+	}
+	if !request.IsNear(partnerID, action.lan.gameRules.NearDistance) {
+		return PartnerInvite{}, ErrTooFar
 	}
 	var found int
 	const findOpenInviteSQL = `SELECT 1 FROM partner_invites
@@ -95,7 +109,7 @@ func insertPartnerInvite(
 		return PartnerInvite{}, fmt.Errorf("find open invite: %w", err)
 	}
 	invite := PartnerInvite{
-		ID: 0, EmoteKey: emoteKey, FromID: action.playerID, PartnerIDs: []int64{partnerID},
+		ID: 0, EmoteKey: request.EmoteKey, FromID: action.playerID, PartnerIDs: []int64{partnerID},
 		State:     invitePending,
 		ExpiresAt: action.now + action.lan.gameRules.PartnerInviteSeconds*millisPerSecond,
 	}

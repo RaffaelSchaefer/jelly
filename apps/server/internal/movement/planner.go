@@ -90,7 +90,7 @@ func NewPlanner() *Planner {
 func (planner *Planner) ClaimAdvance(now int64) bool {
 	planner.mutex.Lock()
 	defer planner.mutex.Unlock()
-	if now != 0 && now-planner.lastAdvance < advanceIntervalMillis {
+	if now-planner.lastAdvance < advanceIntervalMillis {
 		return false
 	}
 	planner.lastAdvance = now

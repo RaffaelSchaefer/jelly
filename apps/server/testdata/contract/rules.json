@@ -16,7 +16,10 @@
     "max_players": 120,
     "max_streams": 200,
     "max_player_streams": 3,
-    "snack_run_seconds": 14
+    "snack_run_seconds": 14,
+    "trip_seconds": 300,
+    "follow_cooldown": 1800,
+    "near_distance": 6
   },
   "poke": [
     { "name": "first poke counts immediately", "elapsed_seconds": null, "xp": 3 },

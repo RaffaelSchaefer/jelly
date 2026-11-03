@@ -775,6 +775,11 @@
           "name": {
             "type": "string"
           },
+          "next_follow_at": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
           "next_poke_at": {
             "format": "int64",
             "nullable": true,
@@ -801,6 +806,9 @@
             "format": "int64",
             "type": "integer"
           },
+          "trip": {
+            "$ref": "#/components/schemas/Trip"
+          },
           "xp": {
             "format": "int64",
             "type": "integer"
@@ -822,6 +830,8 @@
           "reports",
           "sign",
           "follow_player_id",
+          "next_follow_at",
+          "trip",
           "lans_attended",
           "badges",
           "cosmetics",
@@ -1121,6 +1131,9 @@
           "sign": {
             "nullable": true,
             "type": "string"
+          },
+          "trip": {
+            "$ref": "#/components/schemas/Trip"
           }
         },
         "required": [
@@ -1133,13 +1146,37 @@
           "follow_player_id",
           "last_seen_at",
           "area_id",
+          "trip",
           "home_x",
           "home_y"
         ],
         "type": "object"
       },
-      "TripPointBody": {
-        "additionalProperties": false,
+      "Trip": {
+        "additionalProperties": true,
+        "properties": {
+          "until": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "x": {
+            "format": "double",
+            "type": "number"
+          },
+          "y": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "until"
+        ],
+        "type": "object"
+      },
+      "TripPoint": {
+        "additionalProperties": true,
         "properties": {
           "x": {
             "format": "double",
@@ -1210,7 +1247,7 @@
   },
   "info": {
     "title": "Jelly API",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -1572,7 +1609,7 @@
         "summary": "Accept, decline or cancel a partner emote"
       },
       "post": {
-        "description": "The other client learns about it from `partner_emote.updated` and answers with PATCH. `partner_ids` holds exactly one jelly for now.",
+        "description": "The other client learns about it from `partner_emote.updated` and answers with PATCH. `partner_ids` holds exactly one jelly for now. Jellies further apart than `near_distance` get `409 too_far`.",
         "operationId": "createPartnerEmote",
         "requestBody": {
           "content": {
@@ -2192,7 +2229,7 @@
     },
     "/v1/trips/follow": {
       "post": {
-        "description": "The server may end this by itself later, so read `follow_player_id` instead of assuming it stays set.",
+        "description": "Someone new can be followed once per `follow_cooldown`, see `next_follow_at`. The server may end this by itself, so read `follow_player_id` instead of assuming it stays set.",
         "operationId": "followPlayer",
         "requestBody": {
           "content": {
@@ -2236,13 +2273,13 @@
     },
     "/v1/trips/goto": {
       "post": {
-        "description": "Not available yet, answers `501 not_implemented`.",
+        "description": "`x` and `y` are percent of the stage. The jelly walks to the free spot closest to the point and back after `trip_seconds`. This ends following.",
         "operationId": "goToPoint",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TripPointBody"
+                "$ref": "#/components/schemas/TripPoint"
               }
             }
           },

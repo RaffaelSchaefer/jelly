@@ -60,6 +60,8 @@ type PlayerState struct {
 	Reports        *rules.ReportStatus         `json:"reports"`
 	Sign           *string                     `json:"sign"`
 	FollowPlayerID *int64                      `json:"follow_player_id"`
+	NextFollowAt   *int64                      `json:"next_follow_at"`
+	Trip           *Trip                       `json:"trip"`
 	LANsAttended   int                         `json:"lans_attended"`
 	Badges         []Badge                     `json:"badges"`
 	Cosmetics      []string                    `json:"cosmetics"`
@@ -78,6 +80,9 @@ type entryRow struct {
 	xp        int
 	sign      sql.NullString
 	follow    sql.NullInt64
+	trip      tripColumns
+	// followStartedAt is 0 if the player has not followed anyone in this LAN.
+	followStartedAt int64
 }
 
 // LoadPlayerState returns the state of a player.
@@ -152,12 +157,14 @@ func loadAccount(ctx context.Context, database querier, playerID int64) (PlayerS
 func loadProgress(ctx context.Context, database querier, state *PlayerState, now int64) error {
 	var row entryRow
 	const selectLatestEntrySQL = `SELECT l.id, l.slug, l.name, l.starts_at, l.ends_at,
-			l.rules, e.joined_at, e.xp, e.sign_key, e.follow_player_id
+			l.rules, e.joined_at, e.xp, e.sign_key, e.follow_player_id,
+			e.trip_x, e.trip_y, e.trip_until, e.follow_started_at
 		FROM lan_entries e JOIN lans l ON l.id = e.lan_id
 		WHERE e.player_id = ? ORDER BY l.starts_at DESC LIMIT 1`
 	err := database.QueryRowContext(ctx, selectLatestEntrySQL, state.ID).
 		Scan(&row.lanID, &row.info.Slug, &row.info.Name, &row.startsAt, &row.endsAt,
-			&row.rulesJSON, &row.joinedAt, &row.xp, &row.sign, &row.follow)
+			&row.rulesJSON, &row.joinedAt, &row.xp, &row.sign, &row.follow,
+			&row.trip.x, &row.trip.y, &row.trip.until, &row.followStartedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -177,6 +184,7 @@ func loadProgress(ctx context.Context, database querier, state *PlayerState, now
 	if row.follow.Valid {
 		state.FollowPlayerID = &row.follow.Int64
 	}
+	state.Trip = row.trip.findRunningTrip(now)
 	return loadActiveTimers(ctx, database, state, row, now)
 }
 
@@ -194,6 +202,8 @@ func loadActiveTimers(
 	}
 	nextPokeAt := rules.CalculateNextPokeTime(gameRules, lastPokeAt, row.joinedAt)
 	state.NextPokeAt = &nextPokeAt
+	nextFollowAt := rules.CalculateNextFollowTime(gameRules, row.followStartedAt)
+	state.NextFollowAt = &nextFollowAt
 	history, err := loadReportHistory(ctx, database, row.lanID, state.ID)
 	if err != nil {
 		return err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"net/http"
 	"slices"
@@ -345,6 +346,46 @@ func (player *bot) pickOtherJelly(ctx context.Context) (int64, int, error) {
 	return others[pickNumber(len(others))], status, nil
 }
 
+// pickNearbyJelly returns the jelly closest to this one, because partner emotes need nearness.
+func (player *bot) pickNearbyJelly(ctx context.Context) (int64, int, error) {
+	var stage struct {
+		Moves []stageMove `json:"moves"`
+	}
+	status, err := player.get(ctx, pathState, &stage)
+	if err != nil || status != http.StatusOK {
+		return noJelly, status, err
+	}
+	own := slices.IndexFunc(stage.Moves, func(move stageMove) bool {
+		return move.PlayerID == player.playerID
+	})
+	if own < 0 {
+		return noJelly, status, nil
+	}
+	closest, shortest := noJelly, math.Inf(1)
+	for _, other := range stage.Moves {
+		distance := other.measureTo(stage.Moves[own])
+		if other.PlayerID != player.playerID && distance < shortest {
+			closest, shortest = other.PlayerID, distance
+		}
+	}
+	return closest, status, nil
+}
+
+// stageMove is the part of a move that tells where a jelly is heading.
+type stageMove struct {
+	PlayerID int64 `json:"player_id"`
+	Points   []struct {
+		X float64 `json:"x"`
+		Y float64 `json:"y"`
+	} `json:"points"`
+}
+
+// measureTo returns how far apart the ends of two moves are, in percent of the stage.
+func (move stageMove) measureTo(other stageMove) float64 {
+	end, otherEnd := move.Points[len(move.Points)-1], other.Points[len(other.Points)-1]
+	return math.Hypot(end.X-otherEnd.X, end.Y-otherEnd.Y)
+}
+
 // doPartnerEmote accepts an invite that waits for this bot, or asks another jelly.
 func (player *bot) doPartnerEmote(ctx context.Context) (int, error) {
 	var open struct {
@@ -364,7 +405,7 @@ func (player *bot) doPartnerEmote(ctx context.Context) (int, error) {
 			})
 		}
 	}
-	target, status, err := player.pickOtherJelly(ctx)
+	target, status, err := player.pickNearbyJelly(ctx)
 	if err != nil || target == noJelly {
 		return status, err
 	}

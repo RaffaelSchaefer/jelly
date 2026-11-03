@@ -33,6 +33,7 @@ const (
 const (
 	AchievementFoundCompany = "found-company"
 	AchievementFullHouse    = "full-house"
+	AchievementConga        = "conga"
 )
 
 const (
