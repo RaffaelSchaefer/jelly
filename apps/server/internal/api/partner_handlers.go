@@ -1,10 +1,14 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
+	"github.com/danielgtaylor/huma/v2"
 	"golang.org/x/time/rate"
+
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
 const (
@@ -39,41 +43,34 @@ func (limiters *playerLimiters) allowAttempt(playerID int64) bool {
 }
 
 // addPartnerRoutes registers the partner emote flow.
-func (server *apiServer) addPartnerRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /partner-emote", server.requirePlayer(server.handleCreatePartnerOffer))
-	mux.HandleFunc("POST /partner-emote/join", server.requirePlayer(server.handleJoinPartnerOffer))
+func (server *apiServer) addPartnerRoutes(contract huma.API) {
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "createPartnerEmote", Method: http.MethodPost, Path: "/partner-emote",
+		Summary: "Start a partner emote and get a code to tell someone",
+	}, server.handleCreatePartnerOffer)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "joinPartnerEmote", Method: http.MethodPost, Path: "/partner-emote/join",
+		Summary: "Join a partner emote with its code",
+	}, server.handleJoinPartnerOffer)
 }
 
 // handleCreatePartnerOffer returns a code that the player tells someone else.
 func (server *apiServer) handleCreatePartnerOffer(
-	writer http.ResponseWriter, request *http.Request, playerID int64,
-) {
-	var body keyBody
-	if !server.readJSON(writer, request, &body) {
-		return
-	}
-	offer, err := server.Store.CreatePartnerOffer(
-		request.Context(), playerID, body.Key, server.currentMillis(),
+	ctx context.Context, playerID int64, input *jsonInput[KeyBody],
+) (*jsonOutput[store.PartnerOffer], error) {
+	return answerWith(
+		server.Store.CreatePartnerOffer(ctx, playerID, input.Body.Key, server.currentMillis()),
 	)
-	server.writeOutcome(writer, request, offer, err)
 }
 
 // handleJoinPartnerOffer plays the emote for the player who entered the code and its owner.
 func (server *apiServer) handleJoinPartnerOffer(
-	writer http.ResponseWriter, request *http.Request, playerID int64,
-) {
-	var body struct {
-		Code string `json:"code"`
-	}
-	if !server.readJSON(writer, request, &body) {
-		return
-	}
+	ctx context.Context, playerID int64, input *jsonInput[CodeBody],
+) (*jsonOutput[store.PartnerResult], error) {
 	if !server.partnerAttempts.allowAttempt(playerID) {
-		server.writeProblem(writer, problemRateLimited())
-		return
+		return nil, errRateLimited
 	}
-	result, err := server.Store.AcceptPartnerOffer(
-		request.Context(), playerID, body.Code, server.currentMillis(),
+	return answerWith(
+		server.Store.AcceptPartnerOffer(ctx, playerID, input.Body.Code, server.currentMillis()),
 	)
-	server.writeOutcome(writer, request, result, err)
 }

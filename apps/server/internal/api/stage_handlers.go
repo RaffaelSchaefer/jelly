@@ -1,12 +1,16 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
@@ -14,20 +18,54 @@ import (
 const (
 	streamPollInterval  = 500 * time.Millisecond
 	streamKeepAliveTick = 30
+	pathStream          = versionPrefix + "/events/stream"
 )
 
 // addStageRoutes registers what the stage and other viewers read.
-func (server *apiServer) addStageRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /state", server.requireViewer(server.handleState))
-	mux.HandleFunc("GET /events/stream", server.requireViewer(server.handleStream))
+func (server *apiServer) addStageRoutes(contract huma.API) {
+	addOperation(server, contract, huma.Operation{
+		OperationID: "getState", Method: http.MethodGet, Path: "/state",
+		Summary:     "Read all visible jellies and areas",
+		Security:    listViewerSecurity(),
+		Middlewares: huma.Middlewares{server.authenticateViewer},
+	}, server.handleState)
+	contract.OpenAPI().AddOperation(&huma.Operation{
+		OperationID: "streamEvents", Method: http.MethodGet, Path: pathStream,
+		Summary:  "Receive events as server-sent events",
+		Security: listViewerSecurity(),
+		Responses: map[string]*huma.Response{
+			"200":           buildStreamResponse(contract),
+			responseDefault: buildErrorResponse(contract),
+		},
+	})
+}
+
+// addStreamRoute registers the stream, which needs the raw connection instead of one response.
+func (server *apiServer) addStreamRoute(mux *http.ServeMux) {
+	mux.HandleFunc("GET "+pathStream, server.requireViewer(server.handleStream))
+}
+
+// listViewerSecurity documents the two ways to read the stage.
+func listViewerSecurity() []map[string][]string {
+	return []map[string][]string{{securityBearer: {}}, {securityStageKey: {}}}
+}
+
+// buildStreamResponse documents one event of the stream.
+func buildStreamResponse(contract huma.API) *huma.Response {
+	schema := contract.OpenAPI().Components.Schemas.Schema(
+		reflect.TypeFor[store.Event](), true, "Event",
+	)
+	return &huma.Response{
+		Description: "A stream where the data of each message is one event",
+		Content:     map[string]*huma.MediaType{"text/event-stream": {Schema: schema}},
+	}
 }
 
 // handleState returns all visible jellies and the event ID to resume from.
 func (server *apiServer) handleState(
-	writer http.ResponseWriter, request *http.Request, _ int64,
-) {
-	state, err := server.Store.LoadStageState(request.Context(), server.currentMillis())
-	server.writeOutcome(writer, request, state, err)
+	ctx context.Context, _ *noInput,
+) (*jsonOutput[store.StageState], error) {
+	return answerWith(server.Store.LoadStageState(ctx, server.currentMillis()))
 }
 
 // handleStream sends new events as SSE. It reads the event log in a loop instead of using a

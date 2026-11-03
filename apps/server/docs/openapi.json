@@ -1,0 +1,1364 @@
+{
+  "components": {
+    "schemas": {
+      "Achievement": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "goal": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "record_unit": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "description",
+          "scope",
+          "secret",
+          "goal"
+        ],
+        "type": "object"
+      },
+      "ActionAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "me": {
+            "$ref": "#/components/schemas/State"
+          },
+          "xp_gained": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp_gained",
+          "me"
+        ],
+        "type": "object"
+      },
+      "ActionBody": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "Badge": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "type": "object"
+      },
+      "Catalog": {
+        "additionalProperties": false,
+        "properties": {
+          "achievements": {
+            "items": {
+              "$ref": "#/components/schemas/Achievement"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "cosmetics": {
+            "items": {
+              "$ref": "#/components/schemas/Cosmetic"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "emotes": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "partner_emotes": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "signs": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "required": [
+          "emotes",
+          "partner_emotes",
+          "signs",
+          "cosmetics",
+          "achievements"
+        ],
+        "type": "object"
+      },
+      "CatalogEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "type": "object"
+      },
+      "CodeBody": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "Cosmetic": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "level": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requires_event": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "scope"
+        ],
+        "type": "object"
+      },
+      "EarnedAchievement": {
+        "additionalProperties": false,
+        "properties": {
+          "best": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "earned_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "lan_slug": {
+            "nullable": true,
+            "type": "string"
+          },
+          "record_unit": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "lan_slug",
+          "earned_at"
+        ],
+        "type": "object"
+      },
+      "Event": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "payload": {},
+          "player_id": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "player_id",
+          "payload",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "FollowBody": {
+        "additionalProperties": false,
+        "properties": {
+          "player_id": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id"
+        ],
+        "type": "object"
+      },
+      "KeyBody": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      },
+      "LANInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "active"
+        ],
+        "type": "object"
+      },
+      "PartnerOffer": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "key",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "PartnerResult": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "me": {
+            "$ref": "#/components/schemas/State"
+          },
+          "partner_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "xp_gained": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "partner_id",
+          "xp_gained",
+          "me"
+        ],
+        "type": "object"
+      },
+      "PlayerAward": {
+        "additionalProperties": false,
+        "properties": {
+          "cosmetic_key": {
+            "nullable": true,
+            "type": "string"
+          },
+          "given_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "cosmetic_key",
+          "given_at"
+        ],
+        "type": "object"
+      },
+      "ProblemDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ProfileBody": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "cosmetic": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RedeemedCode": {
+        "additionalProperties": false,
+        "properties": {
+          "me": {
+            "$ref": "#/components/schemas/State"
+          },
+          "title": {
+            "type": "string"
+          },
+          "xp_gained": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "xp_gained",
+          "me"
+        ],
+        "type": "object"
+      },
+      "RegisterAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "me": {
+            "$ref": "#/components/schemas/State"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "me"
+        ],
+        "type": "object"
+      },
+      "RegisterBody": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "color"
+        ],
+        "type": "object"
+      },
+      "ReportStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "drink_ready_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "food_ready_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reports_left": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "food_ready_at",
+          "drink_ready_at",
+          "reports_left"
+        ],
+        "type": "object"
+      },
+      "ResponseError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ProblemDetails"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "StageArea": {
+        "additionalProperties": false,
+        "properties": {
+          "height": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "width": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "x": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "y": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "type": "object"
+      },
+      "StagePlayer": {
+        "additionalProperties": false,
+        "properties": {
+          "area_id": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "cosmetic": {
+            "nullable": true,
+            "type": "string"
+          },
+          "follow_player_id": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "home_x": {
+            "format": "double",
+            "type": "number"
+          },
+          "home_y": {
+            "format": "double",
+            "type": "number"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "last_seen_at": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "level": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sign": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "cosmetic",
+          "level",
+          "sign",
+          "follow_player_id",
+          "last_seen_at",
+          "area_id",
+          "home_x",
+          "home_y"
+        ],
+        "type": "object"
+      },
+      "StageState": {
+        "additionalProperties": false,
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/StageArea"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "last_event_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/StagePlayer"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "server_time": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "last_event_id",
+          "server_time",
+          "areas",
+          "players"
+        ],
+        "type": "object"
+      },
+      "State": {
+        "additionalProperties": false,
+        "properties": {
+          "achievements": {
+            "items": {
+              "$ref": "#/components/schemas/EarnedAchievement"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "awards": {
+            "items": {
+              "$ref": "#/components/schemas/PlayerAward"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/Badge"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "color": {
+            "type": "string"
+          },
+          "cosmetic": {
+            "nullable": true,
+            "type": "string"
+          },
+          "cosmetics": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "follow_player_id": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "lan": {
+            "$ref": "#/components/schemas/LANInfo"
+          },
+          "lans_attended": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "level": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "next_poke_at": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "reports": {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          "sign": {
+            "nullable": true,
+            "type": "string"
+          },
+          "total_xp": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "xp": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "cosmetic",
+          "hidden",
+          "lan",
+          "xp",
+          "level",
+          "total_xp",
+          "next_poke_at",
+          "reports",
+          "sign",
+          "follow_player_id",
+          "lans_attended",
+          "badges",
+          "cosmetics",
+          "achievements",
+          "awards"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "stage_key": {
+        "in": "query",
+        "name": "key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "title": "Jelly API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/v1/actions": {
+      "post": {
+        "operationId": "applyAction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionAnswer"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Poke or report food or drink"
+      }
+    },
+    "/v1/catalog": {
+      "get": {
+        "operationId": "getCatalog",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "summary": "Read the fixed lists"
+      }
+    },
+    "/v1/emote": {
+      "post": {
+        "operationId": "playEmote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Play an emote"
+      }
+    },
+    "/v1/events/stream": {
+      "get": {
+        "operationId": "streamEvents",
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "A stream where the data of each message is one event"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "stage_key": []
+          }
+        ],
+        "summary": "Receive events as server-sent events"
+      }
+    },
+    "/v1/follow": {
+      "delete": {
+        "operationId": "stopFollowing",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Walk away from the other jelly"
+      },
+      "put": {
+        "description": "The server may end this by itself later, so read `follow_player_id` instead of assuming it stays set.",
+        "operationId": "followPlayer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Stand next to another jelly"
+      }
+    },
+    "/v1/lans/current/join": {
+      "post": {
+        "operationId": "joinCurrentLAN",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join the running LAN with an existing account"
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read the state of the player"
+      },
+      "patch": {
+        "operationId": "updateMe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change name, color or cosmetic"
+      }
+    },
+    "/v1/partner-emote": {
+      "post": {
+        "operationId": "createPartnerEmote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerOffer"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a partner emote and get a code to tell someone"
+      }
+    },
+    "/v1/partner-emote/join": {
+      "post": {
+        "operationId": "joinPartnerEmote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join a partner emote with its code"
+      }
+    },
+    "/v1/redeem": {
+      "post": {
+        "operationId": "redeemEventCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemedCode"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Redeem an event code"
+      }
+    },
+    "/v1/register": {
+      "post": {
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterAnswer"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "summary": "Create an account"
+      }
+    },
+    "/v1/sign": {
+      "delete": {
+        "operationId": "lowerSign",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lower the sign"
+      },
+      "put": {
+        "operationId": "showSign",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/State"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Show a sign"
+      }
+    },
+    "/v1/state": {
+      "get": {
+        "operationId": "getState",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StageState"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "stage_key": []
+          }
+        ],
+        "summary": "Read all visible jellies and areas"
+      }
+    }
+  }
+}

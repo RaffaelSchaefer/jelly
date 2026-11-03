@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"golang.org/x/time/rate"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
@@ -39,23 +40,36 @@ type apiServer struct {
 	partnerAttempts *playerLimiters
 }
 
-// NewHandler builds the HTTP handler.
-func NewHandler(dependencies Dependencies) http.Handler {
-	server := &apiServer{
+// newAPIServer creates the state that all routes share.
+func newAPIServer(dependencies Dependencies) *apiServer {
+	return &apiServer{
 		Dependencies:    dependencies,
 		attempts:        rate.NewLimiter(attemptsPerSecond, attemptBurst),
 		partnerAttempts: newPlayerLimiters(),
 	}
+}
+
+// NewHandler builds the HTTP handler.
+func NewHandler(dependencies Dependencies) http.Handler {
+	server := newAPIServer(dependencies)
 	mux := http.NewServeMux()
-	server.addPlayerRoutes(mux)
-	server.addPartnerRoutes(mux)
-	server.addStageRoutes(mux)
+	server.addContractRoutes(buildContractAPI(mux))
+	server.addStreamRoute(mux)
+	server.addHealthRoute(mux)
 	server.addSessionRoutes(mux)
 	server.addAdminRoutes(mux)
 	if dependencies.Web != nil {
 		mux.Handle("GET /", dependencies.Web)
 	}
 	return mux
+}
+
+// addContractRoutes registers everything the OpenAPI document describes.
+func (server *apiServer) addContractRoutes(contract huma.API) {
+	server.addPlayerRoutes(contract)
+	server.addActionRoutes(contract)
+	server.addPartnerRoutes(contract)
+	server.addStageRoutes(contract)
 }
 
 // currentMillis returns the current server time in Unix milliseconds.

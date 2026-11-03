@@ -65,7 +65,7 @@ func TestRunFillsTheStage(t *testing.T) {
 	}
 
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet,
-		server.URL+"/state?key="+testStageKey, http.NoBody)
+		server.URL+"/v1/state?key="+testStageKey, http.NoBody)
 	if err != nil {
 		t.Fatal(err)
 	}

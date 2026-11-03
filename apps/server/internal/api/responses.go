@@ -13,12 +13,14 @@ import (
 
 const maxBodyBytes = 4 << 10
 
+// errRateLimited reports too many attempts.
+var errRateLimited = errors.New("rate limited")
+
 // Field names shared by several responses.
 const (
 	fieldCreated = "created"
 	fieldDeleted = "deleted"
 	fieldHidden  = "hidden"
-	fieldMe      = "me"
 	fieldToken   = "token"
 )
 
@@ -27,6 +29,36 @@ type problem struct {
 	status  int
 	code    string
 	message string
+}
+
+// problemDetails is the content of the uniform error response.
+type problemDetails struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// responseError is the uniform error response. As an error, it tells the API library its status.
+type responseError struct {
+	status  int
+	Details problemDetails `json:"error"`
+}
+
+// GetStatus returns the HTTP status.
+func (response *responseError) GetStatus() int {
+	return response.status
+}
+
+// Error returns the stable code.
+func (response *responseError) Error() string {
+	return response.Details.Code
+}
+
+// toResponse turns a problem into its response.
+func (answer problem) toResponse() *responseError {
+	return &responseError{
+		status:  answer.status,
+		Details: problemDetails{Code: answer.code, Message: answer.message},
+	}
 }
 
 // knownError maps an error to its error response.
@@ -141,6 +173,8 @@ func listGameErrors() []knownError {
 		{rules.ErrUnknownSign, problem{
 			http.StatusBadRequest, "unknown_sign", "Dieses Schild gibt es nicht.",
 		}},
+		{errUnknownAction, problemUnknownAction()},
+		{errRateLimited, problemRateLimited()},
 	}
 }
 
@@ -177,36 +211,38 @@ func (server *apiServer) readJSON(
 	return true
 }
 
-// writeError translates an error. Unknown errors go to the log, not to the client.
+// writeError answers with the translation of an error.
 func (server *apiServer) writeError(
 	writer http.ResponseWriter, request *http.Request, err error,
 ) {
+	server.writeProblem(writer, server.translateError(request.Context(), request.Pattern, err))
+}
+
+// translateError finds the answer to an error. Unknown errors go to the log, not to the client.
+func (server *apiServer) translateError(ctx context.Context, route string, err error) problem {
 	for _, known := range listKnownErrors() {
 		if errors.Is(err, known.target) {
-			server.writeProblem(writer, known.answer)
-			return
+			return known.answer
 		}
 	}
 	logFailure := server.Logger.ErrorContext
-	if isClientGone(request, err) {
+	if isClientGone(ctx, err) {
 		logFailure = server.Logger.DebugContext
 	}
-	logFailure(request.Context(), "request failed", "route", request.Pattern, "error", err)
-	server.writeProblem(writer, problem{
+	logFailure(ctx, "request failed", "route", route, "error", err)
+	return problem{
 		http.StatusInternalServerError, "internal", "Auf dem Server ist ein Fehler aufgetreten.",
-	})
+	}
 }
 
 // isClientGone reports a request cancelled by its own client, which is no fault of the server.
-func isClientGone(request *http.Request, err error) bool {
-	return errors.Is(err, context.Canceled) && errors.Is(request.Context().Err(), context.Canceled)
+func isClientGone(ctx context.Context, err error) bool {
+	return errors.Is(err, context.Canceled) && errors.Is(ctx.Err(), context.Canceled)
 }
 
 // writeProblem writes the uniform error response.
 func (server *apiServer) writeProblem(writer http.ResponseWriter, answer problem) {
-	server.writeJSON(writer, answer.status, map[string]any{
-		"error": map[string]string{"code": answer.code, "message": answer.message},
-	})
+	server.writeJSON(writer, answer.status, answer.toResponse())
 }
 
 // writeJSON writes a JSON response.

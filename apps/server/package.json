@@ -10,6 +10,7 @@
     "test": "go test ./... && pnpm run test:web",
     "test:web": "node --test --disable-warning=ExperimentalWarning 'web/**/*.test.ts'",
     "check-types": "tsc --noEmit",
+    "openapi": "go run ./cmd/jelly-server openapi > docs/openapi.json",
     "bench": "go test -run=^$ -bench=. -benchmem ./internal/store/",
     "bench:load": "benchmarks/load.sh",
     "lint": "golangci-lint run && oxlint --deny-warnings web",

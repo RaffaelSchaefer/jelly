@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/subtle"
 	"errors"
 	"net/http"
@@ -24,12 +25,7 @@ type viewerHandler func(writer http.ResponseWriter, request *http.Request, viewe
 // requirePlayer verifies the bearer token and passes on the account ID.
 func (server *apiServer) requirePlayer(next authedHandler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		token := readBearerToken(request)
-		if token == "" {
-			server.writeError(writer, request, store.ErrUnauthorized)
-			return
-		}
-		playerID, err := server.Store.FindPlayerByToken(request.Context(), token)
+		playerID, err := server.findPlayer(request.Context(), request.Header.Get("Authorization"))
 		if err != nil {
 			server.writeError(writer, request, err)
 			return
@@ -73,13 +69,13 @@ func (server *apiServer) limitAttempts(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// readBearerToken returns the token of the Authorization header, or an empty string.
-func readBearerToken(request *http.Request) string {
-	token, found := strings.CutPrefix(request.Header.Get("Authorization"), "Bearer ")
-	if !found {
-		return ""
+// findPlayer returns the player of an Authorization header.
+func (server *apiServer) findPlayer(ctx context.Context, authorization string) (int64, error) {
+	token, found := strings.CutPrefix(authorization, "Bearer ")
+	if !found || token == "" {
+		return 0, store.ErrUnauthorized
 	}
-	return token
+	return server.Store.FindPlayerByToken(ctx, token)
 }
 
 // matchSecret compares in constant time. An unconfigured secret never matches.

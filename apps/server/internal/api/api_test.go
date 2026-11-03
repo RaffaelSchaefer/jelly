@@ -130,7 +130,7 @@ func buildRegisterBody(name, color string) string {
 
 func (testFixture *fixture) registerPlayer(name string) string {
 	testFixture.t.Helper()
-	response := testFixture.callAPI("POST", "/register", "", buildRegisterBody(name, "mint"))
+	response := testFixture.callAPI("POST", "/v1/register", "", buildRegisterBody(name, "mint"))
 	if response.status != http.StatusCreated {
 		testFixture.t.Fatalf("register: %d %s", response.status, response.body)
 	}
@@ -139,7 +139,7 @@ func (testFixture *fixture) registerPlayer(name string) string {
 
 func (testFixture *fixture) pokePlayer(token string) int {
 	testFixture.t.Helper()
-	response := testFixture.callAPI("POST", "/actions", token, pokeBody)
+	response := testFixture.callAPI("POST", "/v1/actions", token, pokeBody)
 	if response.status != http.StatusOK {
 		testFixture.t.Fatalf("poke: %d %s", response.status, response.body)
 	}
@@ -148,7 +148,7 @@ func (testFixture *fixture) pokePlayer(token string) int {
 
 func (testFixture *fixture) loadMe(token string) store.State {
 	testFixture.t.Helper()
-	response := testFixture.callAPI("GET", "/me", token, "")
+	response := testFixture.callAPI("GET", "/v1/me", token, "")
 	if response.status != http.StatusOK {
 		testFixture.t.Fatalf("load state: %d %s", response.status, response.body)
 	}
@@ -224,13 +224,13 @@ func TestRegisterRejections(t *testing.T) {
 		{"name taken", buildRegisterBody("glibber", "mint"), "name_taken", 409},
 		{"empty name", buildRegisterBody("  ", "mint"), "invalid_name", 400},
 		{"unknown color", buildRegisterBody("B", "red"), "invalid_color", 400},
-		{"unknown field", `{"code":"x","name":"C","color":"mint","xp":9}`, "invalid_body", 400},
+		{"unknown field", `{"code":"x","name":"C","color":"mint","xp":9}`, "invalid_body", 422},
 		{"two objects", `{"code":"x","name":"D","color":"mint"}{}`, "invalid_body", 400},
 		{"no JSON", `nope`, "invalid_body", 400},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			response := testFixture.callAPI("POST", "/register", "", testCase.body)
+			response := testFixture.callAPI("POST", "/v1/register", "", testCase.body)
 			requireProblem(t, response, testCase.status, testCase.code)
 		})
 	}
@@ -239,7 +239,7 @@ func TestRegisterRejections(t *testing.T) {
 func TestAuthRequired(t *testing.T) {
 	testFixture := newFixture(t)
 	for _, token := range []string{"", "wrong"} {
-		response := testFixture.callAPI("GET", "/me", token, "")
+		response := testFixture.callAPI("GET", "/v1/me", token, "")
 		requireProblem(t, response, http.StatusUnauthorized, "unauthorized")
 	}
 }
@@ -247,7 +247,7 @@ func TestAuthRequired(t *testing.T) {
 func TestUnknownAction(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
-	response := testFixture.callAPI("POST", "/actions", token, `{"action":"xp"}`)
+	response := testFixture.callAPI("POST", "/v1/actions", token, `{"action":"xp"}`)
 	requireProblem(t, response, http.StatusBadRequest, "unknown_action")
 }
 
@@ -257,9 +257,9 @@ func TestNoActiveLAN(t *testing.T) {
 	testFixture.pokePlayer(token)
 	testFixture.advanceClock(200 * time.Hour)
 
-	response := testFixture.callAPI("POST", "/actions", token, pokeBody)
+	response := testFixture.callAPI("POST", "/v1/actions", token, pokeBody)
 	requireProblem(t, response, http.StatusConflict, "no_active_lan")
-	response = testFixture.callAPI("POST", "/register", "", buildRegisterBody("B", "mint"))
+	response = testFixture.callAPI("POST", "/v1/register", "", buildRegisterBody("B", "mint"))
 	requireProblem(t, response, http.StatusConflict, "no_active_lan")
 
 	// The last state stays readable while no LAN is running.
@@ -278,7 +278,7 @@ func TestOldAccountCannotPokeInNewLANWithoutJoining(t *testing.T) {
 	testFixture.createLAN("ucb-2027", nextLANStart)
 	testFixture.clock.Store(nextLANStart.Add(time.Hour).UnixMilli())
 
-	response := testFixture.callAPI("POST", "/actions", token, pokeBody)
+	response := testFixture.callAPI("POST", "/v1/actions", token, pokeBody)
 	requireProblem(t, response, http.StatusConflict, "not_joined")
 }
 
@@ -303,7 +303,7 @@ func TestConcurrentPokesGrantOnce(t *testing.T) {
 	var waitGroup sync.WaitGroup
 	for range 32 {
 		waitGroup.Go(func() {
-			response := testFixture.callAPI("POST", "/actions", token, pokeBody)
+			response := testFixture.callAPI("POST", "/v1/actions", token, pokeBody)
 			var poke pokeResponse
 			if err := json.Unmarshal(response.body, &poke); err != nil {
 				t.Errorf("response: %q", response.body)
@@ -365,7 +365,7 @@ func TestCancelledRequestIsNoServerError(t *testing.T) {
 	})
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	request := httptest.NewRequestWithContext(ctx, http.MethodGet, "/me", http.NoBody)
+	request := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/me", http.NoBody)
 	request.Header.Set("Authorization", "Bearer some-token")
 	handler.ServeHTTP(httptest.NewRecorder(), request)
 	if strings.Contains(logs.String(), "level=ERROR") {

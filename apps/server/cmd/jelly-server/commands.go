@@ -9,11 +9,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/api"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
-const commandCreateLAN = "create-lan"
+const (
+	commandCreateLAN = "create-lan"
+	commandOpenAPI   = "openapi"
+)
 
 var (
 	errMissingOption = errors.New("-slug, -name and JELLY_JOIN_CODE are required")
@@ -75,4 +79,17 @@ func parseLANOptions(arguments []string) (store.NewLAN, error) {
 		Slug: *slug, Name: *name, Timezone: *timezone, JoinCode: joinCode,
 		StartsAt: startsAt.UnixMilli(), EndsAt: endsAt.UnixMilli(), Rules: rules.DefaultRules(),
 	}, nil
+}
+
+// runOpenAPI prints the contract, which `pnpm openapi` stores in `docs/openapi.json`.
+func runOpenAPI() error {
+	document, err := api.BuildOpenAPI()
+	if err != nil {
+		return fmt.Errorf("build contract: %w", err)
+	}
+	_, err = os.Stdout.Write(document)
+	if err != nil {
+		return fmt.Errorf("print contract: %w", err)
+	}
+	return nil
 }
