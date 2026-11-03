@@ -17,7 +17,7 @@ import {
   type JellyPalette,
   type Motion,
 } from "@jelly/scene";
-import { Group, Object3D, type Mesh } from "three";
+import { Euler, Group, Matrix4, Object3D, Quaternion, Vector3, type InstancedMesh } from "three";
 
 import type { StageEffect } from "./effects.ts";
 import type { NavGrid } from "./navigation.ts";
@@ -25,7 +25,7 @@ import type { StagePlayer } from "./types.ts";
 import type { FloorPoint, FloorRect, ScenePoint } from "./world.ts";
 
 import { findMotionPose } from "./effects.ts";
-import { createShadow, disposeShadow, SHADOW_HEIGHT } from "./shadow.ts";
+import { createShadowInstances, disposeShadow, SHADOW_HEIGHT } from "./shadow.ts";
 import { calculateWalkPose, createWalker, stepWalker, type Walker } from "./walking.ts";
 import { calculateRandomValue } from "./wander.ts";
 import { findFloorHeight } from "./zones.ts";
@@ -45,6 +45,10 @@ const JELLY_SHADOW = {
 };
 /** A jumping jelly casts a smaller shadow. */
 const SHADOW_SHRINK = 0.3;
+/** Shadows lie flat on the floor. */
+const SHADOW_TURN = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0));
+/** Room for this many shadows at first. More jellies get a larger mesh. */
+const SHADOW_CAPACITY = 64;
 const FIRST_JELLY_ORDER = 1;
 /** How fast a jelly steps up onto the stage or down from it, per second. */
 const STEP_RATE = 10;
@@ -59,7 +63,8 @@ interface StageJelly {
   pulse: number;
   timeOffset: number;
   walker: Walker;
-  shadow: Mesh;
+  /** Size of the shadow right now, 1 when standing on the floor. */
+  shadowScale: number;
   /** How high the floor under the jelly is, eased so it steps up instead of jumping. */
   elevation: number;
 }
@@ -68,6 +73,8 @@ interface StageJelly {
 export interface JellyCast {
   root: Object3D;
   jellies: Map<number, StageJelly>;
+  /** One shadow per jelly, all drawn in one call. */
+  shadows: InstancedMesh;
 }
 
 /** What {@link updateJellies} needs for a frame. */
@@ -98,7 +105,10 @@ export interface JellySpot {
 
 /** Creates an empty cast. Its root belongs into the scene. */
 export function createJellyCast(): JellyCast {
-  return { root: new Object3D(), jellies: new Map() };
+  const root = new Object3D();
+  const shadows = createShadowInstances(JELLY_SHADOW, SHADOW_CAPACITY);
+  root.add(shadows);
+  return { root, jellies: new Map(), shadows };
 }
 
 /** Returns the colors of a jelly. Unknown colors look like mint. */
@@ -111,8 +121,7 @@ function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): v
   const jelly = createJelly(findPalette(player.color));
   const group = new Group();
   group.add(jelly.root);
-  const shadow = createShadow(JELLY_SHADOW);
-  cast.root.add(group, shadow);
+  cast.root.add(group);
   cast.jellies.set(player.id, {
     player,
     group,
@@ -121,16 +130,15 @@ function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): v
     pulse: 0,
     timeOffset: calculateRandomValue(player.id, SEED_ANIMATION) * ANIMATION_OFFSET_SECONDS,
     walker: createWalker(position),
-    shadow,
+    shadowScale: 1,
     elevation: 0,
   });
 }
 
 /** Removes a jelly and frees what it holds. */
 function removeJelly(cast: JellyCast, shown: StageJelly): void {
-  cast.root.remove(shown.group, shown.shadow);
+  cast.root.remove(shown.group);
   disposeJelly(shown.jelly);
-  disposeShadow(shown.shadow);
   cast.jellies.delete(shown.player.id);
 }
 
@@ -165,7 +173,7 @@ export function pulseJelly(cast: JellyCast, playerId: number): void {
 
 /** Walks, poses and animates one jelly. */
 function updateJelly(shown: StageJelly, frame: JellyFrame, budget: { searches: number }): void {
-  const { walker, group, shadow } = shown;
+  const { walker, group } = shown;
   const goal = frame.goals.get(shown.player.id) ?? walker.position;
   stepWalker(walker, {
     grid: frame.grid,
@@ -181,8 +189,7 @@ function updateJelly(shown: StageJelly, frame: JellyFrame, budget: { searches: n
   const lift = walk.lift + motion.lift * JELLY_HEIGHT;
   group.position.set(walker.position.x, shown.elevation - BODY_BOTTOM + lift, walker.position.z);
   group.rotation.set(walk.lean, walker.yaw + motion.turn, motion.tilt, "YXZ");
-  shadow.position.set(walker.position.x, SHADOW_HEIGHT + shown.elevation, walker.position.z);
-  shadow.scale.setScalar(1 - SHADOW_SHRINK * Math.min(1, lift / JELLY_HEIGHT));
+  shown.shadowScale = 1 - SHADOW_SHRINK * Math.min(1, lift / JELLY_HEIGHT);
   animateJelly(shown.jelly, shown.motion, {
     time: frame.time + shown.timeOffset,
     rawDelta: frame.seconds,
@@ -192,6 +199,27 @@ function updateJelly(shown: StageJelly, frame: JellyFrame, budget: { searches: n
   });
 }
 
+/** Puts every shadow under its jelly. A mesh that got too small is replaced by a larger one. */
+function placeShadows(cast: JellyCast, shownJellies: StageJelly[]): void {
+  if (shownJellies.length > cast.shadows.instanceMatrix.count) {
+    cast.root.remove(cast.shadows);
+    disposeShadow(cast.shadows);
+    cast.shadows = createShadowInstances(JELLY_SHADOW, 2 * shownJellies.length);
+    cast.root.add(cast.shadows);
+  }
+  const matrix = new Matrix4();
+  const position = new Vector3();
+  const scale = new Vector3();
+  shownJellies.forEach((shown, index) => {
+    const { x, z } = shown.walker.position;
+    position.set(x, SHADOW_HEIGHT + shown.elevation, z);
+    scale.setScalar(shown.shadowScale);
+    cast.shadows.setMatrixAt(index, matrix.compose(position, SHADOW_TURN, scale));
+  });
+  cast.shadows.count = shownJellies.length;
+  cast.shadows.instanceMatrix.needsUpdate = true;
+}
+
 /** Moves every jelly for one frame and returns where they are, from back to front. */
 export function updateJellies(cast: JellyCast, frame: JellyFrame): JellySpot[] {
   const budget = { searches: SEARCHES_PER_FRAME };
@@ -199,6 +227,7 @@ export function updateJellies(cast: JellyCast, frame: JellyFrame): JellySpot[] {
   for (const shown of shownJellies) {
     updateJelly(shown, frame, budget);
   }
+  placeShadows(cast, shownJellies);
   const distanceOf = (shown: StageJelly) =>
     Math.hypot(
       shown.group.position.x - frame.camera.x,
