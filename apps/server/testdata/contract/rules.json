@@ -1,0 +1,47 @@
+{
+  "rules": {
+    "poke_interval": 900,
+    "poke_xp": 3,
+    "poke_max_ticks": 4,
+    "food_xp": 15,
+    "drink_xp": 10,
+    "report_cooldown": 1800,
+    "report_window": 86400,
+    "reports_per_window": 8,
+    "presence_window": 5400,
+    "emote_cooldown": 3,
+    "partner_code_seconds": 120,
+    "partner_xp": 2,
+    "full_house_percent": 33
+  },
+  "poke": [
+    { "name": "first poke counts immediately", "elapsed_seconds": null, "xp": 3 },
+    { "name": "right after earns nothing", "elapsed_seconds": 0, "xp": 0 },
+    { "name": "just too early", "elapsed_seconds": 899, "xp": 0 },
+    { "name": "exactly after the interval", "elapsed_seconds": 900, "xp": 3 },
+    { "name": "catch-up counts only full intervals", "elapsed_seconds": 2000, "xp": 6 },
+    { "name": "catch-up reaches one hour", "elapsed_seconds": 3600, "xp": 12 },
+    { "name": "catch-up stops at one hour", "elapsed_seconds": 7200, "xp": 12 },
+    {
+      "name": "without catch-up only one interval counts",
+      "rules": { "poke_interval": 900, "poke_xp": 3, "poke_max_ticks": 1 },
+      "elapsed_seconds": 7200,
+      "xp": 3
+    },
+    { "name": "clock runs backwards", "elapsed_seconds": -60, "xp": 0 }
+  ],
+  "level": [
+    { "xp": 0, "level": 1 },
+    { "xp": 99, "level": 1 },
+    { "xp": 100, "level": 2 },
+    { "xp": 900, "level": 10 }
+  ],
+  "name": [
+    { "input": "  Glibber  ", "output": "Glibber" },
+    { "input": "Äöü-Jelly", "output": "Äöü-Jelly" },
+    { "input": "123456789012345678901234", "output": "123456789012345678901234" },
+    { "input": "1234567890123456789012345", "valid": false },
+    { "input": "   ", "valid": false },
+    { "input": "with\nbreak", "valid": false }
+  ]
+}

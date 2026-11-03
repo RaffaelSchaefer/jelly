@@ -6,12 +6,16 @@ Menschen: [apps/client/README.md](apps/client/README.md).
 ## Projekt
 
 Jelly ist ein Desktop-Begleiter (Tauri 2) für die LAN am Umwelt-Campus Birkenfeld. pnpm-/Turborepo-
-Monorepo, derzeit eine App: `apps/client` mit Rust-Backend (`src-tauri/`) und React-19-/TypeScript-7-
-Oberfläche mit React Three Fiber (`src/`). Rust besitzt den Spielstand, die Oberfläche zeigt nur an.
+Monorepo mit zwei Apps: `apps/client` mit Rust-Backend (`src-tauri/`) und React-19-/TypeScript-7-
+Oberfläche mit React Three Fiber (`src/`), dazu `apps/server` in Go. Noch sind beide nicht verbunden:
+In der App besitzt Rust den Spielstand, die Oberfläche zeigt nur an. Künftig entscheidet der Server
+über XP. Regeln, Aufbau und Vertrag des Servers stehen in [apps/server/README.md](apps/server/README.md)
+und [apps/server/docs/api.md](apps/server/docs/api.md).
 
 ## Befehle
 
-`pnpm install` im Root, alles andere in `apps/client`:
+`pnpm install` im Root. Für den Server in `apps/server`: `pnpm test`, `pnpm lint`, `pnpm build`,
+`pnpm format`. Alles andere in `apps/client`:
 
 ```sh
 pnpm test             # Vitest (Frontend und scripts/)
@@ -66,7 +70,8 @@ Projekt-Skills liegen in `.claude/skills/` und sind in `skills-lock.json` festge
 
 ## Stil
 
-- Kommentare und Doku-Kommentare auf **Deutsch**, ebenso UI-Texte und Fehlermeldungen.
+- Kommentare und Doku-Kommentare auf **Deutsch**, ebenso UI-Texte und Fehlermeldungen. Im Server
+  sind Code und Kommentare Englisch, siehe [apps/server/AGENTS.md](apps/server/AGENTS.md).
 - TypeScript: jede Datei mit `/** … @module */`, jeder Export mit `/** … */` (TSDoc). Typen nicht im
   Kommentar wiederholen. `//` erklärt das Warum.
 - Rust: `//!` je Datei, `///` je Item, `# Fehler` bei `Result`. `#![warn(missing_docs)]` ist aktiv.
@@ -74,3 +79,23 @@ Projekt-Skills liegen in `.claude/skills/` und sind in `skills-lock.json` festge
   Parameter. Lieber kleine Funktionen und Komponenten abspalten als Schwellen anheben.
 - Formatierung macht oxfmt bzw. rustfmt. Nicht von Hand formatieren.
 - Commits nur auf ausdrücklichen Wunsch.
+
+## Commit-Nachrichten
+
+Commits bleiben klein und häufig, zum Aufräumen wird bei Bedarf gesquasht.
+
+Nach [Conventional Commits](https://www.conventionalcommits.org/de/v1.0.0/), auf Englisch. Die erste
+Zeile nennt Typ, optional den Bereich und eine kurze Beschreibung. Darunter steht in Stichpunkten die
+Arbeit auf hoher Ebene.
+
+```text
+feat(server): add registration and pokes
+
+- create accounts with join code and token
+- grant poke XP using the rules of the LAN
+- document the API and rule test cases
+```
+
+Typen: `feat` (neue Funktion), `fix` (Fehler behoben), `refactor` (Umbau ohne neues Verhalten),
+`docs`, `test`, `style`, `perf`, `build`, `ci`, `chore` (Pflege), `revert`. Bereiche: `server`,
+`client`. Inkompatible Änderungen tragen ein `!` nach Typ oder Bereich.

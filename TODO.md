@@ -27,7 +27,8 @@ Cosmetic `glow-aura`. Recherche mit Quellen: `apps/client/docs/research/2026-10-
 ## 2. Server
 
 Ziele: andere Leute verbinden, deren angepasste Jellies sehen, Multiplayer-Funktionen wie Game-Lobbys
-suchen. Der Rest ist noch offen. Ordner `apps/server/` existiert bereits (leer).
+suchen. Gebaut wird der Server in Go unter `apps/server/`, siehe dessen README. Bisher kann er
+Registrierung, eigenen Stand und Stupser.
 
 ### Server
 
@@ -40,23 +41,11 @@ Zentraler Server, weil:
   braucht es trotzdem einen Vermittlungs- oder Relay-Server.
 - Nur ein Server kann Schummeln begrenzen, etwa bei XP oder Event-Teilnahmen.
 
-Nachteil: Er muss betrieben werden und fällt eventuell aus. Deshalb muss die App weiter ohne Server
-funktionieren (Spielstand bleibt lokal in Rust). Der Server ist nur Zusatz.
+Nachteil: Er muss betrieben werden und fällt eventuell aus. Während einer LAN kommt XP nur vom
+Server. Ohne Server startet die App weiter und zeigt den letzten Stand, vergibt aber keine XP.
 
 ### Offene Fragen
 
-- [ ] **Technik**, zwei sinnvolle Wege:
-  - **PocketBase:** Gab es vor dem Refocus schon in `apps/backend`, zu finden in Commit `baaa0b7`.
-    Mitgebracht werden Auth (auch Discord-OAuth), Realtime-Subscriptions für Lobbys und
-    Präsenz, eine Admin-Oberfläche und JS-Hooks für Cron-Jobs (Steam-Polling). Damit ist am
-    wenigsten selbst zu bauen.
-  - **Eigener Rust-Server (axum + WebSocket):** Teilt Typen direkt mit `pet.rs` und gibt volle
-    Kontrolle. Auth, Speicherung und Admin müssen dafür selbst gebaut werden.
-- [ ] **Identität:** anonymes Geräte-Token, Discord-Login oder Steam-Login?
-- [ ] **Wo läuft er:** nur vor Ort im LAN-Netz oder öffentlich im Internet (dann HTTPS, Datenschutz,
-      Missbrauchsschutz)?
-- [ ] **Wer besitzt XP:** bleibt Rust lokal maßgeblich, und der Server zeigt nur an? Oder zählt der
-      Server bestätigte Dinge wie Events und Spielzeit?
 - [ ] **Datenschutz:** Was sehen andere von mir? Name, Farbe, Cosmetic, Level, gerade gespieltes Spiel?
 
 ### Funktionen (erste Ideen)

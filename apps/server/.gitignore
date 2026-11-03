@@ -1,0 +1,16 @@
+/dist
+node_modules
+# Only the placeholder keeps go:embed working before the first build.
+internal/web/dist/*
+!internal/web/dist/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+
+# Local end-to-end checks, not part of the repo.
+.local-tests
+
+# Demo recordings stay local.
+*.mp4
+*.gif
+*.webm

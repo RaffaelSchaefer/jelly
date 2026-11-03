@@ -1,0 +1,378 @@
+# Strict rules for the server. The reasoning is in AGENTS.md.
+version: "2"
+
+run:
+  relative-path-mode: gomod
+  tests: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  # Otherwise one finding hides all others on the same line.
+  uniq-by-line: false
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/RaffaelSchaefer/jelly/apps/server
+
+linters:
+  default: none
+  enable:
+    # Names and readability
+    - varnamelen
+    - revive
+    - staticcheck
+    - errname
+    - predeclared
+    - asciicheck
+    - misspell
+    - godot
+    - lll
+    - whitespace
+    - funcorder
+    - grouper
+    - nakedret
+    - nonamedreturns
+    - inamedparam
+    - dupword
+    # Size and complexity
+    - funlen
+    - cyclop
+    - gocyclo
+    - gocognit
+    - nestif
+    - maintidx
+    - dogsled
+    - interfacebloat
+    - dupl
+    - goconst
+    - mnd
+    # Module boundaries and testability
+    - depguard
+    - gochecknoglobals
+    - gochecknoinits
+    - reassign
+    - ireturn
+    - testpackage
+    - thelper
+    - usetesting
+    # Defensive code against panics and swallowed errors
+    - errcheck
+    - errorlint
+    - err113
+    - wrapcheck
+    - forcetypeassert
+    - forbidigo
+    - nilerr
+    - nilnil
+    - nilnesserr
+    - exhaustive
+    - govet
+    - gosec
+    - gocritic
+    - makezero
+    - recvcheck
+    - durationcheck
+    - errchkjson
+    - musttag
+    - bidichk
+    # Resources, context and database
+    - bodyclose
+    - rowserrcheck
+    - sqlclosecheck
+    - contextcheck
+    - containedctx
+    - fatcontext
+    - noctx
+    - sloglint
+    # Concurrency
+    - copyloopvar
+    # Cleanup and modern Go
+    - ineffassign
+    - unused
+    - unparam
+    - unconvert
+    - wastedassign
+    - usestdlibvars
+    - mirror
+    - modernize
+    - intrange
+    - exptostd
+    - gomoddirectives
+    - nolintlint
+
+  settings:
+    varnamelen:
+      min-name-length: 3
+      # Strictest effective value, because 0 falls back to the default of 5 lines.
+      max-distance: 1
+      check-receiver: true
+      check-return: true
+      check-type-param: true
+      ignore-type-assert-ok: true
+      ignore-map-index-ok: true
+      ignore-chan-recv-ok: true
+      ignore-decls:
+        - t *testing.T
+
+    revive:
+      enable-default-rules: false
+      rules:
+        - name: file-length-limit
+          arguments:
+            - max: 500
+              skipComments: false
+              skipBlankLines: false
+        - name: argument-limit
+          arguments: [5]
+        - name: function-result-limit
+          arguments: [3]
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: receiver-naming
+        - name: error-naming
+        - name: error-return
+        - name: errorf
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: defer
+        - name: deep-exit
+        - name: early-return
+        - name: indent-error-flow
+        - name: superfluous-else
+        - name: unnecessary-stmt
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: unused-receiver
+        - name: import-shadowing
+        - name: modifies-parameter
+        - name: modifies-value-receiver
+        - name: confusing-naming
+        - name: confusing-results
+        - name: flag-parameter
+        - name: get-return
+        - name: identical-branches
+        - name: empty-block
+        - name: bare-return
+        - name: unchecked-type-assertion
+          arguments:
+            - acceptIgnoredAssertionResult: false
+        - name: datarace
+        - name: waitgroup-by-value
+        - name: range-val-address
+        - name: atomic
+        - name: blank-imports
+        - name: dot-imports
+        - name: time-naming
+        - name: increment-decrement
+
+    staticcheck:
+      checks:
+        - all
+
+    lll:
+      line-length: 100
+      tab-width: 4
+
+    funlen:
+      lines: 60
+      statements: 40
+      ignore-comments: true
+
+    cyclop:
+      max-complexity: 12
+      package-average: 0
+
+    gocyclo:
+      min-complexity: 12
+
+    gocognit:
+      min-complexity: 15
+
+    nestif:
+      min-complexity: 3
+
+    nakedret:
+      max-func-lines: 0
+
+    interfacebloat:
+      max: 6
+
+    depguard:
+      rules:
+        pure-rules:
+          files:
+            - "**/internal/rules/*.go"
+            - "!$test"
+          deny:
+            - pkg: context
+              desc: Rules stay pure functions.
+            - pkg: database/sql
+              desc: Rules stay pure functions.
+            - pkg: net/http
+              desc: Rules stay pure functions.
+            - pkg: os
+              desc: Rules stay pure functions.
+            - pkg: time
+              desc: Rules receive times as arguments.
+            - pkg: math/rand
+              desc: Rules stay pure functions.
+            - pkg: crypto/rand
+              desc: Rules stay pure functions.
+            - pkg: log
+              desc: Rules stay pure functions.
+        web-layer:
+          files:
+            - "**/internal/web/*.go"
+            - "!$test"
+          deny:
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/store
+              desc: Pages reach data only through the public API.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/rules
+              desc: Pages reach data only through the public API.
+        api-layer:
+          files:
+            - "**/internal/api/*.go"
+            - "!$test"
+          deny:
+            - pkg: database/sql
+              desc: Database access belongs in internal/store.
+            - pkg: modernc.org/sqlite
+              desc: Database access belongs in internal/store.
+            - pkg: os
+              desc: Settings come in through cmd/jelly-server.
+        simulator-layer:
+          files:
+            - "**/internal/simulator/*.go"
+            - "!$test"
+          deny:
+            - pkg: database/sql
+              desc: The simulator plays through the public API only.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/store
+              desc: The simulator plays through the public API only.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/rules
+              desc: The simulator plays through the public API only.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/api
+              desc: The simulator plays through the public API only.
+            - pkg: os
+              desc: Settings come in through cmd/jelly-server.
+        store-layer:
+          files:
+            - "**/internal/store/*.go"
+            - "!$test"
+          deny:
+            - pkg: net/http
+              desc: HTTP belongs in internal/api.
+            - pkg: github.com/RaffaelSchaefer/jelly/apps/server/internal/api
+              desc: The store does not know the API.
+            - pkg: os
+              desc: Settings come in through cmd/jelly-server.
+
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^panic$
+          msg: Return errors instead of panicking.
+        - pattern: ^os\.Exit$
+          msg: Only allowed in cmd/jelly-server.
+        - pattern: ^log\.(Fatal|Panic)
+          msg: Return errors.
+        - pattern: ^print(ln)?$
+          msg: Use the injected logger.
+        - pattern: ^fmt\.Print
+          msg: Use the injected logger.
+        - pattern: ^time\.Now$
+          msg: Pass the clock in as an argument, otherwise the code is not testable.
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+
+    govet:
+      enable-all: true
+      disable:
+        # Order fields by meaning, not by memory layout.
+        - fieldalignment
+
+    exhaustive:
+      default-signifies-exhaustive: false
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - opinionated
+      disabled-checks:
+        - whyNoLint
+        # Contradicts nonamedreturns.
+        - unnamedResult
+
+    gosec:
+      excludes:
+        # Duplicates errcheck.
+        - G104
+
+    sloglint:
+      no-mixed-args: true
+      kv-only: true
+      static-msg: true
+      no-global: all
+      key-naming-case: snake
+
+    wrapcheck:
+      ignore-sigs:
+        - errors.New(
+        - errors.Join(
+        - fmt.Errorf(
+        - .Wrap(
+      ignore-package-globs:
+        - github.com/RaffaelSchaefer/jelly/apps/server/*
+
+    ireturn:
+      allow:
+        - error
+        - stdlib
+        - generic
+
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+
+  exclusions:
+    generated: strict
+    rules:
+      # Tests may be longer and more direct, names and formatting still apply.
+      - path: _test\.go
+        linters:
+          - funlen
+          - cyclop
+          - gocyclo
+          - gocognit
+          - maintidx
+          - dupl
+          - goconst
+          - mnd
+          - err113
+          - wrapcheck
+          - forcetypeassert
+          - gosec
+          - forbidigo
+      - path: _test\.go
+        text: unchecked-type-assertion
+        linters:
+          - revive
+      # Only the entry point may exit the process and choose the real clock.
+      - path: cmd/jelly-server/
+        linters:
+          - forbidigo

@@ -61,6 +61,21 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@types/node@24.13.3)(jsdom@30.0.1)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12))
 
+  apps/server:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      oxfmt:
+        specifier: ^0.64.0
+        version: 0.64.0
+      oxlint:
+        specifier: ^1.90.0
+        version: 1.90.0
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+
 packages:
 
   '@asamuzakjp/css-color@6.0.7':
@@ -1854,7 +1869,6 @@ snapshots:
   '@types/node@24.13.3':
     dependencies:
       undici-types: 7.18.2
-    optional: true
 
   '@types/react-dom@19.2.4(@types/react@19.2.18)':
     dependencies:
@@ -2347,8 +2361,7 @@ snapshots:
       '@typescript/typescript-win32-arm64': 7.0.2
       '@typescript/typescript-win32-x64': 7.0.2
 
-  undici-types@7.18.2:
-    optional: true
+  undici-types@7.18.2: {}
 
   undici@8.10.0:
     optional: true
