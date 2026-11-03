@@ -8,7 +8,7 @@ Schnittstelle in [docs/api.md](docs/api.md).
 
 ```sh
 pnpm lint      # golangci-lint und oxlint, müssen ohne Befund durchlaufen
-pnpm format    # golangci-lint fmt und oxfmt
+pnpm format    # golangci-lint fmt und run --fix, dazu oxfmt; vor Handarbeit an Lint-Befunden
 pnpm test      # go test ./... und die Tests der Seiten
 pnpm check-types  # tsc für web/
 pnpm bench     # Benchmarks der Datenbankzugriffe

@@ -14,7 +14,7 @@
     "bench": "go test -run=^$ -bench=. -benchmem ./internal/store/",
     "bench:load": "benchmarks/load.sh",
     "lint": "golangci-lint run && oxlint --deny-warnings web",
-    "format": "golangci-lint fmt && oxfmt web"
+    "format": "golangci-lint fmt && golangci-lint run --fix && oxfmt web"
   },
   "dependencies": {
     "@jelly/scene": "workspace:*",
