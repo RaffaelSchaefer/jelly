@@ -32,6 +32,7 @@ type StagePlayer struct {
 type StageState struct {
 	LastEventID int64         `json:"last_event_id"`
 	ServerTime  int64         `json:"server_time"`
+	Room        rules.Room    `json:"room"`
 	Areas       []StageArea   `json:"areas"`
 	Players     []StagePlayer `json:"players"`
 }
@@ -46,7 +47,8 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 		return StageState{}, err
 	}
 	state := StageState{
-		LastEventID: latestID, ServerTime: now, Areas: []StageArea{}, Players: []StagePlayer{},
+		LastEventID: latestID, ServerTime: now, Room: rules.DescribeRoom(),
+		Areas: []StageArea{}, Players: []StagePlayer{},
 	}
 	lan, err := loadActiveLAN(queryCtx, store.readDB, now)
 	if errors.Is(err, ErrNoActiveLAN) {

@@ -78,7 +78,7 @@ type knownError struct {
 func listKnownErrors() []knownError {
 	return slices.Concat(
 		listPlayerErrors(), listSeatErrors(), listCosmeticErrors(), listInviteErrors(),
-		listGameErrors(),
+		listGameErrors(), listPlannedErrors(),
 	)
 }
 
@@ -155,6 +155,11 @@ func listCosmeticErrors() []knownError {
 			"Dieses Cosmetic ist noch nicht freigeschaltet.",
 		}},
 	}
+}
+
+// listPlannedErrors returns the answer of routes that do not work yet.
+func listPlannedErrors() []knownError {
+	return []knownError{{errNotImplemented, problemNotImplemented()}}
 }
 
 // listInviteErrors returns the errors of partner emote invites.

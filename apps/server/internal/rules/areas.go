@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	stageSize = 100
+	stageSize       = 100
+	roomUnitPercent = "percent"
 	// Keeps home spots away from the area edge, so wandering jellies stay inside.
 	homeMarginPercent = 10
 	// Steps of the R2 sequence, which fills a rectangle evenly for any number of places.
@@ -36,6 +37,18 @@ type Area struct {
 	Width  int    `json:"width"`
 	Height int    `json:"height"`
 	Kind   string `json:"kind"`
+}
+
+// Room says what the coordinates of the stage mean, so they can become meters without a new API.
+type Room struct {
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	Unit   string `json:"unit"`
+}
+
+// DescribeRoom returns the size of the room. All coordinates are percent so far.
+func DescribeRoom() Room {
+	return Room{Width: stageSize, Height: stageSize, Unit: roomUnitPercent}
 }
 
 // HomeSpot is where a jelly wanders around, in percent of the stage.

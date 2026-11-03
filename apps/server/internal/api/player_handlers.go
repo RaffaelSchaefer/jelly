@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -166,6 +167,16 @@ func (server *apiServer) addPlayerRoutes(contract huma.API) {
 		Summary: "Change name or color",
 	}, server.handleUpdateProfile)
 	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "listPlayers", Method: http.MethodGet, Path: "/players",
+		Summary: "Read the players, one page at a time",
+		Description: "Pass `next_cursor` of the last page as `cursor`. " +
+			"Without `next_cursor`, it was the last page.",
+	}, server.handleListPublicPlayers)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "getPlayer", Method: http.MethodGet, Path: "/players/{id}",
+		Summary: "Read the profile of a player",
+	}, server.handlePlayerProfile)
+	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "equipCosmetic", Method: http.MethodPut, Path: "/cosmetics/equipped",
 		Summary: "Put on a cosmetic or empty a slot",
 		Description: "Without `key`, the slot is emptied. `color` is hex text from " +
@@ -268,6 +279,39 @@ func (server *apiServer) handleMe(
 	ctx context.Context, playerID int64, _ *noInput,
 ) (*jsonOutput[store.PlayerState], error) {
 	return answerWith(server.Store.LoadPlayerState(ctx, playerID, server.currentMillis()))
+}
+
+// PlayerPathInput names a player in the path.
+type PlayerPathInput struct {
+	ID int64 `minimum:"1" path:"id"`
+}
+
+// PlayerPageInput names a page of the player list.
+type PlayerPageInput struct {
+	Cursor string `query:"cursor"`
+	Limit  int    `query:"limit"  default:"50" maximum:"200" minimum:"1"`
+}
+
+// handlePlayerProfile returns what others can read about a player.
+func (server *apiServer) handlePlayerProfile(
+	ctx context.Context, _ int64, input *PlayerPathInput,
+) (*jsonOutput[store.PlayerProfile], error) {
+	return answerWith(server.Store.LoadPlayerProfile(ctx, input.ID, server.currentMillis()))
+}
+
+// handleListPublicPlayers returns one page of the player list.
+func (server *apiServer) handleListPublicPlayers(
+	ctx context.Context, _ int64, input *PlayerPageInput,
+) (*jsonOutput[store.PlayerList], error) {
+	var afterID int64
+	if input.Cursor != "" {
+		var err error
+		afterID, err = strconv.ParseInt(input.Cursor, 10, 64)
+		if err != nil {
+			return nil, store.ErrInvalidInput
+		}
+	}
+	return answerWith(server.Store.ListPublicPlayers(ctx, afterID, input.Limit))
 }
 
 // handleEquipCosmetic changes one slot.

@@ -124,3 +124,48 @@ func TestSecretAfterTheLANOnlyReadsAndCustomizes(t *testing.T) {
 	requireProblem(t, testFixture.callAPI("POST", "/v1/pokes", secret, ""),
 		http.StatusConflict, "no_active_lan")
 }
+
+func TestProfilesNeedASecretAndHideHiddenPlayers(t *testing.T) {
+	testFixture := newFixture(t)
+	reader := testFixture.registerPlayer("Leser")
+	shown := testFixture.registerPlayer("Glibber")
+	shownID := strconv.FormatInt(testFixture.loadMe(shown).ID, 10)
+	testFixture.pokePlayer(shown)
+
+	requireProblem(t, testFixture.callAPI("GET", "/v1/players/"+shownID, "", ""),
+		http.StatusUnauthorized, "unauthorized")
+	response := testFixture.callAPI("GET", "/v1/players/"+shownID, reader, "")
+	profile := decodeBody[store.PlayerProfile](t, response)
+	if profile.Name != "Glibber" || profile.XP != 3 || len(profile.Achievements) == 0 {
+		t.Fatalf("profile: %s", response.body)
+	}
+
+	first := decodeBody[store.PlayerList](t,
+		testFixture.callAPI("GET", "/v1/players?limit=1", reader, ""))
+	if len(first.Items) != 1 || first.NextCursor == nil {
+		t.Fatalf("first page: %+v", first)
+	}
+	second := decodeBody[store.PlayerList](t, testFixture.callAPI("GET",
+		"/v1/players?limit=1&cursor="+*first.NextCursor, reader, ""))
+	if len(second.Items) != 1 || second.NextCursor != nil || second.Items[0].Name != "Glibber" {
+		t.Fatalf("second page: %+v", second)
+	}
+
+	testFixture.callAdmin("POST", "/admin/api/players/"+shownID+"/hide", "")
+	requireProblem(t, testFixture.callAPI("GET", "/v1/players/"+shownID, reader, ""),
+		http.StatusNotFound, "player_not_found")
+}
+
+func TestPlannedRoutesAnswerInTheCommonForm(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	for _, call := range [][2]string{
+		{"/v1/trips/goto", `{"x":1,"y":2}`},
+		{"/v1/highlights", `{"player_id":1}`},
+		{"/v1/stacks", ""},
+		{"/v1/stacks/members", `{"stack_id":1}`},
+	} {
+		requireProblem(t, testFixture.callAPI("POST", call[0], token, call[1]),
+			http.StatusNotImplemented, "not_implemented")
+	}
+}

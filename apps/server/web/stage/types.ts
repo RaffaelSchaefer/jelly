@@ -38,6 +38,7 @@ export interface StagePlayer {
 export interface StageState {
   last_event_id: number;
   server_time: number;
+  room: { width: number; height: number; unit: string };
   areas: StageArea[];
   players: StagePlayer[];
 }

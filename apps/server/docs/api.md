@@ -152,6 +152,8 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `GET /players/me`         |                                            | Stand                          |
 | `PATCH /players/me`       | `{"name","color"}`, alle optional          | Stand                          |
 | `PUT /cosmetics/equipped` | `{"slot","key","color"}`, ohne `key` leert den Platz | Stand                |
+| `GET /players`            | `?cursor=&limit=`                          | `{"items","next_cursor"}`      |
+| `GET /players/{id}`       |                                            | Profil: XP, Achievements, Cosmetics |
 | `POST /presence`          |                                            | Stand                          |
 | `POST /pokes`             |                                            | `{"xp_gained","me"}`           |
 | `POST /reports`           | `{"kind"}`, `food` oder `drink`            | `{"xp_gained","me"}`           |
@@ -201,6 +203,12 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
   ausgeblendet, gibt es kein Ereignis.
 - Die Nähe wird noch nicht geprüft, das kommt mit der Bewegung auf dem Server. Dann antwortet der Server `409 too_far`.
 
+### Noch nicht verfügbar
+
+Diese Wege stehen schon im Vertrag und antworten mit `501 not_implemented`, bis der Server die Bewegung plant:
+`POST /trips/goto` mit `{"x","y"}`, `POST /highlights` mit `{"player_id"}`, `POST /stacks` und
+`POST /stacks/members` mit `{"stack_id"}`.
+
 ## Bühne
 
 `GET /stage` nimmt den Bühnenschlüssel oder ein Spieler-Token:
@@ -209,6 +217,7 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 {
   "last_event_id": 42,
   "server_time": 1795000000000,
+  "room": { "width": 100, "height": 100, "unit": "percent" },
   "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "kind": "seats" }],
   "players": [{
     "id": 1, "name": "Glibber", "color": "mint", "equipped": {}, "level": 1,
@@ -234,7 +243,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 - **Start:** erst `GET /players/me` oder `GET /stage` lesen, dann den Stream mit `?since=<last_event_id>` öffnen.
   So geht nichts verloren. Ohne Angabe beginnt er beim neuesten Ereignis.
 - **Wiederverbinden:** `Last-Event-ID` hat Vorrang vor `since`. Spieler können höchstens 1000 Ereignisse
-  zurückgehen, danach zählt wieder der Stand aus `GET /players/me`.
+  zurückgehen. Liegt die ID weiter zurück, kommt zuerst `reset`, und die App liest ihren Stand neu.
 - **Grenzen:** Eine App hält einen Stream offen. Je LAN gelten `max_player_streams` je Spieler und
   `max_streams` für alle Spieler zusammen, darüber folgt `429 rate_limited`. Jeder Versuch zählt zudem
   zum Limit von 300 Anfragen pro Minute. Die Bühne zählt nicht mit.

@@ -25,6 +25,8 @@ const (
 	paramInQuery       = "query"
 	paramInHeader      = "header"
 	headerLastEventID  = "Last-Event-ID"
+	// Tells a client it missed too much and has to read its state again.
+	streamResetMessage = "event: reset\ndata: {}\n\n"
 	// Enough to bridge a short outage on a busy LAN.
 	maxPlayerReplayEvents = 1000
 )
@@ -41,7 +43,8 @@ func (server *apiServer) addStageRoutes(contract huma.API) {
 		OperationID: "streamEvents", Method: http.MethodGet, Path: pathStream,
 		Summary: "Receive events as server-sent events",
 		Description: "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. " +
-			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events. " +
+			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events, " +
+			"further back they get `reset` and read their state again. " +
 			"Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
 		Security:   listViewerSecurity(),
 		Parameters: buildStreamParameters(),
@@ -99,7 +102,7 @@ func (server *apiServer) handleStream(
 		return
 	}
 	defer server.streams.releaseSlot(viewerID)
-	afterID, err := server.findStreamStart(request, viewerID)
+	afterID, isTooOld, err := server.findStreamStart(request, viewerID)
 	if err != nil {
 		server.writeError(writer, request, err)
 		return
@@ -111,6 +114,12 @@ func (server *apiServer) handleStream(
 	writer.Header().Set("Content-Type", "text/event-stream")
 	writer.Header().Set("Cache-Control", cacheControlNoStore)
 	writer.WriteHeader(http.StatusOK)
+	if isTooOld {
+		_, err = io.WriteString(writer, streamResetMessage)
+		if err != nil {
+			return
+		}
+	}
 	if controller.Flush() != nil {
 		return
 	}
@@ -203,27 +212,31 @@ func writeStreamTick(
 }
 
 // findStreamStart uses `Last-Event-ID` from a reconnect, then `?since=`, then the newest event.
-// Players only get recent events, so the log does not tell them who was active when.
-func (server *apiServer) findStreamStart(request *http.Request, viewerID int64) (int64, error) {
+// Players only get recent events, so the log does not tell them who was active when. Further back,
+// they start at the newest event and are told to read their state again.
+func (server *apiServer) findStreamStart(
+	request *http.Request, viewerID int64,
+) (int64, bool, error) {
 	latestID, err := server.Store.LoadLatestEventID(request.Context())
 	if err != nil {
-		return 0, fmt.Errorf("find stream start: %w", err)
+		return 0, false, fmt.Errorf("find stream start: %w", err)
 	}
 	start := request.Header.Get(headerLastEventID)
 	if start == "" {
 		start = request.URL.Query().Get(querySince)
 	}
 	if start == "" {
-		return latestID, nil
+		return latestID, false, nil
 	}
 	afterID, err := strconv.ParseInt(start, 10, 64)
 	if err != nil || afterID < 0 {
-		return 0, store.ErrInvalidInput
+		return 0, false, store.ErrInvalidInput
 	}
-	if viewerID != noViewerPlayer {
-		return max(afterID, latestID-maxPlayerReplayEvents), nil
+	oldestID := latestID - maxPlayerReplayEvents
+	if viewerID != noViewerPlayer && afterID < oldestID {
+		return latestID, true, nil
 	}
-	return afterID, nil
+	return afterID, false, nil
 }
 
 // writeStreamEvents writes events in SSE format and returns the ID of the last one.

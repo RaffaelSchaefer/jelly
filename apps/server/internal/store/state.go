@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -324,4 +325,92 @@ func loadPlayerAwards(
 		return nil, fmt.Errorf("load awards: %w", err)
 	}
 	return awards, nil
+}
+
+// PlayerProfile is what every account can read about another player.
+type PlayerProfile struct {
+	ID           int64                       `json:"id"`
+	Name         string                      `json:"name"`
+	Color        string                      `json:"color"`
+	Equipped     map[string]EquippedCosmetic `json:"equipped"`
+	XP           int                         `json:"xp"`
+	Level        int                         `json:"level"`
+	TotalXP      int                         `json:"total_xp"`
+	LANsAttended int                         `json:"lans_attended"`
+	Badges       []Badge                     `json:"badges"`
+	Achievements []EarnedAchievement         `json:"achievements"`
+	Awards       []PlayerAward               `json:"awards"`
+}
+
+// LoadPlayerProfile returns the profile of a player. A hidden player does not exist for others.
+func (store *Store) LoadPlayerProfile(
+	ctx context.Context, playerID, now int64,
+) (PlayerProfile, error) {
+	state, err := store.LoadPlayerState(ctx, playerID, now)
+	if errors.Is(err, ErrUnauthorized) {
+		return PlayerProfile{}, ErrPlayerNotFound
+	}
+	if err != nil {
+		return PlayerProfile{}, err
+	}
+	if state.Hidden {
+		return PlayerProfile{}, ErrPlayerNotFound
+	}
+	return PlayerProfile{
+		ID: state.ID, Name: state.Name, Color: state.Color, Equipped: state.Equipped,
+		XP: state.XP, Level: state.Level, TotalXP: state.TotalXP,
+		LANsAttended: state.LANsAttended, Badges: state.Badges,
+		Achievements: state.Achievements, Awards: state.Awards,
+	}, nil
+}
+
+// PublicPlayer is one line of the player list.
+type PublicPlayer struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+	Level int    `json:"level"`
+}
+
+// PlayerList is one page of the player list. Without a next cursor, it is the last one.
+type PlayerList struct {
+	Items      []PublicPlayer `json:"items"`
+	NextCursor *string        `json:"next_cursor"`
+}
+
+// ListPublicPlayers returns visible players after a cursor, with the level of their latest LAN.
+func (store *Store) ListPublicPlayers(
+	ctx context.Context, afterID int64, limit int,
+) (PlayerList, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	list := PlayerList{Items: []PublicPlayer{}, NextCursor: nil}
+	const selectPublicPlayersSQL = `SELECT p.id, p.name, p.color, COALESCE((
+			SELECT e.xp FROM lan_entries e WHERE e.player_id = p.id
+			ORDER BY e.lan_id DESC LIMIT 1), 0)
+		FROM players p WHERE p.id > ? AND p.hidden_at IS NULL ORDER BY p.id LIMIT ?`
+	rows, err := store.readDB.QueryContext(queryCtx, selectPublicPlayersSQL, afterID, limit+1)
+	if err != nil {
+		return list, fmt.Errorf("list players: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var player PublicPlayer
+		var lanXP int
+		err = rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP)
+		if err != nil {
+			return list, fmt.Errorf("read player: %w", err)
+		}
+		player.Level = rules.CalculateLevel(lanXP)
+		list.Items = append(list.Items, player)
+	}
+	if err := rows.Err(); err != nil {
+		return list, fmt.Errorf("list players: %w", err)
+	}
+	if len(list.Items) > limit {
+		list.Items = list.Items[:limit]
+		cursor := strconv.FormatInt(list.Items[limit-1].ID, 10)
+		list.NextCursor = &cursor
+	}
+	return list, nil
 }
