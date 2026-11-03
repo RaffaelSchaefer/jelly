@@ -10,6 +10,7 @@ import {
   BufferGeometry,
   Color,
   Euler,
+  InstancedMesh,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -19,6 +20,7 @@ import {
   ShaderMaterial,
   Vector3,
   type Material,
+  type Object3D,
 } from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
@@ -30,9 +32,9 @@ import propVertexShader from "./shaders/prop.vert.glsl?raw";
 import { createShadow } from "./shadow.ts";
 
 /** Props are drawn after the shadows, so no shadow lies on top of them. */
-const PROP_ORDER = 3;
+export const PROP_ORDER = 3;
 /** Flat things on the floor are drawn before the shadows, so jellies cast shadows onto them. */
-const FLAT_ORDER = 1;
+export const FLAT_ORDER = 1;
 const ROUND_SEGMENTS = 2;
 const USUAL_ROUNDING = 0.04;
 /** Rounding stays this far below half the thinnest side, or the box gets dents. */
@@ -80,6 +82,9 @@ export function createShiny(color: string, specular: string): MeshPhongMaterial 
 export function createGlow(color: string): MeshBasicMaterial {
   return keepMaterial(new MeshBasicMaterial({ color, toneMapped: false }));
 }
+
+/** Polished metal, for lamp feet, handles and machine parts. */
+export const CHROME_MATERIAL = createShiny("#c8d0de", "#ffffff");
 
 /** LED strips: the glow colors flow along them, the same wave on every strip of the hall. */
 export const LED_MATERIAL = keepMaterial(
@@ -167,6 +172,18 @@ export function mergeParts(parts: PropPart[], material: Material): Mesh {
     return geometry.applyMatrix4(matrix);
   });
   const merged = placed.length > 0 ? mergeGeometries(placed) : null;
+  if (placed.length > 0 && !merged) console.warn("props: parts with different attributes not merged");
   for (const geometry of placed) geometry.dispose();
   return placeMesh(merged ?? new BufferGeometry(), material, { x: 0, y: 0, z: 0 });
+}
+
+/** Frees the geometries and own materials of a group of props. Materials kept for the page stay. */
+export function disposeProps(props: Object3D): void {
+  props.traverse((object) => {
+    if (object instanceof InstancedMesh) object.dispose();
+    if (!(object instanceof Mesh)) return;
+    object.geometry.dispose();
+    const material = object.material as Material;
+    if (!isKeptMaterial(material)) material.dispose();
+  });
 }

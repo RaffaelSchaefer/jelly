@@ -1,6 +1,6 @@
 /**
- * Signs with text, painted once into a canvas: the neon sign of the lounge and the boards of the
- * snack bar. Their texts are German, like everything the stage shows.
+ * Signs with text, painted once into a canvas: the neon sign of the lounge and the marquee of the
+ * snack bar.
  *
  * @module
  */
@@ -18,6 +18,8 @@ const TEXT_WIDTH_SHARE = 0.84;
 /** Blur of the glow around neon letters and tubes, as a share of the letter size. */
 const GLOW_BLURS = [0.5, 0.22];
 const CORE_BLUR = 0.06;
+/** Text sits a little low in its line, so it is moved down by this share of its size. */
+const TEXT_DROP = 0.06;
 /** A neon tube runs around the sign this far inside its edge, as a share of the height. */
 const TUBE_INSET = 0.12;
 const TUBE_WIDTH = 0.035;
@@ -59,7 +61,7 @@ function paintSign(context: CanvasRenderingContext2D, look: SignLook): void {
   if (look.frame) paintTube(context, look.frame, look.glow ?? look.frame);
   context.textAlign = "center";
   context.textBaseline = "middle";
-  const [x, y] = [width / 2, height / 2 + size * CORE_BLUR];
+  const [x, y] = [width / 2, height / 2 + size * TEXT_DROP];
   if (look.glow) {
     context.shadowColor = look.glow;
     context.fillStyle = look.glow;

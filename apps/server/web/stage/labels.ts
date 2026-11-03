@@ -47,7 +47,7 @@ interface TextBox {
 
 /** Everything the texts of a frame need. */
 export interface LabelScene {
-  /** Sorted from back to front, so nearer names cover those behind. */
+  /** Sorted from back to front. Texts are placed from the front, so nearer jellies keep theirs. */
   anchors: LabelAnchor[];
   effects: StageEffect[];
   signLabels: Map<string, string>;

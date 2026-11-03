@@ -25,6 +25,7 @@ import vertexShader from "./shaders/shadow.vert.glsl?raw";
 const SHADOW_COLOR = "#46566a";
 /** Just above the cable ducts, so a shadow also falls on them. */
 export const SHADOW_HEIGHT = 0.07;
+/** Shadows draw after the floor and flat things, before everything standing on them. */
 export const SHADOW_ORDER = 2;
 
 /** Size and look of a shadow, in jelly units. */

@@ -1,6 +1,7 @@
 /**
- * Ways around the desks. The floor is a grid of small cells, and a cell is blocked when a jelly
- * standing there would touch a desk. Paths go cell by cell and are then pulled straight.
+ * Ways around obstacles: desks, the snack bar counter and the props on the stage. The floor is a
+ * grid of small cells, and a cell is blocked when a jelly standing there would touch an obstacle.
+ * Paths go cell by cell and are then pulled straight.
  *
  * @module
  */
@@ -8,7 +9,7 @@
 import type { FloorPoint, FloorRect } from "./world.ts";
 
 /** Edge length of a cell in jelly units. Small enough for the narrow gaps of a real room. */
-export const CELL_SIZE = 0.25;
+const CELL_SIZE = 0.25;
 /** Line of sight is checked at this share of a cell, so no blocked cell is skipped. */
 const SIGHT_STEP_SHARE = 0.5;
 const NO_CELL = -1;
@@ -40,7 +41,11 @@ function measureRectDistance(point: FloorPoint, rect: FloorRect): number {
 }
 
 /** Builds the grid of a room. A cell is blocked when its center is closer than `clearance`. */
-export function createNavGrid(room: FloorRect, desks: FloorRect[], clearance: number): NavGrid {
+export function createNavGrid(
+  room: FloorRect,
+  obstacles: FloorRect[],
+  clearance: number,
+): NavGrid {
   const columns = Math.ceil((room.maxX - room.minX) / CELL_SIZE);
   const rows = Math.ceil((room.maxZ - room.minZ) / CELL_SIZE);
   const grid: NavGrid = {
@@ -55,8 +60,10 @@ export function createNavGrid(room: FloorRect, desks: FloorRect[], clearance: nu
   };
   for (let cell = 0; cell < columns * rows; cell++) {
     const center = findCellCenter(grid, cell);
-    const isNearDesk = desks.some((desk) => measureRectDistance(center, desk) < clearance);
-    grid.blocked[cell] = isNearDesk ? 1 : 0;
+    const isNearObstacle = obstacles.some(
+      (obstacle) => measureRectDistance(center, obstacle) < clearance,
+    );
+    grid.blocked[cell] = isNearObstacle ? 1 : 0;
   }
   return grid;
 }

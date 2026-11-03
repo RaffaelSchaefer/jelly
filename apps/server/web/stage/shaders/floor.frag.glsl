@@ -1,4 +1,4 @@
-// Floor of the stage, fragment shader: light hexagon tiles with thin grout. A few tiles carry a
+// Floor of the hall, fragment shader: light hexagon tiles with thin grout. A few tiles carry a
 // faint jelly color. Toward the edges the floor fades into the background, so the room has no hard
 // border. TILE_SIZE, GROUT, TINT_SHARE and the room size come as defines from floor.ts.
 

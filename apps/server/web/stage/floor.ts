@@ -1,5 +1,5 @@
 /**
- * The floor of the stage: a large plane with light hexagon tiles that fades into the background.
+ * The floor of the hall: a large plane with light hexagon tiles that fades into the background.
  *
  * @module
  */

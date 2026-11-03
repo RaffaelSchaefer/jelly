@@ -66,18 +66,23 @@ const SCREEN_HEIGHT = 2.3;
 const FRAME_BORDER = 0.12;
 const FRAME_DEPTH = 0.12;
 const LEG = { radius: 0.05, inset: 0.3 };
-const SOCKET = { width: 0.32, height: 0.26, depth: 0.2, inset: 0.35 };
-const CABLE = { radius: 0.025, swing: 0.25, segments: 24 };
+const SOCKET = { width: 0.32, height: 0.26, depth: 0.2, inset: 0.35, rounding: 0.03 };
+/** A cable ends this far behind the front of its speaker. */
+const CABLE = { radius: 0.025, swing: 0.25, segments: 24, sides: 6, endInset: 0.15 };
 /** The lower box of a speaker stack carries the bass, the upper one is a little smaller. */
 const SUB_HEIGHT = 0.95;
 const TOP_BOX = { share: 0.86, height: 0.62 };
 const BEATS_PER_SECOND = 2;
-const CONE_SEGMENTS = 28;
+/** Cone radii, and the heights of the mid and treble cones as shares of the upper box. */
+const CONES = { bass: 0.34, mid: 0.17, midHeight: 0.34, treble: 0.08, trebleHeight: 0.79 };
 /** Cones stand out of the box front by this much. */
 const CONE_LIFT = 0.006;
-const PAR = { radius: 0.12, length: 0.3, tilt: 0.95, turn: 0.55 };
+/** A PAR can narrows to `back` of its radius, its lens covers `lens` of the radius. */
+const PAR = { radius: 0.12, length: 0.3, tilt: 0.95, turn: 0.55, back: 0.8, lens: 0.85 };
+/** The two PAR lights of a stack sit this share of its width left and right of the middle. */
+const PAR_SPREAD = 0.22;
 const PEDESTAL_HEIGHT = 0.62;
-const TROPHY_PLATE = { height: 0.08, below: 0.14 };
+const TROPHY_PLATE = { height: 0.08, below: 0.14, overhang: 0.02 };
 /** Outline of the trophy cup from foot to rim and back down inside, radius and height. */
 const CUP_PROFILE: [number, number][] = [
   [0.001, 0],
@@ -95,8 +100,13 @@ const CUP_PROFILE: [number, number][] = [
   [0.25, 0.62],
   [0.001, 0.48],
 ];
-const HANDLE = { radius: 0.14, tube: 0.035, height: 0.6, reach: 0.31 };
-const GLINT = { radius: 0.035, spread: 0.45 };
+/** The handles are half rings. */
+const HANDLE = { radius: 0.14, tube: 0.035, height: 0.6, reach: 0.31, arc: Math.PI };
+const GLINT = { radius: 0.035, spread: 0.45, height: 0.35, step: 0.25, front: 0.2 };
+const GLINT_COLOR = "#ffffff";
+/** Glints sit at these shares of the spread around the cup, every other one a step higher. */
+const GLINT_SHARES = [-1, -0.4, 0.5, 1];
+const SEGMENTS = { leg: 8, cone: 28, can: 16, lens: 20, cup: 32, handleTube: 10, handleRing: 20 };
 
 const PLATFORM_MATERIAL = createMatte("#56658a");
 const STEP_MATERIAL = createMatte("#6f7fa6");
@@ -197,7 +207,7 @@ function createScreen(rect: FloorRect, seed: number): Group {
   screen.add(createBox(frame, FRAME_MATERIAL, middle, STAGE_HEIGHT + SCREEN_BOTTOM - FRAME_BORDER));
   const legHeight = SCREEN_BOTTOM - FRAME_BORDER;
   for (const side of [-1, 1]) {
-    const leg = new CylinderGeometry(LEG.radius, LEG.radius, legHeight, 8);
+    const leg = new CylinderGeometry(LEG.radius, LEG.radius, legHeight, SEGMENTS.leg);
     const x = middle.x + side * (SCREEN_WIDTH / 2 - LEG.inset);
     screen.add(placeMesh(leg, FRAME_MATERIAL, { x, y: STAGE_HEIGHT + legHeight / 2, z: middle.z }));
   }
@@ -218,16 +228,16 @@ function createScreen(rect: FloorRect, seed: number): Group {
 
 /** Builds a speaker cone facing the hall. */
 function createCone(radius: number, point: { x: number; y: number; z: number }): Mesh {
-  return placeMesh(new CircleGeometry(radius, CONE_SEGMENTS), CONE_MATERIAL, point);
+  return placeMesh(new CircleGeometry(radius, SEGMENTS.cone), CONE_MATERIAL, point);
 }
 
 /** Builds a PAR light on a speaker stack, aimed at the middle of the stage and the hall. */
 function createParLight(spot: FloorPoint, bottom: number, side: number, color: number): Group {
   const light = new Group();
-  const can = new CylinderGeometry(PAR.radius, PAR.radius * 0.8, PAR.length, 16);
+  const can = new CylinderGeometry(PAR.radius, PAR.radius * PAR.back, PAR.length, SEGMENTS.can);
   light.add(placeMesh(can, PAR_MATERIAL, { x: 0, y: 0, z: 0 }));
   const lensMaterial = LENS_MATERIALS[color % LENS_MATERIALS.length] ?? FRAME_MATERIAL;
-  const lens = placeMesh(new CircleGeometry(PAR.radius * 0.85, 20), lensMaterial, {
+  const lens = placeMesh(new CircleGeometry(PAR.radius * PAR.lens, SEGMENTS.lens), lensMaterial, {
     x: 0,
     y: PAR.length / 2 + FACE_LIFT,
     z: 0,
@@ -254,14 +264,26 @@ function createSpeakerStack(rect: FloorRect, side: number): Group {
   stack.add(
     createBox({ width, height: SUB_HEIGHT, depth }, SPEAKER_MATERIAL, middle, STAGE_HEIGHT),
     createBox(top, SPEAKER_MATERIAL, middle, topBottom),
-    createCone(0.34, { x: middle.x, y: STAGE_HEIGHT + SUB_HEIGHT / 2, z: rect.maxZ + CONE_LIFT }),
+    createCone(CONES.bass, {
+      x: middle.x,
+      y: STAGE_HEIGHT + SUB_HEIGHT / 2,
+      z: rect.maxZ + CONE_LIFT,
+    }),
   );
   const topFront = middle.z + top.depth / 2 + CONE_LIFT;
   stack.add(
-    createCone(0.17, { x: middle.x, y: topBottom + top.height * 0.34, z: topFront }),
-    createCone(0.08, { x: middle.x, y: topBottom + top.height * 0.79, z: topFront }),
+    createCone(CONES.mid, {
+      x: middle.x,
+      y: topBottom + top.height * CONES.midHeight,
+      z: topFront,
+    }),
+    createCone(CONES.treble, {
+      x: middle.x,
+      y: topBottom + top.height * CONES.trebleHeight,
+      z: topFront,
+    }),
   );
-  for (const [index, offset] of [-0.22, 0.22].entries()) {
+  for (const [index, offset] of [-PAR_SPREAD, PAR_SPREAD].entries()) {
     const spot = { x: middle.x + offset * width, z: middle.z };
     stack.add(createParLight(spot, topBottom + top.height, side, index + (side > 0 ? 1 : 0)));
   }
@@ -275,7 +297,8 @@ function createTrophy(rect: FloorRect): Group {
   const middle = findMiddle(rect);
   const size = rect.maxX - rect.minX;
   const pedestal = { width: size, height: PEDESTAL_HEIGHT, depth: size };
-  const plate = { width: size + 0.02, height: TROPHY_PLATE.height, depth: size + 0.02 };
+  const plateSize = size + TROPHY_PLATE.overhang;
+  const plate = { width: plateSize, height: TROPHY_PLATE.height, depth: plateSize };
   const plateBottom = STAGE_HEIGHT + PEDESTAL_HEIGHT - TROPHY_PLATE.below;
   trophy.add(
     createBox(pedestal, PEDESTAL_MATERIAL, middle, STAGE_HEIGHT),
@@ -283,22 +306,30 @@ function createTrophy(rect: FloorRect): Group {
   );
   const base = STAGE_HEIGHT + PEDESTAL_HEIGHT;
   const outline = CUP_PROFILE.map(([radius, height]) => new Vector2(radius, height));
-  trophy.add(placeMesh(new LatheGeometry(outline, 32), GOLD_MATERIAL, { ...middle, y: base }));
+  trophy.add(
+    placeMesh(new LatheGeometry(outline, SEGMENTS.cup), GOLD_MATERIAL, { ...middle, y: base }),
+  );
   for (const side of [-1, 1]) {
-    const handle = new TorusGeometry(HANDLE.radius, HANDLE.tube, 10, 20, Math.PI);
+    const handle = new TorusGeometry(
+      HANDLE.radius,
+      HANDLE.tube,
+      SEGMENTS.handleTube,
+      SEGMENTS.handleRing,
+      HANDLE.arc,
+    );
     const point = { x: middle.x + side * HANDLE.reach, y: base + HANDLE.height, z: middle.z };
     const mesh = placeMesh(handle, GOLD_MATERIAL, point);
     // The half ring opens toward the cup.
     mesh.rotation.z = -side * (Math.PI / 2);
     trophy.add(mesh);
   }
-  const glints = [-1, -0.4, 0.5, 1].map((share, index) => ({
+  const glints = GLINT_SHARES.map((share, index) => ({
     x: middle.x + share * GLINT.spread,
-    y: base + 0.35 + 0.25 * (index % 2),
-    z: middle.z + 0.2,
+    y: base + GLINT.height + GLINT.step * (index % 2),
+    z: middle.z + GLINT.front,
   }));
   trophy.add(
-    createBulbs(glints, { radius: GLINT.radius, colors: ["#ffffff"], pattern: "twinkle" }),
+    createBulbs(glints, { radius: GLINT.radius, colors: [GLINT_COLOR], pattern: "twinkle" }),
   );
   return trophy;
 }
@@ -308,11 +339,10 @@ function createSockets(rect: FloorRect, speakers: FloorRect[]): Mesh[] {
   const corners = [rect.minX + SOCKET.inset, rect.maxX - SOCKET.inset];
   return corners.flatMap((x, index) => {
     const spot = { x, z: rect.minZ + SOCKET.inset };
-    const box = { width: SOCKET.width, height: SOCKET.height, depth: SOCKET.depth, rounding: 0.03 };
-    const socket = createBox(box, SOCKET_MATERIAL, spot, STAGE_HEIGHT);
+    const socket = createBox(SOCKET, SOCKET_MATERIAL, spot, STAGE_HEIGHT);
     const speaker = speakers[index];
     if (!speaker) return [socket];
-    const end = { x: index === 0 ? speaker.minX : speaker.maxX, z: speaker.maxZ - 0.15 };
+    const end = { x: index === 0 ? speaker.minX : speaker.maxX, z: speaker.maxZ - CABLE.endInset };
     return [socket, createCable({ x, z: spot.z + SOCKET.depth / 2 }, end)];
   });
 }
@@ -324,7 +354,7 @@ function createCable(from: FloorPoint, to: FloorPoint): Mesh {
   const curve = new CatmullRomCurve3(
     [from, bend, to].map((point) => new Vector3(point.x, height, point.z)),
   );
-  const tube = new TubeGeometry(curve, CABLE.segments, CABLE.radius, 6);
+  const tube = new TubeGeometry(curve, CABLE.segments, CABLE.radius, CABLE.sides);
   return placeMesh(tube, CABLE_MATERIAL, { x: 0, y: 0, z: 0 });
 }
 

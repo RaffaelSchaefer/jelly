@@ -24,14 +24,15 @@ import {
   isPulseEvent,
   updateEffects,
 } from "./effects.ts";
-import { createFurniture, disposeFurniture } from "./furniture.ts";
+import { createFurniture } from "./furniture.ts";
 import { createJellyCast, pulseJelly, syncJellies, updateJellies } from "./jellies.ts";
 import { drawLabels } from "./labels.ts";
 import { bendToLens, LENS_RANGE } from "./lens.ts";
 import { applyLens, createLensPass, type LensPass } from "./lensPass.ts";
 import { createNavGrid } from "./navigation.ts";
 import { createStageScene, findViewer, projectToScreen, resizeStageScene } from "./scene.ts";
-import { createVenue, disposeVenue, updateVenue } from "./venue.ts";
+import { disposeProps } from "./props.ts";
+import { createVenue, updateVenue } from "./venue.ts";
 import { calculateCanvasDensity, JELLY_RADIUS, ROOM } from "./world.ts";
 import { findSnackBar, listObstacleRects, listStageRects } from "./zones.ts";
 
@@ -104,17 +105,17 @@ function readSetting(
 }
 
 /** Returns where every jelly wants to stand right now. */
-function findGoals(memory: StageMemory, now: number) {
+function findGoals(memory: StageMemory, now: number, visitors = findVisitors(memory.effects, now)) {
   return calculateGoals(memory.state?.players ?? [], {
     lookup: memory.lookup,
     serverTime: now + memory.clockOffset,
     grid: memory.grid,
-    visitors: findVisitors(memory.effects, now),
+    visitors,
     snackBar: memory.snackBar,
   });
 }
 
-/** Builds desks, cables and the walkable floor again when the areas changed. */
+/** Builds furniture, venue, walkable floor, stages and snack bar again when the areas changed. */
 function rebuildRoom(memory: StageMemory, state: StageState): void {
   const roomKey = JSON.stringify(state.areas);
   if (roomKey === memory.roomKey) {
@@ -122,10 +123,10 @@ function rebuildRoom(memory: StageMemory, state: StageState): void {
   }
   memory.roomKey = roomKey;
   memory.stage.scene.remove(memory.furniture);
-  disposeFurniture(memory.furniture);
+  disposeProps(memory.furniture);
   memory.furniture = createFurniture(state.areas);
   memory.stage.scene.remove(memory.venue);
-  disposeVenue(memory.venue);
+  disposeProps(memory.venue);
   memory.venue = createVenue(state.areas);
   memory.stage.scene.add(memory.furniture, memory.venue);
   memory.grid = createNavGrid(ROOM, listObstacleRects(state.areas), JELLY_RADIUS);
@@ -218,13 +219,14 @@ function paintFrame(
   const { stage } = memory;
   memory.effects = updateEffects(memory.effects, [], now);
   const time = performance.now() / 1000;
+  const visitors = findVisitors(memory.effects, now);
   const spots = updateJellies(memory.cast, {
-    goals: findGoals(memory, now),
+    goals: findGoals(memory, now, visitors),
     grid: memory.grid,
     viewer: findViewer(stage.camera),
     camera: stage.camera.position,
     effects: memory.effects,
-    visitors: findVisitors(memory.effects, now),
+    visitors,
     stages: memory.stages,
     seconds,
     time,

@@ -5,6 +5,7 @@
  * @module
  */
 
+import { JELLY_COLORS } from "@jelly/scene/colors";
 import {
   BoxGeometry,
   Color,
@@ -20,6 +21,7 @@ import {
 import type { FloorPoint } from "./world.ts";
 
 import {
+  CHROME_MATERIAL,
   createBox,
   createMatte,
   createShiny,
@@ -34,6 +36,7 @@ import {
 import propVertexShader from "./shaders/prop.vert.glsl?raw";
 import slushFragmentShader from "./shaders/slush.frag.glsl?raw";
 import { createSignMaterial } from "./signs.ts";
+import { FULL_CIRCLE, GOLDEN_ANGLE } from "./world.ts";
 
 /** A snack on the counter: how much of the counter it takes and how it is built. */
 export interface Snack {
@@ -41,35 +44,26 @@ export interface Snack {
   build: (spot: FloorPoint, bottom: number) => Object3D;
 }
 
-const FULL_TURN = 2 * Math.PI;
-const SLUSH = {
-  width: 0.62,
-  base: 0.24,
-  depth: 0.46,
-  tank: 0.135,
-  tankHeight: 0.44,
-  spread: 0.155,
-};
+const SLUSH = { width: 0.62, base: 0.24, depth: 0.46, spread: 0.155 };
+/** Tanks narrow to `taper` of their radius at the bottom. */
+const TANK = { radius: 0.135, height: 0.44, taper: 0.92, sides: 24 };
+/** The lid is a dome a little wider than its tank. */
+const LID = { scale: 1.03, around: 20, up: 8 };
 const TAP = { width: 0.06, height: 0.09, depth: 0.06, reach: 0.02, lift: 0.08 };
 /** Slush fills the tank up to this far below its top. */
 const SLUSH_HEADROOM = 0.08;
-const POPCORN = {
-  width: 0.58,
-  depth: 0.46,
-  cabinet: 0.26,
-  glass: 0.46,
-  roof: 0.1,
-  trim: 0.035,
-  overhang: 0.06,
-  trimOverhang: 0.1,
-  post: 0.04,
-};
+const POPCORN = { width: 0.58, depth: 0.46, cabinet: 0.26, glass: 0.46, post: 0.04 };
+/** A trim runs around the bottom of the roof, and the sign fills `sign` of the roof height. */
+const ROOF = { height: 0.1, overhang: 0.06, trim: 0.035, trimOverhang: 0.1, sign: 0.9 };
 /** The kettle hangs under the roof, where the corn pops. */
-const KETTLE = { top: 0.1, bottom: 0.075, height: 0.1, hang: 0.12 };
-const KERNELS = { count: 40, radius: 0.05, heap: 0.17 };
-const GOLDEN_ANGLE = 2.399963;
+const KETTLE = { top: 0.1, bottom: 0.075, height: 0.1, hang: 0.12, sides: 16 };
+/** Every `golden`-th kernel is golden. */
+const KERNELS = { count: 40, radius: 0.05, heap: 0.17, golden: 3, around: 8, up: 6 };
+/** Kernel sizes run from `smallest` to `smallest + spread` of the radius, mixed by `shuffle`. */
+const KERNEL_SIZE = { smallest: 0.85, spread: 0.3, shuffle: 7, steps: 5 };
 const PIZZA = {
   size: 0.56,
+  boxes: 3,
   box: 0.06,
   lid: 0.02,
   open: 1.75,
@@ -77,6 +71,7 @@ const PIZZA = {
   crust: 0.03,
   thickness: 0.025,
   rounding: 0.01,
+  sides: 32,
   /** The middle box sits a little turned, and the stack needs room for it on the counter. */
   messyTurn: 0.12,
   turnRoom: 0.06,
@@ -85,34 +80,17 @@ const PIZZA = {
 const PIZZA_LEFT = 7 / 8;
 /** The crust shows as a rim: a disc a little wider than the cheese and a little lower. */
 const CRUST = { height: 1.4, middle: 0.7 };
-/** Pepperoni lie in two rings, the inner one at this share of the reach. */
-const PEPPERONI = { count: 7, radius: 0.04, reach: 0.14, inner: 0.55, thickness: 0.012 };
-const STAND = {
-  plate: 0.25,
-  plateHeight: 0.03,
-  rim: 0.02,
-  stem: 0.16,
-  stemTop: 0.035,
-  stemBottom: 0.05,
-  foot: 0.13,
-  footHeight: 0.02,
-};
-/** Three donuts lie around the plate, turned this far apart, and a fourth on top of them. */
-const DONUT = { radius: 0.075, tube: 0.035, ring: 0.12, spacing: 2.1, start: 0.4 };
+/** Pepperoni lie in two rings, the inner one at `inner` of the reach, `lift` thicknesses up. */
+const PEPPERONI = { count: 7, radius: 0.04, reach: 0.14, inner: 0.55, thickness: 0.012, lift: 1.5 };
+const STAND = { plate: 0.25, plateHeight: 0.03, rim: 0.02, foot: 0.13, footHeight: 0.02 };
+const STEM = { height: 0.16, top: 0.035, bottom: 0.05, sides: 12 };
+/** Three donuts lie around the plate, turned this far apart, and a fourth `onTop` tubes up. */
+const DONUT = { radius: 0.075, tube: 0.035, ring: 0.12, spacing: 2.1, start: 0.4, onTop: 3 };
 /** Icing is a thinner, flatter ring on top of the dough. */
 const ICING = { tube: 0.8, lift: 0.45, flatness: 0.6 };
-const CUP = {
-  top: 0.075,
-  bottom: 0.058,
-  height: 0.22,
-  lid: 0.004,
-  lidHeight: 0.02,
-  straw: 0.012,
-  strawHeight: 0.2,
-  strawShift: 0.02,
-  strawDip: 0.04,
-  lean: 0.25,
-};
+const SEGMENTS = { foot: 24, plate: 32, pepperoni: 14, donutTube: 10, donutRing: 22 };
+const CUP = { top: 0.075, bottom: 0.058, height: 0.22, lid: 0.004, lidHeight: 0.02, sides: 16 };
+const STRAW = { radius: 0.012, height: 0.2, shift: 0.02, dip: 0.04, lean: 0.25, sides: 8 };
 const CUPS_WIDTH = 0.36;
 /** Cups stand in a little group: x and z from the middle. */
 const CUP_SPOTS: [number, number][] = [
@@ -126,7 +104,6 @@ const DARK_MATERIAL = createMatte("#3a4052");
 const RED_MATERIAL = createMatte("#e5534b");
 const YELLOW_MATERIAL = createMatte("#ffd45c");
 const KERNEL_MATERIALS = [createMatte("#fff6d8"), createMatte("#ffe39a")];
-const CHROME_MATERIAL = createShiny("#c8d0de", "#ffffff");
 const CARDBOARD_MATERIAL = createMatte("#efdcb5");
 const CHEESE_MATERIAL = createMatte("#f6c453");
 const CRUST_MATERIAL = createMatte("#dc9a4c");
@@ -134,10 +111,10 @@ const PEPPERONI_MATERIAL = createMatte("#c8423a");
 const DOUGH_MATERIAL = createMatte("#d9a066");
 const ICING_MATERIALS = [createMatte("#f59ac9"), createMatte("#8ef0dd"), createMatte("#7a4a2e")];
 const CUP_MATERIALS = GLOW_COLORS.map((color) => createMatte(color));
-const SLUSH_MATERIALS = [GLOW_COLORS[0], "#ff6fae"].map((color) =>
+const SLUSH_MATERIALS = [JELLY_COLORS.mint.glow, "#ff6fae"].map((color) =>
   keepMaterial(
     new ShaderMaterial({
-      defines: { FILL_TOP: (SLUSH.tankHeight / 2 - SLUSH_HEADROOM).toFixed(3) },
+      defines: { FILL_TOP: (TANK.height / 2 - SLUSH_HEADROOM).toFixed(3) },
       uniforms: { uTime: VENUE_TIME, uSlush: { value: new Color(color) } },
       vertexShader: propVertexShader,
       fragmentShader: slushFragmentShader,
@@ -145,7 +122,7 @@ const SLUSH_MATERIALS = [GLOW_COLORS[0], "#ff6fae"].map((color) =>
     }),
   ),
 );
-const POPCORN_SIGN = { width: POPCORN.width, height: POPCORN.roof * 0.9 };
+const POPCORN_SIGN = { width: POPCORN.width, height: ROOF.height * ROOF.sign };
 const POPCORN_SIGN_MATERIAL = createSignMaterial({
   text: "POPCORN",
   ...POPCORN_SIGN,
@@ -162,12 +139,18 @@ function createSlushMachine(spot: FloorPoint, bottom: number): Group {
   SLUSH_MATERIALS.forEach((material, index) => {
     const x = spot.x + (index === 0 ? -1 : 1) * SLUSH.spread;
     const tankBottom = bottom + SLUSH.base;
-    const tank = new CylinderGeometry(SLUSH.tank, SLUSH.tank * 0.92, SLUSH.tankHeight, 24);
-    const lid = new SphereGeometry(SLUSH.tank * 1.03, 20, 8, 0, FULL_TURN, 0, Math.PI / 2);
+    const tank = new CylinderGeometry(
+      TANK.radius,
+      TANK.radius * TANK.taper,
+      TANK.height,
+      TANK.sides,
+    );
+    const lidRadius = TANK.radius * LID.scale;
+    const lid = new SphereGeometry(lidRadius, LID.around, LID.up, 0, FULL_CIRCLE, 0, Math.PI / 2);
     const tap = { width: TAP.width, height: TAP.height, depth: TAP.depth };
     machine.add(
-      placeMesh(tank, material, { x, y: tankBottom + SLUSH.tankHeight / 2, z: spot.z }),
-      placeMesh(lid, WHITE_MATERIAL, { x, y: tankBottom + SLUSH.tankHeight, z: spot.z }),
+      placeMesh(tank, material, { x, y: tankBottom + TANK.height / 2, z: spot.z }),
+      placeMesh(lid, WHITE_MATERIAL, { x, y: tankBottom + TANK.height, z: spot.z }),
       createBox(
         tap,
         DARK_MATERIAL,
@@ -185,8 +168,10 @@ function listKernels(spot: FloorPoint, floor: number): PropPart[] {
   return Array.from({ length: KERNELS.count }, (_, index) => {
     const share = Math.sqrt((index + 0.5) / KERNELS.count);
     const angle = index * GOLDEN_ANGLE;
+    const sizeStep = (index * KERNEL_SIZE.shuffle) % KERNEL_SIZE.steps;
+    const size = KERNEL_SIZE.smallest + (KERNEL_SIZE.spread * sizeStep) / KERNEL_SIZE.steps;
     return {
-      geometry: new SphereGeometry(KERNELS.radius * (0.85 + (0.3 * ((index * 7) % 5)) / 5), 8, 6),
+      geometry: new SphereGeometry(KERNELS.radius * size, KERNELS.around, KERNELS.up),
       at: {
         x: spot.x + Math.cos(angle) * share * reach,
         y: floor + KERNELS.radius + (1 - share) * KERNELS.heap,
@@ -213,24 +198,24 @@ function createPopcornMachine(spot: FloorPoint, bottom: number): Group {
     })),
   );
   const kernels = listKernels(spot, caseBottom);
-  const kettle = new CylinderGeometry(KETTLE.top, KETTLE.bottom, KETTLE.height, 16);
+  const kettle = new CylinderGeometry(KETTLE.top, KETTLE.bottom, KETTLE.height, KETTLE.sides);
   const roof = {
-    width: width + POPCORN.overhang,
-    height: POPCORN.roof,
-    depth: depth + POPCORN.overhang,
+    width: width + ROOF.overhang,
+    height: ROOF.height,
+    depth: depth + ROOF.overhang,
   };
   // A yellow band runs around the bottom of the roof.
   const trim = {
-    width: width + POPCORN.trimOverhang,
-    height: POPCORN.trim,
-    depth: depth + POPCORN.trimOverhang,
+    width: width + ROOF.trimOverhang,
+    height: ROOF.trim,
+    depth: depth + ROOF.trimOverhang,
   };
   const sign = placeMesh(
     new PlaneGeometry(POPCORN_SIGN.width, POPCORN_SIGN.height),
     POPCORN_SIGN_MATERIAL,
     {
       x: spot.x,
-      y: roofBottom + POPCORN.roof / 2,
+      y: roofBottom + ROOF.height / 2,
       z: spot.z + roof.depth / 2 + FACE_LIFT,
     },
   );
@@ -238,16 +223,16 @@ function createPopcornMachine(spot: FloorPoint, bottom: number): Group {
     createBox({ width, height: POPCORN.cabinet, depth }, RED_MATERIAL, spot, bottom),
     mergeParts(posts, RED_MATERIAL),
     mergeParts(
-      kernels.filter((_, index) => index % 3 !== 0),
+      kernels.filter((_, index) => index % KERNELS.golden !== 0),
       KERNEL_MATERIALS[0] ?? RED_MATERIAL,
     ),
     mergeParts(
-      kernels.filter((_, index) => index % 3 === 0),
+      kernels.filter((_, index) => index % KERNELS.golden === 0),
       KERNEL_MATERIALS[1] ?? RED_MATERIAL,
     ),
     placeMesh(kettle, CHROME_MATERIAL, { x: spot.x, y: roofBottom - KETTLE.hang, z: spot.z }),
     createBox(roof, RED_MATERIAL, spot, roofBottom),
-    createBox(trim, YELLOW_MATERIAL, spot, roofBottom - POPCORN.trim / 2),
+    createBox(trim, YELLOW_MATERIAL, spot, roofBottom - ROOF.trim / 2),
     sign,
   );
   return machine;
@@ -259,7 +244,7 @@ function createPizzaStack(spot: FloorPoint, bottom: number): Group {
   const box = { width: PIZZA.size, height: PIZZA.box, depth: PIZZA.size, rounding: PIZZA.rounding };
   const tilted = createBox(box, CARDBOARD_MATERIAL, spot, bottom + PIZZA.box);
   tilted.rotation.y = PIZZA.messyTurn;
-  const trayTop = bottom + 3 * PIZZA.box;
+  const trayTop = bottom + PIZZA.boxes * PIZZA.box;
   const lid = placeMesh(new BoxGeometry(PIZZA.size, PIZZA.lid, PIZZA.size), CARDBOARD_MATERIAL, {
     x: spot.x,
     y: trayTop + (PIZZA.size / 2) * Math.sin(PIZZA.open),
@@ -267,17 +252,22 @@ function createPizzaStack(spot: FloorPoint, bottom: number): Group {
   });
   lid.rotation.x = -PIZZA.open;
   const slice = (radius: number, height: number) =>
-    new CylinderGeometry(radius, radius, height, 32, 1, false, 0, FULL_TURN * PIZZA_LEFT);
+    new CylinderGeometry(radius, radius, height, PIZZA.sides, 1, false, 0, FULL_CIRCLE * PIZZA_LEFT);
   // The crust is a slightly larger disc under the cheese, so it shows as a rim around it.
   const crust = slice(PIZZA.radius + PIZZA.crust, PIZZA.thickness * CRUST.height);
   const pepperoni = Array.from({ length: PEPPERONI.count }, (_, index) => {
-    const angle = ((index + 0.5) / PEPPERONI.count) * FULL_TURN * PIZZA_LEFT;
+    const angle = ((index + 0.5) / PEPPERONI.count) * FULL_CIRCLE * PIZZA_LEFT;
     const reach = PEPPERONI.reach * (index % 2 === 0 ? 1 : PEPPERONI.inner);
     return {
-      geometry: new CylinderGeometry(PEPPERONI.radius, PEPPERONI.radius, PEPPERONI.thickness, 14),
+      geometry: new CylinderGeometry(
+        PEPPERONI.radius,
+        PEPPERONI.radius,
+        PEPPERONI.thickness,
+        SEGMENTS.pepperoni,
+      ),
       at: {
         x: spot.x + Math.sin(angle) * reach,
-        y: trayTop + 1.5 * PIZZA.thickness + PEPPERONI.thickness / 2,
+        y: trayTop + PEPPERONI.lift * PIZZA.thickness + PEPPERONI.thickness / 2,
         z: spot.z + Math.cos(angle) * reach,
       },
     };
@@ -305,13 +295,23 @@ function createPizzaStack(spot: FloorPoint, bottom: number): Group {
 /** Builds a cake stand with four donuts, one on top of the others. */
 function createDonutStand(spot: FloorPoint, bottom: number): Group {
   const stand = new Group();
-  const plateTop = bottom + STAND.stem + STAND.plateHeight;
-  const foot = new CylinderGeometry(STAND.foot, STAND.foot + STAND.rim / 2, STAND.footHeight, 24);
-  const stem = new CylinderGeometry(STAND.stemTop, STAND.stemBottom, STAND.stem, 12);
-  const plate = new CylinderGeometry(STAND.plate, STAND.plate - STAND.rim, STAND.plateHeight, 32);
+  const plateTop = bottom + STEM.height + STAND.plateHeight;
+  const foot = new CylinderGeometry(
+    STAND.foot,
+    STAND.foot + STAND.rim / 2,
+    STAND.footHeight,
+    SEGMENTS.foot,
+  );
+  const stem = new CylinderGeometry(STEM.top, STEM.bottom, STEM.height, STEM.sides);
+  const plate = new CylinderGeometry(
+    STAND.plate,
+    STAND.plate - STAND.rim,
+    STAND.plateHeight,
+    SEGMENTS.plate,
+  );
   stand.add(
     placeMesh(foot, WHITE_MATERIAL, { ...spot, y: bottom + STAND.footHeight / 2 }),
-    placeMesh(stem, WHITE_MATERIAL, { ...spot, y: bottom + STAND.stem / 2 }),
+    placeMesh(stem, WHITE_MATERIAL, { ...spot, y: bottom + STEM.height / 2 }),
     placeMesh(plate, WHITE_MATERIAL, { ...spot, y: plateTop - STAND.plateHeight / 2 }),
   );
   const spots = [0, 1, 2].map((index) => ({
@@ -319,10 +319,20 @@ function createDonutStand(spot: FloorPoint, bottom: number): Group {
     y: plateTop + DONUT.tube,
     z: spot.z + Math.sin(index * DONUT.spacing + DONUT.start) * DONUT.ring,
   }));
-  spots.push({ x: spot.x, y: plateTop + 3 * DONUT.tube, z: spot.z });
+  spots.push({ x: spot.x, y: plateTop + DONUT.onTop * DONUT.tube, z: spot.z });
   spots.forEach((point, index) => {
-    const dough = new TorusGeometry(DONUT.radius, DONUT.tube, 10, 22);
-    const icing = new TorusGeometry(DONUT.radius, DONUT.tube * ICING.tube, 10, 22);
+    const dough = new TorusGeometry(
+      DONUT.radius,
+      DONUT.tube,
+      SEGMENTS.donutTube,
+      SEGMENTS.donutRing,
+    );
+    const icing = new TorusGeometry(
+      DONUT.radius,
+      DONUT.tube * ICING.tube,
+      SEGMENTS.donutTube,
+      SEGMENTS.donutRing,
+    );
     const icingMaterial = ICING_MATERIALS[index % ICING_MATERIALS.length] ?? DOUGH_MATERIAL;
     const icingPoint = { ...point, y: point.y + DONUT.tube * ICING.lift };
     const meshes = [
@@ -344,18 +354,19 @@ function createCups(spot: FloorPoint, bottom: number): Group {
     const x = spot.x + offsetX;
     const z = spot.z + offsetZ;
     const material = CUP_MATERIALS[index % CUP_MATERIALS.length] ?? WHITE_MATERIAL;
-    const cup = new CylinderGeometry(CUP.top, CUP.bottom, CUP.height, 16);
-    const lid = new CylinderGeometry(CUP.top + CUP.lid, CUP.top + CUP.lid, CUP.lidHeight, 16);
+    const cup = new CylinderGeometry(CUP.top, CUP.bottom, CUP.height, CUP.sides);
+    const lidRadius = CUP.top + CUP.lid;
+    const lid = new CylinderGeometry(lidRadius, lidRadius, CUP.lidHeight, CUP.sides);
     const straw = placeMesh(
-      new CylinderGeometry(CUP.straw, CUP.straw, CUP.strawHeight, 8),
+      new CylinderGeometry(STRAW.radius, STRAW.radius, STRAW.height, STRAW.sides),
       material,
       {
-        x: x + CUP.strawShift,
-        y: bottom + CUP.height + CUP.strawHeight / 2 - CUP.strawDip,
+        x: x + STRAW.shift,
+        y: bottom + CUP.height + STRAW.height / 2 - STRAW.dip,
         z,
       },
     );
-    straw.rotation.z = -CUP.lean;
+    straw.rotation.z = -STRAW.lean;
     cups.add(
       placeMesh(cup, material, { x, y: bottom + CUP.height / 2, z }),
       placeMesh(lid, WHITE_MATERIAL, { x, y: bottom + CUP.height, z }),
@@ -369,7 +380,7 @@ function createCups(spot: FloorPoint, bottom: number): Group {
 export function listSnacks(): Snack[] {
   return [
     { width: SLUSH.width, build: createSlushMachine },
-    { width: POPCORN.width + POPCORN.trimOverhang, build: createPopcornMachine },
+    { width: POPCORN.width + ROOF.trimOverhang, build: createPopcornMachine },
     { width: PIZZA.size + PIZZA.turnRoom, build: createPizzaStack },
     { width: 2 * STAND.plate, build: createDonutStand },
     { width: CUPS_WIDTH, build: createCups },

@@ -13,6 +13,7 @@ import { toFloorRect } from "./world.ts";
 
 /** Height of the stage platform and of the snack bar counter, in jelly units. */
 export const STAGE_HEIGHT = 0.35;
+/** Height of the snack bar counter, see {@link STAGE_HEIGHT}. */
 export const COUNTER_HEIGHT = 1.1;
 /** The two beamer screens stand at these shares of the stage width, like in the hall plan. */
 const SCREEN_CENTERS = [0.3, 0.7];
@@ -32,7 +33,7 @@ const SNACK_GAP = 1.1;
 const SNACK_SPREAD = 0.8;
 const SEED_SNACK_SPOT = 97;
 
-/** Kinds jellies can stand on. */
+/** Kinds jellies can stand on, as `IsStandingKind` in `internal/rules/areas.go`. */
 const STANDING_KINDS: AreaKind[] = ["seats", "stage", "lounge"];
 /** Kinds jellies walk around. */
 const OBSTACLE_KINDS: AreaKind[] = ["desk", "snackbar"];
@@ -43,7 +44,7 @@ export function isStandingKind(kind: AreaKind): boolean {
 }
 
 /** Says whether jellies walk around an area of this kind. */
-export function isObstacleKind(kind: AreaKind): boolean {
+function isObstacleKind(kind: AreaKind): boolean {
   return OBSTACLE_KINDS.includes(kind);
 }
 

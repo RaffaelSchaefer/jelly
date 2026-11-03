@@ -7,6 +7,8 @@
 
 import type { EventPayload, StageCatalog, StageEvent } from "./types.ts";
 
+import { FULL_CIRCLE } from "./world.ts";
+
 const BUBBLE_MS = 3000;
 const TOAST_MS = 5000;
 const XP_TOAST_MS = 1800;
@@ -19,7 +21,6 @@ const SNACK_SOURCES = new Set(["food", "drink"]);
 const FRESH_EVENT_MS = 10_000;
 /** A flood of events drops the oldest effects instead of slowing the stage down. */
 const MAX_EFFECTS = 200;
-const FULL_CIRCLE = 2 * Math.PI;
 const HOP_HEIGHT = 0.45;
 const HOPS_PER_MOTION = 3;
 const WIGGLE_ANGLE = 0.3;

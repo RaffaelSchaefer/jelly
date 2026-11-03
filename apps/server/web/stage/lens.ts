@@ -10,13 +10,13 @@
 export const LENS_RANGE = { lowest: 0, highest: 1, usual: 0.55 };
 
 /** A position on the screen in CSS pixels. */
-export interface LensPoint {
+export interface ScreenPoint {
   x: number;
   y: number;
 }
 
 /** Size of the screen in CSS pixels. */
-export interface LensSize {
+export interface ScreenSize {
   width: number;
   height: number;
 }
@@ -25,7 +25,11 @@ export interface LensSize {
  * Moves a point of the flat picture to where the lens shows it. Distances from the middle follow an
  * equidistant fisheye, measured in half screen diagonals so the corners stay in place.
  */
-export function bendToLens(point: LensPoint, size: LensSize, strength: number): LensPoint {
+export function bendToLens(
+  point: ScreenPoint,
+  size: ScreenSize,
+  strength: number,
+): ScreenPoint {
   const halfDiagonal = Math.hypot(size.width, size.height) / 2;
   const offsetX = point.x - size.width / 2;
   const offsetY = point.y - size.height / 2;

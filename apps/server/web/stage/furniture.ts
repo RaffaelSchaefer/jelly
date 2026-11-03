@@ -10,7 +10,6 @@ import {
   BoxGeometry,
   Group,
   Mesh,
-  MeshLambertMaterial,
   type BufferGeometry,
   type Material,
 } from "three";
@@ -19,11 +18,10 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import type { StageArea } from "./types.ts";
 import type { FloorRect } from "./world.ts";
 
-import { mergeParts, type PropPart } from "./props.ts";
+import { createMatte, FLAT_ORDER, mergeParts, type PropPart } from "./props.ts";
 import {
   createShadowGeometry,
   createShadowMaterial,
-  disposeShadow,
   SHADOW_HEIGHT,
   SHADOW_ORDER,
   type ShadowShape,
@@ -44,15 +42,12 @@ const LONGEST_LEG_GAP = 6;
 const CABLE_HEIGHT = 0.04;
 const ROUND_SEGMENTS = 2;
 const DESK_SHADOW = { margin: 0.12, radius: 0.15, softness: 0.35, strength: 0.22 };
-const CABLE_ORDER = 1;
 /** Shadow planes lie flat: turned from the xy plane onto the floor. */
 const FLAT_TURN = { x: -Math.PI / 2, y: 0, z: 0 };
 
-const TOP_MATERIAL = new MeshLambertMaterial({ color: "#fbf6ec", toneMapped: false });
-const LEG_MATERIAL = new MeshLambertMaterial({ color: "#b8c3d0", toneMapped: false });
-const CABLE_MATERIAL = new MeshLambertMaterial({ color: "#9aa6b5", toneMapped: false });
-/** Materials are shared by all furniture and stay for the whole page. */
-const SHARED_MATERIALS = new Set<Material>([TOP_MATERIAL, LEG_MATERIAL, CABLE_MATERIAL]);
+const TOP_MATERIAL = createMatte("#fbf6ec");
+const LEG_MATERIAL = createMatte("#b8c3d0");
+const CABLE_MATERIAL = createMatte("#9aa6b5");
 
 /** Creates a box mesh whose bottom sits at `bottom`. */
 function createBlock(
@@ -139,7 +134,7 @@ function createCable(rect: FloorRect): Mesh {
   const geometry = new RoundedBoxGeometry(width, CABLE_HEIGHT, depth, ROUND_SEGMENTS, corner);
   const center = { x: (rect.minX + rect.maxX) / 2, z: (rect.minZ + rect.maxZ) / 2 };
   const cable = createBlock(geometry, CABLE_MATERIAL, center, 0);
-  cable.renderOrder = CABLE_ORDER;
+  cable.renderOrder = FLAT_ORDER;
   return cable;
 }
 
@@ -165,14 +160,3 @@ export function createFurniture(areas: StageArea[]): Group {
   return furniture;
 }
 
-/** Frees the geometries of the furniture. The shared materials stay. */
-export function disposeFurniture(furniture: Group): void {
-  furniture.traverse((object) => {
-    if (!(object instanceof Mesh)) return;
-    if (SHARED_MATERIALS.has(object.material as Material)) {
-      object.geometry.dispose();
-      return;
-    }
-    disposeShadow(object);
-  });
-}

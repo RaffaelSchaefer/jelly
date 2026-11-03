@@ -21,7 +21,7 @@ import {
 import type { FloorPoint, ScenePoint } from "./world.ts";
 
 import { BACKGROUND_COLOR, createFloor } from "./floor.ts";
-import { bendToLens } from "./lens.ts";
+import { bendToLens, type ScreenPoint, type ScreenSize } from "./lens.ts";
 import { calculateCameraDistance, ROOM } from "./world.ts";
 
 const FIELD_OF_VIEW_DEGREES = 30;
@@ -48,18 +48,6 @@ export interface StageScene {
   renderer: WebGLRenderer;
   scene: Scene;
   camera: PerspectiveCamera;
-}
-
-/** A position on the screen in CSS pixels. */
-export interface ScreenPoint {
-  x: number;
-  y: number;
-}
-
-/** Size of the screen in CSS pixels. */
-interface ScreenSize {
-  width: number;
-  height: number;
 }
 
 /** Creates renderer, scene, camera, light and floor. The renderer draws into its own canvas. */
@@ -97,7 +85,7 @@ function listFramePoints(): ScenePoint[] {
  */
 export function resizeStageScene(
   stage: StageScene,
-  size: { width: number; height: number },
+  size: ScreenSize,
   pixelRatio: number,
   lensStrength: number,
 ): void {
@@ -187,7 +175,7 @@ export function findViewer(camera: PerspectiveCamera): FloorPoint {
 export function projectToScreen(
   camera: PerspectiveCamera,
   point: ScenePoint,
-  size: { width: number; height: number },
+  size: ScreenSize,
 ): ScreenPoint {
   const projected = new Vector3(point.x, point.y, point.z).project(camera);
   return {

@@ -1,7 +1,8 @@
 /**
- * How a jelly gets to where it wants to be. The goal comes from `wander.ts` and is the same on every
- * screen. The way there is found on each screen, so jellies walk around desks instead of through
- * them, and screens may differ for a moment while jellies walk.
+ * How a jelly gets to where it wants to be. The goal is its wandering spot from `wander.ts`, kept
+ * inside its area, or its place at the snack bar, and `crowd.ts` then keeps goals apart. The way
+ * there is found on each screen, so jellies walk around obstacles instead of through them, and
+ * screens may differ for a moment while jellies walk.
  *
  * @module
  */
@@ -14,6 +15,7 @@ import type { FloorPoint, FloorRect } from "./world.ts";
 import { findNearestWalkable, findPath, hasLineOfSight } from "./navigation.ts";
 import { calculateStagePoint } from "./wander.ts";
 import {
+  FULL_CIRCLE,
   JELLY_RADIUS,
   measureDistance,
   remapIntoRect,
@@ -45,7 +47,6 @@ const WALK_LEAN = 0.08;
 /** How fast a jelly turns and how fast hopping starts and stops, per second. */
 const TURN_RATE = 8;
 const GAIT_RATE = 10;
-const FULL_CIRCLE = 2 * Math.PI;
 
 /** Where a jelly stands, where it goes and how it moves, kept between frames. */
 export interface Walker {

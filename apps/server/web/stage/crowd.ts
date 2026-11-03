@@ -12,6 +12,7 @@ import type { FloorPoint } from "./world.ts";
 
 import { isWalkable } from "./navigation.ts";
 import { calculateGoal } from "./walking.ts";
+import { GOLDEN_ANGLE } from "./world.ts";
 
 /** Closest distance between two jelly centers, in jelly units. A jelly is about 1.7 wide. */
 const PERSONAL_SPACE = 1.8;
@@ -23,7 +24,6 @@ const SAME_SPOT = 1e-6;
  * for each, turned by the golden angle, lets them fan out instead.
  */
 const NUDGE = 0.001;
-const GOLDEN_ANGLE = 2.399963;
 
 /** Moves a goal if the spot is free. A push into a desk slides along the desk instead. */
 function moveGoal(goals: FloorPoint[], index: number, moved: FloorPoint, grid: NavGrid): void {

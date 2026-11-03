@@ -7,14 +7,20 @@
 
 import type { StageArea, StagePoint } from "./types.ts";
 
-const STAGE_SIZE = 100;
+/** The server gives positions in percent of the stage. */
+export const STAGE_SIZE = 100;
+/** One turn in radians. */
+export const FULL_CIRCLE = 2 * Math.PI;
+/** Turning by this angle again and again spreads things evenly around a circle. */
+export const GOLDEN_ANGLE = 2.399963;
 /**
  * Size of the room in jelly units. The stage percentages stretch over it. The hall is deeper than
  * wide: a place at a desk is a tenth of the width, about 2 units, and a desk row 2 % of the depth.
  */
 export const ROOM_WIDTH = 21;
+/** Depth of the room in jelly units, see {@link ROOM_WIDTH}. */
 export const ROOM_DEPTH = 40;
-/** How far the body of a jelly reaches from its center, seen from above, hands included. */
+/** How far the body of a jelly reaches from its center, seen from above. Raised hands reach further. */
 export const JELLY_RADIUS = 0.8;
 /**
  * The canvas has twice as many pixels per side as the screen, and the browser smooths them down.

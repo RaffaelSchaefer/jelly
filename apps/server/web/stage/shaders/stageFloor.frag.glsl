@@ -1,6 +1,7 @@
-// Floor of the stage, fragment shader: long boards with staggered joints, lit by three colored
+// Boards of the stage platform, fragment shader: long boards with staggered joints, lit by three colored
 // spots that wander slowly over the stage. Like the floor of the room it ignores the lights, so its
-// colors are the colors on screen. uSize is the stage in jelly units, the plane is centered on it.
+// colors are the colors on screen. uSize is the stage in jelly units, the plane lies centered on it
+// and is a little smaller, inside the rounded edge.
 
 uniform float uTime;
 uniform vec2 uSize;

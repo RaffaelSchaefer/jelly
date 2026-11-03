@@ -5,12 +5,12 @@
  * @module
  */
 
-import { Group, InstancedMesh, Mesh, type Material } from "three";
+import { Group } from "three";
 
 import type { StageArea } from "./types.ts";
 
 import { createLounge } from "./lounge.ts";
-import { isKeptMaterial, VENUE_TIME } from "./props.ts";
+import { VENUE_TIME } from "./props.ts";
 import { createSnackBar } from "./snackBar.ts";
 import { createStage } from "./stageSet.ts";
 import { toFloorRect } from "./world.ts";
@@ -32,13 +32,3 @@ export function updateVenue(time: number): void {
   VENUE_TIME.value = time;
 }
 
-/** Frees what the venue holds. Materials shared by all props stay for the whole page. */
-export function disposeVenue(venue: Group): void {
-  venue.traverse((object) => {
-    if (object instanceof InstancedMesh) object.dispose();
-    if (!(object instanceof Mesh)) return;
-    object.geometry.dispose();
-    const material = object.material as Material;
-    if (!isKeptMaterial(material)) material.dispose();
-  });
-}

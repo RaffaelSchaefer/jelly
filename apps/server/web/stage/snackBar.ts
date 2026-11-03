@@ -5,6 +5,7 @@
  * @module
  */
 
+import { JELLY_COLORS } from "@jelly/scene/colors";
 import { BoxGeometry, CylinderGeometry, Group, PlaneGeometry } from "three";
 
 import type { FloorRect } from "./world.ts";
@@ -12,6 +13,7 @@ import type { FloorRect } from "./world.ts";
 import { createBulbs } from "./bulbs.ts";
 import { createCactus } from "./plants.ts";
 import {
+  CHROME_MATERIAL,
   createBox,
   createGlow,
   createMatte,
@@ -19,7 +21,6 @@ import {
   createZoneShadow,
   FACE_LIFT,
   findMiddle,
-  GLOW_COLORS,
   LED_MATERIAL,
   mergeParts,
   placeMesh,
@@ -42,7 +43,11 @@ const HEADER = { height: 0.12, inset: 0.08, depth: 0.03 };
 const HANDLE = { width: 0.04, height: 0.5, bottom: 0.72, inset: 0.06 };
 const SHELVES = 3;
 const BOTTLES_PER_SHELF = 4;
-const BOTTLE = { radius: 0.05, height: 0.17, neck: 0.022, neckHeight: 0.08 };
+/** A shelf sits `lift` of a shelf height above the bottom of its compartment. */
+const SHELF = { lift: 0.12, thickness: 0.015, depth: 0.02 };
+/** A bottle narrows to `shoulder` of its radius where the neck starts. */
+const BOTTLE = { radius: 0.05, height: 0.17, neck: 0.022, neckHeight: 0.08, shoulder: 0.8 };
+const SEGMENTS = { bottle: 12, neck: 10 };
 const SNACK_MARGIN = 0.08;
 
 const CORE_MATERIAL = createMatte("#a7774f");
@@ -52,11 +57,9 @@ const MARQUEE_FRAME_MATERIAL = createMatte("#b9452f");
 const FRIDGE_MATERIAL = createMatte("#eef3f8");
 const GLASS_MATERIAL = createGlow("#d9f4ff");
 const SHELF_MATERIAL = createGlow("#ffffff");
-const HEADER_MATERIAL = createGlow(GLOW_COLORS[0] ?? "#23f5dc");
-const HANDLE_MATERIAL = createShiny("#c8d0de", "#ffffff");
-const BOTTLE_MATERIALS = ["#f0a63a", GLOW_COLORS[0], "#ff7a6b", GLOW_COLORS[1]].map((color) =>
-  createShiny(color ?? "#f0a63a", "#ffffff"),
-);
+const HEADER_MATERIAL = createGlow(JELLY_COLORS.mint.glow);
+const BOTTLE_COLORS = ["#f0a63a", JELLY_COLORS.mint.glow, "#ff7a6b", JELLY_COLORS.lilac.glow];
+const BOTTLE_MATERIALS = BOTTLE_COLORS.map((color) => createShiny(color, "#ffffff"));
 const MARQUEE_MATERIAL = createSignMaterial({
   text: "SNACKS",
   width: MARQUEE.width,
@@ -147,7 +150,7 @@ function createMarquee(rect: FloorRect): Group {
     ...point,
     z: front + MARQUEE_BULBS.lift / 2,
   }));
-  const colors = ["#fff1c9", GLOW_COLORS[2] ?? "#ffdc8a"];
+  const colors = ["#fff1c9", JELLY_COLORS.peach.glow];
   marquee.add(createBulbs(points, { radius: MARQUEE_BULBS.radius, colors, pattern: "chase" }));
   return marquee;
 }
@@ -193,7 +196,7 @@ function createFridge(rect: FloorRect): Group {
     createBox(body, FRIDGE_MATERIAL, middle, 0),
     glass,
     createBox(header, HEADER_MATERIAL, { x: middle.x, z: rect.maxZ }, headerBottom),
-    createBox(handle, HANDLE_MATERIAL, handleSpot, HANDLE.bottom),
+    createBox(handle, CHROME_MATERIAL, handleSpot, HANDLE.bottom),
     ...createBottles(rect, windowWidth, windowHeight),
     createCactus(middle, FRIDGE.height),
   );
@@ -207,21 +210,31 @@ function createBottles(rect: FloorRect, windowWidth: number, windowHeight: numbe
   const shelves: PropPart[] = [];
   const z = rect.maxZ + BOTTLE.radius;
   for (let shelf = 0; shelf < SHELVES; shelf++) {
-    const floor = WINDOW.bottom + ((shelf + 0.12) * windowHeight) / SHELVES;
+    const floor = WINDOW.bottom + ((shelf + SHELF.lift) * windowHeight) / SHELVES;
     shelves.push({
-      geometry: new BoxGeometry(windowWidth, 0.015, 0.02),
-      at: { x: middle.x, y: floor, z: rect.maxZ + 0.01 },
+      geometry: new BoxGeometry(windowWidth, SHELF.thickness, SHELF.depth),
+      at: { x: middle.x, y: floor, z: rect.maxZ + SHELF.depth / 2 },
     });
     for (let index = 0; index < BOTTLES_PER_SHELF; index++) {
       const x = middle.x - windowWidth / 2 + ((index + 0.5) * windowWidth) / BOTTLES_PER_SHELF;
       const parts = bottles[(index + shelf) % bottles.length];
       parts?.push(
         {
-          geometry: new CylinderGeometry(BOTTLE.radius, BOTTLE.radius, BOTTLE.height, 12),
+          geometry: new CylinderGeometry(
+            BOTTLE.radius,
+            BOTTLE.radius,
+            BOTTLE.height,
+            SEGMENTS.bottle,
+          ),
           at: { x, y: floor + BOTTLE.height / 2, z },
         },
         {
-          geometry: new CylinderGeometry(BOTTLE.neck, BOTTLE.radius * 0.8, BOTTLE.neckHeight, 10),
+          geometry: new CylinderGeometry(
+            BOTTLE.neck,
+            BOTTLE.radius * BOTTLE.shoulder,
+            BOTTLE.neckHeight,
+            SEGMENTS.neck,
+          ),
           at: { x, y: floor + BOTTLE.height + BOTTLE.neckHeight / 2, z },
         },
       );

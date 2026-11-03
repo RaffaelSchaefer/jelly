@@ -16,7 +16,7 @@ import {
 
 import type { ScenePoint } from "./world.ts";
 
-import { keepMaterial, VENUE_TIME } from "./props.ts";
+import { keepMaterial, PROP_ORDER, VENUE_TIME } from "./props.ts";
 import fragmentShader from "./shaders/bulb.frag.glsl?raw";
 import vertexShader from "./shaders/bulb.vert.glsl?raw";
 import { calculateRandomValue } from "./wander.ts";
@@ -30,7 +30,6 @@ const BLINK_RATES: Record<BulbPattern, number> = { twinkle: 0.35, chase: 1.2 };
 const CHASE_GROUP = 3;
 const SEED_TWINKLE = 41;
 const BULB_SEGMENTS = { around: 10, up: 8 };
-const PROP_ORDER = 3;
 
 const BULB_MATERIALS: Record<BulbPattern, ShaderMaterial> = {
   twinkle: createBulbMaterial(BLINK_RATES.twinkle),

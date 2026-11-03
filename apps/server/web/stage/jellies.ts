@@ -31,7 +31,7 @@ import { calculateRandomValue } from "./wander.ts";
 import { findFloorHeight } from "./zones.ts";
 
 /** From the feet to the top of the head, in jelly units. */
-export const JELLY_HEIGHT = HEAD.y + HEAD.radius - BODY_BOTTOM;
+const JELLY_HEIGHT = HEAD.y + HEAD.radius - BODY_BOTTOM;
 /** Every jelly has its own clock offset, so they do not bob and blink in step. */
 const SEED_ANIMATION = 98;
 const ANIMATION_OFFSET_SECONDS = 10;
