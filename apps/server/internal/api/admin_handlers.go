@@ -29,6 +29,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/lans/{id}/areas":                server.handleCreateArea,
 		"PUT /admin/api/lans/{id}/areas/{area}":          server.handleUpdateArea,
 		"DELETE /admin/api/lans/{id}/areas/{area}":       server.handleDeleteArea,
+		"POST /admin/api/lans/{id}/areas/{area}/code":    server.handleIssueSeatCode,
+		"GET /admin/api/lans/{id}/seat-codes":            server.handleListSeatCodes,
 		"PUT /admin/api/lans/{id}/players/{player}/area": server.handleAssignArea,
 	}
 	for pattern, handler := range routes {
@@ -95,7 +97,7 @@ func (server *apiServer) handleRotateToken(writer http.ResponseWriter, request *
 		token, err := server.Store.RotatePlayerToken(
 			request.Context(), playerID, server.currentMillis(),
 		)
-		server.writeOutcome(writer, request, map[string]string{fieldToken: token}, err)
+		server.writeOutcome(writer, request, map[string]string{fieldSecret: token}, err)
 	}
 }
 
@@ -156,6 +158,37 @@ func (server *apiServer) handleCreateEventCode(writer http.ResponseWriter, reque
 	}
 	err := server.Store.CreateEventCode(request.Context(), body, server.currentMillis())
 	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
+}
+
+// handleIssueSeatCode gives a seat a new code, optionally for an existing account.
+func (server *apiServer) handleIssueSeatCode(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	areaID, valid := server.readPathValue(writer, request, "area")
+	if !valid {
+		return
+	}
+	var body struct {
+		PlayerID *int64 `json:"player_id"`
+	}
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	code, err := server.Store.IssueSeatCode(
+		request.Context(), lanID, areaID, body.PlayerID, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, code, err)
+}
+
+// handleListSeatCodes returns the codes of a LAN for the admin map.
+func (server *apiServer) handleListSeatCodes(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if valid {
+		codes, err := server.Store.ListSeatCodes(request.Context(), lanID)
+		server.writeOutcome(writer, request, codes, err)
+	}
 }
 
 // handleListAreas returns the room map of a LAN and who belongs where.

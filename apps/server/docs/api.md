@@ -42,7 +42,7 @@ Bisher keine. Jede künftige steht hier mit Begründung.
 - Jeder Spieler hat ein Limit von 300 Anfragen pro Minute. Code-Versuche (Beitritt, Event-Code,
   Partner-Code) sind auf 10 pro Minute begrenzt. Darüber folgt `429 rate_limited`. Wege in den Tabellen stehen ohne das Präfix `/v1`, außer bei `/health`, `/version` und `/admin/api`.
 - Zeiten sind UTC in Unix-Millisekunden. Nur der Server vergibt sie.
-- Spieler senden `Authorization: Bearer <token>`. Die Bühne nutzt den Bühnenschlüssel als `?key=`.
+- Spieler senden `Authorization: Bearer <secret>`. Die Bühne nutzt den Bühnenschlüssel als `?key=`.
 - Admins melden sich an und erhalten ein Cookie, siehe [Admin](#admin).
 - Clients senden nur Absichten. XP, Zeiten und Freischaltungen bestimmt der Server.
 
@@ -77,7 +77,8 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 409    | `name_taken`, `lan_overlap`               | Steht im Konflikt mit Vorhandenem         |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
-| 409    | `already_joined`, `cosmetic_locked`       | Schon dabei oder noch nicht freigeschaltet |
+| 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |
+| 409    | `area_occupied`                           | Bereich hat mehrere Jellies, kein Sitzplatz-Code möglich |
 | 409    | `event_code_redeemed`, `event_code_exists` | Event-Code schon eingelöst oder vorhanden |
 | 409    | `emote_cooldown`, `report_cooldown`       | Zu früh wiederholt                        |
 | 409    | `report_limit`, `partner_codes_busy`      | Limit erreicht, später erneut versuchen   |
@@ -122,6 +123,24 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 - `cosmetics` sind die Schlüssel, die der Spieler tragen darf.
 - Rekord-Achievements wie Marathon tragen zusätzlich `best` und `record_unit`.
 
+## Anmeldung
+
+Ein einziger Weg tauscht einen Code gegen ein Secret. Danach zählt nur noch das Secret, der Code ist wertlos.
+
+| Fall | Admin | `POST /auth/redeem` | Ergebnis |
+| ---- | ----- | ------------------- | -------- |
+| Neuer Sitzplatz | Erzeugt den Code für den Platz | `{"code","name","color"}` | Neues Konto auf dem Platz |
+| Code oder Secret verloren | Erzeugt am Platz einen neuen Code | `{"code"}` | Vorhandenes Konto mit Inventar, altes Secret ungültig |
+| Spätere LAN | Erzeugt einen Code für das Konto | `{"code"}` | Vorhandenes Konto auf dem neuen Platz, altes Secret ungültig |
+| Gemeinsamer Code der LAN | | `{"code","name","color"}` | Neues Konto ohne Platz, für Tests und als Notlösung |
+| Code schon benutzt | | | `409 code_redeemed` |
+
+Ein Sitzplatz ist ein Bereich der Art `seats` mit einem Code. Geht die Antwort verloren, ist der Code
+verbraucht und der Admin vergibt einen neuen.
+
+Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie Name, Farbe und Cosmetics
+ändern. Bühne, Stream und alles mit XP antworten `409 no_active_lan` oder `not_joined`.
+
 ## Spieler
 
 | Weg                       | Körper                                     | Antwort                        |
@@ -130,8 +149,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | `GET /version` (ohne `/v1`) |                                          | `{"api_version","min_client_version"}` |
 | `GET /catalog`            |                                            | Feste Listen, siehe unten      |
 | `GET /lans/current`       |                                            | `{"server_time","current","next","joined"}` |
-| `POST /register`          | `{"code","name","color"}`                  | `201 {"token","me"}`           |
-| `POST /lans/current/join` | `{"code"}`                                 | Stand                          |
+| `POST /auth/redeem`       | `{"code","name","color"}`                  | `{"secret","me"}`              |
 | `GET /players/me`         |                                            | Stand                          |
 | `PATCH /players/me`       | `{"name","color","cosmetic"}`, alle optional | Stand                        |
 | `POST /presence`          |                                            | Stand                          |
@@ -144,7 +162,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | `POST /trips/follow`      | `{"player_id"}`                            | Stand                          |
 | `DELETE /trips/current`   |                                            | Stand                          |
 
-Das Token gibt es nur in der Antwort von `POST /register`. `GET /catalog` liefert `colors`,
+Das Secret gibt es nur in der Antwort von `POST /auth/redeem`. `GET /catalog` liefert `colors`,
 `emotes`, `partner_emotes`, `signs`, `cosmetics` und `achievements`, geheime Achievements fehlen dort.
 
 Namen haben 1 bis 24 Zeichen aus lateinischen Buchstaben, Umlauten, `ß`, Ziffern, Leerzeichen und
@@ -157,8 +175,8 @@ alle paar Minuten `POST /presence`. Das gibt keine XP und hält das Jelly auf de
 `presence_window` nach der letzten Aktion gilt es sonst als abwesend.
 
 **Nach einem Netzfehler** zuerst `GET /players/me` lesen und nicht blind wiederholen. Die Aktion kann schon
-gezählt haben, eine Wiederholung ergibt dann einen Fehler wie `report_cooldown`. `401` heißt, das Token
-gilt nicht mehr. Der Admin kann ein neues erzeugen, die App löscht ihres aber nie wegen eines
+gezählt haben, eine Wiederholung ergibt dann einen Fehler wie `report_cooldown`. `401` heißt, das Secret
+gilt nicht mehr. Die App fragt dann nach einem neuen Code, sie löscht ihr Secret aber nie wegen eines
 Netzfehlers.
 
 Der Server darf ein `POST /trips/follow` später von sich aus beenden, also zählt immer `follow_player_id` im
@@ -261,7 +279,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/players?search=`                 |                                           |
 | `POST /admin/api/players/{id}/hide`, `/show`     |                                           |
 | `POST /admin/api/players/{id}/reset-name`        |                                           |
-| `POST /admin/api/players/{id}/rotate-token`      | Antwort: `{"token"}`, nur dieses eine Mal |
+| `POST /admin/api/players/{id}/rotate-token`      | Antwort: `{"secret"}`, nur dieses eine Mal |
 | `DELETE /admin/api/players/{id}`                 |                                           |
 | `GET`, `POST /admin/api/lans`                    | `{"slug","name","timezone","join_code","starts_at","ends_at"}` |
 | `PUT /admin/api/lans/{id}/rules`                 | Alle Felder aus `rules.json`              |

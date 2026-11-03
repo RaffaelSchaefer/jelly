@@ -192,17 +192,14 @@ func TestNewLANRestartsXPAndKeepsHistory(t *testing.T) {
 	testFixture.createLAN("ucb-2027", nextLANStart)
 	testFixture.clock.Store(nextLANStart.Add(time.Hour).UnixMilli())
 
-	response := testFixture.callAPI("POST", "/v1/lans/current/join", token, `{"code":"falsch"}`)
-	requireProblem(t, response, http.StatusForbidden, "invalid_code")
-	response = testFixture.callAPI("POST", "/v1/lans/current/join", token,
-		`{"code":"`+joinCode+`"}`)
-	state := decodeBody[store.PlayerState](t, response)
+	secret := testFixture.seatPlayerInSecondLAN(testFixture.loadMe(token).ID)
+	state := testFixture.loadMe(secret)
 	if state.XP != 0 || state.Level != 1 || state.TotalXP != 3 || len(state.Badges) != 2 {
-		t.Fatalf("state in the new LAN: %s", response.body)
+		t.Fatalf("state in the new LAN: %+v", state)
 	}
-	response = testFixture.callAPI("POST", "/v1/lans/current/join", token,
-		`{"code":"`+joinCode+`"}`)
-	requireProblem(t, response, http.StatusConflict, "already_joined")
+	if got := testFixture.callAPI("GET", "/v1/players/me", token, "").status; got != 401 {
+		t.Fatalf("the old secret still works: %d", got)
+	}
 }
 
 func TestStageShowsSignsFollowsAndPresence(t *testing.T) {

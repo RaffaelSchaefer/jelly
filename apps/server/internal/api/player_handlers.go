@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	pathMe          = "/players/me"
-	pathSign        = "/signs/current"
-	pathCurrentTrip = "/trips/current"
+	pathMe              = "/players/me"
+	pathSign            = "/signs/current"
+	pathCurrentTrip     = "/trips/current"
+	cacheControlNoStore = "no-store"
 )
 
 // errUnknownAction reports an action that the server does not know.
@@ -30,17 +31,23 @@ type CodeBody struct {
 	Code string `json:"code"`
 }
 
-// RegisterBody creates an account.
-type RegisterBody struct {
+// RedeemBody exchanges a code for a secret. Name and color are needed for a new account only.
+type RedeemBody struct {
 	Code  string `json:"code"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
+	Name  string `json:"name,omitempty"`
+	Color string `json:"color,omitempty"`
 }
 
-// RegisterAnswer holds the token, which is only ever sent here.
-type RegisterAnswer struct {
-	Token string            `json:"token"`
-	Me    store.PlayerState `json:"me"`
+// RedeemAnswer holds the secret, which is only ever sent here.
+type RedeemAnswer struct {
+	Secret string            `json:"secret"`
+	Me     store.PlayerState `json:"me"`
+}
+
+// redeemOutput keeps the secret out of every cache.
+type redeemOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         RedeemAnswer
 }
 
 // ProfileBody changes the profile. Missing fields stay unchanged.
@@ -135,15 +142,13 @@ func (server *apiServer) addPlayerRoutes(contract huma.API) {
 		Summary: "Read the fixed lists",
 	}, handleCatalog)
 	addOperation(server, contract, huma.Operation{
-		OperationID: "registerPlayer", Method: http.MethodPost, Path: "/register",
-		Summary: "Create an account", DefaultStatus: http.StatusCreated,
+		OperationID: "redeemCode", Method: http.MethodPost, Path: "/auth/redeem",
+		Summary: "Exchange a code for a secret",
+		Description: "A seat code creates an account on that seat or brings back the account it " +
+			"belongs to. Name and color are required for a new account. Any older secret of the " +
+			"account stops working. A used code answers `409 code_redeemed`.",
 		Middlewares: huma.Middlewares{server.limitRegistrations},
-	}, server.handleRegister)
-	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "joinCurrentLAN", Method: http.MethodPost, Path: "/lans/current/join",
-		Summary:     "Join the running LAN with an existing account",
-		Middlewares: huma.Middlewares{server.limitCodeAttempts},
-	}, server.handleJoin)
+	}, server.handleRedeemCode)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "getMe", Method: http.MethodGet, Path: pathMe,
 		Summary: "Read the state of the player",
@@ -226,24 +231,20 @@ func handleCatalog(_ context.Context, _ *noInput) (*jsonOutput[Catalog], error) 
 	}, nil)
 }
 
-// handleRegister creates an account and returns its token once.
-func (server *apiServer) handleRegister(
-	ctx context.Context, input *jsonInput[RegisterBody],
-) (*jsonOutput[RegisterAnswer], error) {
-	registration := store.RegisterRequest{
+// handleRedeemCode exchanges a code for a secret, which is only ever sent here.
+func (server *apiServer) handleRedeemCode(
+	ctx context.Context, input *jsonInput[RedeemBody],
+) (*redeemOutput, error) {
+	request := store.RedeemRequest{
 		Code: input.Body.Code, Name: input.Body.Name, Color: input.Body.Color,
 	}
-	token, state, err := server.Store.RegisterPlayer(ctx, registration, server.currentMillis())
-	return answerWith(RegisterAnswer{Token: token, Me: state}, err)
-}
-
-// handleJoin adds an existing account to the running LAN.
-func (server *apiServer) handleJoin(
-	ctx context.Context, playerID int64, input *jsonInput[CodeBody],
-) (*jsonOutput[store.PlayerState], error) {
-	return answerWith(
-		server.Store.JoinCurrentLAN(ctx, playerID, input.Body.Code, server.currentMillis()),
-	)
+	secret, state, err := server.Store.RedeemCode(ctx, request, server.currentMillis())
+	if err != nil {
+		return nil, err
+	}
+	return &redeemOutput{
+		CacheControl: cacheControlNoStore, Body: RedeemAnswer{Secret: secret, Me: state},
+	}, nil
 }
 
 // handleMe returns the state of the calling player.

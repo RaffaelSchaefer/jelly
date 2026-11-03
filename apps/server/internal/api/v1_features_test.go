@@ -112,7 +112,7 @@ func TestNamesOnlyUseTheFixedCharacters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		requireProblem(t, testFixture.callAPI("POST", "/v1/register", "", string(body)),
+		requireProblem(t, testFixture.callAPI("POST", "/v1/auth/redeem", "", string(body)),
 			http.StatusBadRequest, "invalid_name")
 	}
 	testFixture.registerPlayer("Jörg_Müller-2 O'Neil")
@@ -172,7 +172,7 @@ func TestLANFullRejectsMorePlayers(t *testing.T) {
 		string(body)); response.status != http.StatusOK {
 		t.Fatalf("rules: %d %s", response.status, response.body)
 	}
-	requireProblem(t, testFixture.callAPI("POST", "/v1/register", "",
+	requireProblem(t, testFixture.callAPI("POST", "/v1/auth/redeem", "",
 		buildRegisterBody("B", "mint")),
 		http.StatusConflict, "lan_full")
 }
@@ -184,12 +184,12 @@ func TestJoinCodeCanBeReplaced(t *testing.T) {
 	if response.status != http.StatusOK {
 		t.Fatalf("join code: %d %s", response.status, response.body)
 	}
-	requireProblem(t, testFixture.callAPI("POST", "/v1/register", "",
+	requireProblem(t, testFixture.callAPI("POST", "/v1/auth/redeem", "",
 		buildRegisterBody("B", "mint")),
 		http.StatusForbidden, "invalid_code")
 	body := `{"code":"neu-2026","name":"B","color":"mint"}`
-	if got := testFixture.callAPI("POST", "/v1/register", "",
-		body); got.status != http.StatusCreated {
+	if got := testFixture.callAPI("POST", "/v1/auth/redeem", "",
+		body); got.status != http.StatusOK {
 		t.Fatalf("register: %d %s", got.status, got.body)
 	}
 	requireProblem(t, testFixture.callAdmin("PUT", "/admin/api/lans/99/join-code",

@@ -14,13 +14,6 @@ import (
 // nameConflictMessage is the driver message for a duplicate name.
 const nameConflictMessage = "UNIQUE constraint failed: players.name_key"
 
-// RegisterRequest holds the details of a new account.
-type RegisterRequest struct {
-	Code  string
-	Name  string
-	Color string
-}
-
 // ProfileUpdate holds optional profile changes. A nil field stays unchanged, and an empty
 // Cosmetic takes the current one off.
 type ProfileUpdate struct {
@@ -31,79 +24,10 @@ type ProfileUpdate struct {
 
 // newPlayer is a validated account, ready to be stored.
 type newPlayer struct {
-	code  string
 	token string
 	name  string
 	color string
 	now   int64
-}
-
-// RegisterPlayer creates an account with an entry in the current LAN and returns its token.
-func (store *Store) RegisterPlayer(
-	ctx context.Context, request RegisterRequest, now int64,
-) (string, PlayerState, error) {
-	name, err := rules.NormalizeName(request.Name)
-	if err != nil {
-		return "", PlayerState{}, fmt.Errorf("validate name: %w", err)
-	}
-	err = rules.ValidateColor(request.Color)
-	if err != nil {
-		return "", PlayerState{}, fmt.Errorf("validate color: %w", err)
-	}
-	player := newPlayer{
-		code:  request.Code,
-		token: generateToken(),
-		name:  name,
-		color: request.Color,
-		now:   now,
-	}
-	var state PlayerState
-	err = store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		var workErr error
-		state, workErr = registerInTransaction(ctx, transaction, player)
-		return workErr
-	})
-	if err != nil {
-		return "", PlayerState{}, err
-	}
-	return player.token, state, nil
-}
-
-// JoinCurrentLAN adds an existing account to the running LAN.
-func (store *Store) JoinCurrentLAN(
-	ctx context.Context, playerID int64, code string, now int64,
-) (PlayerState, error) {
-	var state PlayerState
-	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		lan, workErr := loadActiveLAN(ctx, transaction, now)
-		if workErr != nil {
-			return workErr
-		}
-		if !matchSecret(lan.joinCodeHash, code) {
-			return ErrInvalidCode
-		}
-		workErr = requireLANEntry(ctx, transaction, lan.id, playerID)
-		if workErr == nil {
-			return ErrAlreadyJoined
-		}
-		if !errors.Is(workErr, ErrNotJoined) {
-			return workErr
-		}
-		workErr = insertLANEntry(ctx, transaction, lan, playerID, now)
-		if workErr != nil {
-			return workErr
-		}
-		workErr = removeLockedCosmetic(ctx, transaction, playerID, now)
-		if workErr != nil {
-			return workErr
-		}
-		state, workErr = loadState(ctx, transaction, playerID, now)
-		return workErr
-	})
-	if err != nil {
-		return PlayerState{}, err
-	}
-	return state, nil
 }
 
 // FindPlayerByToken returns the account ID for a token.
@@ -147,28 +71,6 @@ func (store *Store) UpdateProfile(
 		return PlayerState{}, err
 	}
 	return state, nil
-}
-
-// registerInTransaction checks the join code and writes the account and its entry.
-func registerInTransaction(
-	ctx context.Context, transaction *sql.Tx, player newPlayer,
-) (PlayerState, error) {
-	lan, err := loadActiveLAN(ctx, transaction, player.now)
-	if err != nil {
-		return PlayerState{}, err
-	}
-	if !matchSecret(lan.joinCodeHash, player.code) {
-		return PlayerState{}, ErrInvalidCode
-	}
-	playerID, err := insertPlayer(ctx, transaction, player)
-	if err != nil {
-		return PlayerState{}, err
-	}
-	err = insertLANEntry(ctx, transaction, lan, playerID, player.now)
-	if err != nil {
-		return PlayerState{}, err
-	}
-	return loadState(ctx, transaction, playerID, player.now)
 }
 
 // insertPlayer writes the `players` row and translates a duplicate name.

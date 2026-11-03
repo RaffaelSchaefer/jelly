@@ -109,7 +109,7 @@ func (server *apiServer) handleStream(
 		return
 	}
 	writer.Header().Set("Content-Type", "text/event-stream")
-	writer.Header().Set("Cache-Control", "no-store")
+	writer.Header().Set("Cache-Control", cacheControlNoStore)
 	writer.WriteHeader(http.StatusOK)
 	if controller.Flush() != nil {
 		return
@@ -152,6 +152,15 @@ func (server *apiServer) claimStream(
 	if viewerID != noViewerPlayer && !server.playerRequests.allowAttempt(viewerID) {
 		server.writeProblem(writer, problemRateLimited())
 		return false
+	}
+	if viewerID != noViewerPlayer {
+		err := server.Store.RequireCurrentEntry(
+			request.Context(), viewerID, server.currentMillis(),
+		)
+		if err != nil {
+			server.writeError(writer, request, err)
+			return false
+		}
 	}
 	gameRules, err := server.Store.LoadCurrentRules(request.Context(), server.currentMillis())
 	if err != nil {

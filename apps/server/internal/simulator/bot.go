@@ -44,7 +44,7 @@ const (
 	pathTrip      = apiPrefix + "/trips/current"
 	pathSign      = apiPrefix + "/signs/current"
 	pathState     = apiPrefix + "/stage"
-	pathRegister  = apiPrefix + "/register"
+	pathRegister  = apiPrefix + "/auth/redeem"
 	pathOffer     = apiPrefix + "/partner-emote"
 	pathJoinOffer = apiPrefix + "/partner-emote/join"
 )
@@ -210,8 +210,8 @@ func (player *bot) register(ctx context.Context) error {
 		"color":   colors[player.index%len(colors)],
 	}
 	var answer struct {
-		Token string `json:"token"`
-		Me    struct {
+		Secret string `json:"secret"`
+		Me     struct {
 			ID int64 `json:"id"`
 		} `json:"me"`
 	}
@@ -220,8 +220,8 @@ func (player *bot) register(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if status == http.StatusCreated {
-			player.token = answer.Token
+		if status == http.StatusOK {
+			player.token = answer.Secret
 			player.playerID = answer.Me.ID
 			return nil
 		}

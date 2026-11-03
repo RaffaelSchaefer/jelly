@@ -80,7 +80,7 @@ func TestContractAllowsResponsesToGrowAndNullsWhereTheyHappen(t *testing.T) {
 	if state.Properties["badges"].Value.Nullable {
 		t.Error("lists are empty rather than null")
 	}
-	body := schemas["RegisterBody"].Value
+	body := schemas["RedeemBody"].Value
 	if body.AdditionalProperties.Has == nil || *body.AdditionalProperties.Has {
 		t.Error("requests must reject unknown fields")
 	}
@@ -104,7 +104,7 @@ func TestServerServesItsContract(t *testing.T) {
 	if document.Info.Version != api.APIVersion {
 		t.Errorf("version = %q", document.Info.Version)
 	}
-	for _, path := range []string{"/v1/register", "/v1/stage", "/v1/stage/events"} {
+	for _, path := range []string{"/v1/auth/redeem", "/v1/stage", "/v1/stage/events"} {
 		if _, found := document.Paths[path]; !found {
 			t.Errorf("contract misses %s", path)
 		}
@@ -138,7 +138,7 @@ func TestContractRejectsInvalidRequestsInTheCommonForm(t *testing.T) {
 
 func TestOtherContentTypesAreRejected(t *testing.T) {
 	testFixture := newFixture(t)
-	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/v1/register",
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/v1/auth/redeem",
 		strings.NewReader(buildRegisterBody("A", "mint")))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()

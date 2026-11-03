@@ -12,8 +12,10 @@ var (
 	ErrNoActiveLAN = errors.New("no active LAN")
 	// ErrNotJoined reports an account that has not joined the current LAN.
 	ErrNotJoined = errors.New("player has not joined the current LAN")
-	// ErrAlreadyJoined reports an account that has already joined the current LAN.
-	ErrAlreadyJoined = errors.New("player has already joined the current LAN")
+	// ErrCodeRedeemed reports a seat code that was already used.
+	ErrCodeRedeemed = errors.New("seat code was already redeemed")
+	// ErrAreaOccupied reports a seat code for an area with several jellies.
+	ErrAreaOccupied = errors.New("area has several jellies")
 	// ErrUnauthorized reports an unknown token.
 	ErrUnauthorized = errors.New("unknown token")
 	// ErrLANOverlap reports a LAN whose period overlaps another one.

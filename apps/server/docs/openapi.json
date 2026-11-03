@@ -588,6 +588,40 @@
         },
         "type": "object"
       },
+      "RedeemAnswer": {
+        "additionalProperties": true,
+        "properties": {
+          "me": {
+            "$ref": "#/components/schemas/PlayerState"
+          },
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "me"
+        ],
+        "type": "object"
+      },
+      "RedeemBody": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
       "RedeemedCode": {
         "additionalProperties": true,
         "properties": {
@@ -606,42 +640,6 @@
           "title",
           "xp_gained",
           "me"
-        ],
-        "type": "object"
-      },
-      "RegisterAnswer": {
-        "additionalProperties": true,
-        "properties": {
-          "me": {
-            "$ref": "#/components/schemas/PlayerState"
-          },
-          "token": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "token",
-          "me"
-        ],
-        "type": "object"
-      },
-      "RegisterBody": {
-        "additionalProperties": false,
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "color": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "code",
-          "name",
-          "color"
         ],
         "type": "object"
       },
@@ -847,6 +845,52 @@
   },
   "openapi": "3.0.3",
   "paths": {
+    "/v1/auth/redeem": {
+      "post": {
+        "description": "A seat code creates an account on that seat or brings back the account it belongs to. Name and color are required for a new account. Any older secret of the account stops working. A used code answers `409 code_redeemed`.",
+        "operationId": "redeemCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemAnswer"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "summary": "Exchange a code for a secret"
+      }
+    },
     "/v1/catalog": {
       "get": {
         "operationId": "getCatalog",
@@ -994,49 +1038,6 @@
           }
         ],
         "summary": "Read which LAN runs and which comes next"
-      }
-    },
-    "/v1/lans/current/join": {
-      "post": {
-        "operationId": "joinCurrentLAN",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CodeBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlayerState"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Join the running LAN with an existing account"
       }
     },
     "/v1/partner-emote": {
@@ -1265,44 +1266,6 @@
           }
         ],
         "summary": "Keep the jelly awake while the app runs, without XP"
-      }
-    },
-    "/v1/register": {
-      "post": {
-        "operationId": "registerPlayer",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterAnswer"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error with a stable code"
-          }
-        },
-        "summary": "Create an account"
       }
     },
     "/v1/reports": {

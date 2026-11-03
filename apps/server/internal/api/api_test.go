@@ -34,9 +34,9 @@ type apiResponse struct {
 	body   []byte
 }
 
-// registerResponse is the response of `POST /register`.
+// registerResponse is the response of `POST /auth/redeem`.
 type registerResponse struct {
-	Token string `json:"token"`
+	Token string `json:"secret"`
 }
 
 // pokeResponse is the response of `POST /pokes`.
@@ -131,8 +131,8 @@ func buildRegisterBody(name, color string) string {
 
 func (testFixture *fixture) registerPlayer(name string) string {
 	testFixture.t.Helper()
-	response := testFixture.callAPI("POST", "/v1/register", "", buildRegisterBody(name, "mint"))
-	if response.status != http.StatusCreated {
+	response := testFixture.callAPI("POST", "/v1/auth/redeem", "", buildRegisterBody(name, "mint"))
+	if response.status != http.StatusOK {
 		testFixture.t.Fatalf("register: %d %s", response.status, response.body)
 	}
 	return decodeBody[registerResponse](testFixture.t, response).Token
@@ -231,7 +231,7 @@ func TestRegisterRejections(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			response := testFixture.callAPI("POST", "/v1/register", "", testCase.body)
+			response := testFixture.callAPI("POST", "/v1/auth/redeem", "", testCase.body)
 			requireProblem(t, response, testCase.status, testCase.code)
 		})
 	}
@@ -260,7 +260,7 @@ func TestNoActiveLAN(t *testing.T) {
 
 	response := testFixture.callAPI("POST", "/v1/pokes", token, "")
 	requireProblem(t, response, http.StatusConflict, "no_active_lan")
-	response = testFixture.callAPI("POST", "/v1/register", "", buildRegisterBody("B", "mint"))
+	response = testFixture.callAPI("POST", "/v1/auth/redeem", "", buildRegisterBody("B", "mint"))
 	requireProblem(t, response, http.StatusConflict, "no_active_lan")
 
 	// The last state stays readable while no LAN is running.

@@ -177,7 +177,18 @@ func (server *apiServer) authenticateViewer(ctx huma.Context, next func(huma.Con
 		next(ctx)
 		return
 	}
-	server.authenticatePlayer(ctx, next)
+	server.authenticatePlayer(ctx, func(authenticated huma.Context) {
+		operationCtx := authenticated.Context()
+		err := server.Store.RequireCurrentEntry(
+			operationCtx, readPlayerID(operationCtx), server.currentMillis(),
+		)
+		if err != nil {
+			answer := server.translateError(operationCtx, ctx.Operation().OperationID, err)
+			server.writeContractProblem(authenticated, answer)
+			return
+		}
+		next(authenticated)
+	})
 }
 
 // limitRegistrations protects registration, where no player is known yet.

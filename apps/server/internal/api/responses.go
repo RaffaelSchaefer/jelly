@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
@@ -18,7 +19,7 @@ const (
 	fieldCreated = "created"
 	fieldDeleted = "deleted"
 	fieldHidden  = "hidden"
-	fieldToken   = "token"
+	fieldSecret  = "secret"
 	fieldUpdated = "updated"
 )
 
@@ -75,7 +76,7 @@ type knownError struct {
 
 // listKnownErrors returns all errors the client may learn about.
 func listKnownErrors() []knownError {
-	return append(listPlayerErrors(), listGameErrors()...)
+	return slices.Concat(listPlayerErrors(), listSeatErrors(), listGameErrors())
 }
 
 // listPlayerErrors covers accounts, access and admin input.
@@ -129,6 +130,19 @@ func listPlayerErrors() []knownError {
 	}
 }
 
+// listSeatErrors returns the errors of seat codes.
+func listSeatErrors() []knownError {
+	return []knownError{
+		{store.ErrCodeRedeemed, problem{
+			http.StatusConflict, "code_redeemed",
+			"Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben.",
+		}},
+		{store.ErrAreaOccupied, problem{
+			http.StatusConflict, "area_occupied", "In diesem Bereich stehen mehrere Jellies.",
+		}},
+	}
+}
+
 // listGameErrors covers LAN participation and player actions.
 func listGameErrors() []knownError {
 	return []knownError{
@@ -137,9 +151,6 @@ func listGameErrors() []knownError {
 		}},
 		{store.ErrNotJoined, problem{
 			http.StatusConflict, "not_joined", "Du nimmst an dieser LAN noch nicht teil.",
-		}},
-		{store.ErrAlreadyJoined, problem{
-			http.StatusConflict, "already_joined", "Du nimmst an dieser LAN schon teil.",
 		}},
 		{store.ErrCosmeticLocked, problem{
 			http.StatusConflict, "cosmetic_locked",
