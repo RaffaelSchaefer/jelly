@@ -7,9 +7,9 @@
  * @module
  */
 
-import { useState, type ComponentProps, type ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
-import { PET_COLORS, speechSyllables, type PetColor } from "../pet";
+import { PET_COLORS, type PetColor } from "../pet";
 import { cx } from "./cx";
 import Icon, { type IconName } from "./Icon";
 
@@ -55,74 +55,30 @@ export function DockButton({ icon, label, expanded, ...rest }: DockButtonProps) 
   );
 }
 
-/**
- * Die sichtbare Blase. Das Glas zeichnet `scene/LiquidGlass.tsx` aus ihrer Lage und der ihres
- * Schwanzes, ohne WebGL bleibt ein fester Hintergrund.
- */
-function SpeechDrop({ text, saidAt }: { text: string; saidAt?: number }) {
-  // Einmal je Text: Spätere Renderdurchläufe dürfen das laufende Aufdecken nicht verschieben. Wer erst
-  // nach dem Sprechen auftaucht, etwa hinter einem Panel hervor, zeigt den Text gleich ganz.
-  const [parts] = useState(() => {
-    const elapsed = saidAt === undefined ? Infinity : (performance.now() - saidAt) / 1000;
-    return speechSyllables(text).map(({ text: part, at }) => ({
-      part,
-      delay: Math.max(0, at - elapsed),
-    }));
-  });
+/** Sprechblase über dem Pet. Screenreader lesen Änderungen vor (`role="status"`). */
+export function SpeechBubble({ children }: { children: ReactNode }) {
   return (
-    <p className="speech" aria-hidden="true" data-liquid="calm">
-      {parts.map(({ part, delay }, index) => (
-        <span key={index} className="speech-part" style={{ animationDelay: `${delay}s` }}>
-          {part}
-        </span>
-      ))}
-      <span className="speech-tail" data-liquid />
+    <p className="speech" role="status">
+      {children}
     </p>
   );
 }
 
-/**
- * Sprechblase über dem Pet. Screenreader lesen Änderungen vor (`role="status"`), auch wenn die
- * Blase gerade nicht zu sehen ist.
- *
- * @param saidAt - Seit wann das Pet den Text spricht, auf der Uhr von `performance.now()`. Solange
- *   erscheint er Silbe für Silbe. Ohne Wert steht er gleich da.
- * @param hidden - Nur die Meldung für Screenreader, keine Blase.
- */
-export function SpeechBubble({
-  text,
-  saidAt,
-  hidden = false,
-}: {
-  text: string;
-  saidAt?: number;
-  hidden?: boolean;
-}) {
-  return (
-    <>
-      <p className="sr-only" role="status">
-        {text}
-      </p>
-      {hidden ? null : <SpeechDrop key={text} text={text} saidAt={saidAt} />}
-    </>
-  );
-}
-
-/** Glas-Panel über dem Dock, mit Überschrift und, wenn `onClose` da ist, Schließen-Knopf. */
+/** Glas-Panel über dem Dock, mit Überschrift und Schließen-Knopf. */
 export function Panel({
   title,
   onClose,
   children,
 }: {
   title: string;
-  onClose?: () => void;
+  onClose: () => void;
   children: ReactNode;
 }) {
   return (
     <section className="panel" aria-labelledby="panel-title">
       <div className="panel-heading">
         <h2 id="panel-title">{title}</h2>
-        {onClose ? <IconButton icon="close" label="Panel schließen" onClick={onClose} /> : null}
+        <IconButton icon="close" label="Panel schließen" onClick={onClose} />
       </div>
       {children}
     </section>
@@ -228,25 +184,23 @@ export function ColorChoice({
   );
 }
 
-/** Eigenschaften von {@link PercentSlider}. */
-export interface PercentSliderProps {
+/** Eigenschaften von {@link SizeSlider}. */
+export interface SizeSliderProps {
   id: string;
   label: string;
   /** Erklärung unter der Beschriftung. */
-  hint?: string;
+  hint: string;
   /** Aktueller Wert in Prozent. */
   value: number;
   min: number;
   max: number;
   step: number;
-  /** Beschriftung der beiden Enden, etwa „Klein“ und „Groß“. */
-  ends?: readonly [string, string];
   disabled?: boolean;
   onChange: (value: number) => void;
 }
 
-/** Schieberegler mit Prozentanzeige, etwa für Pet-Größe und Lautstärke. */
-export function PercentSlider({
+/** Schieberegler für die Pet-Größe mit Prozentanzeige. */
+export function SizeSlider({
   id,
   label,
   hint,
@@ -254,16 +208,15 @@ export function PercentSlider({
   min,
   max,
   step,
-  ends,
   disabled,
   onChange,
-}: PercentSliderProps) {
+}: SizeSliderProps) {
   return (
     <div className="size-row">
       <div className="size-heading">
         <label htmlFor={id}>
           <strong>{label}</strong>
-          {hint ? <small>{hint}</small> : null}
+          <small>{hint}</small>
         </label>
         <output htmlFor={id}>{value} %</output>
       </div>
@@ -277,12 +230,10 @@ export function PercentSlider({
         disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
       />
-      {ends ? (
-        <div className="size-scale" aria-hidden="true">
-          <span>{ends[0]}</span>
-          <span>{ends[1]}</span>
-        </div>
-      ) : null}
+      <div className="size-scale" aria-hidden="true">
+        <span>Klein</span>
+        <span>Groß</span>
+      </div>
     </div>
   );
 }

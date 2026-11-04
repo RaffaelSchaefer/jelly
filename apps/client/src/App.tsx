@@ -7,33 +7,40 @@
  * @module
  */
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState, type CSSProperties } from "react";
 
-import { desktop, resizeWindow } from "./backend";
-import JoinPanel from "./panels/JoinPanel";
+import { desktop, type WindowAction } from "./backend";
+import AppearancePanel from "./panels/AppearancePanel";
 import LevelUpPanel from "./panels/LevelUpPanel";
-import PeoplePanel, { PEOPLE_TABS, type PeopleTab } from "./panels/PeoplePanel";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
-import { PREVIEW_ME, stageLayout, type Me, type Report } from "./pet";
-import PetStage, { type PanelId } from "./PetStage";
-import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
-import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
-import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
+import {
+  appearanceOf,
+  levelProgress,
+  stageLayout,
+  type Appearance,
+  type Pet,
+  type Report,
+} from "./pet";
+import { Dock, DockButton, ErrorAlert, IconButton, Panel, SpeechBubble } from "./ui";
+import { usePet, usePokeKeys, useSizeDraft, type PetGame } from "./usePet";
+
+/** Three.js erst laden, wenn die Bühne gebraucht wird. Das hält den Start schnell. */
+const PetScene = lazy(() => import("./scene/PetScene"));
 
 /** Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt zusätzlich zur Einstellung im Pet. */
 const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Panels im Glas-Stil. „Aussehen“, Emotes und Schilder sind keine, sie liegen direkt auf der Bühne. */
-type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs">;
+/** Welches Panel über dem Dock offen ist. */
+type PanelId = "lan" | "levelup" | "look" | "settings";
 
-/** Überschrift des offenen Panels. Bei XP und „Dabei“ setzt sie der gewählte Reiter. */
-function panelTitle(panel: GlassPanelId, xpTab: XpTab, peopleTab: PeopleTab, me: Me) {
-  const titles: Record<GlassPanelId, string> = {
+/** Überschrift des offenen Panels. Beim XP-Panel setzt sie der gewählte Reiter. */
+function panelTitle(panel: PanelId, xpTab: XpTab, pet: Pet) {
+  const titles: Record<PanelId, string> = {
     lan: XP_TABS.find((tab) => tab.id === xpTab)!.title,
-    levelup: `${me.name} ist eine Stufe weiter.`,
+    levelup: `${pet.name} ist eine Stufe weiter.`,
+    look: "Ganz dein Begleiter.",
     settings: "Ein bisschen Feintuning.",
-    follow: PEOPLE_TABS.find((tab) => tab.id === peopleTab)!.title,
   };
   return titles[panel];
 }
@@ -43,8 +50,6 @@ function stageStyle(size: number) {
   const layout = stageLayout(size);
   return {
     "--pet-scale": layout.scale,
-    "--window-width": `${layout.window.width}px`,
-    "--window-height": `${layout.window.height}px`,
     "--stage-height": `${layout.stage}px`,
     "--canvas-top": `${layout.canvas.top}px`,
     "--canvas-width": `${layout.canvas.width}px`,
@@ -55,96 +60,153 @@ function stageStyle(size: number) {
   } as CSSProperties;
 }
 
-/** Hält das Desktop-Fenster so groß wie seinen Inhalt. Es wächst nach unten, der Kopf bleibt stehen. */
-function useWindowFit(size: number) {
-  const { width, height } = stageLayout(size).window;
-  useEffect(() => {
-    if (desktop) void resizeWindow(width, height);
-  }, [width, height]);
-}
-
-/** Ob erst ein Konto oder ein Beitritt nötig ist, bevor das Pet mitspielt. */
-function needsJoin({ game, ready }: PetGame) {
-  if (!desktop || !ready) return false;
-  return game.me === null || (game.lan.current !== null && game.lan.joined === false);
-}
-
-/**
- * Die Regler der Einstellungen: Sie zeigen sofort den neuen Wert und speichern, sobald sie ruhen.
- * Gespeichert wird immer auf den neuesten Stand, sonst überschriebe ein Regler den anderen.
- */
-function useSettingSliders(game: PetGame) {
-  const { settings } = game.game;
-  const latest = useRef(settings);
-  latest.current = settings;
-  const [size, onSize] = useSettingDraft(settings.size, (next) =>
-    game.saveSettings({ ...latest.current, size: next }),
+/** Kopfzeile, die nur in der Browser-Vorschau erscheint. */
+function PreviewHeader() {
+  return (
+    <header className="preview-header">
+      <img src="/pet.svg" width="32" height="32" alt="" />
+      <div>
+        <strong>Jelly</strong>
+        <span>Umwelt-Campus Birkenfeld · November 2026</span>
+      </div>
+      <span className="preview-label">Browser-Vorschau</span>
+    </header>
   );
-  const [volume, onVolume] = useSettingDraft(settings.volume, (next) =>
-    game.saveSettings({ ...latest.current, volume: next }),
-  );
-  return { size, volume, onSize, onVolume };
 }
 
-/** Eigenschaften von {@link PanelContent}. */
-interface PanelContentProps {
-  panel: GlassPanelId;
-  game: PetGame;
-  me: Me;
-  xpTab: XpTab;
-  peopleTab: PeopleTab;
-  sliders: ReturnType<typeof useSettingSliders>;
-  onXpTab: (tab: XpTab) => void;
-  onPeopleTab: (tab: PeopleTab) => void;
-  onClose: () => void;
+/** Fußzeile, die nur in der Browser-Vorschau erscheint. */
+function PreviewFooter() {
+  return (
+    <footer className="preview-footer">
+      <span className="status-dot" />
+      Oberflächen-Vorschau · Starte <code>pnpm run tauri dev</code> für das Desktop-Pet.
+    </footer>
+  );
+}
+
+/** Verschiebe-Griff links, Minimieren und Schließen rechts. In der Vorschau gesperrt. */
+function WindowTools({ onAction }: { onAction: (action: WindowAction) => void }) {
+  return (
+    <div className="window-tools">
+      <IconButton
+        icon="drag"
+        label="Pet-Fenster verschieben"
+        className="drag-handle"
+        title={desktop ? "Fenster verschieben" : "Im Desktop-Modus verschiebbar"}
+        disabled={!desktop}
+        onPointerDown={(event) => {
+          if (event.button === 0) onAction("drag");
+        }}
+      />
+      <div className="window-tools-right">
+        <IconButton
+          icon="minus"
+          label="Minimieren"
+          disabled={!desktop}
+          onClick={() => onAction("minimize")}
+        />
+        <IconButton
+          icon="close"
+          label="Schließen"
+          disabled={!desktop}
+          onClick={() => onAction("close")}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Sprechblase, das anklickbare Pet und sein Bodenschatten. */
+function PetStage({ game }: { game: PetGame }) {
+  const { pet } = game;
+  return (
+    <div className="pet-stage">
+      <SpeechBubble>{game.message}</SpeechBubble>
+      <button
+        className="pet-touch"
+        aria-label={`${pet.name} anstupsen`}
+        disabled={!desktop || !game.ready || game.busy}
+        onClick={() => void game.interact("activity")}
+      >
+        <Suspense fallback={<span className="render-fallback">Dein Begleiter wacht auf …</span>}>
+          <PetScene
+            color={pet.color}
+            cosmetic={pet.cosmetic}
+            pulse={game.pulse}
+            reducedMotion={pet.reducedMotion || OS_REDUCED_MOTION}
+          />
+        </Suspense>
+      </button>
+      <div className="ground-shadow" />
+      <h1 className="sr-only">
+        {pet.name}, Level {levelProgress(pet.xp).level}
+      </h1>
+    </div>
+  );
 }
 
 /** Inhalt des offenen Panels. */
-function PanelContent(props: PanelContentProps) {
-  const { panel, game, me, xpTab, peopleTab, sliders, onXpTab, onPeopleTab, onClose } = props;
-  const { catalog, ready, busy } = game;
-  const disabled = busy || !ready;
+function PanelContent({
+  panel,
+  game,
+  xpTab,
+  size,
+  onXpTab,
+  onSize,
+  onClose,
+}: {
+  panel: PanelId;
+  game: PetGame;
+  xpTab: XpTab;
+  size: number;
+  onXpTab: (tab: XpTab) => void;
+  onSize: (size: number) => void;
+  onClose: () => void;
+}) {
+  const { pet, ready, busy } = game;
+  const equip = (id: string | null) => void game.equip(id);
+  const customize = (appearance: Appearance) => void game.customize(appearance);
   if (panel === "lan") {
     const report = (action: Report) => void game.interact(action);
     return (
       <XpPanel
-        {...{ me, catalog, disabled }}
-        offset={game.offset}
+        {...{ pet, ready, busy }}
         tab={xpTab}
         onTab={onXpTab}
         onReport={report}
-        onRedeem={game.redeem}
+        onEquip={equip}
       />
     );
   }
   if (panel === "levelup") {
     const equipAndClose = (id: string) => {
-      void game.equip(id);
+      equip(id);
       onClose();
     };
-    return <LevelUpPanel {...{ me, catalog, disabled, onClose }} onEquip={equipAndClose} />;
+    return (
+      <LevelUpPanel pet={pet} disabled={busy || !ready} onEquip={equipAndClose} onClose={onClose} />
+    );
   }
-  if (panel === "follow") {
-    return <PeoplePanel {...{ game, me }} tab={peopleTab} onTab={onPeopleTab} />;
+  if (panel === "look") {
+    return (
+      <AppearancePanel key={pet.name} pet={pet} disabled={busy || !ready} onSave={customize} />
+    );
   }
-  const { settings } = game.game;
   return (
     <SettingsPanel
-      {...{ settings, ready, busy, ...sliders }}
-      name={me.name}
-      onReducedMotion={(reducedMotion) => void game.saveSettings({ ...settings, reducedMotion })}
-      onSound={(sound) => void game.saveSettings({ ...settings, sound })}
+      {...{ pet, size, ready, busy, onSize }}
+      onReducedMotion={(reducedMotion) => customize({ ...appearanceOf(pet), reducedMotion })}
     />
   );
 }
 
-/** Die Dock-Knöpfe. Der XP-Knopf gilt auch für das Level-Panel als „offen“. */
+/** Die drei Dock-Knöpfe. Der XP-Knopf gilt auch für das Level-Panel als „offen“. */
 function PetDock({
-  me,
+  pet,
   panel,
   onToggle,
 }: {
-  me: Me;
+  pet: Pet;
   panel: PanelId | null;
   onToggle: (panel: PanelId) => void;
 }) {
@@ -154,16 +216,9 @@ function PetDock({
       <DockButton
         icon="spark"
         label="XP und Fortschritt"
-        title={`${me.name} · Level ${me.level} · ${me.xp} XP`}
+        title={`${pet.name} · Level ${levelProgress(pet.xp).level} · ${pet.xp} XP`}
         expanded={xpOpen}
         onClick={() => onToggle("lan")}
-      />
-      <DockButton
-        icon="users"
-        label="Dabei"
-        title="Dabei"
-        expanded={panel === "follow"}
-        onClick={() => onToggle("follow")}
       />
       <DockButton
         icon="palette"
@@ -192,65 +247,29 @@ function Status({ game }: { game: PetGame }) {
   if (game.ready) return null;
   return (
     <p className="loading" role="status">
-      Verbinde mit dem Server …
+      Spielstand wird geladen …
     </p>
   );
-}
-
-/** Konto anlegen oder beitreten, statt Panels und Dock. */
-function JoinControls({ game }: { game: PetGame }) {
-  return (
-    <Panel title="Willkommen auf der LAN.">
-      <JoinPanel
-        game={game.game}
-        disabled={game.busy}
-        onRegister={(code, name, color) => void game.register(code, name, color)}
-        onJoin={(code) => void game.joinLan(code)}
-      />
-    </Panel>
-  );
-}
-
-/** Legt Pet-Farbe und reduzierte Bewegung als Attribute auf `<html>`, `styles.css` liest sie. */
-function useDocumentTheme(color: Me["color"], reducedMotion: boolean) {
-  // Das UI-Theme (Akzent, Panels, Sprechblase) folgt der Farbe des Pets.
-  useEffect(() => {
-    document.documentElement.dataset.petColor = color;
-  }, [color]);
-
-  // CSS-Animationen sehen die Einstellung und das Betriebssystem an einem Attribut.
-  useEffect(() => {
-    document.documentElement.toggleAttribute("data-reduced-motion", reducedMotion);
-  }, [reducedMotion]);
-}
-
-/** Ob das Panel seinen Inhalt über dem Dock zeigt. */
-function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
-  return panel !== null && panel !== "look" && panel !== "emotes" && panel !== "signs";
 }
 
 /** Die ganze App. */
 export default function App() {
   const [panel, setPanel] = useState<PanelId | null>(null);
   const [xpTab, setXpTab] = useState<XpTab>("overview");
-  const [peopleTab, setPeopleTab] = useState<PeopleTab>("follow");
   const openLevelUp = useCallback(() => setPanel("levelup"), []);
   const game = usePet(openLevelUp);
-  const { settings } = game.game;
-  const me = game.game.me ?? PREVIEW_ME;
-  const sliders = useSettingSliders(game);
-  useWindowFit(sliders.size);
-  const joining = needsJoin(game);
-  usePokeKeys(game.interact, panel === null && !joining);
+  const { pet } = game;
+  const [size, changeSize] = useSizeDraft(pet.size, (next) =>
+    game.customize({ ...appearanceOf(pet), size: next }),
+  );
+  usePokeKeys(game.interact, panel === null);
 
-  useDocumentTheme(me.color, settings.reducedMotion || OS_REDUCED_MOTION);
-
-  const close = useCallback(() => setPanel(null), []);
-  // Das Panel verdeckt Jelly und Sprechblase: Sonst sähe man vom Partner-Emote nichts.
-  const partnerOpen = panel === "follow" && peopleTab === "partner";
+  // Das UI-Theme (Akzent, Panels, Sprechblase) folgt der Farbe des Pets.
   useEffect(() => {
-    if (partnerOpen && game.activeEmote) close();
-  }, [partnerOpen, game.activeEmote, close]);
+    document.documentElement.dataset.petColor = pet.color;
+  }, [pet.color]);
+
+  const close = () => setPanel(null);
   // Das Level-Panel gehört zum XP-Knopf: Der schließt es auch.
   const toggle = (next: PanelId) =>
     setPanel((current) =>
@@ -263,30 +282,28 @@ export default function App() {
       <main
         className="pet-window"
         aria-label="Dein LAN-Begleiter"
-        style={stageStyle(sliders.size)}
+        style={stageStyle(size)}
         onKeyDown={(event) => {
           if (event.key === "Escape") close();
         }}
       >
         <WindowTools onAction={(action) => void game.windowAction(action)} />
-        <PetStage
-          {...{ game, me, panel, joining }}
-          reducedMotion={settings.reducedMotion || OS_REDUCED_MOTION}
-          onToggle={toggle}
-          onClose={close}
-        />
+        <PetStage game={game} />
         <section className="pet-controls" aria-label="Pet-Steuerung">
-          {joining ? <JoinControls game={game} /> : null}
-          {!joining && isGlassPanel(panel) ? (
-            <Panel title={panelTitle(panel, xpTab, peopleTab, me)} onClose={close}>
+          {panel ? (
+            <Panel title={panelTitle(panel, xpTab, pet)} onClose={close}>
               <PanelContent
-                {...{ panel, game, me, xpTab, peopleTab, sliders, onClose: close }}
+                panel={panel}
+                game={game}
+                xpTab={xpTab}
+                size={size}
                 onXpTab={setXpTab}
-                onPeopleTab={setPeopleTab}
+                onSize={changeSize}
+                onClose={close}
               />
             </Panel>
           ) : null}
-          {joining ? null : <PetDock me={me} panel={panel} onToggle={toggle} />}
+          <PetDock pet={pet} panel={panel} onToggle={toggle} />
         </section>
         <Status game={game} />
       </main>
