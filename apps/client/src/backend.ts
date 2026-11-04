@@ -32,6 +32,21 @@ export interface RedeemResult extends ActResult {
   title: string;
 }
 
+/** Ergebnis eines gestarteten Partner-Emotes: der Code für den Partner. */
+export interface PartnerOffer {
+  code: string;
+  key: string;
+  /** Ablauf des Codes als Server-Zeit. */
+  expiresAt: number;
+  game: Game;
+}
+
+/** Ergebnis eines Beitritts zu einem Partner-Emote. */
+export interface PartnerJoin extends ActResult {
+  key: string;
+  partnerId: number;
+}
+
 /** Lädt Stand und LAN neu (`get_game`). Prüft beim ersten Mal die App-Version. */
 export const getGame = () => invoke<Game>("get_game");
 
@@ -62,6 +77,14 @@ export const getStage = () => invoke<Stage>("get_stage");
 
 /** Löst einen Event-Code ein (`redeem_code`). */
 export const redeemCode = (code: string) => invoke<RedeemResult>("redeem_code", { code });
+
+/** Startet ein Partner-Emote aus dem Server-Katalog (`start_partner_emote`). */
+export const startPartnerEmote = (key: string) =>
+  invoke<PartnerOffer>("start_partner_emote", { key });
+
+/** Tritt mit dem Code eines anderen Jellys dessen Partner-Emote bei (`join_partner_emote`). */
+export const joinPartnerEmote = (code: string) =>
+  invoke<PartnerJoin>("join_partner_emote", { code });
 
 /** Was sich am Profil ändert. Fehlende Felder bleiben, wie sie sind. */
 export interface ProfilePatch {

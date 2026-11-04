@@ -202,6 +202,32 @@ pub struct Redeemed {
     pub me: Me,
 }
 
+/// Antwort von `POST /v1/partner-emote`: der Code, den man dem Partner nennt.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PartnerOffer {
+    /// Vier Ziffern, gilt bis `expires_at`.
+    pub code: String,
+    /// Gewähltes Partner-Emote.
+    pub key: String,
+    /// Ablauf des Codes als Server-Zeit.
+    pub expires_at: i64,
+    /// Neuer Stand.
+    pub me: Me,
+}
+
+/// Antwort von `POST /v1/partner-emote/join`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PartnerResult {
+    /// Partner-Emote, das der Partner gewählt hat.
+    pub key: String,
+    /// Wer den Code erzeugt hat.
+    pub partner_id: i64,
+    /// Gewonnene XP, 0 ab dem zweiten Mal mit demselben Partner.
+    pub xp_gained: i64,
+    /// Neuer Stand.
+    pub me: Me,
+}
+
 /// Ein Ereignis aus `GET /v1/events/stream`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerEvent {
@@ -500,6 +526,27 @@ impl Api {
     /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
     pub async fn redeem(&self, code: &str) -> Result<Redeemed> {
         self.post("/v1/event-codes/redeem", &json!({ "code": code }))
+            .await
+    }
+
+    /// `POST /v1/partner-emote`: startet ein Partner-Emote und liefert den Code für den Partner.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa
+    /// `unknown_partner_emote` oder `partner_codes_busy`.
+    pub async fn start_partner_emote(&self, key: &str) -> Result<PartnerOffer> {
+        self.post("/v1/partner-emote", &json!({ "key": key })).await
+    }
+
+    /// `POST /v1/partner-emote/join`: tritt mit dem Code eines anderen Jellys bei.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa
+    /// `invalid_partner_code` oder `partner_self`.
+    pub async fn join_partner_emote(&self, code: &str) -> Result<PartnerResult> {
+        self.post("/v1/partner-emote/join", &json!({ "code": code }))
             .await
     }
 

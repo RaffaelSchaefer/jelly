@@ -20,7 +20,8 @@ pub const EVENT_NAME: &str = "server-event";
 /// Emotes starten lokal aus der Befehlsantwort, damit der Stream sie nicht doppelt abspielt.
 /// `sign.changed` bleibt draußen: Nur die eigene App ändert das Schild, ihre Antwort trägt den Stand.
 /// `follow.changed` kommt durch: Der Server darf das Dazustellen von sich aus beenden.
-/// ponytail: partner.emote und stage.changed kommen mit ihrer UI.
+/// `partner.emote` trägt den Beitretenden als `player_id`, der Startende steht in `payload.partner_id`.
+/// Nur er braucht es: Der Beitretende hat die Geste schon aus seiner Antwort.
 const OWN_EVENTS: [&str; 7] = [
     "xp.gained",
     "level.up",
@@ -34,10 +35,16 @@ const OWN_EVENTS: [&str; 7] = [
 /// Ereignis, wenn ein Konto gelöscht wurde. Es trägt den Spieler in `payload`, nicht in `player_id`.
 const PLAYER_REMOVED: &str = "player.removed";
 
+/// Ereignis, wenn jemand dem eigenen Partner-Emote beitritt.
+const PARTNER_EMOTE: &str = "partner.emote";
+
 /// Ob `event` das Jelly von `player_id` betrifft und an die Oberfläche soll.
 fn is_own_event(event: &ServerEvent, player_id: i64) -> bool {
     if event.kind == PLAYER_REMOVED {
         return event.payload.get("player_id").and_then(Value::as_i64) == Some(player_id);
+    }
+    if event.kind == PARTNER_EMOTE {
+        return event.payload.get("partner_id").and_then(Value::as_i64) == Some(player_id);
     }
     event.player_id == Some(player_id) && OWN_EVENTS.contains(&event.kind.as_str())
 }

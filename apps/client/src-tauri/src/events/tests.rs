@@ -38,3 +38,17 @@ fn a_removed_player_is_read_from_the_payload() {
     assert!(is_own_event(&removed(7), 7));
     assert!(!is_own_event(&removed(8), 7));
 }
+
+#[test]
+fn a_partner_emote_reaches_only_who_started_it() {
+    let joined = |partner| {
+        event(
+            PARTNER_EMOTE,
+            Some(8),
+            json!({ "key": "hop", "partner_id": partner }),
+        )
+    };
+    assert!(is_own_event(&joined(7), 7));
+    assert!(!is_own_event(&joined(9), 7));
+    assert!(!is_own_event(&joined(7), 8));
+}

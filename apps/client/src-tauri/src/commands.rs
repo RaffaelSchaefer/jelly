@@ -82,6 +82,34 @@ pub struct RedeemResult {
     game: Game,
 }
 
+/// Ergebnis von [`start_partner_emote`].
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartnerOfferResult {
+    /// Vier Ziffern für den Partner.
+    code: String,
+    /// Gewähltes Partner-Emote.
+    key: String,
+    /// Ablauf des Codes als Server-Zeit.
+    expires_at: i64,
+    /// Neuer Stand.
+    game: Game,
+}
+
+/// Ergebnis von [`join_partner_emote`].
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartnerJoinResult {
+    /// Partner-Emote, das der Partner gewählt hat.
+    key: String,
+    /// Wer den Code erzeugt hat.
+    partner_id: i64,
+    /// Gewonnene XP.
+    xp_gained: i64,
+    /// Neuer Stand.
+    game: Game,
+}
+
 impl Session {
     /// Öffnet `jelly.json`, prüft die App-Version beim Server und lädt den Stand.
     async fn open(app: &AppHandle) -> Result<Self> {
@@ -344,6 +372,54 @@ pub async fn redeem_code(
     Ok(RedeemResult {
         title: answer.title,
         xp_gained: answer.xp_gained,
+        game: session.game(),
+    })
+}
+
+/// Startet ein Partner-Emote und liefert den Code, den man dem Partner nennt.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa wenn gerade zu viele Codes offen sind.
+#[tauri::command]
+pub async fn start_partner_emote(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    key: String,
+) -> Result<PartnerOfferResult> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let offer = session.api.start_partner_emote(&key).await?;
+    session.set_me(offer.me);
+    Ok(PartnerOfferResult {
+        code: offer.code,
+        key: offer.key,
+        expires_at: offer.expires_at,
+        game: session.game(),
+    })
+}
+
+/// Tritt mit dem Code eines anderen Jellys dessen Partner-Emote bei.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa bei einem abgelaufenen Code.
+#[tauri::command]
+pub async fn join_partner_emote(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    code: String,
+) -> Result<PartnerJoinResult> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let result = session.api.join_partner_emote(code.trim()).await?;
+    session.set_me(result.me);
+    Ok(PartnerJoinResult {
+        key: result.key,
+        partner_id: result.partner_id,
+        xp_gained: result.xp_gained,
         game: session.game(),
     })
 }

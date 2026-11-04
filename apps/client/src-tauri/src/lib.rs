@@ -54,6 +54,8 @@ pub fn run() {
             commands::set_follow,
             commands::get_stage,
             commands::redeem_code,
+            commands::start_partner_emote,
+            commands::join_partner_emote,
             commands::update_profile,
             commands::equip_cosmetic,
             commands::update_settings,
