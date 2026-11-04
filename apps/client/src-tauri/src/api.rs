@@ -397,6 +397,34 @@ impl Api {
         Self::send(self.request(reqwest::Method::POST, "/v1/presence")).await
     }
 
+    /// `POST /v1/emote`: spielt eine Geste und liefert den neuen Stand.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa `emote_cooldown`.
+    pub async fn emote(&self, key: &str) -> Result<Me> {
+        self.post("/v1/emote", &json!({ "key": key })).await
+    }
+
+    /// `PUT /v1/sign`: hebt ein Schild aus dem Katalog und liefert den neuen Stand.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa `unknown_sign`.
+    pub async fn show_sign(&self, key: &str) -> Result<Me> {
+        let body = json!({ "key": key });
+        Self::send(self.request(reqwest::Method::PUT, "/v1/sign").json(&body)).await
+    }
+
+    /// `DELETE /v1/sign`: senkt das Schild und liefert den neuen Stand.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
+    pub async fn lower_sign(&self) -> Result<Me> {
+        Self::send(self.request(reqwest::Method::DELETE, "/v1/sign")).await
+    }
+
     /// `POST /v1/actions`: Stupser oder Selbstmeldung.
     ///
     /// # Fehler

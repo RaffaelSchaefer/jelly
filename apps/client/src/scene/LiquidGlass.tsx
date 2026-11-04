@@ -1,10 +1,12 @@
 /**
- * Das flüssige Glas des Studios: zeichnet Blobs und Popovers als Jelly-Tropfen in die Canvas.
+ * Das flüssige Glas von Studio, Emotes und Schildern: zeichnet Blobs und Popovers als Tropfen in
+ * die Canvas.
  *
- * Form und Lage kommen aus dem DOM. `Studio.tsx` legt unsichtbare Elemente mit `data-liquid` an,
- * die per CSS schweben, wachsen und auf den Mauszeiger reagieren. Hier wird nur abgelesen, wo sie
- * gerade sind. So liegen die Knöpfe immer genau auf ihrem Tropfen. Der Shader läuft als letztes
- * über das fertige Bild, damit er es brechen kann. Ohne offenes Studio kostet das nichts.
+ * Form und Lage kommen aus dem DOM. `Studio.tsx`, `EmotePicker.tsx` und `SignPicker.tsx` legen
+ * Elemente mit `data-liquid` an, die per CSS schweben, wachsen und auf den Mauszeiger reagieren.
+ * Hier wird nur abgelesen, wo sie gerade sind. So liegen die Knöpfe immer genau auf ihrem Tropfen.
+ * Der Shader läuft als letztes über das fertige Bild, damit er es brechen kann. Nichts kostet das
+ * nur, solange ein Panel die Tropfen am Jelly ausblendet.
  *
  * @module
  */
@@ -30,8 +32,15 @@ import { cameraAway } from "./CameraRig";
 import vertexShader from "./shaders/fullscreen.vert.glsl?raw";
 import fragmentShader from "./shaders/liquid.frag.glsl?raw";
 
-/** Namensschild, Fertig-Knopf, vier Blobs und ein Popover, in dieser Reihenfolge im DOM. */
-const MAX_SHAPES = 7;
+/**
+ * Plätze in der Reihenfolge des DOM. Im Studio: Namensschild, Fertig-Knopf, vier Blobs und ein
+ * Popover. Am Jelly: Emote-Tropfen, Emote-Auswahl (geschlossen leer), Schild-Tropfen, Füllung der
+ * Säule und ihre Kapseln.
+ *
+ * Ponytail: Platz für zehn Kapseln, darüber fehlt ihnen das Glas. Mehr Plätze kosten jedes Pixel
+ * einen Blick mehr, also erst anheben, wenn der Katalog der Schilder so weit wächst.
+ */
+const MAX_SHAPES = 14;
 
 /** Für den Shader: Die ersten beiden Flächen verschmelzen mit nichts. */
 const DEFINES = { MAX_SHAPES, SOLO_SHAPES: 2 };
@@ -64,6 +73,7 @@ function createUniforms(color: PetColor) {
     uCanvas: { value: new Vector2(1, 1) },
     uTime: { value: 0 },
     uShapes: { value: Array.from({ length: MAX_SHAPES }, () => new Vector4()) },
+    uCalm: { value: Array.from({ length: MAX_SHAPES }, () => 0) },
     uColor: { value: new Color(palette.hex) },
     uGlow: { value: new Color(palette.glow) },
     uInk: { value: new Color(palette.outline) },
@@ -96,12 +106,14 @@ function createGlass(color: PetColor) {
  * Was von Bild zu Bild bleibt. Liegt nicht im React-Zustand, das gäbe 30 Renderdurchläufe je
  * Sekunde.
  */
-function createFrameState() {
+function createFrameState({ uCalm }: GlassUniforms) {
   return {
     /** 0 = verschwunden, 1 = ganz da. */
     presence: 0,
     /** Wo die Flächen zuletzt lagen. Beim Verschwinden gibt es sie im DOM schon nicht mehr. */
     shapes: Array.from({ length: MAX_SHAPES }, () => new Vector4()),
+    /** Dasselbe Feld wie im Shader: Was hier steht, kommt dort an. */
+    calm: uCalm.value,
     color: new Color(),
     glow: new Color(),
     ink: new Color(),
@@ -123,12 +135,21 @@ function copyBackdrop(renderer: WebGLRenderer, uniforms: GlassUniforms) {
   renderer.copyFramebufferToTexture(backdrop);
 }
 
-/** Liest die Lage aller `data-liquid`-Elemente in `stage` in Pixeln auf der Canvas. */
-function readShapes(stage: HTMLElement, canvas: HTMLCanvasElement, width: number, out: Vector4[]) {
+/**
+ * Liest die Lage aller `data-liquid`-Elemente in `stage` in Pixeln auf der Canvas und merkt sich in
+ * `calm`, welche davon `data-liquid="calm"` tragen und sich deshalb kaum verformen.
+ */
+function readShapes(
+  stage: HTMLElement,
+  canvas: HTMLCanvasElement,
+  width: number,
+  { shapes, calm }: { shapes: Vector4[]; calm: number[] },
+) {
   const box = canvas.getBoundingClientRect();
   const found = stage.querySelectorAll("[data-liquid]");
-  out.forEach((shape, index) => {
+  shapes.forEach((shape, index) => {
     const element = found[index];
+    calm[index] = element?.getAttribute("data-liquid") === "calm" ? 1 : 0;
     if (!element) {
       shape.setScalar(0);
       return;
@@ -143,10 +164,10 @@ function readShapes(stage: HTMLElement, canvas: HTMLCanvasElement, width: number
 }
 
 /**
- * Muss in `<Canvas>` stehen. Bleibt auch ohne Studio dort: So kann das Glas noch verschwinden und
+ * Muss in `<Canvas>` stehen. Bleibt auch ohne Flächen dort: So kann das Glas noch verschwinden und
  * das Jelly beim Zurückfahren der Kamera weich auslaufen, wenn das Studio schon zu ist.
  *
- * @param anchors - Das Element mit den Flächen, solange das Studio offen ist.
+ * @param anchors - Das Element mit den Flächen, solange Studio oder Emote-Tropfen sichtbar sind.
  */
 export default function LiquidGlass({
   color,
@@ -160,7 +181,7 @@ export default function LiquidGlass({
   const invalidate = useThree((state) => state.invalidate);
   const mesh = useRef<Mesh>(null);
   const [{ material, uniforms }] = useState(() => createGlass(color));
-  const frame = useMemo(createFrameState, []);
+  const frame = useMemo(() => createFrameState(uniforms), [uniforms]);
 
   useEffect(
     () => () => {
@@ -195,7 +216,7 @@ export default function LiquidGlass({
     copyBackdrop(renderer, uniforms);
     uniforms.uCanvas.value.copy(renderer.getSize(frame.canvas));
     const stage = anchors?.current;
-    if (stage) readShapes(stage, renderer.domElement, frame.canvas.x, frame.shapes);
+    if (stage) readShapes(stage, renderer.domElement, frame.canvas.x, frame);
     frame.shapes.forEach((shape, index) => {
       const growth = shapeGrowth(frame.presence, index);
       uniforms.uShapes.value[index]?.set(shape.x, shape.y, shape.z * growth, shape.w * growth);

@@ -31,7 +31,15 @@ export type IconName =
   | "crown"
   | "aura"
   | "ticket"
-  | "send";
+  | "send"
+  | "sign"
+  | "users"
+  | "target"
+  | "swords"
+  | "rocket"
+  | "flag"
+  | "cube"
+  | "dice";
 
 /** SVG-Pfad (`d`) je Icon, 24 × 24, nur Konturen. */
 const paths: Record<IconName, string> = {
@@ -65,6 +73,16 @@ const paths: Record<IconName, string> = {
   ticket:
     "M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a1.5 1.5 0 0 0 0 3V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.5a1.5 1.5 0 0 0 0-3V8Zm12-2v2m0 3v2m0 3v2",
   send: "M21 3 3 9.5l7.5 4 4 7.5L21 3Zm0 0L10.5 13.5",
+  sign: "M5 3h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 14H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 3Zm7 11v8M8 8.5h8",
+  users:
+    "M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM3 20a6 6 0 0 1 12 0m.5-15.3a3.5 3.5 0 0 1 0 6.6m2 3.1A6 6 0 0 1 21 20",
+  target: "M12 5a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0-3v5.5m0 9V22M2 12h5.5m9 0H22",
+  swords: "M4 4l12 12m-3 3 6-6m-3 3 4.5 4.5M20 4l-6.5 6.5M10.5 13.5 8 16m-3-3 6 6m-3-3-4.5 4.5",
+  rocket:
+    "M12 3c3 2.5 4.5 6 4 11H8c-.5-5 1-8.5 4-11ZM8 11l-3 4v3l3.5-1.5M16 11l3 4v3l-3.5-1.5M10.5 17.5 12 21l1.5-3.5M12 9h.01",
+  flag: "M6 21V3.5m0 1c2.5-1.5 4.5-.8 6.5 0s4 1.2 6 .2v9c-2 1-4 .6-6-.2s-4-1.5-6 0",
+  cube: "M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3ZM4 7.5l8 4.5 8-4.5M12 12v9",
+  dice: "M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2.5 4.5h.01m7 0h.01M12 12h.01m-3.5 3.5h.01m7 0h.01",
 };
 
 /** Ein Icon in Textfarbe (`currentColor`). Rein dekorativ, Beschriftung kommt vom Button. */

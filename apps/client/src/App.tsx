@@ -7,38 +7,24 @@
  * @module
  */
 
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 
 import { desktop } from "./backend";
 import JoinPanel from "./panels/JoinPanel";
 import LevelUpPanel from "./panels/LevelUpPanel";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
-import { PREVIEW_ME, REGIONS, stageLayout, type Me, type Report, type StudioRegionId } from "./pet";
-import Studio from "./Studio";
-import { Dock, DockButton, ErrorAlert, Panel, SpeechBubble } from "./ui";
+import { PREVIEW_ME, stageLayout, type Me, type Report } from "./pet";
+import PetStage, { type PanelId } from "./PetStage";
+import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
 import { usePet, usePokeKeys, useSizeDraft, type PetGame } from "./usePet";
 import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
-
-/** Three.js erst laden, wenn die Bühne gebraucht wird. Das hält den Start schnell. */
-const PetScene = lazy(() => import("./scene/PetScene"));
 
 /** Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt zusätzlich zur Einstellung im Pet. */
 const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Welches Panel über dem Dock offen ist. */
-type PanelId = "lan" | "levelup" | "look" | "settings";
-
-/** Panels im Glas-Stil. „Aussehen“ ist keins, das Studio liegt direkt auf der Bühne. */
-type GlassPanelId = Exclude<PanelId, "look">;
+/** Panels im Glas-Stil. „Aussehen“, Emotes und Schilder sind keine, sie liegen direkt auf der Bühne. */
+type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs">;
 
 /** Überschrift des offenen Panels. Beim XP-Panel setzt sie der gewählte Reiter. */
 function panelTitle(panel: GlassPanelId, xpTab: XpTab, me: Me) {
@@ -69,66 +55,6 @@ function stageStyle(size: number) {
 function needsJoin({ game, ready }: PetGame) {
   if (!desktop || !ready) return false;
   return game.me === null || (game.lan.current !== null && game.lan.joined === false);
-}
-
-/**
- * Sprechblase, das anklickbare Pet und sein Bodenschatten, mit `studio` auch das Studio.
- *
- * @param onCloseStudio - Schließt das Studio.
- */
-function PetStage({
-  game,
-  me,
-  studio,
-  onCloseStudio,
-}: {
-  game: PetGame;
-  me: Me;
-  studio: boolean;
-  onCloseStudio: () => void;
-}) {
-  const stage = useRef<HTMLDivElement>(null);
-  const [region, setRegion] = useState<StudioRegionId | null>(null);
-  // Beim nächsten Öffnen soll keine Region mehr offen sein und die Kamera wieder zurückfahren.
-  if (!studio && region) setRegion(null);
-  return (
-    <div className="pet-stage" ref={stage}>
-      <SpeechBubble>{game.message}</SpeechBubble>
-      <button
-        className="pet-touch"
-        aria-label={`${me.name} anstupsen`}
-        disabled={!desktop || !game.ready || game.busy || !game.game.me}
-        onClick={() => void game.interact("poke")}
-      >
-        <Suspense fallback={<span className="render-fallback">Dein Begleiter wacht auf …</span>}>
-          <PetScene
-            color={me.color}
-            cosmetic={me.cosmetic}
-            pulse={game.pulse}
-            reducedMotion={game.game.settings.reducedMotion || OS_REDUCED_MOTION}
-            focus={REGIONS.find((item) => item.id === region)?.focus}
-            anchors={studio ? stage : undefined}
-          />
-        </Suspense>
-      </button>
-      {studio ? (
-        <Studio
-          {...{ me, region }}
-          catalog={game.catalog}
-          busy={game.busy || !game.ready}
-          onRegion={setRegion}
-          onEquip={(id) => void game.equip(id)}
-          onColor={(color) => void game.customize({ color })}
-          onName={(name) => game.customize({ name })}
-          onClose={onCloseStudio}
-        />
-      ) : null}
-      <div className="ground-shadow" />
-      <h1 className="sr-only">
-        {me.name}, Level {me.level}
-      </h1>
-    </div>
-  );
 }
 
 /** Eigenschaften von {@link PanelContent}. */
@@ -265,6 +191,11 @@ function useDocumentTheme(color: Me["color"], reducedMotion: boolean) {
   }, [reducedMotion]);
 }
 
+/** Ob das Panel seinen Inhalt über dem Dock zeigt. */
+function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
+  return panel !== null && panel !== "look" && panel !== "emotes" && panel !== "signs";
+}
+
 /** Die ganze App. */
 export default function App() {
   const [panel, setPanel] = useState<PanelId | null>(null);
@@ -281,7 +212,7 @@ export default function App() {
 
   useDocumentTheme(me.color, settings.reducedMotion || OS_REDUCED_MOTION);
 
-  const close = () => setPanel(null);
+  const close = useCallback(() => setPanel(null), []);
   // Das Level-Panel gehört zum XP-Knopf: Der schließt es auch.
   const toggle = (next: PanelId) =>
     setPanel((current) =>
@@ -300,10 +231,15 @@ export default function App() {
         }}
       >
         <WindowTools onAction={(action) => void game.windowAction(action)} />
-        <PetStage game={game} me={me} studio={!joining && panel === "look"} onCloseStudio={close} />
+        <PetStage
+          {...{ game, me, panel, joining }}
+          reducedMotion={settings.reducedMotion || OS_REDUCED_MOTION}
+          onToggle={toggle}
+          onClose={close}
+        />
         <section className="pet-controls" aria-label="Pet-Steuerung">
           {joining ? <JoinControls game={game} /> : null}
-          {!joining && panel && panel !== "look" ? (
+          {!joining && isGlassPanel(panel) ? (
             <Panel title={panelTitle(panel, xpTab, me)} onClose={close}>
               <PanelContent
                 {...{ panel, game, me, xpTab, size, onClose: close }}

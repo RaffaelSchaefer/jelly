@@ -148,7 +148,7 @@ function drawEffects(context: CanvasRenderingContext2D, scene: LabelScene): void
   const anchorById = new Map(scene.anchors.map((anchor) => [anchor.player.id, anchor]));
   for (const effect of scene.effects) {
     const anchor = anchorById.get(effect.playerId);
-    if (!anchor || effect.kind === "motion" || effect.kind === "visit") {
+    if (!anchor || (effect.kind !== "bubble" && effect.kind !== "toast")) {
       continue;
     }
     const progress = (scene.now - effect.startedAt) / (effect.endsAt - effect.startedAt);

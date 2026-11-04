@@ -1,7 +1,7 @@
 /**
- * Hält die Blobs des Studios am Jelly: Projiziert Punkte auf dem Jelly je Bild auf die Bühne und
- * schreibt sie als CSS-Variablen dorthin. Die Blobs lesen sie in `studio.css`. Das läuft bewusst an
- * React vorbei, sonst gäbe es 30 Renderdurchläufe pro Sekunde.
+ * Hält die Blobs des Studios und den Emote-Tropfen am Jelly: Projiziert Punkte auf dem Jelly je
+ * Bild auf die Bühne und schreibt sie als CSS-Variablen dorthin. `studio.css` und `emotes.css`
+ * lesen sie. Das läuft bewusst an React vorbei, sonst gäbe es 30 Renderdurchläufe pro Sekunde.
  *
  * @module
  */
@@ -20,7 +20,8 @@ interface Anchor {
 }
 
 /** Wo die Blobs und das Namensschild sitzen, in Einheiten des Jellys. */
-const ANCHORS: Record<StudioRegionId | "name", Anchor> = {
+const ANCHORS: Record<StudioRegionId | "name" | "emote", Anchor> = {
+  emote: { of: "root", at: [1.4, 0.4, 0.3] },
   kopf: { of: "head", at: [0, HEAD.radius + 0.1, 0] },
   gesicht: { of: "head", at: [0.5, -0.22, 0.35] },
   effekte: { of: "root", at: [1.2, -0.25, 0.3] },

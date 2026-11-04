@@ -257,6 +257,43 @@ pub async fn act(app: AppHandle, state: State<'_, GameState>, action: Action) ->
     })
 }
 
+/// Spielt eine Geste aus dem Server-Katalog.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa wenn die Abklingzeit noch läuft.
+#[tauri::command]
+pub async fn emote(app: AppHandle, state: State<'_, GameState>, key: String) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let me = session.api.emote(&key).await?;
+    session.set_me(me);
+    Ok(session.game())
+}
+
+/// Hebt ein Schild aus dem Server-Katalog oder senkt es mit `None`.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa ohne laufende LAN.
+#[tauri::command]
+pub async fn set_sign(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    key: Option<String>,
+) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let me = match key.as_deref() {
+        Some(key) => session.api.show_sign(key).await?,
+        None => session.api.lower_sign().await?,
+    };
+    session.set_me(me);
+    Ok(session.game())
+}
+
 /// Löst einen Event-Code ein.
 #[tauri::command]
 pub async fn redeem_code(

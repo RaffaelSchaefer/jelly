@@ -5,11 +5,19 @@
  * @module
  */
 
+import {
+  EMOTE_GLYPHS,
+  EMOTE_SECONDS,
+  isEmoteKey,
+  type EmoteFrame,
+  type EmoteKey,
+} from "@jelly/scene/emotes";
+
 import type { EventPayload, StageCatalog, StageEvent } from "./types.ts";
 
 import { FULL_CIRCLE } from "./world.ts";
 
-const BUBBLE_MS = 3000;
+const BUBBLE_MS = EMOTE_SECONDS * 1000;
 const TOAST_MS = 5000;
 const XP_TOAST_MS = 1800;
 const MOTION_MS = 2400;
@@ -30,17 +38,6 @@ const SECRET_ACHIEVEMENT_TITLE = "Geheimes Achievement";
 const PULSE_EVENTS = new Set(["xp.gained", "level.up", "achievement.earned", "award.given"]);
 const RESTING_POSE: MotionPose = { lift: 0, turn: 0, tilt: 0 };
 
-const EMOTE_GLYPHS: Record<string, string> = {
-  wave: "👋",
-  dance: "💃",
-  cheer: "🎉",
-  laugh: "😂",
-  sleep: "💤",
-  love: "❤️",
-};
-
-const EMOTE_MOTIONS: Record<string, MotionKey> = { dance: "wiggle", cheer: "hop" };
-
 /** Motions that need no extra art. The keys match the partner emotes of the server. */
 export type MotionKey = "hop" | "spin" | "wiggle";
 
@@ -59,6 +56,7 @@ export type StageEffect = { playerId: number; startedAt: number; endsAt: number 
   | { kind: "bubble"; glyph: string }
   | { kind: "toast"; text: string }
   | { kind: "motion"; motion: MotionKey }
+  | { kind: "emote"; key: EmoteKey }
   | { kind: "visit" }
 );
 
@@ -125,19 +123,28 @@ function findTitle(catalog: StageCatalog, key: string | undefined): string {
   return achievement?.title ?? SECRET_ACHIEVEMENT_TITLE;
 }
 
-/** An emote shows a bubble, and some emotes also move the jelly. */
+/** An emote shows its bubble and plays the shared jelly gesture. */
 function createEmoteEffects(playerId: number, key: string, now: number): StageEffect[] {
-  const glyph = EMOTE_GLYPHS[key];
-  if (!glyph) {
-    return [];
+  if (!isEmoteKey(key)) return [];
+  const timing = { playerId, startedAt: now, endsAt: now + BUBBLE_MS };
+  return [
+    { ...timing, kind: "bubble", glyph: EMOTE_GLYPHS[key] },
+    { ...timing, kind: "emote", key },
+  ];
+}
+
+/** The latest gesture replaces a previous one; elapsed seconds use the effect clock. */
+export function findEmote(
+  effects: StageEffect[],
+  playerId: number,
+  now: number,
+): EmoteFrame | undefined {
+  let effect: StageEffect | undefined;
+  for (const item of effects) {
+    if (item.kind === "emote" && item.playerId === playerId) effect = item;
   }
-  const start = { playerId, startedAt: now };
-  const bubble: StageEffect = { ...start, endsAt: now + BUBBLE_MS, kind: "bubble", glyph };
-  const motion = EMOTE_MOTIONS[key];
-  if (!motion) {
-    return [bubble];
-  }
-  return [bubble, { ...start, endsAt: now + MOTION_MS, kind: "motion", motion }];
+  if (effect?.kind !== "emote" || now < effect.startedAt || now >= effect.endsAt) return;
+  return { key: effect.key, elapsed: (now - effect.startedAt) / 1000 };
 }
 
 /** Both partners do the same motion at the same time. */

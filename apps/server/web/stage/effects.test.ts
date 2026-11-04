@@ -7,6 +7,7 @@ import {
   calculateMotionPose,
   createEffects,
   findMotionPose,
+  findEmote,
   findVisitors,
   isFreshEvent,
   isPulseEvent,
@@ -22,16 +23,16 @@ function makeEvent(type: string, payload: EventPayload, playerId: number | null 
   return { id: 1, type, player_id: playerId, payload, created_at: 1000 };
 }
 
-test("an emote shows its bubble, and a lively emote also moves the jelly", () => {
+test("each emote shows its bubble and plays a shared gesture", () => {
   const wave = createEffects(makeEvent("emote", { key: "wave" }), catalog, 0);
   assert.deepEqual(
     wave.map((effect) => effect.kind),
-    ["bubble"],
+    ["bubble", "emote"],
   );
   const cheer = createEffects(makeEvent("emote", { key: "cheer" }), catalog, 0);
   assert.deepEqual(
     cheer.map((effect) => effect.kind),
-    ["bubble", "motion"],
+    ["bubble", "emote"],
   );
 });
 
@@ -72,7 +73,7 @@ test("old replayed events are not animated", () => {
 
 test("finished effects disappear and the list stays bounded", () => {
   const added = createEffects(makeEvent("emote", { key: "wave" }), catalog, 0);
-  assert.equal(updateEffects([], added, 1000).length, 1);
+  assert.equal(updateEffects([], added, 1000).length, 2);
   assert.equal(updateEffects(added, [], 60_000).length, 0);
   const flood = Array.from({ length: 500 }, () => added[0]!);
   assert.equal(updateEffects([], flood, 1000).length, 200);
@@ -120,4 +121,16 @@ test("food and drink send the jelly on a snack run, a poke does not", () => {
   assert.deepEqual([...findVisitors(food, 5000)], [4]);
   assert.equal(findVisitors(food, 20_000).size, 0, "the run ends");
   assert.equal(findVisitors(poke, 5000).size, 0);
+});
+
+test("the newest emote replaces its predecessor and expires after three seconds", () => {
+  const effects = [
+    ...createEffects(makeEvent("emote", { key: "love" }), catalog, 0),
+    ...createEffects(makeEvent("emote", { key: "wave" }), catalog, 1000),
+  ];
+  assert.deepEqual(findEmote(effects, 1, 1500), { key: "wave", elapsed: 0.5 });
+  assert.equal(findEmote(effects, 2, 1500), undefined);
+  assert.equal(findEmote(effects, 1, 4000), undefined);
+  assert.equal(findEmote(effects, 1, -1), undefined);
+  assert.deepEqual(findMotionPose(effects, 1, 1500), { lift: 0, turn: 0, tilt: 0 });
 });

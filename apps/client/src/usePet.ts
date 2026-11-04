@@ -24,7 +24,9 @@ import {
   type ServerEvent,
   type Settings,
 } from "./pet";
+import { useEmotes } from "./useEmotes";
 import { useBackendCall, useGameState, usePresence, useServerEvents } from "./useGame";
+import { useSigns } from "./useSigns";
 
 /** Mindestabstand zwischen zwei Stupsern in Millisekunden, damit Tastenhämmern nichts verstopft. */
 const POKE_INTERVAL_MS = 1000;
@@ -170,8 +172,30 @@ export function usePet(onLevelUp: () => void) {
     [run, setGame, setMessage],
   );
 
+  /** Ein neues Schild: Das Jelly hüpft mit seiner Tafel und sagt etwas dazu. */
+  const onSignChanged = useCallback(
+    (text: string) => {
+      setMessage(text);
+      setPulse((value) => value + 1);
+    },
+    [setMessage],
+  );
+
   const look = useLook({ patchGame, setGame, run, inFlight, setMessage });
-  return { ...account, game, catalog, offset: state.offset, pulse, interact, redeem, ...look };
+  const emotes = useEmotes(state, account, ready);
+  const signs = useSigns(state, account, ready, onSignChanged);
+  return {
+    ...account,
+    game,
+    catalog,
+    offset: state.offset,
+    pulse,
+    interact,
+    redeem,
+    ...look,
+    ...emotes,
+    ...signs,
+  };
 }
 
 /** Was {@link useLook} braucht. */

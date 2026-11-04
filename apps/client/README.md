@@ -83,6 +83,20 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
 - XP, Level, Cosmetics und Erfolge kommen vom Server. Mit seinen Standardregeln: Stupser +3 XP alle
   15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level.
   Die App fragt nur beim Server, wenn ein Stupser wieder etwas bringt.
+- Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen
+  und Herz auswählen. Nach Bestätigung durch `POST /v1/emote` spielt das Jelly die Geste für drei
+  Sekunden. Die Bühne nutzt dieselben Gesten aus `@jelly/scene`; reduzierte Bewegung zeigt eine
+  ruhige Pose. In der Browser-Vorschau funktionieren die Gesten ohne Server und ohne Fortschritt.
+  Escape und ein Klick außerhalb schließen die Auswahl, ohne das Jelly anzustupsen.
+- Emotes anderer Geräte werden lokal nicht wiedergegeben. Der eigene Aufruf startet die Geste
+  genau einmal, auch wenn das Jelly von der Orga ausgeblendet ist. Bei einem Netzfehler wird nur
+  der Stand neu geladen: Der Server könnte das Emote bereits angenommen haben.
+- Der Schild-Tropfen links unten am Jelly öffnet eine Säule aus flüssigen Glas-Kapseln mit den
+  Schildern des Servers. Beim Überfahren zeigt das Jelly das Schild zur Probe auf seiner Tafel, nur
+  lokal. Die Wahl geht per `PUT /v1/sign` raus: Das Jelly hält die Tafel quer vor dem Bauch, und auf
+  der Bühne erscheint das Schild über seinem Kopf. Ein Klick auf das gewählte Schild senkt es
+  (`DELETE /v1/sign`). Im Studio legt das Jelly die Tafel kurz weg. Schilder gibt es nur während einer
+  LAN, in der Browser-Vorschau auch ohne Server.
 - Ereignisse vom Server (neue XP, Erfolge, Auszeichnungen) kommen per Stream und lösen eine
   Sprechblase aus. Alle 5 Minuten meldet die App, dass sie noch läuft.
 - Lokal in `jelly.json` im App-Datenverzeichnis für `de.ucb.jelly` liegen nur Token, Größe und
@@ -112,18 +126,22 @@ src/
   backend.ts          einziger Ort mit Tauri-Aufrufen, ein Wrapper je Rust-Befehl
   usePet.ts           Hooks: Spielstand, Aktionen, Tastatur-Stupser, Größen-Regler
   useGame.ts          Hooks: Stand halten, Aufrufe, Server-Ereignisse, Lebenszeichen
+  useSigns.ts         Hook: Schild heben und senken
+  useStagePopover.ts  Hook: Auswahlen am Jelly schließen, Fokus halten
   WindowChrome.tsx    Fensterknöpfe, Kopf- und Fußzeile der Vorschau
   Studio.tsx          Anpassen direkt am Jelly: Blobs, Popovers, Namensschild
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
+  SignPicker.tsx      Schild-Tropfen und Kapsel-Säule
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
   panels/             Inhalte der Glas-Panels (Beitritt, XP mit Reitern, Level, Einstellungen)
-  scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet und Cosmetics; Jelly und
-                      Animation aus packages/jelly-scene
+  scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
+                      Jelly und Animation aus packages/jelly-scene
     shaders/          GLSL der Cosmetics (Toon, Outline) und des Studio-Glases, per `?raw` importiert
   ui/                 Design-System-Bausteine (siehe `pnpm ds:bundle`)
   cosmetics/          3D-Modelle (.glb) aus Blender, nach Cosmetic-ID benannt
   styles.css          Transparenz, Leiste, Panels und Browser-Vorschau
   studio.css          Knöpfe und Vorlagen des Studios
+  signs.css           Schild-Tropfen und Kapsel-Säule
 src-tauri/
   src/main.rs         Desktop-Einstieg, ruft nur jelly_lib::run()
   src/lib.rs          App zusammensetzen: Plugins, State, Befehle
@@ -182,6 +200,11 @@ Befehl erstellt einen nativen Debug-Build, unter Windows in `src-tauri/target/de
 Installer, Signierung und Updates sind noch nicht konfiguriert. `pnpm run check` kombiniert die
 Frontend-Tests, den Frontend-Build und die Rust-Tests.
 
+Die Emote- und Schild-Hooks lassen sich ohne zusätzliche Test-Bibliothek im Browser prüfen: Nach
+`pnpm webpreview:dev` die Seiten `http://127.0.0.1:1420/scripts/emotes-check.html` und
+`http://127.0.0.1:1420/scripts/emotes-check.html?preview` öffnen. Sie prüfen die echten React-Hooks
+mit dem Tauri-Mock beziehungsweise ohne Backend und melden nach wenigen Sekunden das Ergebnis.
+
 ## Bewusste Grenzen und nächste Schritte
 
 1. **Aktivität während des Spielens:** Systemweite Eingaben sind noch nicht angebunden. Zunächst eine
@@ -192,14 +215,18 @@ Frontend-Tests, den Frontend-Build und die Rust-Tests.
    durchklickbar. Position und Fenstergröße werden noch nicht gespeichert. Always-on-top garantiert
    keine Sichtbarkeit über exklusivem Vollbild. Linux und macOS brauchen eigene Tests auf echter
    Hardware.
-3. **Rest der Server-API:** Noch nicht angebunden sind Emotes (`POST /v1/emote`), Schilder
-   (`PUT`/`DELETE /v1/sign`), Dazustellen (`PUT`/`DELETE /v1/follow`), Partner-Emotes
-   (`POST /v1/partner-emote`, `/join`), die Bühne (`GET /v1/stage`) und die Stream-Ereignisse
-   `emote`, `partner.emote`, `sign.changed`, `follow.changed` und `stage.changed`. Die Server-Adresse
-   lässt sich noch nicht zur Laufzeit ändern.
+3. **Rest der Server-API:** Noch nicht angebunden sind Dazustellen (`PUT`/`DELETE /v1/follow`),
+   Partner-Emotes (`POST /v1/partner-emote`, `/join`), die Bühne (`GET /v1/stage`) und die
+   Stream-Ereignisse `emote`, `partner.emote`, `follow.changed` und `stage.changed`. `sign.changed`
+   braucht die App nicht, denn nur sie selbst ändert ihr Schild. Die Server-Adresse lässt sich noch
+   nicht zur Laufzeit ändern.
 4. **Charakter und Fortschritt:** Den Platzhalter gemeinsam gestalten, dann Reaktionen und kleine
    Belohnungen passend zur LAN festlegen. Die aktuellen XP-Werte sind Prototypwerte. Noch keine
    Hunger-/Durstsimulation.
+5. **Glüh-Aura im Katalog:** `glow-aura` steht in der App (`src/pet/cosmetics.ts`), aber nicht im
+   Server-Katalog (`ListCosmetics` in `apps/server/internal/rules/cosmetics.go`). Die Orga kann sie
+   vergeben, muss den Schlüssel aber genau kennen, denn `POST /admin/api/awards` prüft ihn nicht. In
+   den Katalog aufnehmen und unbekannte Schlüssel beim Vergeben ablehnen.
 
 WebGL ist vorerst die Rendering-Basis, damit WebGPU keine Startvoraussetzung ist. Ein späterer
 WebGPU-Renderer benötigt auch eine passende Portierung der GLSL-Shader. CSS-Glas ist umgesetzt;

@@ -13,9 +13,11 @@
 import { Mesh, Object3D, type Material } from "three";
 
 import type { JellyPalette } from "./colors.ts";
+import type { EmoteFrame } from "./emotes.ts";
 
 import { animateBody, animateFace, animateHands, startFrame, type Motion } from "./animation.ts";
 import { createJellyBody } from "./body.ts";
+import { animateEmote } from "./emoteAnimation.ts";
 import { createFace, type Face } from "./face.ts";
 import { HAND, HEAD } from "./jellyGeometry.ts";
 
@@ -48,6 +50,8 @@ export interface JellyFrameInput {
   reducedMotion: boolean;
   /** Hält er gerade etwas? Dann bleiben die Hände draußen. */
   holding: boolean;
+  /** Aktuelle Geste, mit Laufzeit in Sekunden. Ohne Wert gilt die normale Pose. */
+  emote?: EmoteFrame;
 }
 
 /** Eine Hand, anfangs eingezogen und unsichtbar. */
@@ -81,6 +85,7 @@ export function animateJelly(jelly: Jelly, motion: Motion, input: JellyFrameInpu
   animateBody(jelly.root, jelly.head, frame);
   animateFace(jelly.face, motion, frame);
   animateHands(jelly.hands, motion, frame, input.holding);
+  if (input.emote) animateEmote(jelly, input.emote, input.reducedMotion);
 }
 
 /** Gibt die Materialien des Jellys frei. Die Geometrien teilen sich alle Jellies und bleiben. */

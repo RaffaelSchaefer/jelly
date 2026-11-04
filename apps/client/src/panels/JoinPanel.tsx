@@ -84,7 +84,6 @@ export default function JoinPanel({
       <PrimaryButton disabled={disabled || !code.trim() || (account && !name.trim())} type="submit">
         {account ? "Los geht’s" : "Beitreten"}
       </PrimaryButton>
-      <p className="panel-note">Server: {game.serverUrl}</p>
     </form>
   );
 }

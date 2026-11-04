@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./colors": "./src/colors.ts",
+    "./emotes": "./src/emotes.ts",
     "./geometry": "./src/jellyGeometry.ts"
   },
   "scripts": {

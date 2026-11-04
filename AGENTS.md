@@ -46,11 +46,15 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/Studio.tsx`, `src/studio/`, `src/studio.css`: Anpassen direkt am Jelly. Die Tropfen zeichnet
   `src/scene/LiquidGlass.tsx` per Shader in die Canvas, das DOM liefert Knöpfe und mit `data-liquid`
   die Vorlagen für ihre Form.
-- `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas des Studios, Cosmetics, ihre Shader),
-  `src/ui/` (Design-System).
+- `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
+  `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
+  `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
+- `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
+  Cosmetics, ihre Shader), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
   `body.ts` (geraymarchter Körper, Shader in `shaders/`), `face.ts`, `animation.ts`,
-  `jellyGeometry.ts` (Maße), `colors.ts` (Farben).
+  `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `jellyGeometry.ts` (Maße),
+  `colors.ts` (Farben).
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `api.rs` (Server-Typen, HTTP),
   `events.rs` (Server-Stream), `error.rs`, `pet.rs` (lokaler Stand, reine Regeln), `store.rs`
   (atomares Speichern von `jelly.json`).

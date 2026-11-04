@@ -5,6 +5,13 @@
  */
 
 export { createMotion, type Motion } from "./animation.ts";
+export {
+  EMOTE_GLYPHS,
+  EMOTE_SECONDS,
+  isEmoteKey,
+  type EmoteKey,
+  type EmoteFrame,
+} from "./emotes.ts";
 export { JELLY_COLORS, type JellyColor, type JellyPalette } from "./colors.ts";
 export { BODY_BOTTOM, HAND, HEAD } from "./jellyGeometry.ts";
 export {

@@ -49,6 +49,8 @@ pub fn run() {
             commands::register,
             commands::join_lan,
             commands::act,
+            commands::emote,
+            commands::set_sign,
             commands::redeem_code,
             commands::update_profile,
             commands::equip_cosmetic,

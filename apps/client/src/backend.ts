@@ -47,6 +47,12 @@ export const joinLan = (code: string) => invoke<Game>("join_lan", { code });
 /** Stupser oder Selbstmeldung (`act`). */
 export const act = (action: Action) => invoke<ActResult>("act", { action });
 
+/** Spielt eine Geste aus dem Server-Katalog (`emote`). */
+export const emote = (key: string) => invoke<Game>("emote", { key });
+
+/** Hebt ein Schild aus dem Server-Katalog oder senkt es mit `null` (`set_sign`). */
+export const setSign = (key: string | null) => invoke<Game>("set_sign", { key });
+
 /** Löst einen Event-Code ein (`redeem_code`). */
 export const redeemCode = (code: string) => invoke<RedeemResult>("redeem_code", { code });
 

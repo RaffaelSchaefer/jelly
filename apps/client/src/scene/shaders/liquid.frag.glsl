@@ -13,6 +13,7 @@ uniform vec2 uBuffer;
 uniform vec2 uCanvas;
 uniform float uTime;
 uniform vec4 uShapes[MAX_SHAPES];
+uniform float uCalm[MAX_SHAPES];
 uniform vec3 uColor;
 uniform vec3 uGlow;
 uniform vec3 uInk;
@@ -21,7 +22,8 @@ uniform vec3 uInk;
 const float KNEE = 22.0;
 // Wie stark sich eine Fläche verformt, im Verhältnis zu ihrem Radius.
 const float WOBBLE = 0.12;
-// Namensschild und Fertig-Knopf tragen Text und bewegen sich deshalb kaum.
+// Namensschild und Fertig-Knopf tragen Text und bewegen sich deshalb kaum. Dasselbe gilt für
+// verschmelzende Flächen, die `data-liquid="calm"` tragen, wie den runden Schild-Tropfen (uCalm).
 const float SOLO_WOBBLE = 0.04;
 // Weiter weg spielt die genaue Form keine Rolle mehr, der Schatten reicht nicht so weit.
 const float FAR = 48.0;
@@ -30,12 +32,20 @@ const float BODY_CENTER = 0.32;
 const float BODY_EDGE = 0.6;
 // Wie stark sich eine lange Fläche auch der Länge nach wölbt. Sonst spiegelt sie das Licht als Strich.
 const float BULGE = 0.55;
+// Größter Radius einer verschmelzenden Fläche: Die Säule der Schilder bleibt so ein abgerundetes
+// Rechteck. Die größte im Studio liegt knapp darunter.
+const float BLOB_RADIUS = 40.0;
+// Ohne Grenze für den Radius, wie bei der runden Emote-Auswahl.
+const float ANY_RADIUS = 1e5;
 
 // Eine Kapsel, die langsam atmet. Liefert den Abstand zum Rand, den Radius und in zw, wie weit die
 // Stelle zum Ende einer langen Fläche liegt.
-vec4 shapeAt(vec2 p, vec4 shape, float seed, float wobble) {
+vec4 shapeAt(vec2 p, vec4 shape, float seed, float wobble, float maxRadius) {
   vec2 q = p - shape.xy;
-  float radius = min(shape.z, shape.w);
+  float full = min(shape.z, shape.w);
+  float radius = min(full, maxRadius);
+  // Was mehr Radius hätte, als es darf, wölbt sich flacher: Auf der Säule liegt Text.
+  float flatter = radius * radius / (full * full);
   float far = max(abs(q.x) - shape.z, abs(q.y) - shape.w);
   if (far > FAR) return vec4(far, radius, 0.0, 0.0);
   // Die Wellen spannen sich über die ganze Fläche: Ein langes Popover wiegt sich, statt zu kräuseln.
@@ -46,7 +56,7 @@ vec4 shapeAt(vec2 p, vec4 shape, float seed, float wobble) {
     sin(unit.x * 1.8 - t * 0.9) + 0.35 * sin(unit.x * 2.9 + t * 1.2)
   );
   vec2 b = abs(q) - shape.zw + radius;
-  return vec4(length(max(b, 0.0)) + min(max(b.x, b.y), 0.0) - radius, radius, unit * (1.0 - radius / shape.zw));
+  return vec4(length(max(b, 0.0)) + min(max(b.x, b.y), 0.0) - radius, radius, unit * (1.0 - radius / shape.zw) * flatter);
 }
 
 // Alle Flächen als eine. Nur die Blobs fließen ineinander. Namensschild und Fertig-Knopf gehören
@@ -56,11 +66,12 @@ vec4 fieldAt(vec2 p) {
   vec4 solo = blobs;
   for (int i = 0; i < MAX_SHAPES; i++) {
     if (uShapes[i].z <= 0.0) continue;
-    vec4 next = shapeAt(p, uShapes[i], float(i), i < SOLO_SHAPES ? SOLO_WOBBLE : WOBBLE);
     if (i < SOLO_SHAPES) {
-      if (next.x < solo.x) solo = next;
+      vec4 alone = shapeAt(p, uShapes[i], float(i), SOLO_WOBBLE, ANY_RADIUS);
+      if (alone.x < solo.x) solo = alone;
       continue;
     }
+    vec4 next = shapeAt(p, uShapes[i], float(i), mix(WOBBLE, SOLO_WOBBLE, uCalm[i]), BLOB_RADIUS);
     float h = clamp(0.5 + 0.5 * (next.x - blobs.x) / KNEE, 0.0, 1.0);
     blobs = mix(next, blobs, h);
     blobs.x -= KNEE * h * (1.0 - h);
@@ -68,11 +79,12 @@ vec4 fieldAt(vec2 p) {
   return solo.x < blobs.x ? solo : blobs;
 }
 
-// Richtung, in der der Abstand wächst, also vom Tropfen weg.
+// Richtung, in der der Abstand wächst, also vom Tropfen weg. Nimmt die Steigung ab, wo zwei Flächen
+// aufeinandertreffen, läuft die Richtung weich aus. Sonst bliebe an jeder Naht ein Grat.
 vec2 outwardAt(vec2 p) {
   const vec2 e = vec2(0.75, 0.0);
   vec2 slope = vec2(fieldAt(p + e.xy).x - fieldAt(p - e.xy).x, fieldAt(p + e.yx).x - fieldAt(p - e.yx).x);
-  return slope / max(length(slope), 1e-5);
+  return slope / max(length(slope), e.x);
 }
 
 // Das Studio aus jelly.frag.glsl: Softbox oben links, Streifenlicht rechts, leuchtender Boden.

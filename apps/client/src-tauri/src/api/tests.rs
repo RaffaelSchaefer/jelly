@@ -63,3 +63,24 @@ fn events_keep_their_type_name() {
     assert_eq!(event.kind, "xp.gained");
     assert_eq!(serde_json::to_value(&event).unwrap()["type"], "xp.gained");
 }
+
+#[test]
+fn emote_errors_keep_the_server_message() {
+    for (status, code, message) in [
+        (
+            StatusCode::CONFLICT,
+            "emote_cooldown",
+            "Warte kurz bis zum nächsten Emote.",
+        ),
+        (
+            StatusCode::BAD_REQUEST,
+            "unknown_emote",
+            "Dieses Emote gibt es nicht.",
+        ),
+    ] {
+        let body = json!({ "error": { "code": code, "message": message } }).to_string();
+        let error = parse_error(status, &body);
+        assert!(matches!(&error, Error::Server { code: actual, .. } if actual == code));
+        assert_eq!(serde_json::to_value(error).unwrap(), message);
+    }
+}

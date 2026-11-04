@@ -24,7 +24,7 @@ import type { NavGrid } from "./navigation.ts";
 import type { StagePlayer } from "./types.ts";
 import type { FloorPoint, FloorRect, ScenePoint } from "./world.ts";
 
-import { findMotionPose } from "./effects.ts";
+import { findEmote, findMotionPose } from "./effects.ts";
 import { createShadowInstances, disposeShadow, SHADOW_HEIGHT } from "./shadow.ts";
 import { calculateWalkPose, createWalker, stepWalker, type Walker } from "./walking.ts";
 import { calculateRandomValue } from "./wander.ts";
@@ -196,6 +196,7 @@ function updateJelly(shown: StageJelly, frame: JellyFrame, budget: { searches: n
     pulse: shown.pulse,
     reducedMotion: false,
     holding: frame.visitors.has(shown.player.id),
+    emote: findEmote(frame.effects, shown.player.id, frame.now),
   });
 }
 

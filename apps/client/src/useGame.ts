@@ -14,6 +14,14 @@ import { PREVIEW_CATALOG, PREVIEW_GAME, type Catalog, type Game, type ServerEven
 /** Abstand der Lebenszeichen. Der Server wartet `presence_window` (90 min), bis er abwesend meldet. */
 const PRESENCE_INTERVAL_MS = 5 * 60_000;
 
+/** Ob das Jelly gerade an einer laufenden LAN teilnimmt. In der Vorschau spielt es immer mit. */
+export function inRunningLan(game: Game, ready: boolean) {
+  if (!desktop) return true;
+  return (
+    ready && !!game.me && !game.tokenRejected && !!game.lan.current && game.lan.joined === true
+  );
+}
+
 /**
  * Hält Stand, Katalog und den Abstand zur Uhr des Servers.
  *
