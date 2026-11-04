@@ -5,8 +5,9 @@
  */
 
 /**
- * Was man selbst melden kann, in Anzeigereihenfolge. `xp` spiegelt `Action::xp` in Rust und dient
- * nur der Anzeige. `message` sagt das Pet nach einer erfolgreichen Meldung.
+ * Was man selbst melden kann, in Anzeigereihenfolge. `xp` entspricht den Standardregeln des Servers
+ * (`food_xp`, `drink_xp`) und dient nur der Anzeige. `message` sagt das Pet nach einer
+ * erfolgreichen Meldung.
  */
 export const REPORTS = [
   {

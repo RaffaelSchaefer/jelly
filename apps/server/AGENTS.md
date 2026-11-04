@@ -19,11 +19,8 @@ pnpm demo      # Wegwerf-Server mit 70 simulierten Jellies, um die Bühne anzuse
 go test -race -count=1 ./...   # vor jedem Abschluss, sobald Nebenläufigkeit beteiligt ist
 ```
 
-Benötigt `golangci-lint` in der festen Version v2.15.0 im `PATH`:
-
-```sh
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
-```
+`pnpm lint` und `pnpm format` starten `golangci-lint` in der festen Version v2.15.0 über `go run`.
+Eine globale Installation ist nicht nötig; beim ersten Aufruf lädt Go das Werkzeug in seinen Cache.
 
 Die Regeln stehen in [.golangci.yml](.golangci.yml). Regeln dort nicht abschwächen, um einen Befund
 loszuwerden. `//nolint` braucht den konkreten Linter und eine Begründung.
@@ -129,21 +126,23 @@ SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort b
 
 ## Seiten in `web/`
 
-- Einfaches TypeScript ohne Framework. three.js ist eine Bibliothek und erlaubt, das Jelly kommt aus
-  `@jelly/scene`. Kommentare, Namen und `@module`-Kopf wie im Go-Code auf Englisch, sichtbare Texte
-  auf Deutsch.
-- Reine Logik (`wander.ts`, `world.ts`, `navigation.ts`, `walking.ts`, `crowd.ts`, `zones.ts`,
-  `lens.ts`, `effects.ts`) kennt weder DOM noch Canvas noch three.js und hat Tests daneben (`*.test.ts`). Alles
-  mit DOM, Canvas oder three.js bleibt so dünn wie möglich.
-- Shader stehen in `web/stage/shaders/*.glsl` und werden per `?raw` importiert (esbuild lädt `.glsl`
-  als Text). Werte kommen über `defines` hinein.
+- Einfaches TypeScript ohne Framework. Die Bühne selbst kommt aus `@jelly/stage`, in `web/stage` stehen
+  nur die Seite und der Weg zum Server (`connection.ts`). Kommentare, Namen und `@module`-Kopf wie im
+  Go-Code auf Englisch, sichtbare Texte auf Deutsch.
+- Für `packages/jelly-stage` gelten dieselben Regeln. Reine Logik (`wander.ts`, `world.ts`,
+  `navigation.ts`, `walking.ts`, `crowd.ts`, `zones.ts`, `lens.ts`, `effects.ts`, `picking.ts`) kennt
+  weder DOM noch Canvas noch three.js und hat Tests daneben (`*.test.ts`). Alles mit DOM, Canvas oder
+  three.js bleibt so dünn wie möglich.
+- Shader stehen in `packages/jelly-stage/src/shaders/*.glsl` und werden per `?raw` importiert (esbuild
+  lädt `.glsl` als Text). Werte kommen über `defines` hinein.
 - Gebündelt wird aus `node_modules`, also vor `go generate` einmal `pnpm install` im Root. `three`
   hat dieselbe Version wie im Client.
 - Die Seiten spiegeln keine Regeln. Was dauerhaft gilt, kommt per `GET /v1/stage`, Ereignisse lösen nur
   ein Neuladen oder eine kurze Animation aus.
 - Neue Einstiegsdateien müssen in die `go:generate`-Zeile von `internal/web/web.go`, neue Seiten
   zusätzlich in `listPagePatterns`.
-- Änderungen im Browser ansehen, mit `pnpm demo`. Tests finden keine Zeichenfehler.
+- Änderungen im Browser ansehen, mit `pnpm demo`. Tests finden keine Zeichenfehler. Änderungen am
+  Paket zusätzlich in der Karte der App ansehen, sie läuft im WebView des Betriebssystems.
 
 ## Messungen und Skripte
 
