@@ -25,6 +25,7 @@ import {
   type Settings,
 } from "./pet";
 import { useEmotes } from "./useEmotes";
+import { useFollow } from "./useFollow";
 import { useBackendCall, useGameState, usePresence, useServerEvents } from "./useGame";
 import { useSigns } from "./useSigns";
 
@@ -186,8 +187,8 @@ export function usePet(onLevelUp: () => void) {
     [run, setGame, setMessage],
   );
 
-  /** Ein neues Schild: Das Jelly hüpft mit seiner Tafel und sagt etwas dazu. */
-  const onSignChanged = useCallback(
+  /** Ein neues Schild oder ein neuer Standort: Das Jelly hüpft und sagt etwas dazu. */
+  const hopAndSay = useCallback(
     (text: string) => {
       setMessage(text);
       setPulse((value) => value + 1);
@@ -197,7 +198,8 @@ export function usePet(onLevelUp: () => void) {
 
   const look = useLook({ patchGame, setGame, run, inFlight, setMessage });
   const emotes = useEmotes(state, account, ready);
-  const signs = useSigns(state, account, ready, onSignChanged);
+  const signs = useSigns(state, account, ready, hopAndSay);
+  const follow = useFollow(state, account, ready, hopAndSay);
   return {
     ...account,
     game,
@@ -209,6 +211,7 @@ export function usePet(onLevelUp: () => void) {
     ...look,
     ...emotes,
     ...signs,
+    ...follow,
   };
 }
 

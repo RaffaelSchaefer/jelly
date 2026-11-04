@@ -97,6 +97,11 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
   der Bühne erscheint das Schild über seinem Kopf. Ein Klick auf das gewählte Schild senkt es
   (`DELETE /v1/sign`). Im Studio legt das Jelly die Tafel kurz weg. Schilder gibt es nur während einer
   LAN, in der Browser-Vorschau auch ohne Server.
+- Der Dock-Knopf „Dabei“ listet beim Öffnen die anderen anwesenden Jellies (`GET /v1/stage`). Ein Klick
+  stellt das eigene Jelly auf der Bühne neben das gewählte (`PUT /v1/follow`), ein zweiter Klick oder
+  „Weggehen“ beendet das (`DELETE /v1/follow`). Die Lupe öffnet ein Suchfeld, das die Liste nach Namen
+  filtert. `follow.changed` lädt den Stand neu, denn der Server darf das Dazustellen von sich aus
+  beenden. Die Browser-Vorschau zeigt zwei Beispiel-Jellies.
 - Die Sprechblase ist flüssiges Glas wie die Tropfen. Neuer Text federt auf und erscheint Silbe für
   Silbe, in Panels und im Studio ist sie weg.
 - Das Jelly hat eine eigene Synth-Stimme aus WebAudio, ohne Samples. Es singt die Vokale seiner Sätze
@@ -134,6 +139,7 @@ src/
   usePet.ts           Hooks: Spielstand, Aktionen, Tastatur-Stupser, Größen-Regler
   useGame.ts          Hooks: Stand halten, Aufrufe, Server-Ereignisse, Lebenszeichen
   useSigns.ts         Hook: Schild heben und senken
+  useFollow.ts        Hook: zu einem anderen Jelly stellen, Liste der Bühne
   useStagePopover.ts  Hook: Auswahlen am Jelly schließen, Fokus halten
   useJellyVoice.ts    Hook: was das Jelly gerade sagt und welcher Laut erklingt
   voice.ts            Synthesizer der Stimme (WebAudio)
@@ -142,7 +148,7 @@ src/
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
   SignPicker.tsx      Schild-Tropfen und Kapsel-Säule
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
-  panels/             Inhalte der Glas-Panels (Beitritt, XP mit Reitern, Level, Einstellungen)
+  panels/             Inhalte der Glas-Panels (Beitritt, XP mit Reitern, Level, Dabei, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
                       Jelly und Animation aus packages/jelly-scene
     shaders/          GLSL der Cosmetics (Toon, Outline) und des Studio-Glases, per `?raw` importiert
@@ -224,11 +230,10 @@ mit dem Tauri-Mock beziehungsweise ohne Backend, rendern die Stimme und melden n
    durchklickbar. Position und Fenstergröße werden noch nicht gespeichert. Always-on-top garantiert
    keine Sichtbarkeit über exklusivem Vollbild. Linux und macOS brauchen eigene Tests auf echter
    Hardware.
-3. **Rest der Server-API:** Noch nicht angebunden sind Dazustellen (`PUT`/`DELETE /v1/follow`),
-   Partner-Emotes (`POST /v1/partner-emote`, `/join`), die Bühne (`GET /v1/stage`) und die
-   Stream-Ereignisse `emote`, `partner.emote`, `follow.changed` und `stage.changed`. `sign.changed`
-   braucht die App nicht, denn nur sie selbst ändert ihr Schild. Die Server-Adresse lässt sich noch
-   nicht zur Laufzeit ändern.
+3. **Rest der Server-API:** Noch nicht angebunden sind Partner-Emotes (`POST /v1/partner-emote`,
+   `/join`) und die Stream-Ereignisse `emote`, `partner.emote` und `stage.changed`. Von
+   `GET /v1/stage` nutzt die App nur die Spielerliste. `sign.changed` braucht die App nicht, denn nur
+   sie selbst ändert ihr Schild. Die Server-Adresse lässt sich noch nicht zur Laufzeit ändern.
 4. **Charakter und Fortschritt:** Den Platzhalter gemeinsam gestalten, dann Reaktionen und kleine
    Belohnungen passend zur LAN festlegen. Die aktuellen XP-Werte sind Prototypwerte. Noch keine
    Hunger-/Durstsimulation.

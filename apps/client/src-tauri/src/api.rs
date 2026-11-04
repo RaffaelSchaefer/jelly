@@ -152,6 +152,36 @@ pub struct Me {
     pub awards: Vec<Award>,
 }
 
+/// Ein Jelly aus `GET /v1/stage`. Bereich und Heimplatz braucht nur die Bühne selbst.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StagePlayer {
+    /// Spieler-ID, auch Ziel von `PUT /v1/follow`.
+    pub id: i64,
+    /// Anzeigename.
+    pub name: String,
+    /// Farbe als Schlüssel aus dem Katalog.
+    pub color: String,
+    /// Angelegtes Cosmetic.
+    pub cosmetic: Option<String>,
+    /// Level in dieser LAN.
+    pub level: i64,
+    /// Hochgehaltenes Schild.
+    pub sign: Option<String>,
+    /// Bei wem das Jelly gerade steht.
+    pub follow_player_id: Option<i64>,
+    /// Letztes Lebenszeichen.
+    pub last_seen_at: i64,
+}
+
+/// Antwort von `GET /v1/stage`, ohne die Raumkarte.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Stage {
+    /// Uhrzeit des Servers.
+    pub server_time: i64,
+    /// Anwesende und nicht ausgeblendete Jellies, das eigene eingeschlossen.
+    pub players: Vec<StagePlayer>,
+}
+
 /// Antwort von `POST /v1/actions`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ActionAnswer {
@@ -423,6 +453,34 @@ impl Api {
     /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
     pub async fn lower_sign(&self) -> Result<Me> {
         Self::send(self.request(reqwest::Method::DELETE, "/v1/sign")).await
+    }
+
+    /// `GET /v1/stage`: wer gerade auf der Bühne steht.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
+    pub async fn stage(&self) -> Result<Stage> {
+        self.get("/v1/stage").await
+    }
+
+    /// `PUT /v1/follow`: stellt das Jelly neben ein anderes und liefert den neuen Stand.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa `invalid_follow`.
+    pub async fn follow(&self, player_id: i64) -> Result<Me> {
+        let body = json!({ "player_id": player_id });
+        Self::send(self.request(reqwest::Method::PUT, "/v1/follow").json(&body)).await
+    }
+
+    /// `DELETE /v1/follow`: das Jelly geht weg und liefert den neuen Stand.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
+    pub async fn unfollow(&self) -> Result<Me> {
+        Self::send(self.request(reqwest::Method::DELETE, "/v1/follow")).await
     }
 
     /// `POST /v1/actions`: Stupser oder Selbstmeldung.

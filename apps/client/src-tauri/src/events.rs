@@ -19,14 +19,16 @@ pub const EVENT_NAME: &str = "server-event";
 /// Ereignisarten zum eigenen Jelly, die die Oberfläche bekommt.
 /// Emotes starten lokal aus der Befehlsantwort, damit der Stream sie nicht doppelt abspielt.
 /// `sign.changed` bleibt draußen: Nur die eigene App ändert das Schild, ihre Antwort trägt den Stand.
-/// ponytail: follow.changed, partner.emote und stage.changed kommen mit ihrer UI.
-const OWN_EVENTS: [&str; 6] = [
+/// `follow.changed` kommt durch: Der Server darf das Dazustellen von sich aus beenden.
+/// ponytail: partner.emote und stage.changed kommen mit ihrer UI.
+const OWN_EVENTS: [&str; 7] = [
     "xp.gained",
     "level.up",
     "achievement.earned",
     "award.given",
     "player.updated",
     "player.hidden",
+    "follow.changed",
 ];
 
 /// Ereignis, wenn ein Konto gelöscht wurde. Es trägt den Spieler in `payload`, nicht in `player_id`.

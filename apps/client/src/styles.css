@@ -91,7 +91,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .dock nav button svg { width: 17px; height: 17px; }
 .dock nav button:hover { background: #ffffff1f; color: #f4f8fa; }
 .dock nav button[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
-.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; max-height: calc(var(--stage-height, 330px) + 28px); overflow-y: auto; scrollbar-gutter: stable both-edges; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
+.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; --panel-max: calc(var(--stage-height, 330px) + 28px); max-height: var(--panel-max); overflow-y: auto; scrollbar-gutter: stable both-edges; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
 /* Panels fill the stage above the dock (tools + stage + gap - panel gap - window padding), never past the window top.
    The bubble is not rendered then, PetStage decides that. */
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: -4px -3px 3px 0; }
@@ -105,6 +105,24 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .action-button small { display: block; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
 .action-xp { margin-left: auto; white-space: nowrap; color: var(--accent); font-size: 10px; }
 .panel-note { color: var(--text-muted); font-size: 11px; line-height: 1.7; margin: 12px 0 0; }
+
+/* Panel "Dabei": rows like the action list, plus colour dot, marked target and walking away. */
+.action-button[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.follow-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); }
+.follow-marks { display: inline-flex; align-items: center; gap: 6px; }
+.follow-marks svg { width: 14px; height: 14px; }
+.follow-leave { margin: 4px 0 10px; }
+/* Only the list scrolls, so heading and search stay in reach with 70 jellies. */
+.panel:has(.follow-list) { display: flex; flex-direction: column; overflow: hidden; }
+.follow-list { position: relative; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
+.follow-list button:focus-visible { outline-offset: -2px; }
+/* The panel hangs from the dock: at a fixed height the field does not move while the results shrink. */
+.panel:has(.follow-search) { height: var(--panel-max); }
+.follow-search { flex: none; margin: 4px 0 10px; }
+/* Sits in the heading row, left of the close button (top: panel padding minus heading margin). */
+.follow-search-toggle { position: absolute; top: 12px; right: 45px; }
+.follow-search-toggle svg { width: 17px; height: 17px; }
+.follow-search-toggle[aria-expanded='true'] { color: var(--accent); }
 
 /* XP panel: tabs, log, self-reports, cosmetics, achievements, level-up. */
 .tabs { display: flex; gap: 3px; padding: 3px; margin: 8px 0 14px; border: 1px solid #ffffff0d; border-radius: 9px; }
@@ -219,7 +237,7 @@ input + .primary-button { margin-top: 16px; }
 .redeem-form input { flex: 1; min-width: 0; width: auto; height: 44px; border-radius: 12px; letter-spacing: 0.06em; transition: border-color 200ms, box-shadow 200ms; }
 .redeem-form input:disabled { opacity: 0.65; }
 .redeem-form input::placeholder { color: var(--text-muted); letter-spacing: 0; }
-.redeem-form input:focus-visible { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
+.redeem-form input:focus-visible, .follow-search:focus-visible { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
 .redeem-form .redeem-send { flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 30%, transparent); transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms, opacity 200ms; }
 .redeem-form .redeem-send:hover:enabled { background: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 26px color-mix(in srgb, var(--accent) 55%, transparent); }
 .redeem-form .redeem-send:active:enabled { transform: scale(0.92); }

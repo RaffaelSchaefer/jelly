@@ -14,7 +14,7 @@ use serde_json::Value;
 use tauri::{async_runtime::Mutex, AppHandle, Manager, State};
 
 use crate::{
-    api::{Api, LanStatus, Me, Profile, SERVER_URL},
+    api::{Api, LanStatus, Me, Profile, Stage, SERVER_URL},
     error::{Error, Result},
     events::EventStream,
     pet::{client_outdated, poke_due, Action, Color, Settings, CLIENT_VERSION},
@@ -292,6 +292,41 @@ pub async fn set_sign(
     };
     session.set_me(me);
     Ok(session.game())
+}
+
+/// Stellt das Jelly neben ein anderes oder lässt es mit `None` weggehen.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa `invalid_follow`.
+#[tauri::command]
+pub async fn set_follow(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    player_id: Option<i64>,
+) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let me = match player_id {
+        Some(player_id) => session.api.follow(player_id).await?,
+        None => session.api.unfollow().await?,
+    };
+    session.set_me(me);
+    Ok(session.game())
+}
+
+/// Liest, wer gerade auf der Bühne steht.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler.
+#[tauri::command]
+pub async fn get_stage(app: AppHandle, state: State<'_, GameState>) -> Result<Stage> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    session.api.stage().await
 }
 
 /// Löst einen Event-Code ein.

@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { desktop, resizeWindow } from "./backend";
+import FollowPanel from "./panels/FollowPanel";
 import JoinPanel from "./panels/JoinPanel";
 import LevelUpPanel from "./panels/LevelUpPanel";
 import SettingsPanel from "./panels/SettingsPanel";
@@ -32,6 +33,7 @@ function panelTitle(panel: GlassPanelId, xpTab: XpTab, me: Me) {
     lan: XP_TABS.find((tab) => tab.id === xpTab)!.title,
     levelup: `${me.name} ist eine Stufe weiter.`,
     settings: "Ein bisschen Feintuning.",
+    follow: "Zu wem stellst du dich?",
   };
   return titles[panel];
 }
@@ -119,6 +121,18 @@ function PanelContent({ panel, game, me, xpTab, sliders, onXpTab, onClose }: Pan
     };
     return <LevelUpPanel {...{ me, catalog, disabled, onClose }} onEquip={equipAndClose} />;
   }
+  if (panel === "follow") {
+    return (
+      <FollowPanel
+        me={me}
+        players={game.players}
+        allowed={game.followAllowed}
+        disabled={game.followDisabled}
+        onLoad={game.loadPlayers}
+        onPick={game.setFollow}
+      />
+    );
+  }
   const { settings } = game.game;
   return (
     <SettingsPanel
@@ -130,7 +144,7 @@ function PanelContent({ panel, game, me, xpTab, sliders, onXpTab, onClose }: Pan
   );
 }
 
-/** Die drei Dock-Knöpfe. Der XP-Knopf gilt auch für das Level-Panel als „offen“. */
+/** Die Dock-Knöpfe. Der XP-Knopf gilt auch für das Level-Panel als „offen“. */
 function PetDock({
   me,
   panel,
@@ -149,6 +163,13 @@ function PetDock({
         title={`${me.name} · Level ${me.level} · ${me.xp} XP`}
         expanded={xpOpen}
         onClick={() => onToggle("lan")}
+      />
+      <DockButton
+        icon="users"
+        label="Dabei"
+        title="Dabei"
+        expanded={panel === "follow"}
+        onClick={() => onToggle("follow")}
       />
       <DockButton
         icon="palette"

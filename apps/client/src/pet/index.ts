@@ -14,6 +14,7 @@ export * from "./preview";
 export * from "./progress";
 export * from "./reports";
 export * from "./signs";
+export * from "./stage";
 export * from "./studio";
 export * from "./types";
 export * from "./voice";

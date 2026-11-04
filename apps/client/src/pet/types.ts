@@ -105,6 +105,25 @@ export interface Me {
   awards: { title: string; cosmetic_key: string | null; given_at: number }[];
 }
 
+/** Ein Jelly aus `GET /v1/stage` (Rust: `StagePlayer`). Raumkarte und Heimplatz liest die App nicht. */
+export interface StagePlayer {
+  id: number;
+  name: string;
+  /** Text statt `PetColor`: Ein neuerer Server kann Farben liefern, die die App nicht kennt. */
+  color: string;
+  cosmetic: string | null;
+  level: number;
+  sign: string | null;
+  follow_player_id: number | null;
+  last_seen_at: number;
+}
+
+/** Wer gerade auf der Bühne steht (Rust: `Stage`). Abwesende filtert schon der Server. */
+export interface Stage {
+  server_time: number;
+  players: StagePlayer[];
+}
+
 /** Ein Eintrag einer festen Liste mit Anzeigetext. */
 export interface CatalogEntry {
   key: string;

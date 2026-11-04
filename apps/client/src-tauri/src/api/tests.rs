@@ -84,3 +84,29 @@ fn emote_errors_keep_the_server_message() {
         assert_eq!(serde_json::to_value(error).unwrap(), message);
     }
 }
+
+#[test]
+fn the_stage_from_the_docs_parses_without_its_room_map() {
+    // Beispiel aus `apps/server/docs/api.md`. Raumkarte und Heimplatz liest die App nicht.
+    let body = r#"{
+      "last_event_id": 42, "server_time": 1795000000000,
+      "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "kind": "seats" }],
+      "players": [{
+        "id": 1, "name": "Glibber", "color": "mint", "cosmetic": null, "level": 1,
+        "sign": null, "follow_player_id": 2, "last_seen_at": 1795000000000,
+        "area_id": 1, "home_x": 24.2, "home_y": 61.8
+      }]
+    }"#;
+    let stage: Stage = serde_json::from_str(body).unwrap();
+    assert_eq!(stage.players[0].name, "Glibber");
+    assert_eq!(stage.players[0].follow_player_id, Some(2));
+}
+
+#[test]
+fn a_refused_follow_keeps_the_server_message() {
+    let message = "Zu diesem Jelly kannst du dich nicht stellen.";
+    let body = json!({ "error": { "code": "invalid_follow", "message": message } }).to_string();
+    let error = parse_error(StatusCode::BAD_REQUEST, &body);
+    assert!(matches!(&error, Error::Server { code, .. } if code == "invalid_follow"));
+    assert_eq!(serde_json::to_value(error).unwrap(), message);
+}

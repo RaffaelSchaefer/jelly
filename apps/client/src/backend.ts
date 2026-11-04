@@ -15,7 +15,7 @@ import { LogicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import type { Action, Catalog, Game, PetColor, ServerEvent, Settings } from "./pet";
+import type { Action, Catalog, Game, PetColor, ServerEvent, Settings, Stage } from "./pet";
 
 /** Läuft die Oberfläche in der Desktop-App (sonst: Browser-Vorschau)? */
 export const desktop = isTauri();
@@ -53,6 +53,12 @@ export const emote = (key: string) => invoke<Game>("emote", { key });
 
 /** Hebt ein Schild aus dem Server-Katalog oder senkt es mit `null` (`set_sign`). */
 export const setSign = (key: string | null) => invoke<Game>("set_sign", { key });
+
+/** Stellt das Jelly neben ein anderes oder lässt es mit `null` weggehen (`set_follow`). */
+export const setFollow = (playerId: number | null) => invoke<Game>("set_follow", { playerId });
+
+/** Liest, wer gerade auf der Bühne steht (`get_stage`). */
+export const getStage = () => invoke<Stage>("get_stage");
 
 /** Löst einen Event-Code ein (`redeem_code`). */
 export const redeemCode = (code: string) => invoke<RedeemResult>("redeem_code", { code });

@@ -21,6 +21,15 @@ fn only_own_progress_passes() {
     assert!(!is_own_event(&event("xp.gained", Some(8), json!({})), 7));
     assert!(!is_own_event(&event("emote", Some(7), json!({})), 7));
     assert!(!is_own_event(&event("sign.changed", Some(7), json!({})), 7));
+    let walked_away = json!({ "target_id": null });
+    assert!(is_own_event(
+        &event("follow.changed", Some(7), walked_away.clone()),
+        7
+    ));
+    assert!(!is_own_event(
+        &event("follow.changed", Some(8), walked_away),
+        7
+    ));
 }
 
 #[test]
