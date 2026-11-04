@@ -4,52 +4,52 @@
  * @module
  */
 
-import type { Catalog, Me, Report } from "../pet";
+import type { Pet, Report } from "../pet";
 
 import { desktop } from "../backend";
 import { Tabs } from "../ui";
 import AchievementsTab from "./AchievementsTab";
+import CosmeticsTab from "./CosmeticsTab";
 import OverviewTab from "./OverviewTab";
-import RedeemTab from "./RedeemTab";
 
 /** ID eines XP-Reiters. */
-export type XpTab = "overview" | "achievements" | "redeem";
+export type XpTab = "overview" | "cosmetics" | "achievements";
 
 /** Die Reiter mit Beschriftung und der Panel-Überschrift, die sie setzen. */
 export const XP_TABS: { id: XpTab; label: string; title: string }[] = [
   { id: "overview", label: "Übersicht", title: "Ein Stück LAN für dein Pet." },
+  { id: "cosmetics", label: "Cosmetics", title: "Schick machen." },
   { id: "achievements", label: "Erfolge", title: "Was ihr schon geschafft habt." },
-  { id: "redeem", label: "Einlösen", title: "Code gefunden? Her damit." },
 ];
 
 /** Reiterleiste und der Inhalt des gewählten Reiters. Den Reiter selbst hält `App.tsx`. */
 export default function XpPanel({
-  me,
-  catalog,
-  offset,
+  pet,
   tab,
-  disabled,
+  ready,
+  busy,
   onTab,
   onReport,
-  onRedeem,
+  onEquip,
 }: {
-  me: Me;
-  catalog: Catalog;
-  offset: number;
+  pet: Pet;
   tab: XpTab;
-  disabled: boolean;
+  ready: boolean;
+  busy: boolean;
   onTab: (tab: XpTab) => void;
   onReport: (action: Report) => void;
-  onRedeem: (code: string) => Promise<boolean>;
+  onEquip: (id: string | null) => void;
 }) {
   return (
     <>
       <Tabs label="Bereiche" tabs={XP_TABS} value={tab} onChange={onTab} />
       {tab === "overview" ? (
-        <OverviewTab {...{ me, catalog, offset, onReport }} disabled={!desktop || disabled} />
+        <OverviewTab pet={pet} disabled={!desktop || !ready || busy} onReport={onReport} />
       ) : null}
-      {tab === "achievements" ? <AchievementsTab me={me} catalog={catalog} /> : null}
-      {tab === "redeem" ? <RedeemTab me={me} disabled={disabled} onRedeem={onRedeem} /> : null}
+      {tab === "cosmetics" ? (
+        <CosmeticsTab pet={pet} disabled={busy || !ready} onEquip={onEquip} />
+      ) : null}
+      {tab === "achievements" ? <AchievementsTab pet={pet} /> : null}
       {!desktop && tab === "overview" ? (
         <p className="panel-note">Melden geht in der Desktop-App.</p>
       ) : null}

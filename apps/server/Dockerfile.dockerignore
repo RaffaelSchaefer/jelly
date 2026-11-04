@@ -6,7 +6,6 @@
 !apps/client/package.json
 !apps/server
 !packages/jelly-scene
-!packages/jelly-stage
 **/node_modules
 **/.turbo
 **/dist

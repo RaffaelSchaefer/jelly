@@ -4,15 +4,7 @@
  * @module
  */
 
-import {
-  ANIMATION_EVENTS,
-  STATE_EVENTS,
-  type StageCatalog,
-  type StageEvent,
-  type StageSource,
-  type StageState,
-  type StreamListener,
-} from "@jelly/stage";
+import type { StageCatalog, StageEvent, StageState } from "./types.ts";
 
 const API_PREFIX = "/v1";
 const PATH_STATE = `${API_PREFIX}/stage`;
@@ -21,8 +13,26 @@ const PATH_CATALOG = `${API_PREFIX}/catalog`;
 const QUERY_KEY = "key";
 const QUERY_SINCE = "since";
 const REOPEN_DELAY_MS = 5000;
-/** The stage reads one state at a time, so a hanging request must not hold up the next ones. */
-const READ_TIMEOUT_MS = 10_000;
+
+/** Events that change what the state holds, so it has to be read again. */
+const STATE_EVENTS = [
+  "player.active",
+  "player.updated",
+  "player.hidden",
+  "player.removed",
+  "level.up",
+  "sign.changed",
+  "follow.changed",
+  "stage.changed",
+];
+/** Events that only trigger animations. */
+const ANIMATION_EVENTS = [
+  "xp.gained",
+  "achievement.earned",
+  "award.given",
+  "emote",
+  "partner.emote",
+];
 
 /** Reports a failed request with its HTTP status. */
 export class RequestError extends Error {
@@ -36,7 +46,7 @@ export class RequestError extends Error {
 
 /** Reads JSON and fails on every status other than OK. */
 async function fetchJson<Result>(url: string): Promise<Result> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(READ_TIMEOUT_MS) });
+  const response = await fetch(url);
   if (!response.ok) {
     throw new RequestError(url.split("?")[0] ?? url, response.status);
   }
@@ -44,26 +54,36 @@ async function fetchJson<Result>(url: string): Promise<Result> {
 }
 
 /** Reads all jellies and areas. */
-function fetchStageState(stageKey: string): Promise<StageState> {
+export function fetchStageState(stageKey: string): Promise<StageState> {
   const query = new URLSearchParams({ [QUERY_KEY]: stageKey });
   return fetchJson<StageState>(`${PATH_STATE}?${query}`);
 }
 
 /** Reads the fixed lists. */
-function fetchCatalog(): Promise<StageCatalog> {
+export function fetchCatalog(): Promise<StageCatalog> {
   return fetchJson<StageCatalog>(PATH_CATALOG);
+}
+
+/** What the stage wants to hear from the stream. */
+export interface StreamListener {
+  onEvent: (event: StageEvent, changesState: boolean) => void;
+  onConnectionChange: (isOpen: boolean) => void;
 }
 
 /**
  * Listens to the stream for the life of the page. The browser reconnects by itself and resumes with
  * `Last-Event-ID`, except after an error status. Only then this code opens a new connection.
  */
-function openEventStream(stageKey: string, firstEventId: number, listener: StreamListener): void {
+export function openEventStream(
+  stageKey: string,
+  firstEventId: number,
+  listener: StreamListener,
+): void {
   let lastEventId = firstEventId;
-  const handleMessage = (message: MessageEvent<string>) => {
+  const handleMessage = (message: MessageEvent<string>, changesState: boolean) => {
     const event = JSON.parse(message.data) as StageEvent;
     lastEventId = event.id;
-    listener.onEvent(event);
+    listener.onEvent(event, changesState);
   };
   const connect = () => {
     const query = new URLSearchParams({
@@ -71,8 +91,11 @@ function openEventStream(stageKey: string, firstEventId: number, listener: Strea
       [QUERY_SINCE]: String(lastEventId),
     });
     const source = new EventSource(`${PATH_STREAM}?${query}`);
-    for (const type of [...STATE_EVENTS, ...ANIMATION_EVENTS]) {
-      source.addEventListener(type, handleMessage);
+    for (const type of STATE_EVENTS) {
+      source.addEventListener(type, (message) => handleMessage(message, true));
+    }
+    for (const type of ANIMATION_EVENTS) {
+      source.addEventListener(type, (message) => handleMessage(message, false));
     }
     source.onopen = () => listener.onConnectionChange(true);
     source.onerror = () => {
@@ -83,13 +106,4 @@ function openEventStream(stageKey: string, firstEventId: number, listener: Strea
     };
   };
   connect();
-}
-
-/** Returns the stage data of this server, read with the key of the stage. */
-export function createServerSource(stageKey: string): StageSource {
-  return {
-    readState: () => fetchStageState(stageKey),
-    readCatalog: fetchCatalog,
-    subscribe: (firstEventId, listener) => openEventStream(stageKey, firstEventId, listener),
-  };
 }

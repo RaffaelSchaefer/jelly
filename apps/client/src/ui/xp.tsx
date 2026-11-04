@@ -1,5 +1,5 @@
 /**
- * Bausteine rund um XP: Levelbalken, Verlaufszeilen, Meldeknöpfe, Erfolge.
+ * Bausteine rund um XP: Levelbalken, Verlaufszeilen, Meldeknöpfe, Cosmetic-Kacheln, Erfolge.
  *
  * Teil des Design-Systems (siehe `controls.tsx`). Hier also nur Komponenten exportieren.
  *
@@ -136,7 +136,35 @@ export function ReportButton({ icon, title, xp, wait, ...rest }: ReportButtonPro
   );
 }
 
-/** Ein Erfolg mit Fortschrittsbalken oder Ziel, wenn geschafft mit Haken. */
+/** Eigenschaften von {@link CosmeticTile}. */
+export interface CosmeticTileProps extends ComponentProps<"button"> {
+  icon: IconName;
+  name: string;
+  state: "equipped" | "unlocked" | "locked";
+  /** Zeile unter dem Namen, zum Beispiel „Angelegt“ oder „Level 5“. */
+  note: string;
+  /** Ob die Kachel in der Detailansicht ausgewählt ist. */
+  selected: boolean;
+}
+
+/** Kachel im Cosmetic-Raster. */
+export function CosmeticTile({ icon, name, state, note, selected, ...rest }: CosmeticTileProps) {
+  const badge = { equipped: "check", locked: "lock", unlocked: null } as const;
+  return (
+    <button className={cx("cosmetic-tile", state)} aria-pressed={selected} {...rest}>
+      <span className="cosmetic-preview">
+        <Icon name={icon} />
+      </span>
+      <strong>{name}</strong>
+      <small>
+        {badge[state] ? <Icon name={badge[state]} /> : null}
+        {note}
+      </small>
+    </button>
+  );
+}
+
+/** Ein Erfolg mit Fortschrittsbalken oder, wenn geschafft, mit Haken. */
 export function AchievementRow({
   icon,
   title,
@@ -149,8 +177,8 @@ export function AchievementRow({
   icon: IconName;
   title: string;
   detail: string;
-  /** Aktueller Fortschritt. Ohne Wert steht dort nur das Ziel. */
-  value?: number;
+  /** Aktueller Fortschritt. */
+  value: number;
   /** Zielwert. */
   goal: number;
   /** Einheit hinter dem Fortschritt, zum Beispiel `"h"`. */
@@ -172,11 +200,6 @@ export function AchievementRow({
             <Icon name="check" />
             Geschafft
           </span>
-        ) : value === undefined ? (
-          <small>
-            Ziel {goal}
-            {unit ? ` ${unit}` : ""}
-          </small>
         ) : (
           <>
             <small>

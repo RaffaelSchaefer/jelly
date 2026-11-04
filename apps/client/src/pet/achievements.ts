@@ -1,76 +1,89 @@
 /**
- * Erfolge für die Liste. Welche verdient sind, sagt allein der Server.
+ * Erfolge und ihr Fortschritt. Wird komplett in der Oberfläche aus dem Verlauf berechnet.
  *
  * @module
  */
 
 import type { IconName } from "../ui/Icon";
-import type { Catalog, Me } from "./types";
+import type { Entry } from "./types";
 
-/** Symbol je Erfolg. Was hier fehlt, bekommt einen Pokal. */
-const ICONS: Partial<Record<string, IconName>> = {
-  hatched: "spark",
-  styled: "palette",
-  hydrated: "droplet",
-  "first-event": "event",
-  "event-hopper": "event",
-  tournament: "trophy",
-  marathon: "clock",
-  "beauty-sleep": "moon",
-  "ghost-hour": "moon",
-  "night-owl": "moon",
-};
+/** Stabile ID eines Erfolgs. */
+export type AchievementId = "first-game" | "marathon" | "hydrated" | "tournament" | "night-owl";
 
 /** Ein Erfolg, wie er in der Liste steht. */
-export interface AchievementItem {
-  key: string;
+export interface Achievement {
+  /** Stabile ID. */
+  id: AchievementId;
+  /** Kurzer Titel. */
   title: string;
+  /** Was man dafür tun muss. */
   detail: string;
+  /** Symbol in der Liste. */
   icon: IconName;
+  /** Zielwert, ab dem der Erfolg geschafft ist. */
   goal: number;
+  /** Einheit hinter dem Fortschritt, zum Beispiel `"h"`. */
   unit?: string;
-  done: boolean;
+  /** Bleibt bis zum Erreichen verborgen. */
+  secret?: boolean;
 }
+
+/** Alle Erfolge in Anzeigereihenfolge. */
+export const ACHIEVEMENTS: Achievement[] = [
+  {
+    id: "first-game",
+    title: "Erste Runde",
+    detail: "Dein erstes Spiel über Steam",
+    icon: "gamepad",
+    goal: 1,
+  },
+  {
+    id: "marathon",
+    title: "Marathon",
+    detail: "10 Stunden am Stück gezockt",
+    icon: "clock",
+    goal: 10,
+    unit: "h",
+  },
+  {
+    id: "hydrated",
+    title: "Gut hydriert",
+    detail: "10 Getränke geholt",
+    icon: "droplet",
+    goal: 10,
+  },
+  {
+    id: "tournament",
+    title: "Turnierheld",
+    detail: "Bei 3 Events mitgemacht",
+    icon: "trophy",
+    goal: 3,
+  },
+  {
+    id: "night-owl",
+    title: "Nachteule",
+    detail: "Um 4 Uhr nachts noch dabei",
+    icon: "moon",
+    goal: 1,
+    secret: true,
+  },
+];
 
 /**
- * Alle Erfolge in Katalogreihenfolge, dahinter verdiente geheime. Geheime stehen nicht im Katalog,
- * also tauchen sie erst auf, wenn man sie hat.
+ * Fortschritt je Erfolg, gedeckelt auf sein Ziel.
+ *
+ * Die Steam-Erfolge (`first-game`, `marathon`) bleiben bei 0, bis Steam angebunden ist.
  */
-export function achievementRows(catalog: Catalog, me: Me): AchievementItem[] {
-  const earned = new Set(me.achievements.map((item) => item.key));
-  const listed = catalog.achievements.map((item) => ({
-    key: item.key,
-    title: item.title,
-    detail: item.description,
-    icon: ICONS[item.key] ?? "trophy",
-    goal: item.goal,
-    unit: item.record_unit,
-    done: earned.has(item.key),
-  }));
-  const known = new Set(listed.map((item) => item.key));
-  const secrets = new Map(
-    me.achievements
-      .filter((item) => !known.has(item.key))
-      .map((item) => [
-        item.key,
-        {
-          key: item.key,
-          title: item.title,
-          detail: "Geheimer Erfolg",
-          icon: ICONS[item.key] ?? "trophy",
-          goal: 1,
-          done: true,
-        },
-      ]),
-  );
-  return [...listed, ...secrets.values()];
-}
-
-/** Titel eines Erfolgs aus Stand oder Katalog, für die Sprechblase. */
-export function achievementTitle(key: string, catalog: Catalog, me: Me | null) {
-  return (
-    me?.achievements.find((item) => item.key === key)?.title ??
-    catalog.achievements.find((item) => item.key === key)?.title ??
-    "Geheimer Erfolg"
-  );
+export function achievementProgress(log: Entry[]): Record<AchievementId, number> {
+  const count = (test: (entry: Entry) => boolean) => log.filter(test).length;
+  const raw = {
+    "first-game": 0,
+    marathon: 0,
+    hydrated: count((entry) => entry.action === "drink"),
+    tournament: count((entry) => entry.action === "event"),
+    "night-owl": count((entry) => new Date(entry.at * 1000).getHours() === 4),
+  };
+  return Object.fromEntries(
+    ACHIEVEMENTS.map((item) => [item.id, Math.min(item.goal, raw[item.id])]),
+  ) as Record<AchievementId, number>;
 }

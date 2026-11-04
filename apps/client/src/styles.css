@@ -4,21 +4,15 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --text-muted: #c6d0d5;
+  --text-muted: #b4bec4;
   /* UI theme follows the pet's colour (html[data-pet-color], set in App.tsx). Aqua is the default. */
   --accent: #9fe6f2;
   --accent-ink: #0e2c38;
   --base: #1a2630;
   --backdrop: #2a3b46;
   --backdrop-deep: #121a23;
-  /* Sprechblase, Dock und Panels: heller als der Grund, damit sie neben den Tropfen des Studios bestehen. */
-  --surface-solid: color-mix(in srgb, var(--backdrop) 84%, var(--accent));
-  --surface: color-mix(in srgb, var(--surface-solid) 95%, transparent);
+  --surface: color-mix(in srgb, var(--base) 90%, transparent);
   --line: color-mix(in srgb, var(--accent) 15%, transparent);
-  /* Weiße Schrift auf Glas: Das Fenster ist durchsichtig, dahinter kann heller Desktop liegen. */
-  --glass-ink-shadow: 0 1px 2px #000c, 0 0 7px #0009;
-  /* Dasselbe für Symbole, die ohne Hintergrund auf dem Desktop liegen. */
-  --glass-icon-shadow: drop-shadow(0 0 1px #0006) drop-shadow(0 1px 3px #0004);
 }
 :root[data-pet-color='lilac'] { --accent: #dcc2fb; --accent-ink: #2a1546; --base: #231e2d; --backdrop: #3a3047; --backdrop-deep: #16131d; }
 :root[data-pet-color='peach'] { --accent: #ffcfa3; --accent-ink: #44210d; --base: #2a221e; --backdrop: #463830; --backdrop-deep: #1b1614; }
@@ -48,38 +42,24 @@ html[data-surface='preview'] body::before { content: ''; position: fixed; inset:
 .preview-footer code { color: #d4e0d8; font-size: 11px; }
 .status-dot { background: var(--accent); width: 5px; height: 5px; border-radius: 50%; }
 
-.pet-window { width: var(--window-width, 384px); height: var(--window-height, 430px); position: relative; padding: 8px 22px 14px; margin: 0 auto; }
+.pet-window { width: 420px; height: 620px; position: relative; padding: 12px 22px 28px; margin: 0 auto; }
 html[data-surface='preview'] .pet-window { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); }
-.window-tools { position: relative; z-index: 2; display: flex; justify-content: space-between; height: 30px; transform: translateY(var(--tools-offset, 0px)); transition: transform 0.25s ease; }
+.window-tools { position: relative; z-index: 2; display: flex; justify-content: space-between; height: 30px; opacity: 0.65; transform: translateY(var(--tools-offset, 0px)); transition: transform 0.25s ease; }
 /* Open panels reach up to the top, so the tools go back up out of their way. */
 .pet-window:has(.panel) .window-tools { transform: none; }
 .window-tools-right { display: flex; gap: 1px; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; width: 30px; height: 30px; padding: 5px; }
 .icon-button:hover:enabled { background: #ffffff10; }
 .drag-handle { cursor: grab; touch-action: none; }
-/* Griff und Fensterknöpfe tragen in Ruhe keinen Hintergrund, erst unter dem Zeiger. Das Fenster ist durchsichtig, darum hebt ein weicher Schatten die Symbole auch auf hellem Desktop ab. Der durchsichtige Rand hält die Maße. */
-.drag-handle, .window-tools-right { border: 1px solid transparent; border-radius: 9px; }
-.window-tools .icon-button { color: #f4f8fa; transition: background 120ms, box-shadow 120ms; }
-.window-tools .icon-button svg { filter: var(--glass-icon-shadow); }
-.window-tools .icon-button:hover:enabled, .window-tools .icon-button:focus-visible { background: var(--surface-solid); box-shadow: inset 0 0 0 1px #ffffff33, 0 3px 10px #0004; }
-.window-tools-right .icon-button { height: 28px; }
-.drag-handle svg { stroke-width: 2.6; }
-/* In der Browser-Vorschau sind sie gesperrt und sollen trotzdem wie in der App aussehen. */
-.window-tools button:disabled { opacity: 1; }
 .pet-stage { position: relative; height: var(--stage-height, 330px); display: flex; flex-direction: column; align-items: center; }
-.speech { position: relative; z-index: 2; max-width: 330px; margin: var(--bubble-top, 20px) 0 0; padding: 10px 20px; border-radius: 19px; background: color-mix(in srgb, var(--surface-solid) calc((1 - var(--studio-ready, 0)) * 100%), transparent); color: #fff; font-size: 12.5px; font-weight: 600; line-height: 17px; letter-spacing: 0.1px; text-align: center; text-wrap: balance; text-shadow: var(--glass-ink-shadow); pointer-events: none; transform-origin: 50% 100%; transition: background 300ms; animation: speech-pop 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both, speech-float 4.5s ease-in-out infinite alternate; }
-/* Die Sprechblase ist Glas aus dem Shader. Text und Schwanz stehen hier, der Hintergrund gilt nur, solange das Glas noch fehlt: ohne WebGL und im Design-System. */
-.speech-part { animation: speech-say 120ms ease-out both; }
-.speech-tail { position: absolute; left: calc(50% - 7px); top: calc(100% + 2px); width: 14px; height: 14px; border-radius: 50%; animation: speech-tail 3.1s ease-in-out infinite alternate; }
+.speech { --bubble: var(--base); --bubble-line: color-mix(in srgb, var(--accent) 16%, var(--base)); font-size: 12px; color: #dde6ea; letter-spacing: 0.1px; margin: var(--bubble-top, 20px) 0 0; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--bubble-line); background: var(--bubble); box-shadow: 0 4px 14px #0003; position: relative; z-index: 2; }
+.speech::after { content: ''; position: absolute; left: calc(50% - 5px); bottom: -6px; width: 10px; height: 10px; transform: rotate(45deg); background: var(--bubble); border-right: 1px solid var(--bubble-line); border-bottom: 1px solid var(--bubble-line); border-bottom-right-radius: 2px; }
 .pet-touch { position: absolute; top: var(--canvas-top, 43px); left: 50%; width: var(--canvas-width, 396px); margin-left: calc(var(--canvas-width, 396px) / -2); height: var(--canvas-height, 315px); padding: 0; background: none; border: 0; opacity: 1 !important; cursor: pointer; z-index: 1; }
-.pet-touch:disabled { cursor: default; pointer-events: none; }
+.pet-touch:disabled { cursor: default; }
 .ground-shadow { position: absolute; top: var(--feet, 299px); width: calc(140px * var(--pet-scale, 1)); height: calc(18px * var(--pet-scale, 1)); border-radius: 50%; background: #08141177; filter: blur(9px); }
-/* Partner emote: both jellies stand on the same shadow, it is never moved in 3D. The drops hang on the jelly and would circle it while it turns, an empty shape is skipped by the glass. */
-.pet-stage[data-duet='pair'] .ground-shadow { width: calc(300px * var(--pet-scale, 1)); }
-.pet-stage[data-duet] :is(.emote-controls, .sign-controls) { display: none; }
 .pet-controls { position: relative; z-index: 3; margin: 8px auto 0; width: fit-content; }
 .dock, .panel { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 28px #0003, inset 0 1px 0 #ffffff08; backdrop-filter: blur(22px) saturate(125%); -webkit-backdrop-filter: blur(22px) saturate(125%); border-radius: 18px; }
-.dock { padding: 3px; border-radius: 11px; background: var(--surface); border-color: #ffffff0d; box-shadow: 0 3px 10px #0002; }
+.dock { padding: 3px; border-radius: 11px; background: color-mix(in srgb, var(--base) 85%, transparent); border-color: #ffffff0d; box-shadow: 0 3px 10px #0002; }
 .level-summary { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
 .xp-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 10px; color: var(--text-muted); margin-bottom: 10px; }
 .xp-row > span:first-child { display: flex; align-items: center; gap: 6px; color: var(--accent); }
@@ -92,11 +72,12 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .dock nav { display: flex; gap: 3px; }
 .dock nav button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #c6ccd0; }
 .dock nav button svg { width: 17px; height: 17px; }
-.dock nav button:hover { background: #ffffff1f; color: #f4f8fa; }
+.dock nav button:hover { background: #ffffff0d; color: #f4f8fa; }
 .dock nav button[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
-.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; --panel-max: calc(var(--stage-height, 330px) + 28px); max-height: var(--panel-max); overflow-y: auto; scrollbar-gutter: stable both-edges; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
+.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px 8px 16px 16px; border-radius: 16px; max-height: calc(var(--stage-height, 330px) + 28px); overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
 /* Panels fill the stage above the dock (tools + stage + gap - panel gap - window padding), never past the window top.
-   The bubble is not rendered then, PetStage decides that. */
+   The XP panel reaches over the bubble; its text would shine through the glass. */
+.pet-window:has(.tabs) .speech { visibility: hidden; }
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: -4px -3px 3px 0; }
 .panel-heading h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
 .panel-hint { margin: 0 0 14px; color: var(--text-muted); font-size: 10px; line-height: 1.6; }
@@ -108,45 +89,6 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .action-button small { display: block; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
 .action-xp { margin-left: auto; white-space: nowrap; color: var(--accent); font-size: 10px; }
 .panel-note { color: var(--text-muted); font-size: 11px; line-height: 1.7; margin: 12px 0 0; }
-
-/* Panel "Dabei": rows like the action list, plus colour dot, marked target and walking away. */
-.action-button[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-.follow-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); }
-.follow-marks { display: inline-flex; align-items: center; gap: 6px; }
-.follow-marks svg { width: 14px; height: 14px; }
-.follow-leave { margin: 4px 0 10px; }
-
-/* Tab "Partner-Emote": the own code inside a stopwatch that runs empty, sized like the redeem seal. The gestures sit side by side, so all fits without scrolling. */
-.partner-offer { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 4px; }
-.partner-clock { position: relative; display: grid; place-items: center; align-content: center; gap: 1px; width: 172px; height: 172px; border-radius: 50%; color: var(--accent); background: radial-gradient(circle, color-mix(in srgb, currentColor 22%, transparent) 0%, transparent 64%); transition: color 600ms; }
-.partner-clock[data-urgent] { color: #ff9a82; animation: partner-clock-pulse 1s ease-in-out infinite; }
-.partner-clock svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; fill: none; stroke: currentColor; filter: drop-shadow(0 0 7px color-mix(in srgb, currentColor 55%, transparent)); }
-.partner-clock-crown { fill: currentColor; stroke: none; transition: opacity 600ms; }
-/* Once the hand has passed it, the pusher looks like the empty ring around it. */
-.partner-clock-crown[data-passed] { opacity: 0.16; }
-.partner-clock-track { stroke-width: 8; opacity: 0.16; }
-.partner-clock-ticks { stroke-width: 5; opacity: 0.35; }
-.partner-clock-left { stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
-.partner-clock-hand { fill: currentColor; stroke: var(--surface-solid); stroke-width: 3; transform-origin: 100px 100px; transition: transform 1s linear; }
-.partner-code { position: relative; font-size: 31px; font-weight: 650; letter-spacing: 0.1em; margin-right: -0.1em; font-variant-numeric: tabular-nums; animation: redeem-stamp 550ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
-.partner-clock small { position: relative; max-width: 100px; font-size: 9px; color: var(--text-muted); text-align: center; }
-.partner-back { padding: 5px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text-muted); font-size: 11px; }
-.partner-back:hover { background: #ffffff0d; color: #f4f8fa; }
-.partner-list { display: grid; grid-template-columns: repeat(3, 1fr); }
-.partner-list .action-button { justify-content: center; padding: 9px 6px; text-align: center; }
-.partner-join { margin-top: 8px; }
-.redeem-form.partner-join input { padding: 0; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; text-align: center; }
-/* Only the list scrolls, so heading and search stay in reach with 70 jellies. */
-.panel:has(.follow-list) { display: flex; flex-direction: column; overflow: hidden; }
-.follow-list { position: relative; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
-.follow-list button:focus-visible { outline-offset: -2px; }
-/* The panel hangs from the dock: at a fixed height the field does not move while the results shrink. */
-.panel:has(.follow-search) { height: var(--panel-max); }
-.follow-search { flex: none; margin: 4px 0 10px; }
-/* Sits in the heading row, left of the close button (top: panel padding minus heading margin). */
-.follow-search-toggle { position: absolute; top: 12px; right: 45px; }
-.follow-search-toggle svg { width: 17px; height: 17px; }
-.follow-search-toggle[aria-expanded='true'] { color: var(--accent); }
 
 /* XP panel: tabs, log, self-reports, cosmetics, achievements, level-up. */
 .tabs { display: flex; gap: 3px; padding: 3px; margin: 8px 0 14px; border: 1px solid #ffffff0d; border-radius: 9px; }
@@ -177,10 +119,22 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .xp-entry.live .xp-entry-end small { color: var(--accent); }
 .report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .report-button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; text-align: left; border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 11px; }
-.report-button:hover:enabled { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); }
+.report-button:hover:enabled, .cosmetic-tile:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); }
 .report-button .action-xp { display: block; margin-top: 1px; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chips button { height: 24px; padding: 0 10px; border: 1px solid #ffffff0d; border-radius: 7px; background: transparent; color: var(--text-muted); font-size: 10px; font-weight: 550; }
+.chips button[aria-pressed='true'] { border-color: color-mix(in srgb, var(--accent) 17%, transparent); background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
+.cosmetic-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.cosmetic-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px 8px; border: 1px solid #ffffff0d; border-radius: 11px; background: #ffffff04; }
+.cosmetic-tile strong { font-size: 11px; font-weight: 550; }
+.cosmetic-tile small { display: flex; align-items: center; gap: 3px; font-size: 9px; color: var(--text-muted); }
+.cosmetic-tile small svg { width: 10px; height: 10px; }
+.cosmetic-tile[aria-pressed='true'] { border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.cosmetic-tile.equipped { border-color: var(--accent); }
+.cosmetic-tile.equipped small { color: var(--accent); font-size: 10px; }
 .cosmetic-preview { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
 .cosmetic-preview svg { width: 22px; height: 22px; }
+.cosmetic-tile.locked .cosmetic-preview { background: #ffffff12; color: var(--text-muted); }
 .cosmetic-detail { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #ffffff0d; border-radius: 11px; background: #ffffff04; }
 .cosmetic-detail.featured { border-color: color-mix(in srgb, var(--accent) 17%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .cosmetic-detail > span:nth-child(2) { flex: 1; min-width: 0; }
@@ -204,7 +158,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .secondary-button { border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 9px; padding: 10px 14px; font-size: 11px; font-weight: 550; }
 .secondary-button:hover { background: #ffffff0d; }
 .field-label, legend { display: block; font-size: 11px; color: #ccd6db; margin: 13px 0 8px; }
-input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent); background: color-mix(in srgb, var(--base) 70%, var(--surface-solid)); color: #f4f8fa; padding: 10px 12px; border-radius: 9px; font-size: 13px; }
+input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent); background: color-mix(in srgb, var(--base) 65%, black); color: #f4f8fa; padding: 10px 12px; border-radius: 9px; font-size: 13px; }
 .colors { border: 0; margin: 14px 0 20px; padding: 0; display: flex; gap: 17px; }
 .colors legend { margin: 0 0 11px; }
 .color-choice { position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 10px; color: var(--text-muted); cursor: pointer; padding: 2px; }
@@ -213,14 +167,8 @@ input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix
 .color-choice input:checked + .swatch { box-shadow: 0 0 0 2px var(--swatch-fill); }
 .color-choice input:focus-visible + .swatch { outline: 2px solid white; outline-offset: 5px; }
 .primary-button { border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); background: var(--accent); color: var(--accent-ink); border-radius: 9px; padding: 10px 14px; font-size: 11px; font-weight: 650; width: 100%; }
-/* Knopf direkt unter einem Textfeld (Beitritt). Nach den Farben sorgt `.colors` für Abstand. */
-input + .primary-button { margin-top: 16px; }
 .primary-button:hover:enabled { background: color-mix(in srgb, var(--accent) 80%, white); }
 .size-row { padding: 4px 0 13px; border-bottom: 1px solid var(--line); }
-.size-row:last-child { border-bottom: 0; padding-bottom: 2px; }
-.toggle-row:has(+ .size-row) { padding-bottom: 8px; border-bottom: 0; }
-.toggle-row + .size-row { padding-top: 0; }
-.size-row:has(input:disabled) { opacity: 0.5; }
 .size-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
 .size-heading strong { display: block; font-size: 12px; font-weight: 550; }
 .size-heading small { display: block; font-size: 10px; color: var(--text-muted); margin-top: 6px; }
@@ -237,50 +185,7 @@ input + .primary-button { margin-top: 16px; }
 .error span { line-height: 1.6; margin-top: 6px; overflow-wrap: anywhere; max-height: 160px; overflow-y: auto; }
 .error button { border: 1px solid #ffded566; color: inherit; background: #ffffff0e; padding: 8px; margin-top: 10px; border-radius: 6px; }
 .render-fallback { display: block; padding: 70px 35px; font-size: 12px; line-height: 1.7; text-align: center; color: #d6e0e4; }
-/* Unter dem Dock ist kein Platz mehr: Das Fenster endet kurz danach. */
-.loading { position: absolute; left: 0; right: 0; bottom: 62px; z-index: 3; margin: 0; font-size: 11px; text-align: center; }
-/* Reiter „Einlösen“: Ticket im Textring. `paused` statt ausgeschaltet, damit der Ring beim Verlassen stehen bleibt, statt zurückzuspringen. */
-.redeem { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 4px; }
-.redeem-seal { position: relative; display: grid; place-items: center; width: 172px; height: 172px; border-radius: 50%; color: var(--accent); background: radial-gradient(circle, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 64%); }
-.redeem-seal::before { content: ''; position: absolute; inset: 28px; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--accent) 32%, transparent); transition: border-color 300ms, inset 400ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-.redeem-seal::after { content: ''; position: absolute; inset: 0; border-radius: 50%; opacity: 0; background: conic-gradient(transparent 62%, var(--accent)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); animation: redeem-spin 4s linear infinite paused; transition: opacity 400ms; }
-.redeem-seal:hover::before { inset: 24px; border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
-.redeem-seal:hover::after { opacity: 1; animation-play-state: running; }
-.redeem-ring { position: absolute; inset: 0; width: 100%; height: 100%; animation: redeem-spin 24s linear infinite paused; }
-.redeem-ring text { fill: currentColor; font-size: 12.5px; font-weight: 650; }
-.redeem-seal:hover .redeem-ring { animation-play-state: running; }
-.redeem-ticket { position: relative; display: grid; place-items: center; }
-.redeem-ticket svg { width: 84px; height: 84px; stroke-width: 1.2; transform: rotate(-14deg); filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 45%, transparent)); transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 300ms; }
-.redeem-seal:hover .redeem-ticket svg { transform: rotate(0deg) scale(1.1); filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 80%, transparent)); }
-.redeem-ticket.stamped { animation: redeem-stamp 550ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
-.redeem-ticket.stamped::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); animation: redeem-burst 700ms ease-out both; }
-/* Lichtband über Ring und Ticket. `color-dodge` macht helle Striche weiß und lässt den dunklen Grund fast unberührt. Grau statt Weiß, denn Weiß würde auch den Grund aufhellen. */
-.redeem-shimmer { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0; mix-blend-mode: color-dodge; background: linear-gradient(115deg, transparent 38%, #666 50%, transparent 62%) 130% 0 / 250% 100% no-repeat; animation: redeem-shimmer 2.4s ease-in-out infinite paused; transition: opacity 300ms; }
-.redeem-seal:hover .redeem-shimmer { opacity: 1; animation-play-state: running; }
-.redeem-form { display: flex; gap: 8px; width: 100%; }
-.redeem-form input { flex: 1; min-width: 0; width: auto; height: 44px; border-radius: 12px; letter-spacing: 0.06em; transition: border-color 200ms, box-shadow 200ms; }
-.redeem-form input:disabled { opacity: 0.65; }
-.redeem-form input::placeholder { color: var(--text-muted); letter-spacing: 0; }
-.redeem-form input:focus-visible, .follow-search:focus-visible { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
-.redeem-form .redeem-send { flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 30%, transparent); transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms, opacity 200ms; }
-.redeem-form .redeem-send:hover:enabled { background: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 26px color-mix(in srgb, var(--accent) 55%, transparent); }
-.redeem-form .redeem-send:active:enabled { transform: scale(0.92); }
-.redeem-send svg { transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-.redeem-send:hover:enabled svg { transform: translate(2px, -2px); }
-@keyframes speech-pop { from { scale: 0.5; } }
-@keyframes speech-float { to { translate: 0 -2px; } }
-@keyframes speech-say { from { opacity: 0; } }
-@keyframes speech-tail { to { translate: 0 2px; } }
-@keyframes redeem-shimmer { from { background-position: 130% 0; } 65%, to { background-position: -30% 0; } }
-@keyframes redeem-spin { to { transform: rotate(360deg); } }
-@keyframes redeem-stamp { from { transform: scale(1.7) rotate(-24deg); opacity: 0; } 60% { transform: scale(0.92) rotate(3deg); opacity: 1; } to { transform: none; } }
-@keyframes partner-clock-pulse { 50% { scale: 1.035; } }
-@keyframes redeem-burst { from { transform: scale(0.5); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
-html[data-reduced-motion] .speech, html[data-reduced-motion] .speech * { animation: none; transition: none; }
-html[data-reduced-motion] .ground-shadow { transition: none; }
-html[data-reduced-motion] .partner-clock, html[data-reduced-motion] .partner-clock-crown, html[data-reduced-motion] .partner-code, html[data-reduced-motion] .partner-clock-left, html[data-reduced-motion] .partner-clock-hand { animation: none; transition: none; }
-html[data-reduced-motion] .redeem-ring, html[data-reduced-motion] .redeem-seal::after, html[data-reduced-motion] .redeem-ticket, html[data-reduced-motion] .redeem-ticket::after, html[data-reduced-motion] .redeem-shimmer { animation: none; }
-html[data-reduced-motion] .redeem-seal::before, html[data-reduced-motion] .redeem-ticket svg, html[data-reduced-motion] .redeem-send, html[data-reduced-motion] .redeem-send svg { transition: none; }
-@media (max-width: 500px) { .preview-header { top: 16px; left: 18px; right: 18px; }.preview-label { display: none; }.preview-header div > span { font-size: 10px; }.preview-footer { font-size: 9px; flex-wrap: wrap; bottom: 16px; }.preview-footer code { font-size: 9px; }.pet-window { width: min(var(--window-width, 384px), 100vw); } }
+.loading { font-size: 11px; text-align: center; margin: 4px; }
+@media (max-width: 500px) { .preview-header { top: 16px; left: 18px; right: 18px; }.preview-label { display: none; }.preview-header div > span { font-size: 10px; }.preview-footer { font-size: 9px; flex-wrap: wrap; bottom: 16px; }.preview-footer code { font-size: 9px; }.pet-window { width: min(420px, 100vw); } }
 @media (max-height: 740px) { html[data-surface='preview'] .pet-window { transform: translate(-50%, -50%) scale(0.85); } }
 @media (max-height: 610px) { html[data-surface='preview'] .preview-header, html[data-surface='preview'] .preview-footer { display: none; } html[data-surface='preview'] .pet-window { transform: translate(-50%, -50%) scale(0.75); } }
