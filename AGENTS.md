@@ -70,13 +70,14 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau). `src/MapDrop.tsx`: der Glas-Tropfen
   am Jelly, der sie öffnet.
-- `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `api.rs` (Server-Typen, HTTP),
+- `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
+  `api.rs` (HTTP), `api/types.rs` (Server-Typen),
   `events.rs` (Server-Stream), `map.rs` (Fenster der Karte), `error.rs`, `pet.rs` (lokaler Stand,
   reine Regeln), `store.rs` (atomares Speichern von `jelly.json`).
 
 ## Regeln, die man leicht übersieht
 
-- **Server, Rust und TypeScript spiegeln sich.** Server-Typen stehen in `api.rs` und
+- **Server, Rust und TypeScript spiegeln sich.** Server-Typen stehen in `api/types.rs` und
   `src/pet/types.ts` mit den snake_case-Namen aus `apps/server/docs/openapi.json`, lokale Typen in
   `pet.rs` und `types.ts`. Immer alle Seiten ändern. Der Server erzwingt, die App zeigt nur an.
 - **Server-Typen ohne `deny_unknown_fields`.** Der Server darf Felder, Ereignisse und Fehlercodes

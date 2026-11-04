@@ -188,7 +188,9 @@ src-tauri/
   src/main.rs         Desktop-Einstieg, ruft nur jelly_lib::run()
   src/lib.rs          App zusammensetzen: Plugins, State, Befehle
   src/commands.rs     Tauri-Befehle, die die Oberfläche aufruft
-  src/api.rs          Typen aus dem Server-Vertrag und HTTP-Client
+  src/commands/session.rs  Sitzung und Spielstand zwischen den Befehlen
+  src/api.rs          HTTP-Client und Weitergabe der Server-Typen
+  src/api/types.rs    Typen aus dem Server-Vertrag
   src/events.rs       Ereignis-Stream des Servers an die Oberfläche weiterleiten
   src/map.rs          Fenster der Karte öffnen und schließen
   src/error.rs        alle Fehler mit deutscher Meldung für die Oberfläche
@@ -258,10 +260,10 @@ mit dem Tauri-Mock beziehungsweise ohne Backend, rendern die Stimme und melden n
    durchklickbar. Position und Fenstergröße werden noch nicht gespeichert. Always-on-top garantiert
    keine Sichtbarkeit über exklusivem Vollbild. Linux und macOS brauchen eigene Tests auf echter
    Hardware.
-3. **Rest der Server-API:** Noch nicht angebunden sind Partner-Emotes (`POST /v1/partner-emote`,
-   `/join`) und die Stream-Ereignisse `emote`, `partner.emote` und `stage.changed`. Von
-   `GET /v1/stage` nutzt die App nur die Spielerliste. `sign.changed` braucht die App nicht, denn nur
-   sie selbst ändert ihr Schild. Die Server-Adresse lässt sich noch nicht zur Laufzeit ändern.
+3. **Rest der Server-API:** Emotes anderer Geräte werden im Pet-Fenster nicht abgespielt.
+   `sign.changed` braucht das Pet-Fenster nicht, denn nur die eigene App ändert ihr Schild. Die
+   Karte verarbeitet diese Ereignisse und `stage.changed` über `@jelly/stage`. Die Server-Adresse
+   lässt sich noch nicht zur Laufzeit ändern.
 4. **Charakter und Fortschritt:** Den Platzhalter gemeinsam gestalten, dann Reaktionen und kleine
    Belohnungen passend zur LAN festlegen. Die aktuellen XP-Werte sind Prototypwerte. Noch keine
    Hunger-/Durstsimulation.

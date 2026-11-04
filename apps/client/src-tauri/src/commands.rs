@@ -1,65 +1,27 @@
 //! Die Tauri-Befehle, die die Oberfläche über `invoke()` aufruft.
 //!
-//! Jeder Befehl holt sich die [`Session`], spricht bei Bedarf mit dem Server und gibt den neuen
+//! Jeder Befehl holt sich die [`session::Session`], spricht bei Bedarf mit dem Server und gibt den neuen
 //! [`Game`] zurück. Die Oberfläche schickt nur, *was* passieren soll (eine Aktion, ein Code, ein
 //! Name), nie XP-Werte. Das Token bleibt in Rust.
 //!
 //! Gegenstück im Frontend: `src/backend.ts`. Neue Befehle zusätzlich in [`crate::run`] bei
 //! `generate_handler!` eintragen, sonst findet die Oberfläche sie nicht.
 
-use std::time::Instant;
-
 use serde::Serialize;
 use serde_json::Value;
-use tauri::{async_runtime::Mutex, AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 
 use crate::{
-    api::{Api, LanStatus, Me, Profile, Stage, SERVER_URL},
+    api::{Api, Profile, Stage},
     error::{Error, Result},
-    events::EventStream,
     map,
-    pet::{client_outdated, poke_due, Action, Color, Settings, CLIENT_VERSION},
-    store::Store,
+    pet::{poke_due, Action, Color, Settings},
 };
 
-/// Die Sitzung als Tauri-State.
-///
-/// Wird erst beim ersten Befehl geöffnet, weil das App-Datenverzeichnis erst zur Laufzeit bekannt
-/// ist. Der Mutex sorgt dafür, dass Befehle nacheinander laufen und sich nicht überholen.
-#[derive(Default)]
-pub struct GameState(Mutex<Option<Session>>);
+mod session;
 
-/// Alles, was zwischen zwei Befehlen erhalten bleibt.
-pub struct Session {
-    /// Lokaler Stand mit Token und Einstellungen.
-    store: Store,
-    /// Client für den Server.
-    api: Api,
-    /// Letzter Stand vom Server und wann er ankam.
-    me: Option<(Me, Instant)>,
-    /// Welche LAN läuft.
-    lan: LanStatus,
-    /// Ob der Server das gespeicherte Token abgelehnt hat.
-    token_rejected: bool,
-    /// Weiterleitung der Server-Ereignisse an die Oberfläche.
-    stream: EventStream,
-}
-
-/// Was die Oberfläche nach jedem Befehl bekommt.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Game {
-    /// Geräte-Einstellungen.
-    settings: Settings,
-    /// Stand vom Server, `None` ohne Konto. `server_time` ist auf jetzt hochgerechnet.
-    me: Option<Me>,
-    /// Welche LAN läuft und welche kommt.
-    lan: LanStatus,
-    /// Adresse des Servers, zur Anzeige.
-    server_url: &'static str,
-    /// Ob der Server das gespeicherte Token abgelehnt hat. Dann hilft nur neu registrieren.
-    token_rejected: bool,
-}
+use session::session;
+pub use session::{Game, GameState};
 
 /// Was die Karte bei jedem Lesen bekommt.
 #[derive(Debug, Clone, Serialize)]
@@ -121,108 +83,6 @@ pub struct PartnerJoinResult {
     xp_gained: i64,
     /// Neuer Stand.
     game: Game,
-}
-
-impl Session {
-    /// Öffnet `jelly.json`, prüft die App-Version beim Server und lädt den Stand.
-    async fn open(app: &AppHandle) -> Result<Self> {
-        let directory = app.path().app_data_dir().map_err(Error::DataDir)?;
-        let store = Store::open(directory.join("jelly.json"))?;
-        let api = Api::new(store.local.token.clone());
-        let version = api.version().await?;
-        if client_outdated(CLIENT_VERSION, &version.min_client_version) {
-            return Err(Error::Outdated {
-                min: version.min_client_version,
-            });
-        }
-        let lan = api.anonymous().current_lan().await?;
-        let mut session = Self {
-            store,
-            api,
-            me: None,
-            lan,
-            token_rejected: false,
-            stream: EventStream::default(),
-        };
-        session.refresh(app).await?;
-        Ok(session)
-    }
-
-    /// Liest Stand und LAN neu. Ein abgelehntes Token wird gemerkt, aber nicht gelöscht.
-    async fn refresh(&mut self, app: &AppHandle) -> Result<()> {
-        if !self.api.has_token() {
-            self.lan = self.api.current_lan().await?;
-            return Ok(());
-        }
-        match self.api.me().await {
-            Ok(me) => {
-                self.token_rejected = false;
-                self.set_me(me);
-                self.lan = self.api.current_lan().await?;
-                self.follow_events(app);
-            }
-            Err(Error::Unauthorized) => {
-                self.token_rejected = true;
-                self.me = None;
-                self.stream.stop();
-                // Ohne Konto bekäme die Karte keine Daten mehr.
-                map::close(app);
-                self.lan = self.api.anonymous().current_lan().await?;
-            }
-            Err(error) => return Err(error),
-        }
-        Ok(())
-    }
-
-    /// Übernimmt einen neuen Stand vom Server.
-    fn set_me(&mut self, me: Me) {
-        self.me = Some((me, Instant::now()));
-    }
-
-    /// Der aktuelle Stand, oder [`Error::NotRegistered`] ohne Konto.
-    fn registered(&self) -> Result<&Me> {
-        self.me
-            .as_ref()
-            .map(|(me, _)| me)
-            .ok_or(Error::NotRegistered)
-    }
-
-    /// Uhrzeit des Servers jetzt, hochgerechnet vom letzten Stand.
-    fn server_now(&self) -> Option<i64> {
-        let (me, received) = self.me.as_ref()?;
-        let elapsed = i64::try_from(received.elapsed().as_millis()).unwrap_or(i64::MAX);
-        Some(me.server_time.saturating_add(elapsed))
-    }
-
-    /// Startet den Ereignis-Stream, falls er nicht schon läuft.
-    fn follow_events(&mut self, app: &AppHandle) {
-        if let Some((me, _)) = &self.me {
-            self.stream.ensure(app, &self.api, me);
-        }
-    }
-
-    /// Der Stand für die Oberfläche.
-    fn game(&self) -> Game {
-        let me = self.me.as_ref().map(|(me, _)| Me {
-            server_time: self.server_now().unwrap_or(me.server_time),
-            ..me.clone()
-        });
-        Game {
-            settings: self.store.local.settings,
-            me,
-            lan: self.lan.clone(),
-            server_url: SERVER_URL,
-            token_rejected: self.token_rejected,
-        }
-    }
-}
-
-/// Liefert die geöffnete Sitzung und öffnet sie beim ersten Mal.
-async fn session<'a>(app: &AppHandle, slot: &'a mut Option<Session>) -> Result<&'a mut Session> {
-    match slot {
-        Some(session) => Ok(session),
-        empty => Ok(empty.insert(Session::open(app).await?)),
-    }
 }
 
 /// Lädt Stand und LAN neu. Auch für „Erneut versuchen“ und nach einem Fehler.
