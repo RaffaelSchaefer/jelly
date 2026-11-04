@@ -85,6 +85,17 @@ export default function PetScene({ focus = null, anchors, ...character }: PetSce
         <AnimationClock paused={character.reducedMotion} />
         <CameraRig focus={focus} reducedMotion={character.reducedMotion} />
         <Character {...character} onJelly={setJelly} />
+        {character.emote?.partner ? (
+          <Character
+            role="partner"
+            color={character.emote.partner.color}
+            cosmetic={character.emote.partner.cosmetic}
+            pulse={0}
+            reducedMotion={character.reducedMotion}
+            emote={character.emote}
+            voiced={character.voiced}
+          />
+        ) : null}
         {anchors && jelly ? <StudioAnchors jelly={jelly} target={anchors} /> : null}
         <LiquidGlass
           color={character.color}

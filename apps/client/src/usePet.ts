@@ -27,6 +27,7 @@ import {
 import { useEmotes } from "./useEmotes";
 import { useFollow } from "./useFollow";
 import { useBackendCall, useGameState, usePresence, useServerEvents } from "./useGame";
+import { usePartnerEmote, usePlayPartner } from "./usePartnerEmote";
 import { useSigns } from "./useSigns";
 
 /** Mindestabstand zwischen zwei Stupsern in Millisekunden, damit Tastenhämmern nichts verstopft. */
@@ -174,20 +175,7 @@ export function usePet(onLevelUp: () => void) {
     [ready, game.me, inFlight, run, setGame, catalog, setMessage, onLevelUp],
   );
 
-  /** Löst einen Event-Code ein. `true`, wenn es geklappt hat. */
-  const redeem = useCallback(
-    async (code: string) => {
-      const result = await run(() => backend.redeemCode(code));
-      if (!result) return false;
-      setGame(result.game);
-      setMessage(`${result.title}: +${result.xpGained} XP!`);
-      setPulse((value) => value + 1);
-      return true;
-    },
-    [run, setGame, setMessage],
-  );
-
-  /** Ein neues Schild oder ein neuer Standort: Das Jelly hüpft und sagt etwas dazu. */
+  /** Ein Event-Code, Schild, Standort oder Partner: Das Jelly hüpft und sagt etwas dazu. */
   const hopAndSay = useCallback(
     (text: string) => {
       setMessage(text);
@@ -196,10 +184,25 @@ export function usePet(onLevelUp: () => void) {
     [setMessage],
   );
 
+  /** Löst einen Event-Code ein. `true`, wenn es geklappt hat. */
+  const redeem = useCallback(
+    async (code: string) => {
+      const result = await run(() => backend.redeemCode(code));
+      if (!result) return false;
+      setGame(result.game);
+      hopAndSay(`${result.title}: +${result.xpGained} XP!`);
+      return true;
+    },
+    [run, setGame, hopAndSay],
+  );
+
   const look = useLook({ patchGame, setGame, run, inFlight, setMessage });
   const emotes = useEmotes(state, account, ready);
   const signs = useSigns(state, account, ready, hopAndSay);
   const follow = useFollow(state, account, ready, hopAndSay);
+  // Ohne Hüpfer: Er stapelte sich mit dem Duett und holte die Hände heraus.
+  const playPartner = usePlayPartner(emotes.showEmote, setMessage);
+  const partner = usePartnerEmote(state, account, ready, playPartner);
   return {
     ...account,
     game,
@@ -212,6 +215,7 @@ export function usePet(onLevelUp: () => void) {
     ...emotes,
     ...signs,
     ...follow,
+    ...partner,
   };
 }
 

@@ -7,12 +7,18 @@
  * @module
  */
 
+import type { Group } from "three";
+
 import {
   animateJelly,
   createJelly,
   createMotion,
   disposeJelly,
   isEmoteKey,
+  isPartnerMotionKey,
+  partnerPose,
+  restPose,
+  type DuetRole,
   type Jelly,
 } from "@jelly/scene";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
@@ -26,9 +32,41 @@ import Cosmetic from "./Cosmetic";
 import SignBoard from "./SignBoard";
 
 /** Die Mundform dieses Bildes. Bei reduzierter Bewegung lächelt das Jelly nur. */
-function currentMouth(voiced: RefObject<ActiveVoice | null> | undefined, reducedMotion: boolean) {
+function currentMouth(
+  voiced: RefObject<ActiveVoice | null> | undefined,
+  role: DuetRole,
+  reducedMotion: boolean,
+) {
   const active = voiced?.current;
-  return active && !reducedMotion ? mouthAt(active.notes, active.elapsed()) : undefined;
+  if (!active || reducedMotion) return;
+  return mouthAt(role === "partner" ? active.partnerNotes : active.notes, active.elapsed());
+}
+
+/**
+ * Stellt die Hülle um das Jelly für ein Partner-Emote auf. Das Jelly selbst bewegt seine
+ * Grundanimation, so wie auf der Bühne des Servers bekommt die Geste deshalb eine eigene Ebene
+ * darüber.
+ */
+function poseStand(
+  stand: Group,
+  emote: ActiveEmote | null | undefined,
+  role: DuetRole,
+  reducedMotion: boolean,
+) {
+  const pose =
+    emote && isPartnerMotionKey(emote.key)
+      ? partnerPose(
+          {
+            key: emote.key,
+            elapsed: (performance.now() - emote.startedAt) / 1000,
+            role: emote.partner ? role : "solo",
+          },
+          reducedMotion,
+        )
+      : restPose(role);
+  stand.position.set(pose.x, pose.lift, 0);
+  stand.rotation.set(0, pose.turn, pose.tilt);
+  stand.scale.setScalar(pose.scale);
 }
 
 /** Eigenschaften des Pets in der Szene. */
@@ -49,6 +87,8 @@ export interface CharacterProps {
   emote?: ActiveEmote | null;
   /** Was er gerade formt. Sein Mund folgt den Vokalen. */
   voiced?: RefObject<ActiveVoice | null>;
+  /** Welchen Platz es im Duett eines Partner-Emotes einnimmt. */
+  role?: DuetRole;
 }
 
 /** Das Pet mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
@@ -61,10 +101,12 @@ export default function Character({
   onJelly,
   emote,
   voiced,
+  role = "own",
 }: CharacterProps) {
   const worn = COSMETICS.find((item) => item.id === cosmetic);
   const jelly = useMemo(() => createJelly(PET_COLORS[color]), [color]);
   const motion = useRef(createMotion(pulse));
+  const stand = useRef<Group>(null);
   const invalidate = useThree((state) => state.invalidate);
 
   // Beginn und Ende auch zeichnen, wenn reduzierte Bewegung die Animationsuhr anhält.
@@ -91,18 +133,21 @@ export default function Character({
         emote && isEmoteKey(emote.key)
           ? { key: emote.key, elapsed: (performance.now() - emote.startedAt) / 1000 }
           : undefined,
-      mouth: currentMouth(voiced, reducedMotion),
+      mouth: currentMouth(voiced, role, reducedMotion),
     });
+    if (stand.current) poseStand(stand.current, emote, role, reducedMotion);
   }, -1);
 
   return (
-    <primitive object={jelly.root}>
-      {/* Kopf- und Gesichts-Cosmetics wippen mit dem Kopf, Effekte bleiben beim Körper. */}
-      {worn && worn.slot !== "Effekte"
-        ? createPortal(<Cosmetic id={worn.id} color={color} />, jelly.faceAnchor)
-        : null}
-      {worn?.slot === "Effekte" ? <Cosmetic id={worn.id} color={color} /> : null}
-      <SignBoard jelly={jelly} label={sign} color={color} reducedMotion={reducedMotion} />
-    </primitive>
+    <group ref={stand}>
+      <primitive object={jelly.root}>
+        {/* Kopf- und Gesichts-Cosmetics wippen mit dem Kopf, Effekte bleiben beim Körper. */}
+        {worn && worn.slot !== "Effekte"
+          ? createPortal(<Cosmetic id={worn.id} color={color} />, jelly.faceAnchor)
+          : null}
+        {worn?.slot === "Effekte" ? <Cosmetic id={worn.id} color={color} /> : null}
+        <SignBoard jelly={jelly} label={sign} color={color} reducedMotion={reducedMotion} />
+      </primitive>
+    </group>
   );
 }

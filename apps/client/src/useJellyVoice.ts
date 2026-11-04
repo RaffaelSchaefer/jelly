@@ -23,7 +23,10 @@ const GESTURES = ["pointerdown", "keydown"] as const;
  * rendern.
  */
 export interface ActiveVoice {
+  /** Was das eigene Jelly singt. */
   notes: VoiceNote[];
+  /** Was der Partner eines Partner-Emotes singt. */
+  partnerNotes: VoiceNote[];
   /** Sekunden seit dem Anfang des Lauts. */
   elapsed: () => number;
 }
@@ -67,7 +70,13 @@ export function useJellyVoice(game: PetGame) {
     before.current = after;
     voice.setVolume(percent);
     const clock = clip ? voice.play(clip) : null;
-    if (notes?.length) voiced.current = { notes, elapsed: clock ?? startClock() };
+    if (notes?.length) {
+      voiced.current = {
+        notes: notes.filter((note) => !note.by),
+        partnerNotes: notes.filter((note) => note.by),
+        elapsed: clock ?? startClock(),
+      };
+    }
   }, [sound, message, messageId, pulse, level, volume, percent, emote]);
 
   // `messageId` zählt mit: Auch derselbe Satz wird neu gesprochen.

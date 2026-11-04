@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   filterStagePlayers,
+  partnerLook,
   PET_COLORS,
   PREVIEW_PLAYERS,
   sortStagePlayers,
@@ -38,5 +39,11 @@ describe("stage players", () => {
     expect(stagePlayerHex("mint")).toBe(PET_COLORS.mint.hex);
     expect(stagePlayerHex("future")).toBeUndefined();
     expect(stagePlayerHex("constructor")).toBeUndefined();
+  });
+  it("finds the look of a partner and falls back for an unknown colour", () => {
+    expect(partnerLook(PREVIEW_PLAYERS, 1)).toEqual({ color: "lilac", cosmetic: "beanie" });
+    expect(partnerLook(PREVIEW_PLAYERS, 99)).toBeNull();
+    const future = [{ ...PREVIEW_PLAYERS[0], id: 7, color: "future", cosmetic: null }];
+    expect(partnerLook(future, 7)).toEqual({ color: "mint", cosmetic: null });
   });
 });

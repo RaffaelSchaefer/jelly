@@ -97,11 +97,25 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
   der Bühne erscheint das Schild über seinem Kopf. Ein Klick auf das gewählte Schild senkt es
   (`DELETE /v1/sign`). Im Studio legt das Jelly die Tafel kurz weg. Schilder gibt es nur während einer
   LAN, in der Browser-Vorschau auch ohne Server.
-- Der Dock-Knopf „Dabei“ listet beim Öffnen die anderen anwesenden Jellies (`GET /v1/stage`). Ein Klick
+- Der Dock-Knopf „Dabei“ öffnet zwei Reiter. „Dazustellen“ listet die anderen anwesenden Jellies (`GET /v1/stage`). Ein Klick
   stellt das eigene Jelly auf der Bühne neben das gewählte (`PUT /v1/follow`), ein zweiter Klick oder
   „Weggehen“ beendet das (`DELETE /v1/follow`). Die Lupe öffnet ein Suchfeld, das die Liste nach Namen
   filtert. `follow.changed` lädt den Stand neu, denn der Server darf das Dazustellen von sich aus
   beenden. Die Browser-Vorschau zeigt zwei Beispiel-Jellies.
+- Der Reiter „Partner-Emote“ im selben Panel startet ein Partner-Emote (`POST /v1/partner-emote`): Der
+  vierstellige Code steht in einer Stoppuhr, deren Ring leer läuft und im letzten Viertel drängt. Man
+  sagt ihn dem Partner, der ihn in vier Ziffernfelder tippt. Die letzte Ziffer schickt ihn ab
+  (`POST /v1/partner-emote/join`). Ein eingefügter Code
+  füllt alle Felder, nach einem Fehlschlag sind sie wieder leer. Sobald die Geste startet, schließt
+  sich das Panel, denn es verdeckt Jelly und Sprechblase. Der Startende erfährt davon aus dem Stream
+  (`partner.emote` mit seiner ID als `partner_id`), die XP kommen als `xp.gained` hinterher.
+  Auf beiden Bildschirmen hüpft dann das Jelly des anderen von links herein, beide teilen sich den
+  Platz, machen die Geste abwechselnd und singen dazu, das eigene Jelly oben, der Partner tiefer, und es
+  hüpft wieder hinaus. Farbe und Cosmetic kommen aus
+  `GET /v1/stage`. Ohne sie tanzt das eigene Jelly allein. Die Tropfen am Jelly sind solange weg, sie
+  kreisten sonst mit. Die Browser-Vorschau vergibt immer den Code
+  4242, jeder eingegebene Code holt Glibber dazu. Sein Rest durch drei wählt die Geste, 0000 hüpft, 0001
+  dreht, 0002 wackelt.
 - Die Sprechblase ist flüssiges Glas wie die Tropfen. Neuer Text federt auf und erscheint Silbe für
   Silbe, in Panels und im Studio ist sie weg.
 - Das Jelly hat eine eigene Synth-Stimme aus WebAudio, ohne Samples. Es singt die Vokale seiner Sätze
@@ -140,6 +154,7 @@ src/
   useGame.ts          Hooks: Stand halten, Aufrufe, Server-Ereignisse, Lebenszeichen
   useSigns.ts         Hook: Schild heben und senken
   useFollow.ts        Hook: zu einem anderen Jelly stellen, Liste der Bühne
+  usePartnerEmote.ts  Hook: Partner-Emote starten (Code) oder mit Code beitreten
   useStagePopover.ts  Hook: Auswahlen am Jelly schließen, Fokus halten
   useJellyVoice.ts    Hook: was das Jelly gerade sagt und welcher Laut erklingt
   voice.ts            Synthesizer der Stimme (WebAudio)
@@ -148,7 +163,7 @@ src/
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
   SignPicker.tsx      Schild-Tropfen und Kapsel-Säule
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
-  panels/             Inhalte der Glas-Panels (Beitritt, XP mit Reitern, Level, Dabei, Einstellungen)
+  panels/             Inhalte der Glas-Panels (Beitritt, XP und Dabei mit Reitern, Level, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
                       Jelly und Animation aus packages/jelly-scene
     shaders/          GLSL der Cosmetics (Toon, Outline) und des Studio-Glases, per `?raw` importiert

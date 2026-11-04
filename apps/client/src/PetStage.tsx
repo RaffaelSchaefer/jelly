@@ -5,6 +5,7 @@
  */
 
 import { EMOTE_GLYPHS, isEmoteKey } from "@jelly/scene/emotes";
+import { isPartnerMotionKey } from "@jelly/scene/partner-emotes";
 import { lazy, Suspense, useRef, useState, type RefObject } from "react";
 
 import type { ActiveEmote } from "./useEmotes";
@@ -28,6 +29,12 @@ export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "sign
 function emoteMessage(emote: ActiveEmote | null) {
   if (!emote) return null;
   return isEmoteKey(emote.key) ? `${EMOTE_GLYPHS[emote.key]} ${emote.label}` : emote.label;
+}
+
+/** Ob gerade ein Partner-Emote läuft: zu zweit, allein oder gar nicht. Steuert `styles.css`. */
+function duetMode(emote: ActiveEmote | null) {
+  if (!emote || !isPartnerMotionKey(emote.key)) return;
+  return emote.partner ? "pair" : "solo";
 }
 
 /** Welche Bedienung direkt am Jelly sichtbar ist. */
@@ -190,7 +197,7 @@ export default function PetStage(props: PetStageProps) {
   // Beim nächsten Öffnen soll keine Region mehr offen sein und die Kamera wieder zurückfahren.
   if (!studio && region) setRegion(null);
   return (
-    <div className="pet-stage" ref={stage}>
+    <div className="pet-stage" ref={stage} data-duet={duetMode(game.activeEmote)}>
       <PetVisual
         {...{ game, me, reducedMotion, voiced }}
         sign={studio ? null : signLabel(preview ?? me.sign, game.catalog)}

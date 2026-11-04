@@ -8,6 +8,7 @@
  */
 
 import { isEmoteKey, type EmoteKey } from "@jelly/scene/emotes";
+import { isPartnerMotionKey, type PartnerMotionKey } from "@jelly/scene/partner-emotes";
 
 import { noteHz, speechNotes, type VoiceNote, type Vowel } from "./voice";
 
@@ -118,6 +119,78 @@ export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
   ]),
 };
 
+/** Die Hüpfer des Partners beim Auftritt und beim Abgang, sie landen im Takt von `partnerEmotes.ts`. */
+const ARRIVING: Row[] = [
+  [0.03, 0.15, -3, 2, "u", 0.7, undefined, "tick"],
+  [0.28, 0.16, 0, 5, "u", 0.8, undefined, "tick"],
+];
+const LEAVING: Row[] = [
+  [3.53, 0.15, 5, 0, "u", 0.8, undefined, "tick"],
+  [3.78, 0.16, 2, -3, "u", 0.7, undefined, "tick"],
+];
+
+/** Sortiert frisch gebaute Noten nach ihrem Einsatz. */
+const inOrder = (notes: VoiceNote[]) => notes.sort((first, second) => first.at - second.at);
+
+/**
+ * Beide Fassungen eines Partner-Emotes. Zu zweit kommen Auftritt und Abgang dazu, allein singt das
+ * eigene Jelly auch die Takte des Partners, die es dann ja selbst tanzt.
+ */
+function duet(own: Row[], partner: Row[]) {
+  const theirs = clip([...ARRIVING, ...partner, ...LEAVING]).map((note) => ({
+    ...note,
+    by: "partner" as const,
+  }));
+  return { pair: inOrder([...clip(own), ...theirs]), solo: inOrder(clip([...own, ...partner])) };
+}
+
+/** Die Laute im Takt der Partner-Emotes: das eigene Jelly oben, der Partner tiefer, im Wechsel. */
+export const PARTNER_CLIPS: Record<PartnerMotionKey, ReturnType<typeof duet>> = {
+  // „pu“ und „po“ zu den Hüpfern, jede Runde höher.
+  hop: duet(
+    [
+      [0.52, 0.26, 2, 9, "u", 0.9, undefined, "tick"],
+      [1.52, 0.26, 4, 11, "u", 0.95, undefined, "tick"],
+      [2.52, 0.26, 7, 14, "u", 1, undefined, "tick"],
+    ],
+    [
+      [1.02, 0.26, -3, 4, "o", 0.85, undefined, "tick"],
+      [2.02, 0.26, -1, 6, "o", 0.9, undefined, "tick"],
+      [3.02, 0.26, 2, 9, "o", 0.95, undefined, "tick"],
+    ],
+  ),
+  // „wiii-a“ und „wooo-u“: Die Stimme steigt mit der Drehung und fällt, wenn sie ausläuft.
+  spin: duet(
+    [
+      [0.6, 0.75, 0, 12, "i", 0.85, undefined, "hiss"],
+      [1.35, 0.55, 12, 5, "a", 0.8, 14],
+    ],
+    [
+      [2.1, 0.75, -5, 7, "o", 0.85, undefined, "hiss"],
+      [2.85, 0.55, 7, 0, "u", 0.8, 14],
+    ],
+  ),
+  // „wi-wa“ und „wu-wo“: Die Tonhöhe schwingt mit dem Wackeln hin und her.
+  wiggle: duet(
+    [
+      [0.52, 0.21, 9, 4, "i", 0.85, undefined, "hiss"],
+      [0.75, 0.21, 4, 9, "a", 0.85],
+      [1.52, 0.21, 11, 7, "i", 0.85, undefined, "hiss"],
+      [1.75, 0.21, 7, 11, "a", 0.85],
+      [2.52, 0.21, 12, 7, "i", 0.9, undefined, "hiss"],
+      [2.75, 0.21, 7, 12, "a", 0.9],
+    ],
+    [
+      [1.02, 0.21, 4, 0, "u", 0.8, undefined, "hiss"],
+      [1.25, 0.21, 0, 4, "o", 0.8],
+      [2.02, 0.21, 6, 2, "u", 0.8, undefined, "hiss"],
+      [2.25, 0.21, 2, 6, "o", 0.8],
+      [3.02, 0.21, 7, 4, "u", 0.85, undefined, "hiss"],
+      [3.25, 0.21, 4, 7, "o", 0.85],
+    ],
+  ),
+};
+
 /** Was für die Stimme gerade gilt. */
 export interface VoiceMoment {
   /** Geräusche an? */
@@ -131,8 +204,11 @@ export interface VoiceMoment {
   level: number | null;
   /** Lautstärke in Prozent. `null`, solange die gespeicherten Einstellungen noch fehlen. */
   volume: number | null;
-  /** Die laufende Geste. Jede neue Geste ist ein neues Objekt. */
-  emote: { key: string } | null;
+  /**
+   * Die laufende Geste. Jede neue Geste ist ein neues Objekt. `partner` sagt beim Partner-Emote, ob
+   * ein zweites Jelly dabei ist.
+   */
+  emote: { key: string; partner?: unknown } | null;
 }
 
 /**
@@ -154,7 +230,9 @@ function levelRose({ level: before }: VoiceMoment, { level: after }: VoiceMoment
  */
 function emoteClip(before: VoiceMoment, after: VoiceMoment) {
   if (!after.emote || after.emote === before.emote) return null;
-  return isEmoteKey(after.emote.key) ? EMOTE_CLIPS[after.emote.key] : [];
+  const { key, partner } = after.emote;
+  if (isPartnerMotionKey(key)) return PARTNER_CLIPS[key][partner ? "pair" : "solo"];
+  return isEmoteKey(key) ? EMOTE_CLIPS[key] : [];
 }
 
 /** Was erklingen soll, wenn der Stand von `before` zu `after` wechselt, oder `null` für nichts. */

@@ -28,6 +28,8 @@ export interface VoiceNote {
   onset?: "tick" | "hiss";
   /** Stärke des Vibratos in Cent. */
   shake?: number;
+  /** Singt der Partner eines Partner-Emotes. Sonst das eigene Jelly. */
+  by?: "partner";
 }
 
 /** Eine Silbe des Texts und wann sie an der Reihe ist, in Sekunden. */

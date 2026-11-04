@@ -1,4 +1,5 @@
 import { EMOTE_GLYPHS, EMOTE_SECONDS } from "@jelly/scene/emotes";
+import { PARTNER_EMOTE_SECONDS, partnerPose } from "@jelly/scene/partner-emotes";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +7,7 @@ import {
   HELLO,
   HOP_CLIPS,
   LEVEL_UP,
+  PARTNER_CLIPS,
   pickClip,
   speechNotes,
   speechSyllables,
@@ -125,6 +127,39 @@ describe("clips", () => {
       const end = notes.at(-1)!;
       expect(end.at + end.duration).toBeLessThanOrEqual(EMOTE_SECONDS);
     }
+  });
+});
+
+describe("partner clips", () => {
+  const keys = ["hop", "spin", "wiggle"] as const;
+  it.each(keys)("%s is playable and ends with the duet", (key) => {
+    for (const notes of [PARTNER_CLIPS[key].pair, PARTNER_CLIPS[key].solo]) {
+      expectPlayable(notes);
+      const end = notes.at(-1)!;
+      expect(end.at + end.duration).toBeLessThanOrEqual(PARTNER_EMOTE_SECONDS);
+    }
+  });
+  it.each(keys)("%s sounds while the jelly that sings it is moving", (key) => {
+    const beats = PARTNER_CLIPS[key].pair.filter((note) => note.at >= 0.5 && note.at < 3.5);
+    expect(new Set(beats.map((note) => note.by))).toEqual(new Set([undefined, "partner"]));
+    for (const note of beats) {
+      const elapsed = note.at + note.duration / 2;
+      const role = note.by ?? "own";
+      const { lift, turn, tilt } = partnerPose({ key, elapsed, role }, false);
+      expect(Math.abs(lift) + Math.abs(turn) + Math.abs(tilt)).toBeGreaterThan(0);
+    }
+  });
+  it("lets the partner hop in and out, and leaves that out when alone", () => {
+    const { pair, solo } = PARTNER_CLIPS.hop;
+    expect(pair[0]?.by).toBe("partner");
+    expect(pair.at(-1)?.by).toBe("partner");
+    expect(solo.every((note) => !note.by && note.at >= 0.5 && note.at < 3.5)).toBe(true);
+  });
+  it("picks the version that fits who is there", () => {
+    const pair = { key: "spin", partner: { color: "mint" } };
+    expect(pickClip(MOMENT, { ...MOMENT, emote: pair })).toBe(PARTNER_CLIPS.spin.pair);
+    const solo = { key: "spin", partner: null };
+    expect(pickClip(MOMENT, { ...MOMENT, emote: solo })).toBe(PARTNER_CLIPS.spin.solo);
   });
 });
 

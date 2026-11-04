@@ -10,9 +10,9 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { desktop, resizeWindow } from "./backend";
-import FollowPanel from "./panels/FollowPanel";
 import JoinPanel from "./panels/JoinPanel";
 import LevelUpPanel from "./panels/LevelUpPanel";
+import PeoplePanel, { PEOPLE_TABS, type PeopleTab } from "./panels/PeoplePanel";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
 import { PREVIEW_ME, stageLayout, type Me, type Report } from "./pet";
@@ -27,13 +27,13 @@ const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").
 /** Panels im Glas-Stil. „Aussehen“, Emotes und Schilder sind keine, sie liegen direkt auf der Bühne. */
 type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs">;
 
-/** Überschrift des offenen Panels. Beim XP-Panel setzt sie der gewählte Reiter. */
-function panelTitle(panel: GlassPanelId, xpTab: XpTab, me: Me) {
+/** Überschrift des offenen Panels. Bei XP und „Dabei“ setzt sie der gewählte Reiter. */
+function panelTitle(panel: GlassPanelId, xpTab: XpTab, peopleTab: PeopleTab, me: Me) {
   const titles: Record<GlassPanelId, string> = {
     lan: XP_TABS.find((tab) => tab.id === xpTab)!.title,
     levelup: `${me.name} ist eine Stufe weiter.`,
     settings: "Ein bisschen Feintuning.",
-    follow: "Zu wem stellst du dich?",
+    follow: PEOPLE_TABS.find((tab) => tab.id === peopleTab)!.title,
   };
   return titles[panel];
 }
@@ -92,13 +92,16 @@ interface PanelContentProps {
   game: PetGame;
   me: Me;
   xpTab: XpTab;
+  peopleTab: PeopleTab;
   sliders: ReturnType<typeof useSettingSliders>;
   onXpTab: (tab: XpTab) => void;
+  onPeopleTab: (tab: PeopleTab) => void;
   onClose: () => void;
 }
 
 /** Inhalt des offenen Panels. */
-function PanelContent({ panel, game, me, xpTab, sliders, onXpTab, onClose }: PanelContentProps) {
+function PanelContent(props: PanelContentProps) {
+  const { panel, game, me, xpTab, peopleTab, sliders, onXpTab, onPeopleTab, onClose } = props;
   const { catalog, ready, busy } = game;
   const disabled = busy || !ready;
   if (panel === "lan") {
@@ -122,16 +125,7 @@ function PanelContent({ panel, game, me, xpTab, sliders, onXpTab, onClose }: Pan
     return <LevelUpPanel {...{ me, catalog, disabled, onClose }} onEquip={equipAndClose} />;
   }
   if (panel === "follow") {
-    return (
-      <FollowPanel
-        me={me}
-        players={game.players}
-        allowed={game.followAllowed}
-        disabled={game.followDisabled}
-        onLoad={game.loadPlayers}
-        onPick={game.setFollow}
-      />
-    );
+    return <PeoplePanel {...{ game, me }} tab={peopleTab} onTab={onPeopleTab} />;
   }
   const { settings } = game.game;
   return (
@@ -239,6 +233,7 @@ function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
 export default function App() {
   const [panel, setPanel] = useState<PanelId | null>(null);
   const [xpTab, setXpTab] = useState<XpTab>("overview");
+  const [peopleTab, setPeopleTab] = useState<PeopleTab>("follow");
   const openLevelUp = useCallback(() => setPanel("levelup"), []);
   const game = usePet(openLevelUp);
   const { settings } = game.game;
@@ -251,6 +246,11 @@ export default function App() {
   useDocumentTheme(me.color, settings.reducedMotion || OS_REDUCED_MOTION);
 
   const close = useCallback(() => setPanel(null), []);
+  // Das Panel verdeckt Jelly und Sprechblase: Sonst sähe man vom Partner-Emote nichts.
+  const partnerOpen = panel === "follow" && peopleTab === "partner";
+  useEffect(() => {
+    if (partnerOpen && game.activeEmote) close();
+  }, [partnerOpen, game.activeEmote, close]);
   // Das Level-Panel gehört zum XP-Knopf: Der schließt es auch.
   const toggle = (next: PanelId) =>
     setPanel((current) =>
@@ -278,10 +278,11 @@ export default function App() {
         <section className="pet-controls" aria-label="Pet-Steuerung">
           {joining ? <JoinControls game={game} /> : null}
           {!joining && isGlassPanel(panel) ? (
-            <Panel title={panelTitle(panel, xpTab, me)} onClose={close}>
+            <Panel title={panelTitle(panel, xpTab, peopleTab, me)} onClose={close}>
               <PanelContent
-                {...{ panel, game, me, xpTab, sliders, onClose: close }}
+                {...{ panel, game, me, xpTab, peopleTab, sliders, onClose: close }}
                 onXpTab={setXpTab}
+                onPeopleTab={setPeopleTab}
               />
             </Panel>
           ) : null}

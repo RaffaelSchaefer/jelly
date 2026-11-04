@@ -71,7 +71,7 @@
 .studio-done:hover { scale: 1.08; }
 
 /* Der Bodenschatten bliebe beim Zoom in der Luft hängen. */
-.ground-shadow { transition: opacity 300ms; }
+.ground-shadow { transition: opacity 300ms, width 500ms ease; }
 .pet-window:has(.studio[data-open]) .ground-shadow { opacity: 0; }
 
 @keyframes blob-float { from { translate: -50% -50%; } to { translate: -50% calc(-50% - 4px); } }

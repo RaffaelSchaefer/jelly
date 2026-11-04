@@ -1,6 +1,6 @@
 /**
- * Panel „Dabei“: die anderen Jellies der Bühne. Neben dem gewählten steht das eigene Jelly dann auf
- * der Bühne.
+ * Reiter „Dazustellen“ im Panel „Dabei“: die anderen Jellies der Bühne. Neben dem gewählten steht
+ * das eigene Jelly dann auf der Bühne.
  *
  * @module
  */
@@ -114,7 +114,7 @@ function FollowRow({
  * Liest beim Öffnen die Liste und zeigt sie, darüber Suche und, solange ein Ziel gesetzt ist,
  * „Weggehen“.
  */
-export default function FollowPanel({
+export default function FollowTab({
   me,
   players,
   allowed,

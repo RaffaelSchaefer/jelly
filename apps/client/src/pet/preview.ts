@@ -23,7 +23,11 @@ export const PREVIEW_CATALOG: Catalog = {
     { key: "sleep", label: "Schlafen" },
     { key: "love", label: "Herz" },
   ],
-  partner_emotes: [],
+  partner_emotes: [
+    { key: "hop", label: "Zusammen hüpfen" },
+    { key: "spin", label: "Zusammen drehen" },
+    { key: "wiggle", label: "Zusammen wackeln" },
+  ],
   signs: [
     { key: "any", label: "Suche Mitspieler" },
     { key: "cs2", label: "Suche CS2" },
