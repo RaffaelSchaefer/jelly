@@ -12,8 +12,8 @@
     "openapi": "go run ./cmd/jelly-server openapi > docs/openapi.json",
     "bench": "go test -run=^$ -bench=. -benchmem ./internal/store/",
     "bench:load": "benchmarks/load.sh",
-    "lint": "golangci-lint run && oxlint --deny-warnings web",
-    "format": "golangci-lint fmt && oxfmt web"
+    "lint": "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run && oxlint --deny-warnings web",
+    "format": "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 fmt && oxfmt web"
   },
   "dependencies": {
     "@jelly/stage": "workspace:*",

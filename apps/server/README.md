@@ -104,8 +104,9 @@ sich nicht anmelden, endet der Lauf mit dem Grund. Messungen stehen in
 ## Befehle
 
 Über pnpm läuft der Server mit `pnpm test`, `pnpm lint`, `pnpm build` und `pnpm format` zusammen mit
-dem Rest des Monorepos. `pnpm lint` braucht `golangci-lint`, die Version und alle Code-Regeln stehen
-in [AGENTS.md](AGENTS.md). Die Bühne bündelt `three`, `@jelly/scene` und `@jelly/stage` aus `node_modules`, daher
+dem Rest des Monorepos. Lint und Formatierung starten die feste Version von `golangci-lint` über
+`go run`, ohne globale Installation. Beim ersten Aufruf lädt Go das Werkzeug in seinen Cache.
+Die Version und alle Code-Regeln stehen in [AGENTS.md](AGENTS.md). Die Bühne bündelt `three`, `@jelly/scene` und `@jelly/stage` aus `node_modules`, daher
 muss vor `go generate` einmal `pnpm install` im Root laufen. Gebündelt wird über `go tool esbuild`.
 
 | Variable          | Standard   | Zweck                                       |

@@ -19,11 +19,8 @@ pnpm demo      # Wegwerf-Server mit 70 simulierten Jellies, um die Bühne anzuse
 go test -race -count=1 ./...   # vor jedem Abschluss, sobald Nebenläufigkeit beteiligt ist
 ```
 
-Benötigt `golangci-lint` in der festen Version v2.15.0 im `PATH`:
-
-```sh
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
-```
+`pnpm lint` und `pnpm format` starten `golangci-lint` in der festen Version v2.15.0 über `go run`.
+Eine globale Installation ist nicht nötig; beim ersten Aufruf lädt Go das Werkzeug in seinen Cache.
 
 Die Regeln stehen in [.golangci.yml](.golangci.yml). Regeln dort nicht abschwächen, um einen Befund
 loszuwerden. `//nolint` braucht den konkreten Linter und eine Begründung.
