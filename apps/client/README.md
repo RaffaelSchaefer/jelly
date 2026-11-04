@@ -97,10 +97,17 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
   der Bühne erscheint das Schild über seinem Kopf. Ein Klick auf das gewählte Schild senkt es
   (`DELETE /v1/sign`). Im Studio legt das Jelly die Tafel kurz weg. Schilder gibt es nur während einer
   LAN, in der Browser-Vorschau auch ohne Server.
+- Die Sprechblase ist flüssiges Glas wie die Tropfen. Neuer Text federt auf und erscheint Silbe für
+  Silbe, in Panels und im Studio ist sie weg.
+- Das Jelly hat eine eigene Synth-Stimme aus WebAudio, ohne Samples. Es singt die Vokale seiner Sätze
+  als kleine Melodie und zeigt dabei je Vokal eine andere Mundform, wie beim Lipsync im Zeichentrick.
+  Hüpfer, jede Geste und der Levelaufstieg haben eigene Laute. Vor dem ersten Klick oder Tastendruck
+  bleibt es still. In den Einstellungen lässt sich das unter „Geräusche“ abschalten oder per Regler
+  leiser stellen, der Mund bewegt sich dann weiter. Bei reduzierter Bewegung lächelt das Jelly nur.
 - Ereignisse vom Server (neue XP, Erfolge, Auszeichnungen) kommen per Stream und lösen eine
   Sprechblase aus. Alle 5 Minuten meldet die App, dass sie noch läuft.
-- Lokal in `jelly.json` im App-Datenverzeichnis für `de.ucb.jelly` liegen nur Token, Größe und
-  „Weniger Bewegung“. Rust ersetzt die Datei erst nach einem vollständigen Schreibvorgang. Defekte
+- Lokal in `jelly.json` im App-Datenverzeichnis für `de.ucb.jelly` liegen nur Token, Größe,
+  „Weniger Bewegung“, „Geräusche“ und Lautstärke. Rust ersetzt die Datei erst nach einem vollständigen Schreibvorgang. Defekte
   oder unbekannte Dateiformate werden nicht still zurückgesetzt, und das Token wird nie wegen eines
   Netzfehlers gelöscht.
 - Eine zweite gestartete Instanz aktiviert das vorhandene Pet, damit nicht zwei unabhängige Prozesse
@@ -128,6 +135,8 @@ src/
   useGame.ts          Hooks: Stand halten, Aufrufe, Server-Ereignisse, Lebenszeichen
   useSigns.ts         Hook: Schild heben und senken
   useStagePopover.ts  Hook: Auswahlen am Jelly schließen, Fokus halten
+  useJellyVoice.ts    Hook: was das Jelly gerade sagt und welcher Laut erklingt
+  voice.ts            Synthesizer der Stimme (WebAudio)
   WindowChrome.tsx    Fensterknöpfe, Kopf- und Fußzeile der Vorschau
   Studio.tsx          Anpassen direkt am Jelly: Blobs, Popovers, Namensschild
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
@@ -200,10 +209,10 @@ Befehl erstellt einen nativen Debug-Build, unter Windows in `src-tauri/target/de
 Installer, Signierung und Updates sind noch nicht konfiguriert. `pnpm run check` kombiniert die
 Frontend-Tests, den Frontend-Build und die Rust-Tests.
 
-Die Emote- und Schild-Hooks lassen sich ohne zusätzliche Test-Bibliothek im Browser prüfen: Nach
+Die Emote- und Schild-Hooks und die Stimme lassen sich ohne zusätzliche Test-Bibliothek im Browser prüfen: Nach
 `pnpm webpreview:dev` die Seiten `http://127.0.0.1:1420/scripts/emotes-check.html` und
 `http://127.0.0.1:1420/scripts/emotes-check.html?preview` öffnen. Sie prüfen die echten React-Hooks
-mit dem Tauri-Mock beziehungsweise ohne Backend und melden nach wenigen Sekunden das Ergebnis.
+mit dem Tauri-Mock beziehungsweise ohne Backend, rendern die Stimme und melden nach wenigen Sekunden das Ergebnis.
 
 ## Bewusste Grenzen und nächste Schritte
 

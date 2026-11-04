@@ -16,13 +16,20 @@ import {
   type Jelly,
 } from "@jelly/scene";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 
 import type { ActiveEmote } from "../useEmotes";
+import type { ActiveVoice } from "../useJellyVoice";
 
-import { COSMETICS, PET_COLORS, type PetColor } from "../pet";
+import { COSMETICS, mouthAt, PET_COLORS, type PetColor } from "../pet";
 import Cosmetic from "./Cosmetic";
 import SignBoard from "./SignBoard";
+
+/** Die Mundform dieses Bildes. Bei reduzierter Bewegung lächelt das Jelly nur. */
+function currentMouth(voiced: RefObject<ActiveVoice | null> | undefined, reducedMotion: boolean) {
+  const active = voiced?.current;
+  return active && !reducedMotion ? mouthAt(active.notes, active.elapsed()) : undefined;
+}
 
 /** Eigenschaften des Pets in der Szene. */
 export interface CharacterProps {
@@ -40,6 +47,8 @@ export interface CharacterProps {
   onJelly?: (jelly: Jelly | null) => void;
   /** Lokal bestätigte Geste, unabhängig von der Szenenuhr. */
   emote?: ActiveEmote | null;
+  /** Was er gerade formt. Sein Mund folgt den Vokalen. */
+  voiced?: RefObject<ActiveVoice | null>;
 }
 
 /** Das Pet mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
@@ -51,6 +60,7 @@ export default function Character({
   cosmetic = null,
   onJelly,
   emote,
+  voiced,
 }: CharacterProps) {
   const worn = COSMETICS.find((item) => item.id === cosmetic);
   const jelly = useMemo(() => createJelly(PET_COLORS[color]), [color]);
@@ -81,6 +91,7 @@ export default function Character({
         emote && isEmoteKey(emote.key)
           ? { key: emote.key, elapsed: (performance.now() - emote.startedAt) / 1000 }
           : undefined,
+      mouth: currentMouth(voiced, reducedMotion),
     });
   }, -1);
 

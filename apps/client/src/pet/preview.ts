@@ -6,7 +6,7 @@
  * @module
  */
 
-import { PET_SIZE, type Catalog, type Game, type Me } from "./types";
+import { PET_SIZE, VOLUME, type Catalog, type Game, type Me } from "./types";
 
 /** Auszug aus dem Server-Katalog. */
 export const PREVIEW_CATALOG: Catalog = {
@@ -105,7 +105,7 @@ export const PREVIEW_ME: Me = {
 
 /** Startzustand der Oberfläche, solange Rust noch nichts geliefert hat. */
 export const PREVIEW_GAME: Game = {
-  settings: { reducedMotion: false, size: PET_SIZE.default },
+  settings: { reducedMotion: false, size: PET_SIZE.default, sound: true, volume: VOLUME.max },
   me: PREVIEW_ME,
   lan: {
     server_time: 0,

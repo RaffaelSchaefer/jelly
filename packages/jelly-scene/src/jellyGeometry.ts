@@ -9,7 +9,16 @@
  * @module
  */
 
-import { CatmullRomCurve3, LatheGeometry, SphereGeometry, Vector2, Vector3 } from "three";
+import {
+  BufferAttribute,
+  CatmullRomCurve3,
+  Color,
+  LatheGeometry,
+  SphereGeometry,
+  Vector2,
+  Vector3,
+  type BufferGeometry,
+} from "three";
 
 /** Kopf: eine leicht gestauchte, glänzende Kugel auf dem Körper. `depth` staucht in z-Richtung. */
 export const HEAD = { x: 0, y: 0.66, z: 0.2, radius: 0.62, depth: 0.9 } as const;
@@ -41,6 +50,19 @@ const BODY_PROFILE: [number, number][] = [
 
 /** Hand: eine kleine schwebende Kugel neben dem Körper, ohne Arm. */
 export const HAND = { x: 1.1, y: -0.4, z: 0.18, radius: 0.16 } as const;
+
+/**
+ * Färbt jeden Vertex einer Geometrie. Augen und Mund tragen ihre Farbe so in den Vertices und
+ * teilen sich ein Material.
+ */
+export function tintGeometry(geometry: BufferGeometry, hex: string): BufferGeometry {
+  const color = new Color(hex);
+  const count = geometry.getAttribute("position").count;
+  const colors = new Float32Array(count * 3);
+  for (let index = 0; index < count; index++) colors.set([color.r, color.g, color.b], index * 3);
+  geometry.setAttribute("color", new BufferAttribute(colors, 3));
+  return geometry;
+}
 
 /** Kopf-Mesh an seiner Position in der Szene. */
 export function createHeadGeometry() {

@@ -76,7 +76,12 @@ function eventMessage(event: ServerEvent, catalog: Catalog) {
 function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => void) {
   const { setGame, setCatalog, catalog, reload } = state;
   const [ready, setReady] = useState(!desktop);
-  const [message, setMessage] = useState("Bereit für die nächste Runde.");
+  const [said, setSaid] = useState({ text: "Bereit für die nächste Runde.", id: 0 });
+  // Mit Zähler: Auch derselbe Satz ist eine neue Meldung, das Jelly spricht ihn dann noch einmal.
+  const setMessage = useCallback(
+    (text: string) => setSaid((last) => ({ text, id: last.id + 1 })),
+    [],
+  );
   const call = useBackendCall(reload);
   const { run } = call;
 
@@ -98,7 +103,7 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
       if (next) setGame(next);
       if (next) setMessage(`Hallo, ich bin ${name.trim()}!`);
     },
-    [run, setGame],
+    [run, setGame, setMessage],
   );
 
   /** Tritt mit einem vorhandenen Konto der laufenden LAN bei. */
@@ -108,7 +113,7 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
       if (next) setGame(next);
       if (next) setMessage("Schön, wieder dabei zu sein!");
     },
-    [run, setGame],
+    [run, setGame, setMessage],
   );
 
   const onEvent = useCallback(
@@ -118,13 +123,22 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
       if (text) setMessage(text);
       if (event.type === "level.up") onLevelUp();
     },
-    [reload, catalog, onLevelUp],
+    [reload, catalog, onLevelUp, setMessage],
   );
   useServerEvents(desktop && ready, onEvent);
   const { game } = state;
   usePresence(desktop && ready && !!game.me?.lan?.active && game.lan.joined === true, setGame);
 
-  return { ...call, ready, message, setMessage, load, register, joinLan };
+  return {
+    ...call,
+    ready,
+    message: said.text,
+    messageId: said.id,
+    setMessage,
+    load,
+    register,
+    joinLan,
+  };
 }
 
 /**
@@ -282,14 +296,14 @@ export function usePokeKeys(interact: (action: Action) => unknown, enabled: bool
 }
 
 /**
- * Entwurfswert für den Größen-Regler. Das Pet wächst sofort mit, gespeichert wird erst 400 ms nach
- * der letzten Bewegung.
+ * Entwurfswert für einen Regler in den Einstellungen. Er zeigt sofort den neuen Wert, gespeichert
+ * wird erst 400 ms nach der letzten Bewegung.
  *
- * @param saved - Gespeicherte Größe, solange es keinen Entwurf gibt.
- * @param save - Speichert eine Größe. `false` heißt: gerade beschäftigt, dann in 200 ms erneut.
- * @returns Die anzuzeigende Größe und die Funktion für `onChange`.
+ * @param saved - Gespeicherter Wert, solange es keinen Entwurf gibt.
+ * @param save - Speichert einen Wert. `false` heißt: gerade beschäftigt, dann in 200 ms erneut.
+ * @returns Der anzuzeigende Wert und die Funktion für `onChange`.
  */
-export function useSizeDraft(saved: number, save: (size: number) => Promise<boolean>) {
+export function useSettingDraft(saved: number, save: (value: number) => Promise<boolean>) {
   const [draft, setDraft] = useState<number | null>(null);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);

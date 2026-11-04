@@ -31,6 +31,11 @@ fn local_state_rejects_other_versions_and_sizes() {
     local.settings.size = MAX_SIZE + 1;
     assert!(matches!(local.validate(), Err(Error::InvalidSize)));
     local.settings.size = DEFAULT_SIZE;
+    local.settings.volume = MIN_VOLUME - 1;
+    assert!(matches!(local.validate(), Err(Error::InvalidVolume)));
+    local.settings.volume = MAX_VOLUME + 1;
+    assert!(matches!(local.validate(), Err(Error::InvalidVolume)));
+    local.settings.volume = MAX_VOLUME;
     local.schema_version = 1;
     assert!(matches!(local.validate(), Err(Error::UnknownSchema)));
 }

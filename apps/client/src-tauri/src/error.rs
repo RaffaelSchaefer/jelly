@@ -6,7 +6,7 @@
 
 use serde::{Serialize, Serializer};
 
-use crate::pet::{MAX_SIZE, MIN_SIZE};
+use crate::pet::{MAX_SIZE, MAX_VOLUME, MIN_SIZE, MIN_VOLUME};
 
 /// Kurzform für Ergebnisse, die mit [`Error`] scheitern können.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -21,6 +21,10 @@ pub enum Error {
     /// Die Größe liegt außerhalb von [`MIN_SIZE`]…[`MAX_SIZE`].
     #[error("Die Größe muss zwischen {MIN_SIZE} und {MAX_SIZE} % liegen.")]
     InvalidSize,
+
+    /// Die Lautstärke liegt außerhalb von [`MIN_VOLUME`]…[`MAX_VOLUME`].
+    #[error("Die Lautstärke muss zwischen {MIN_VOLUME} und {MAX_VOLUME} % liegen.")]
+    InvalidVolume,
 
     /// Die Datei existiert, ist aber kein gültiger Stand. Sie wird nicht überschrieben.
     #[error("Gespeicherte Daten konnten nicht gelesen werden: {0}. Die Datei bleibt unverändert.")]

@@ -53,11 +53,11 @@ impl Store {
         })
     }
 
-    /// Übernimmt Größe und Bewegung.
+    /// Übernimmt die Geräte-Einstellungen.
     ///
     /// # Fehler
     ///
-    /// [`Error::InvalidSize`], dazu [`Error::Save`].
+    /// [`Error::InvalidSize`], [`Error::InvalidVolume`], dazu [`Error::Save`].
     pub fn set_settings(&mut self, settings: Settings) -> Result<()> {
         self.commit(Local {
             settings,

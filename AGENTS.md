@@ -49,10 +49,13 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
   `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
   `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
+- `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
+  (Noten, reine Logik): die Stimme des Jellys. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
+  `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
   Cosmetics, ihre Shader), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
-  `body.ts` (geraymarchter Körper, Shader in `shaders/`), `face.ts`, `animation.ts`,
+  `body.ts` (geraymarchter Körper, Shader in `shaders/`), `face.ts`, `mouthShapes.ts`, `animation.ts`,
   `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `jellyGeometry.ts` (Maße),
   `colors.ts` (Farben).
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `api.rs` (Server-Typen, HTTP),

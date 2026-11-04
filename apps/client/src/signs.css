@@ -1,8 +1,7 @@
 /*
  * Schild-Tropfen und Kapsel-Säule. Das Glas zeichnet LiquidGlass aus der Lage dieser Elemente, hier
  * liegt nur, was darauf steht, und wie die Flächen sich bewegen. Der Tropfen steht links unten am
- * Jelly, die Säule immer am linken Fensterrand. Das Fenster ist durchsichtig, das Glas kann also über
- * hellem Desktop liegen. Darum trägt die weiße Schrift einen weichen dunklen Hof.
+ * Jelly, die Säule immer am linken Fensterrand.
  */
 .sign-controls {
   --sign-left: calc(50% - 198px);
@@ -18,7 +17,6 @@
   );
   /* Wie weit Kapseln und Füllung beim Ein- und Ausfahren zum Tropfen hinüberrücken. */
   --sign-to-drop: calc(160px - 85px * var(--pet-scale, 1));
-  --sign-ink-shadow: 0 1px 2px #000c, 0 0 7px #0009;
   /* Unter 80 % etwas flacher: Sonst schnitte die Canvas unten den Schatten des Tropfens ab. */
   --sign-pill-height: clamp(26px, calc(12px + 20px * var(--pet-scale, 1)), 28px);
   --sign-gap: 2px;
@@ -124,7 +122,7 @@
   font-weight: 600;
   line-height: 15px;
   letter-spacing: 0.2px;
-  text-shadow: var(--sign-ink-shadow);
+  text-shadow: var(--glass-ink-shadow);
   animation: sign-ink-in 200ms ease-out 260ms both;
 }
 
@@ -138,7 +136,7 @@
   font-weight: 600;
   letter-spacing: 0.1px;
   white-space: nowrap;
-  text-shadow: var(--sign-ink-shadow);
+  text-shadow: var(--glass-ink-shadow);
 }
 
 .sign-pill {
@@ -256,11 +254,6 @@
 
 .sign-pop:not([data-open]) .sign-pill::before {
   display: none;
-}
-
-/* Die Sprechblase läge im Weg, sobald das Jelly kleiner ist. Sie meldet sich nach der Wahl zurück. */
-.pet-window:has(.sign-pop[data-open]) .speech {
-  visibility: hidden;
 }
 
 @keyframes sign-float {

@@ -1,7 +1,7 @@
 /**
- * Browser-Prüfung der echten Emote- und Schild-Hooks mit Tauri-Mock, ohne weitere
- * Test-Abhängigkeiten. Unter /scripts/emotes-check.html und zusätzlich mit ?preview über den
- * Vite-Server öffnen.
+ * Browser-Prüfung der echten Emote- und Schild-Hooks mit Tauri-Mock und der gerenderten Stimme,
+ * ohne weitere Test-Abhängigkeiten. Unter /scripts/emotes-check.html und zusätzlich mit ?preview
+ * über den Vite-Server öffnen.
  *
  * @module
  */
@@ -17,6 +17,8 @@ const { useEmotes } = await import("../src/useEmotes.ts");
 const { useSigns } = await import("../src/useSigns.ts");
 const { useGameState, useBackendCall } = await import("../src/useGame.ts");
 const { PREVIEW_GAME, PREVIEW_CATALOG } = await import("../src/pet/preview.ts");
+const { EMOTE_CLIPS, speechNotes } = await import("../src/pet/index.ts");
+const { createVoiceOutput, playNotes } = await import("../src/voice.ts");
 const { EMOTE_SECONDS } = await import("@jelly/scene/emotes");
 let current;
 let failures = 0;
@@ -160,6 +162,24 @@ async function checkSignPreview() {
   check(current.state.game.me.sign === null, "Die Vorschau senkt das Schild");
 }
 
+/**
+ * Rendert die Stimme ohne Lautsprecher: Sie muss klingen, ohne zu übersteuern. `NaN` scheitert hier
+ * auch.
+ */
+async function checkVoice() {
+  const rate = 44100;
+  for (const notes of [speechNotes("Schön, dass du da bist!"), ...Object.values(EMOTE_CLIPS)]) {
+    const last = notes.at(-1);
+    const seconds = last.at + last.duration + 0.2;
+    const context = new OfflineAudioContext(1, Math.ceil(seconds * rate), rate);
+    playNotes(context, createVoiceOutput(context), notes, 0);
+    const samples = (await context.startRendering()).getChannelData(0);
+    const peak = samples.reduce((top, value) => Math.max(top, Math.abs(value)), 0);
+    check(peak > 0.05, "Die Stimme muss hörbar sein");
+    check(peak <= 1, "Die Stimme darf nicht übersteuern");
+  }
+}
+
 /** Führt dieselben Hooks als Desktop oder reine Vorschau aus. */
 async function run() {
   mockIPC((command, args) => {
@@ -171,6 +191,7 @@ async function run() {
   await checkLifetime();
   if (!preview) await checkFailures();
   await (preview ? checkSignPreview() : checkSignRequests());
+  await checkVoice();
   answer = () => PREVIEW_GAME;
   await act(async () =>
     current.state.setCatalog({
@@ -183,7 +204,7 @@ async function run() {
     "Neue Server-Emotes bleiben nutzbar",
   );
   if (preview) check(requests.length === 0, "Die Vorschau darf kein Backend aufrufen");
-  return `${preview ? "Vorschau" : "Desktop-Mock"}: alle Emote- und Schild-Prüfungen bestanden.`;
+  return `${preview ? "Vorschau" : "Desktop-Mock"}: alle Emote-, Schild- und Stimm-Prüfungen bestanden.`;
 }
 
 try {

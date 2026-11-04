@@ -2,15 +2,14 @@
  * Das Gesicht des Jellys: zwei Augen mit Glanzpunkten, Wangen und ein Mund.
  *
  * Die Teile sitzen auf der Kopfoberfläche und schauen entlang ihrer Normale nach außen. Die
- * Animation (`animation.ts`) bewegt sie über {@link Face}.
+ * Animation (`animation.ts`) bewegt sie über {@link Face}. Beim Sprechen tauscht `mouthShapes.ts`
+ * die Form des Munds aus.
  *
  * @module
  */
 
 import {
-  BufferAttribute,
   BufferGeometry,
-  Color,
   Mesh,
   MeshBasicMaterial,
   Object3D,
@@ -22,7 +21,8 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import type { FaceParts } from "./animation.ts";
 
-import { HEAD, headSurface } from "./jellyGeometry.ts";
+import { HEAD, headSurface, tintGeometry } from "./jellyGeometry.ts";
+import { findMouthShapes, type MouthShape } from "./mouthShapes.ts";
 
 /** Linke und rechte Seite als Vorzeichen. Index 0 ist links. */
 const SIDES = [-1, 1] as const;
@@ -50,6 +50,10 @@ const SHAPES = {
 /** Das Gesicht: `root` hängt im Kopf, die übrigen Teile bewegt die Animation. */
 export interface Face extends FaceParts {
   root: Object3D;
+  /** Die Form des Munds, solange das Jelly nicht spricht. */
+  smile: BufferGeometry;
+  /** Die Formen des Munds beim Sprechen. */
+  mouthShapes: Record<MouthShape, BufferGeometry>;
 }
 
 /** Stelle auf dem Kopf relativ zur Kopfmitte. */
@@ -103,16 +107,6 @@ const EYE_PARTS: EyePart[] = [
 const EYE_SHAPES = new Map<string, BufferGeometry>();
 /** Der Mund je Tintenfarbe, mit Vertexfarben wie die Augen: beide teilen sich Material und Shader. */
 const MOUTH_SHAPES = new Map<string, BufferGeometry>();
-
-/** Färbt jeden Vertex einer Geometrie. */
-function tintGeometry(geometry: BufferGeometry, hex: string): BufferGeometry {
-  const color = new Color(hex);
-  const count = geometry.getAttribute("position").count;
-  const colors = new Float32Array(count * 3);
-  for (let index = 0; index < count; index++) colors.set([color.r, color.g, color.b], index * 3);
-  geometry.setAttribute("color", new BufferAttribute(colors, 3));
-  return geometry;
-}
 
 /**
  * Baut das Auge in der Tintenfarbe oder holt es aus dem Cache. Ein Mesh statt drei spart der Bühne
@@ -196,5 +190,6 @@ export function createFace(ink: string): Face {
   const mouth = createMouth(ink, inked);
   const root = new Object3D();
   root.add(...eyes, ...cheeks, mouth);
-  return { root, eyes, cheeks, mouth };
+  const smile = findMouthShape(ink);
+  return { root, eyes, cheeks, mouth, smile, mouthShapes: findMouthShapes(ink) };
 }

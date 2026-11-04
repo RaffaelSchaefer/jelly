@@ -24,6 +24,10 @@ export interface Settings {
   reducedMotion: boolean;
   /** Größe in Prozent, siehe {@link PET_SIZE}. */
   size: number;
+  /** Ob das Jelly Geräusche macht. */
+  sound: boolean;
+  /** Lautstärke in Prozent, siehe {@link VOLUME}. */
+  volume: number;
 }
 
 /** Abklingzeiten und Kontingent der Selbstmeldungen. Zeiten in Unix-Millisekunden. */
@@ -160,3 +164,9 @@ export interface ServerEvent {
 
 /** Größenbereich des Pets in Prozent (Rust: `MIN_SIZE`, `MAX_SIZE`, `DEFAULT_SIZE`). */
 export const PET_SIZE = { min: 70, max: 150, step: 10, default: 100 } as const;
+
+/**
+ * Bereich der Lautstärke in Prozent (Rust: `MIN_VOLUME`, `MAX_VOLUME`). Ganz still macht der
+ * Schalter.
+ */
+export const VOLUME = { min: 10, max: 100, step: 10 } as const;

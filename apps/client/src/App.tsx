@@ -7,7 +7,7 @@
  * @module
  */
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { desktop } from "./backend";
 import JoinPanel from "./panels/JoinPanel";
@@ -17,7 +17,7 @@ import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
 import { PREVIEW_ME, stageLayout, type Me, type Report } from "./pet";
 import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
-import { usePet, usePokeKeys, useSizeDraft, type PetGame } from "./usePet";
+import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
 import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
 
 /** Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt zusätzlich zur Einstellung im Pet. */
@@ -57,29 +57,36 @@ function needsJoin({ game, ready }: PetGame) {
   return game.me === null || (game.lan.current !== null && game.lan.joined === false);
 }
 
+/**
+ * Die Regler der Einstellungen: Sie zeigen sofort den neuen Wert und speichern, sobald sie ruhen.
+ * Gespeichert wird immer auf den neuesten Stand, sonst überschriebe ein Regler den anderen.
+ */
+function useSettingSliders(game: PetGame) {
+  const { settings } = game.game;
+  const latest = useRef(settings);
+  latest.current = settings;
+  const [size, onSize] = useSettingDraft(settings.size, (next) =>
+    game.saveSettings({ ...latest.current, size: next }),
+  );
+  const [volume, onVolume] = useSettingDraft(settings.volume, (next) =>
+    game.saveSettings({ ...latest.current, volume: next }),
+  );
+  return { size, volume, onSize, onVolume };
+}
+
 /** Eigenschaften von {@link PanelContent}. */
 interface PanelContentProps {
   panel: GlassPanelId;
   game: PetGame;
   me: Me;
   xpTab: XpTab;
-  size: number;
+  sliders: ReturnType<typeof useSettingSliders>;
   onXpTab: (tab: XpTab) => void;
-  onSize: (size: number) => void;
   onClose: () => void;
 }
 
 /** Inhalt des offenen Panels. */
-function PanelContent({
-  panel,
-  game,
-  me,
-  xpTab,
-  size,
-  onXpTab,
-  onSize,
-  onClose,
-}: PanelContentProps) {
+function PanelContent({ panel, game, me, xpTab, sliders, onXpTab, onClose }: PanelContentProps) {
   const { catalog, ready, busy } = game;
   const disabled = busy || !ready;
   if (panel === "lan") {
@@ -105,9 +112,10 @@ function PanelContent({
   const { settings } = game.game;
   return (
     <SettingsPanel
-      {...{ settings, size, ready, busy, onSize }}
+      {...{ settings, ready, busy, ...sliders }}
       name={me.name}
       onReducedMotion={(reducedMotion) => void game.saveSettings({ ...settings, reducedMotion })}
+      onSound={(sound) => void game.saveSettings({ ...settings, sound })}
     />
   );
 }
@@ -204,9 +212,7 @@ export default function App() {
   const game = usePet(openLevelUp);
   const { settings } = game.game;
   const me = game.game.me ?? PREVIEW_ME;
-  const [size, changeSize] = useSizeDraft(settings.size, (next) =>
-    game.saveSettings({ ...settings, size: next }),
-  );
+  const sliders = useSettingSliders(game);
   const joining = needsJoin(game);
   usePokeKeys(game.interact, panel === null && !joining);
 
@@ -225,7 +231,7 @@ export default function App() {
       <main
         className="pet-window"
         aria-label="Dein LAN-Begleiter"
-        style={stageStyle(size)}
+        style={stageStyle(sliders.size)}
         onKeyDown={(event) => {
           if (event.key === "Escape") close();
         }}
@@ -242,9 +248,8 @@ export default function App() {
           {!joining && isGlassPanel(panel) ? (
             <Panel title={panelTitle(panel, xpTab, me)} onClose={close}>
               <PanelContent
-                {...{ panel, game, me, xpTab, size, onClose: close }}
+                {...{ panel, game, me, xpTab, sliders, onClose: close }}
                 onXpTab={setXpTab}
-                onSize={changeSize}
               />
             </Panel>
           ) : null}

@@ -16,6 +16,7 @@ import { REGIONS, signLabel, type Me, type StudioRegionId, type StudioFocus } fr
 import SignPicker from "./SignPicker";
 import Studio from "./Studio";
 import { SpeechBubble } from "./ui";
+import { useJellyVoice, type ActiveVoice } from "./useJellyVoice";
 
 /** Three.js erst laden, wenn die Bühne gebraucht wird. */
 const PetScene = lazy(() => import("./scene/PetScene"));
@@ -31,9 +32,12 @@ function emoteMessage(emote: ActiveEmote | null) {
 
 /** Welche Bedienung direkt am Jelly sichtbar ist. */
 function stageModes(panel: PanelId | null, joining: boolean) {
+  const dropsVisible = !joining && (panel === null || panel === "emotes" || panel === "signs");
   return {
     studio: !joining && panel === "look",
-    dropsVisible: !joining && (panel === null || panel === "emotes" || panel === "signs"),
+    dropsVisible,
+    // Die Säule der Schilder bräuchte den Platz. In den anderen Fällen läuft das Glas gar nicht.
+    bubble: dropsVisible && panel !== "signs",
   };
 }
 
@@ -55,6 +59,7 @@ function PetVisual({
   me,
   reducedMotion,
   sign,
+  voiced,
   focus,
   anchors,
 }: {
@@ -62,6 +67,7 @@ function PetVisual({
   me: Me;
   reducedMotion: boolean;
   sign: string | null;
+  voiced: RefObject<ActiveVoice | null>;
   focus?: StudioFocus;
   anchors?: RefObject<HTMLElement | null>;
 }) {
@@ -78,7 +84,7 @@ function PetVisual({
           cosmetic={me.cosmetic}
           pulse={game.pulse}
           emote={game.activeEmote}
-          {...{ reducedMotion, sign, focus, anchors }}
+          {...{ reducedMotion, sign, voiced, focus, anchors }}
         />
       </Suspense>
     </button>
@@ -119,6 +125,21 @@ function StageDrops({
         onPreview={onPreview}
       />
     </>
+  );
+}
+
+/**
+ * Die Sprechblase: Während einer Geste steht dort ihr Name, sonst die letzte Meldung. Sie steht im
+ * DOM nach den Tropfen, denn die Emotes brauchen die ersten beiden Plätze im Shader für sich.
+ */
+function StageBubble({ game, saidAt, hidden }: { game: PetGame; saidAt: number; hidden: boolean }) {
+  const gesture = emoteMessage(game.activeEmote);
+  return (
+    <SpeechBubble
+      text={gesture ?? game.message}
+      saidAt={gesture ? undefined : saidAt}
+      hidden={hidden}
+    />
   );
 }
 
@@ -164,14 +185,14 @@ export default function PetStage(props: PetStageProps) {
   const stage = useRef<HTMLDivElement>(null);
   const [region, setRegion] = useState<StudioRegionId | null>(null);
   const [preview, setPreview] = useSignPreview(panel === "signs");
-  const { studio, dropsVisible } = stageModes(panel, joining);
+  const { studio, dropsVisible, bubble } = stageModes(panel, joining);
+  const { saidAt, voiced } = useJellyVoice(game);
   // Beim nächsten Öffnen soll keine Region mehr offen sein und die Kamera wieder zurückfahren.
   if (!studio && region) setRegion(null);
   return (
     <div className="pet-stage" ref={stage}>
-      <SpeechBubble>{emoteMessage(game.activeEmote) ?? game.message}</SpeechBubble>
       <PetVisual
-        {...{ game, me, reducedMotion }}
+        {...{ game, me, reducedMotion, voiced }}
         sign={studio ? null : signLabel(preview ?? me.sign, game.catalog)}
         focus={REGIONS.find((item) => item.id === region)?.focus}
         anchors={studio || dropsVisible ? stage : undefined}
@@ -180,6 +201,7 @@ export default function PetStage(props: PetStageProps) {
       {dropsVisible ? (
         <StageDrops {...{ game, me, panel, onToggle, onClose }} onPreview={setPreview} />
       ) : null}
+      <StageBubble {...{ game, saidAt }} hidden={!bubble} />
       <div className="ground-shadow" />
       <h1 className="sr-only">
         {me.name}, Level {me.level}

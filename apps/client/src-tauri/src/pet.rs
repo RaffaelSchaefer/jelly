@@ -1,8 +1,8 @@
 //! Was das Gerät selbst weiß: Token, Einstellungen und ein paar reine Regeln für den Server.
 //!
 //! XP, Level, Cosmetics und Erfolge bestimmt der Server (siehe [`crate::api`]). Hier bleiben nur
-//! das Token und die Geräte-Einstellungen Größe und Bewegung, dazu reine Funktionen ohne IO und
-//! ohne Uhr. Zeitpunkte kommen als Parameter herein, damit sich jede Regel direkt testen lässt.
+//! das Token und die Geräte-Einstellungen Größe, Bewegung, Geräusche und Lautstärke, dazu reine Funktionen ohne
+//! IO und ohne Uhr. Zeitpunkte kommen als Parameter herein, damit sich jede Regel direkt testen lässt.
 //!
 //! Die Oberfläche spiegelt Typen und Grenzwerte in `src/pet/types.ts`. Wer hier etwas ändert,
 //! muss dort mitziehen.
@@ -20,6 +20,11 @@ pub const MIN_SIZE: u8 = 70;
 pub const MAX_SIZE: u8 = 150;
 /// Standardgröße in Prozent.
 pub const DEFAULT_SIZE: u8 = 100;
+
+/// Kleinste erlaubte Lautstärke in Prozent. Ganz still ist Sache des Schalters.
+pub const MIN_VOLUME: u8 = 10;
+/// Größte erlaubte Lautstärke in Prozent, zugleich der Standard.
+pub const MAX_VOLUME: u8 = 100;
 
 /// Version dieser App, verglichen mit `min_client_version` des Servers.
 pub const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -56,6 +61,22 @@ pub struct Settings {
     pub reduced_motion: bool,
     /// Größe in Prozent, [`MIN_SIZE`]…[`MAX_SIZE`].
     pub size: u8,
+    /// Ob das Jelly Geräusche macht. Fehlt in älteren Dateien und gilt dort als an.
+    #[serde(default = "default_sound")]
+    pub sound: bool,
+    /// Lautstärke in Prozent, [`MIN_VOLUME`]…[`MAX_VOLUME`]. Fehlt in älteren Dateien.
+    #[serde(default = "default_volume")]
+    pub volume: u8,
+}
+
+/// Geräusche sind an, bis jemand sie abschaltet.
+fn default_sound() -> bool {
+    true
+}
+
+/// Volle Lautstärke, bis jemand den Regler bewegt.
+fn default_volume() -> u8 {
+    MAX_VOLUME
 }
 
 impl Default for Settings {
@@ -63,6 +84,8 @@ impl Default for Settings {
         Self {
             reduced_motion: false,
             size: DEFAULT_SIZE,
+            sound: default_sound(),
+            volume: default_volume(),
         }
     }
 }
@@ -94,13 +117,16 @@ impl Local {
     ///
     /// # Fehler
     ///
-    /// [`Error::UnknownSchema`] oder [`Error::InvalidSize`].
+    /// [`Error::UnknownSchema`], [`Error::InvalidSize`] oder [`Error::InvalidVolume`].
     pub(crate) fn validate(&self) -> Result<()> {
         if self.schema_version != SCHEMA_VERSION {
             return Err(Error::UnknownSchema);
         }
         if !(MIN_SIZE..=MAX_SIZE).contains(&self.settings.size) {
             return Err(Error::InvalidSize);
+        }
+        if !(MIN_VOLUME..=MAX_VOLUME).contains(&self.settings.volume) {
+            return Err(Error::InvalidVolume);
         }
         Ok(())
     }

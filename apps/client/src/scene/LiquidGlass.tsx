@@ -35,10 +35,11 @@ import fragmentShader from "./shaders/liquid.frag.glsl?raw";
 /**
  * Plätze in der Reihenfolge des DOM. Im Studio: Namensschild, Fertig-Knopf, vier Blobs und ein
  * Popover. Am Jelly: Emote-Tropfen, Emote-Auswahl (geschlossen leer), Schild-Tropfen, Füllung der
- * Säule und ihre Kapseln.
+ * Säule und ihre Kapseln, zuletzt die Sprechblase mit ihrem Schwanz.
  *
- * Ponytail: Platz für zehn Kapseln, darüber fehlt ihnen das Glas. Mehr Plätze kosten jedes Pixel
- * einen Blick mehr, also erst anheben, wenn der Katalog der Schilder so weit wächst.
+ * Ponytail: Platz für zehn Kapseln, solange die Blase weg ist. Darüber fehlt das Glas, zuerst der
+ * Blase, während die Säule zurückläuft. Mehr Plätze kosten jedes Pixel einen Blick mehr, also erst
+ * anheben, wenn der Katalog der Schilder so weit wächst.
  */
 const MAX_SHAPES = 14;
 
