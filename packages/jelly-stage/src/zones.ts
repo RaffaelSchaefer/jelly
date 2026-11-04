@@ -33,7 +33,7 @@ const SNACK_GAP = 1.1;
 const SNACK_SPREAD = 0.8;
 const SEED_SNACK_SPOT = 97;
 
-/** Kinds jellies can stand on, as `IsStandingKind` in `internal/rules/areas.go`. */
+/** Kinds jellies can stand on, as `IsStandingKind` in `apps/server/internal/rules/areas.go`. */
 const STANDING_KINDS: AreaKind[] = ["seats", "stage", "lounge"];
 /** Kinds jellies walk around. */
 const OBSTACLE_KINDS: AreaKind[] = ["desk", "snackbar"];

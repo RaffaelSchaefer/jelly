@@ -26,7 +26,13 @@ import type { FloorPoint, FloorRect, ScenePoint } from "./world.ts";
 
 import { findEmote, findMotionPose } from "./effects.ts";
 import { createShadowInstances, disposeShadow, SHADOW_HEIGHT } from "./shadow.ts";
-import { calculateWalkPose, createWalker, stepWalker, type Walker } from "./walking.ts";
+import {
+  calculateWalkPose,
+  createWalker,
+  stepWalker,
+  type WalkPose,
+  type Walker,
+} from "./walking.ts";
 import { calculateRandomValue } from "./wander.ts";
 import { findFloorHeight } from "./zones.ts";
 
@@ -52,6 +58,8 @@ const SHADOW_CAPACITY = 64;
 const FIRST_JELLY_ORDER = 1;
 /** How fast a jelly steps up onto the stage or down from it, per second. */
 const STEP_RATE = 10;
+/** With reduced motion a jelly glides to its goal, without hopping or leaning. */
+const STILL_WALK: WalkPose = { lift: 0, lean: 0 };
 
 /** One jelly on the stage. */
 interface StageJelly {
@@ -94,6 +102,7 @@ export interface JellyFrame {
   time: number;
   /** Local time in milliseconds, as used by the effects. */
   now: number;
+  reducedMotion: boolean;
 }
 
 /** Where a jelly is, for the texts over it. */
@@ -112,7 +121,7 @@ export function createJellyCast(): JellyCast {
 }
 
 /** Returns the colors of a jelly. Unknown colors look like mint. */
-function findPalette(color: string): JellyPalette {
+export function findPalette(color: string): JellyPalette {
   return Object.entries(JELLY_COLORS).find(([key]) => key === color)?.[1] ?? JELLY_COLORS.mint;
 }
 
@@ -184,8 +193,12 @@ function updateJelly(shown: StageJelly, frame: JellyFrame, budget: { searches: n
   });
   const floor = findFloorHeight(walker.position, frame.stages);
   shown.elevation += (floor - shown.elevation) * (1 - Math.exp(-STEP_RATE * frame.seconds));
-  const walk = calculateWalkPose(walker);
-  const motion = findMotionPose(frame.effects, shown.player.id, frame.now);
+  const walk = frame.reducedMotion ? STILL_WALK : calculateWalkPose(walker);
+  const motion = findMotionPose(
+    frame.reducedMotion ? [] : frame.effects,
+    shown.player.id,
+    frame.now,
+  );
   const lift = walk.lift + motion.lift * JELLY_HEIGHT;
   group.position.set(walker.position.x, shown.elevation - BODY_BOTTOM + lift, walker.position.z);
   group.rotation.set(walk.lean, walker.yaw + motion.turn, motion.tilt, "YXZ");
@@ -194,7 +207,7 @@ function updateJelly(shown: StageJelly, frame: JellyFrame, budget: { searches: n
     time: frame.time + shown.timeOffset,
     rawDelta: frame.seconds,
     pulse: shown.pulse,
-    reducedMotion: false,
+    reducedMotion: frame.reducedMotion,
     holding: frame.visitors.has(shown.player.id),
     emote: findEmote(frame.effects, shown.player.id, frame.now),
   });

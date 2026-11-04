@@ -59,7 +59,7 @@ würde, fällt weg, bis wieder Platz ist.
 Bühne, Lounge und Snackbar sind eingerichtet, und manches bewegt sich: Spots wandern über die
 Bühnenbretter, die Boxen pumpen im Takt, in der Lounge blubbert eine Lavalampe unter Lichterketten,
 an der Theke dreht sich Slush und Lauflichter umrahmen das Schild. Die Bauteile stehen in
-`web/stage/stageSet.ts`, `lounge.ts` (mit `couch.ts` und `plants.ts`) und `snackBar.ts` (mit
+`packages/jelly-stage/src/stageSet.ts`, `lounge.ts` (mit `couch.ts` und `plants.ts`) und `snackBar.ts` (mit
 `snacks.ts`). Gemeinsame Materialien und Helfer liegen in `props.ts`, Lichterketten in `bulbs.ts`
 und Leuchtschilder in `signs.ts`.
 
@@ -105,7 +105,7 @@ sich nicht anmelden, endet der Lauf mit dem Grund. Messungen stehen in
 
 Über pnpm läuft der Server mit `pnpm test`, `pnpm lint`, `pnpm build` und `pnpm format` zusammen mit
 dem Rest des Monorepos. `pnpm lint` braucht `golangci-lint`, die Version und alle Code-Regeln stehen
-in [AGENTS.md](AGENTS.md). Die Bühne bündelt `three` und `@jelly/scene` aus `node_modules`, daher
+in [AGENTS.md](AGENTS.md). Die Bühne bündelt `three`, `@jelly/scene` und `@jelly/stage` aus `node_modules`, daher
 muss vor `go generate` einmal `pnpm install` im Root laufen. Gebündelt wird über `go tool esbuild`.
 
 | Variable          | Standard   | Zweck                                       |
@@ -128,15 +128,15 @@ muss vor `go generate` einmal `pnpm install` im Root laufen. Gebündelt wird üb
 | `internal/rules`   | Spielregeln als reine Funktionen, ohne IO               |
 | `internal/simulator` | Simulierte Spieler, nutzt nur die öffentliche API     |
 | `internal/web`     | Liefert die gebauten Seiten aus, mit Sicherheits-Headern |
-| `web/stage`        | Quelltext der Bühne in TypeScript mit three.js, ohne Framework |
+| `web/stage`        | Die Seite der Bühne und ihr Weg zum Server, die Bühne selbst steht in `packages/jelly-stage` |
 | `scripts`          | Wiederholbare Hilfen wie die Demo                       |
 | `benchmarks`       | Lasttest und Baselines                                  |
 | `testdata/contract`| Regelfälle als JSON, Teil des API-Vertrags              |
 
 ## Betrieb
 
-Das Image entsteht aus dem `Dockerfile` und wird vom Root des Repos gebaut, weil es das Paket
-`packages/jelly-scene` braucht: `docker build -f apps/server/Dockerfile -t jelly-server .`. Was in
+Das Image entsteht aus dem `Dockerfile` und wird vom Root des Repos gebaut, weil es die Pakete
+`packages/jelly-scene` und `packages/jelly-stage` braucht: `docker build -f apps/server/Dockerfile -t jelly-server .`. Was in
 den Build gelangt, regelt `Dockerfile.dockerignore`. Der Server speichert unter `/app/data`, das als
 Volume bestehen bleiben muss. SIGINT und SIGTERM beenden den Server geordnet, offene Anfragen haben dafür bis zu 8
 Sekunden und damit weniger als die 10 Sekunden von `docker stop`. Die Datenbank darf nicht im

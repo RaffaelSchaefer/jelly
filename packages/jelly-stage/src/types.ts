@@ -1,5 +1,5 @@
 /**
- * Shapes of the server responses the stage reads, see `docs/api.md`.
+ * Shapes of the server responses the stage reads, see `apps/server/docs/api.md`.
  *
  * @module
  */

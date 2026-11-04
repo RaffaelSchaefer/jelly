@@ -150,13 +150,14 @@ export function calculateCameraDistance(
 }
 
 /**
- * Returns canvas pixels per CSS pixel: twice the screen's own while the canvas stays within the
- * budget, never fewer than the screen has.
+ * Returns canvas pixels per CSS pixel: `supersampling` times the screen's own while the canvas stays
+ * within the budget, never fewer than the screen has.
  */
 export function calculateCanvasDensity(
   size: { width: number; height: number },
   screenDensity: number,
+  supersampling = SUPERSAMPLING,
 ) {
   const budget = Math.sqrt(MAX_CANVAS_PIXELS / Math.max(1, size.width * size.height));
-  return Math.max(screenDensity, Math.min(screenDensity * SUPERSAMPLING, budget));
+  return Math.max(screenDensity, Math.min(screenDensity * supersampling, budget));
 }

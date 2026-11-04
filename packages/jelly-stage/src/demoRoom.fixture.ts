@@ -1,7 +1,8 @@
 /**
- * The hall of `scripts/demo-room.sh` as areas, for tests of movement and navigation. It follows the
- * script step by step: seats first, then desks, then the spine, then stage, lounge and snack bar.
- * It copies the numbers of the script, so a change there belongs here too.
+ * The hall of `apps/server/scripts/demo-room.sh` as areas, for tests of movement and navigation and
+ * the map preview of the app. It follows the script step by step: seats first, then desks, then the
+ * spine, then stage, lounge and snack bar. It copies the numbers of the script, so a change there
+ * belongs here too.
  *
  * @module
  */

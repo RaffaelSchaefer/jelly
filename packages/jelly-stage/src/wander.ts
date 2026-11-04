@@ -9,7 +9,7 @@ import type { StageArea, StagePlayer, StagePoint } from "./types.ts";
 
 import { FULL_CIRCLE, STAGE_SIZE } from "./world.ts";
 
-/** Same share as `homeMarginPercent` in `internal/rules/areas.go`, so jellies stay in their area. */
+/** Same share as `homeMarginPercent` in `apps/server/internal/rules/areas.go`, so jellies stay in their area. */
 const WANDER_SHARE = 0.1;
 const SLOW_WEIGHT = 0.6;
 const FAST_WEIGHT = 0.4;

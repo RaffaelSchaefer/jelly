@@ -66,3 +66,8 @@ test("the canvas doubles the screen pixels up to about 4K, never below the scree
   assert.equal(calculateCanvasDensity({ width: 1920, height: 1080 }, 2), 2);
   assert.equal(calculateCanvasDensity({ width: 0, height: 0 }, 1), 2);
 });
+
+test("without supersampling the canvas has exactly the pixels of the screen", () => {
+  assert.equal(calculateCanvasDensity({ width: 1920, height: 1080 }, 1, 1), 1);
+  assert.equal(calculateCanvasDensity({ width: 960, height: 800 }, 2, 1), 2);
+});

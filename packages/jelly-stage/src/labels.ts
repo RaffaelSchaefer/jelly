@@ -8,8 +8,11 @@
 import type { StageEffect } from "./effects.ts";
 import type { StagePlayer } from "./types.ts";
 
+import { findPalette } from "./jellies.ts";
+
 const TEXT_COLOR = "#ffffff";
 const TEXT_OUTLINE = "rgba(28, 38, 52, 0.85)";
+const PLAIN_TEXT: TextColors = { fill: TEXT_COLOR, edge: TEXT_OUTLINE };
 const SIGN_FILL = "#fff3c9";
 const SIGN_EDGE = "rgba(120, 92, 20, 0.35)";
 const SIGN_TEXT = "#3b2f0f";
@@ -26,6 +29,20 @@ const BUBBLE_FONT_SHARE = 0.36;
 const TOAST_FONT_SHARE = 0.18;
 const TOAST_RISE_SHARE = 0.45;
 const OUTLINE_PIXELS = 3;
+/** A marked name is this much larger than the others. */
+const MARKED_NAME_SCALE = 1.15;
+const MARKED_NAME_WEIGHT = "800";
+const MARKER_SHARE = 0.11;
+const MIN_MARKER_PIXELS = 6;
+/** A marker is this much longer than half its width. */
+const MARKER_STRETCH = 1.4;
+const MARKER_EDGE_PIXELS = 2;
+
+/** Colors of a text or marker. */
+interface TextColors {
+  fill: string;
+  edge: string;
+}
 
 /** Where a jelly is on screen, in CSS pixels. */
 export interface LabelAnchor {
@@ -33,8 +50,17 @@ export interface LabelAnchor {
   /** Middle of the feet. */
   x: number;
   y: number;
+  /** Where the head is sideways: Perspective and lens can tilt a jelly. */
+  headX: number;
   /** Height of the jelly from feet to the top of its head. */
   height: number;
+}
+
+/** Jellies whose names show in any crowd. The big stage has none. */
+export interface LabelMarks {
+  ownId: number | null;
+  targetId: number | null;
+  hoveredId: number | null;
 }
 
 /** A rectangle on the screen a text has taken. */
@@ -52,22 +78,45 @@ export interface LabelScene {
   effects: StageEffect[];
   signLabels: Map<string, string>;
   now: number;
+  marks: LabelMarks;
 }
 
 /**
- * Paints all texts of a frame over the picture of the stage. In a crowd, the texts of the nearest
- * jellies win: a name or sign that would overlap one already painted is left out.
+ * Paints all texts of a frame over the picture of the stage. Marked names come first and always
+ * show. After them, the texts of the nearest jellies win: a name or sign that would overlap one
+ * already painted is left out.
  */
 export function drawLabels(context: CanvasRenderingContext2D, scene: LabelScene): void {
   const taken: TextBox[] = [];
+  const marked = listMarked(scene);
+  for (const anchor of marked) {
+    drawMarkedName(context, anchor, scene.marks.ownId === anchor.player.id, taken);
+  }
   for (const anchor of [...scene.anchors].reverse()) {
-    drawName(context, anchor, taken);
+    if (!marked.includes(anchor)) {
+      drawName(context, anchor, taken);
+    }
     const signLabel = scene.signLabels.get(anchor.player.sign ?? "");
     if (signLabel) {
       drawSign(context, signLabel, anchor, taken);
     }
   }
+  drawMarkers(context, scene);
   drawEffects(context, scene);
+}
+
+/** Returns the marked jellies in painting order. Names that collide stack up in this order. */
+function listMarked(scene: LabelScene): LabelAnchor[] {
+  const { hoveredId, targetId, ownId } = scene.marks;
+  return [...new Set([hoveredId, targetId, ownId])].flatMap(
+    (id) => scene.anchors.find((anchor) => anchor.player.id === id) ?? [],
+  );
+}
+
+/** Returns the colors of the own jelly, so its name and marker match it. */
+function findOwnColors(player: StagePlayer): TextColors {
+  const palette = findPalette(player.color);
+  return { fill: palette.glow, edge: palette.outline };
 }
 
 /** Takes a box for a text, unless it overlaps one already taken. */
@@ -88,12 +137,13 @@ function writeOutlined(
   context: CanvasRenderingContext2D,
   text: string,
   position: { x: number; y: number },
+  colors = PLAIN_TEXT,
 ): void {
-  context.strokeStyle = TEXT_OUTLINE;
+  context.strokeStyle = colors.edge;
   context.lineWidth = OUTLINE_PIXELS;
   context.lineJoin = "round";
   context.strokeText(text, position.x, position.y);
-  context.fillStyle = TEXT_COLOR;
+  context.fillStyle = colors.fill;
   context.fillText(text, position.x, position.y);
 }
 
@@ -117,6 +167,40 @@ function drawName(context: CanvasRenderingContext2D, anchor: LabelAnchor, taken:
   }
 }
 
+/**
+ * Writes name and level of a marked jelly below it. Only another marked name can push it further
+ * down: a jelly stands right next to its target, so their names would always collide.
+ */
+function drawMarkedName(
+  context: CanvasRenderingContext2D,
+  anchor: LabelAnchor,
+  isOwn: boolean,
+  taken: TextBox[],
+): void {
+  const pixels = anchor.height * NAME_FONT_SHARE * MARKED_NAME_SCALE;
+  const size = useFont(context, pixels, MARKED_NAME_WEIGHT);
+  const text = `${anchor.player.name} · ${anchor.player.level}`;
+  const width = context.measureText(text).width + OUTLINE_PIXELS;
+  const box = {
+    x: anchor.x - width / 2,
+    y: anchor.y + anchor.height * NAME_GAP_SHARE,
+    width,
+    height: size,
+  };
+  while (!claimBox(taken, box)) {
+    box.y += size;
+  }
+  const colors = isOwn ? findOwnColors(anchor.player) : PLAIN_TEXT;
+  writeOutlined(context, text, { x: anchor.x, y: box.y + size / 2 }, colors);
+}
+
+/** Returns where the sign of a jelly hangs and how high it is, with its font set. */
+function placeSign(context: CanvasRenderingContext2D, anchor: LabelAnchor) {
+  const size = useFont(context, anchor.height * SIGN_FONT_SHARE);
+  const boxHeight = size + SIGN_PADDING;
+  return { boxHeight, centerY: anchor.y - anchor.height * (1 + SIGN_GAP_SHARE) - boxHeight / 2 };
+}
+
 /** Paints a sign over the head, if there is room. */
 function drawSign(
   context: CanvasRenderingContext2D,
@@ -124,10 +208,8 @@ function drawSign(
   anchor: LabelAnchor,
   taken: TextBox[],
 ): void {
-  const size = useFont(context, anchor.height * SIGN_FONT_SHARE);
+  const { boxHeight, centerY } = placeSign(context, anchor);
   const width = context.measureText(label).width + 2 * SIGN_PADDING;
-  const boxHeight = size + SIGN_PADDING;
-  const centerY = anchor.y - anchor.height * (1 + SIGN_GAP_SHARE) - boxHeight / 2;
   const box = { x: anchor.x - width / 2, y: centerY - boxHeight / 2, width, height: boxHeight };
   if (!claimBox(taken, box)) {
     return;
@@ -141,6 +223,40 @@ function drawSign(
   context.stroke();
   context.fillStyle = SIGN_TEXT;
   context.fillText(label, anchor.x, centerY);
+}
+
+/** Points at the own jelly and the one it stands next to. */
+function drawMarkers(context: CanvasRenderingContext2D, scene: LabelScene): void {
+  for (const anchor of scene.anchors) {
+    const isOwn = scene.marks.ownId === anchor.player.id;
+    if (isOwn || scene.marks.targetId === anchor.player.id) {
+      drawMarker(context, anchor, isOwn ? findOwnColors(anchor.player) : PLAIN_TEXT, scene);
+    }
+  }
+}
+
+/** Paints a triangle pointing down at a jelly, above its sign if it holds one. */
+function drawMarker(
+  context: CanvasRenderingContext2D,
+  anchor: LabelAnchor,
+  colors: TextColors,
+  scene: LabelScene,
+): void {
+  const { boxHeight, centerY } = placeSign(context, anchor);
+  const hasSign = scene.signLabels.has(anchor.player.sign ?? "");
+  const tipY = hasSign ? centerY - boxHeight / 2 - SIGN_PADDING : centerY + boxHeight / 2;
+  const size = Math.max(MIN_MARKER_PIXELS, anchor.height * MARKER_SHARE);
+  context.beginPath();
+  context.moveTo(anchor.x, tipY);
+  context.lineTo(anchor.x - size, tipY - size * MARKER_STRETCH);
+  context.lineTo(anchor.x + size, tipY - size * MARKER_STRETCH);
+  context.closePath();
+  context.fillStyle = colors.fill;
+  context.strokeStyle = colors.edge;
+  context.lineWidth = MARKER_EDGE_PIXELS;
+  context.lineJoin = "round";
+  context.stroke();
+  context.fill();
 }
 
 /** Paints bubbles and rising texts over their jellies. */
