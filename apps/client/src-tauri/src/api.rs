@@ -4,6 +4,8 @@
 //! darf jederzeit Felder, Ereignisse und Fehlercodes ergänzen. Deshalb haben die Typen hier kein
 //! `deny_unknown_fields`, und unbekannte Fehlercodes zeigen einfach ihre `message`.
 
+use std::time::Duration;
+
 use reqwest::{Client, RequestBuilder, StatusCode};
 use reqwest_eventsource::{CannotCloneRequestError, EventSource};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -19,6 +21,10 @@ pub const SERVER_URL: &str = match option_env!("JELLY_SERVER_URL") {
     Some(url) => url,
     None => "http://localhost:8080",
 };
+
+/// Solange darf `GET /v1/stage` dauern. Die Karte liest nacheinander, eine hängende Anfrage hielte
+/// sie sonst an.
+const STAGE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Die LAN, an der ein Konto zuletzt teilgenommen hat.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,7 +158,24 @@ pub struct Me {
     pub awards: Vec<Award>,
 }
 
-/// Ein Jelly aus `GET /v1/stage`. Bereich und Heimplatz braucht nur die Bühne selbst.
+/// Ein Bereich der Raumkarte aus `GET /v1/stage`, in Prozent der Bühne.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StageArea {
+    /// Bereichs-ID.
+    pub id: i64,
+    /// Linke Kante.
+    pub x: f64,
+    /// Hintere Kante.
+    pub y: f64,
+    /// Breite.
+    pub width: f64,
+    /// Tiefe.
+    pub height: f64,
+    /// Was der Bereich ist, zum Beispiel `seats`. Ein neuerer Server darf Arten ergänzen.
+    pub kind: String,
+}
+
+/// Ein Jelly aus `GET /v1/stage`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StagePlayer {
     /// Spieler-ID, auch Ziel von `PUT /v1/follow`.
@@ -171,13 +194,23 @@ pub struct StagePlayer {
     pub follow_player_id: Option<i64>,
     /// Letztes Lebenszeichen.
     pub last_seen_at: i64,
+    /// Bereich des Jellys, `None` ohne Bereich und ohne Lounge.
+    pub area_id: Option<i64>,
+    /// Heimplatz von links, in Prozent der Bühne.
+    pub home_x: f64,
+    /// Heimplatz von hinten, in Prozent der Bühne.
+    pub home_y: f64,
 }
 
-/// Antwort von `GET /v1/stage`, ohne die Raumkarte.
+/// Antwort von `GET /v1/stage`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stage {
+    /// Neuestes Ereignis beim Lesen.
+    pub last_event_id: i64,
     /// Uhrzeit des Servers.
     pub server_time: i64,
+    /// Die Raumkarte.
+    pub areas: Vec<StageArea>,
     /// Anwesende und nicht ausgeblendete Jellies, das eigene eingeschlossen.
     pub players: Vec<StagePlayer>,
 }
@@ -487,7 +520,9 @@ impl Api {
     ///
     /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
     pub async fn stage(&self) -> Result<Stage> {
-        self.get("/v1/stage").await
+        let request = self.request(reqwest::Method::GET, "/v1/stage");
+        // Nur hier: Der Stream teilt sich den Client und darf beliebig lange offen bleiben.
+        Self::send(request.timeout(STAGE_TIMEOUT)).await
     }
 
     /// `PUT /v1/follow`: stellt das Jelly neben ein anderes und liefert den neuen Stand.

@@ -13,6 +13,7 @@ import type { PetGame } from "./usePet";
 
 import { desktop } from "./backend";
 import EmotePicker from "./EmotePicker";
+import MapDrop from "./MapDrop";
 import { REGIONS, signLabel, type Me, type StudioRegionId, type StudioFocus } from "./pet";
 import SignPicker from "./SignPicker";
 import Studio from "./Studio";
@@ -120,6 +121,7 @@ function StageDrops({
         onClose={onClose}
         onPick={game.playEmote}
       />
+      <MapDrop disabled={!game.ready} onOpen={() => void game.openMap()} />
       <SignPicker
         catalog={game.catalog}
         current={me.sign}

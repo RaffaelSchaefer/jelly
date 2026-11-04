@@ -82,6 +82,17 @@
   translate: 0 0;
 }
 
+/* Der Karten-Tropfen steht spiegelbildlich zum Schild. Eigener Takt: Sonst wippten beide gleichzeitig. */
+.map-trigger {
+  left: calc(50% - var(--sign-drop-x) - 22px);
+  animation-delay: -2.5s;
+}
+
+.map-trigger[data-tip]::before {
+  right: 0;
+  left: auto;
+}
+
 /* Wie der Punkt auf den Studio-Blobs: Hier ist etwas angelegt. */
 .sign-trigger.raised::after {
   content: "";

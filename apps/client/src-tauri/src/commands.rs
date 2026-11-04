@@ -17,6 +17,7 @@ use crate::{
     api::{Api, LanStatus, Me, Profile, Stage, SERVER_URL},
     error::{Error, Result},
     events::EventStream,
+    map,
     pet::{client_outdated, poke_due, Action, Color, Settings, CLIENT_VERSION},
     store::Store,
 };
@@ -58,6 +59,18 @@ pub struct Game {
     server_url: &'static str,
     /// Ob der Server das gespeicherte Token abgelehnt hat. Dann hilft nur neu registrieren.
     token_rejected: bool,
+}
+
+/// Was die Karte bei jedem Lesen bekommt.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapState {
+    /// Das eigene Jelly. Frisch je Lesen, denn eine neue Registrierung ändert es.
+    own_id: i64,
+    /// Einstellung „Weniger Bewegung“.
+    reduced_motion: bool,
+    /// Raumkarte und Jellies vom Server.
+    stage: Stage,
 }
 
 /// Ergebnis von [`act`].
@@ -152,6 +165,8 @@ impl Session {
                 self.token_rejected = true;
                 self.me = None;
                 self.stream.stop();
+                // Ohne Konto bekäme die Karte keine Daten mehr.
+                map::close(app);
                 self.lan = self.api.anonymous().current_lan().await?;
             }
             Err(error) => return Err(error),
@@ -351,10 +366,53 @@ pub async fn set_follow(
 /// Sitzungs-, Netzwerk- oder Serverfehler.
 #[tauri::command]
 pub async fn get_stage(app: AppHandle, state: State<'_, GameState>) -> Result<Stage> {
-    let mut slot = state.0.lock().await;
-    let session = session(&app, &mut slot).await?;
-    session.registered()?;
-    session.api.stage().await
+    let api = {
+        let mut slot = state.0.lock().await;
+        let session = session(&app, &mut slot).await?;
+        session.registered()?;
+        session.api.clone()
+    };
+    // Ohne Lock: Hinge diese Anfrage, warteten alle Aktionen des Pets mit.
+    api.stage().await
+}
+
+/// Liest, was die Karte zeigt. Öffnet keine Sitzung, das Laden gehört dem Pet-Fenster.
+///
+/// # Fehler
+///
+/// [`Error::NotRegistered`] ohne geladene Sitzung oder Konto, sonst Netzwerk- oder Serverfehler.
+#[tauri::command]
+pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Result<MapState> {
+    let (api, own_id, reduced_motion) = {
+        let mut slot = state.0.lock().await;
+        let session = slot.as_mut().ok_or(Error::NotRegistered)?;
+        // Über `refresh`, damit der neue Stream beim frischen Stand beginnt und das Pet nichts
+        // zweimal hört, was es schon gehört hat.
+        if !session.stream.is_running() {
+            session.refresh(&app).await?;
+        }
+        let own_id = session.registered()?.id;
+        let reduced_motion = session.store.local.settings.reduced_motion;
+        (session.api.clone(), own_id, reduced_motion)
+    };
+    let stage = api.stage().await?;
+    Ok(MapState {
+        own_id,
+        reduced_motion,
+        stage,
+    })
+}
+
+/// Öffnet die Karte oder holt sie nach vorn.
+///
+/// Asynchron, denn ein Fenster aus einem synchronen Befehl blockiert unter Windows die App.
+///
+/// # Fehler
+///
+/// [`Error::Window`], wenn sich das Fenster nicht öffnen lässt.
+#[tauri::command]
+pub async fn open_map(app: AppHandle) -> Result<()> {
+    map::open(&app)
 }
 
 /// Löst einen Event-Code ein.

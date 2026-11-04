@@ -10,5 +10,9 @@ export default defineConfig({
     strictPort: true,
     watch: { ignored: ["**/src-tauri/**"] },
   },
-  build: { target: ["es2022", "chrome105", "safari15"] },
+  build: {
+    target: ["es2022", "chrome105", "safari15"],
+    // Das Pet und die Karte im eigenen Fenster sind zwei Seiten.
+    rolldownOptions: { input: { main: "index.html", map: "map.html" } },
+  },
 });

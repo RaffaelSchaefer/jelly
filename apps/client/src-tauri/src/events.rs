@@ -1,9 +1,9 @@
 //! Leitet Ereignisse aus `GET /v1/events/stream` an die Oberfläche weiter.
 //!
-//! Der Stream ist für alle Spieler gleich. Hier gehen nur Ereignisse zum eigenen Jelly durch, als
+//! Der Stream ist für alle Spieler gleich. Zum Pet gehen nur Ereignisse zum eigenen Jelly durch, als
 //! Tauri-Ereignis [`EVENT_NAME`]. Die Oberfläche lädt danach den Stand neu, denn Ereignisse tragen
 //! keine Namen und keinen vollständigen Stand. Nach `player.removed` lehnt der Server das Token dabei
-//! ab, und die Oberfläche bietet ein neues Konto an.
+//! ab, und die Oberfläche bietet ein neues Konto an. Die Karte hört als [`STAGE_EVENT_NAME`] alles.
 
 use futures_util::StreamExt;
 use reqwest::StatusCode;
@@ -11,10 +11,19 @@ use reqwest_eventsource::{Error as StreamError, Event, EventSource};
 use serde_json::Value;
 use tauri::{async_runtime::JoinHandle, AppHandle, Emitter};
 
-use crate::api::{Api, Me, ServerEvent};
+use crate::{
+    api::{Api, Me, ServerEvent},
+    map,
+};
 
 /// Name des Tauri-Ereignisses, auf das `src/backend.ts` hört.
 pub const EVENT_NAME: &str = "server-event";
+
+/// Name des Tauri-Ereignisses für die Karte: alle Ereignisse, solange ihr Fenster offen ist.
+///
+/// Ein eigener Name, kein Ziel-Fenster: `listen` hört auf jedes Ziel, das Pet-Fenster bekäme sie also
+/// mit und läse je Ereignis seinen Stand neu.
+pub const STAGE_EVENT_NAME: &str = "stage-event";
 
 /// Ereignisarten zum eigenen Jelly, die die Oberfläche bekommt.
 /// Emotes starten lokal aus der Befehlsantwort, damit der Stream sie nicht doppelt abspielt.
@@ -62,11 +71,7 @@ impl EventStream {
     /// Beginnt bei `me.last_event_id`, damit zwischen `GET /me` und dem Stream nichts verloren
     /// geht. Nach einem Abbruch verbindet `EventSource` selbst neu, mit Pause und `Last-Event-ID`.
     pub fn ensure(&mut self, app: &AppHandle, api: &Api, me: &Me) {
-        if self
-            .task
-            .as_ref()
-            .is_some_and(|task| !task.inner().is_finished())
-        {
+        if self.is_running() {
             return;
         }
         let source = match api.stream(me.last_event_id) {
@@ -80,6 +85,13 @@ impl EventStream {
         self.task = Some(task);
     }
 
+    /// Ob der Task noch liest. Eine Antwort außer `200` beendet den Stream dauerhaft.
+    pub fn is_running(&self) -> bool {
+        self.task
+            .as_ref()
+            .is_some_and(|task| !task.inner().is_finished())
+    }
+
     /// Beendet die Weiterleitung, etwa vor einem Wechsel des Tokens.
     pub fn stop(&mut self) {
         if let Some(task) = self.task.take() {
@@ -88,7 +100,15 @@ impl EventStream {
     }
 }
 
-/// Liest den Stream, bis der Server das Token ablehnt, und meldet eigene Ereignisse weiter.
+/// Gibt ein Ereignis an die Oberfläche weiter.
+fn emit_event(app: &AppHandle, name: &str, event: &ServerEvent) {
+    if let Err(error) = app.emit(name, event) {
+        eprintln!("Ereignis konnte nicht weitergegeben werden: {error}");
+    }
+}
+
+/// Liest den Stream, bis der Server das Token ablehnt. Eigene Ereignisse gehen ans Pet, alle an die
+/// Karte, falls sie offen ist.
 async fn forward(app: AppHandle, mut source: EventSource, player_id: i64) {
     while let Some(item) = source.next().await {
         match item {
@@ -98,14 +118,16 @@ async fn forward(app: AppHandle, mut source: EventSource, player_id: i64) {
                     continue;
                 };
                 if is_own_event(&event, player_id) {
-                    if let Err(error) = app.emit(EVENT_NAME, &event) {
-                        eprintln!("Ereignis konnte nicht weitergegeben werden: {error}");
-                    }
+                    emit_event(&app, EVENT_NAME, &event);
+                }
+                if map::is_open(&app) {
+                    emit_event(&app, STAGE_EVENT_NAME, &event);
                 }
             }
             // Nach `401` hilft kein neuer Versuch. Die nächste Aktion zeigt den Fehler an.
             Err(StreamError::InvalidStatusCode(StatusCode::UNAUTHORIZED, _)) => source.close(),
-            // Alles andere: `EventSource` versucht es mit Pause selbst erneut.
+            // Abbrüche versucht `EventSource` mit Pause selbst erneut. Nach einer anderen Antwort
+            // als `200` endet die Schleife, dann startet das nächste Neuladen den Stream wieder.
             Err(_) => {}
         }
     }

@@ -25,6 +25,15 @@ export function filterStagePlayers(players: StagePlayer[], query: string) {
   return players.filter((player) => player.name.toLocaleLowerCase("de").includes(wanted));
 }
 
+/**
+ * Was das Jelly sagt, wenn sich sein Ziel ändert, sonst `null`. `undefined` heißt: Es gibt noch
+ * keinen Stand, dann ist auch ein gesetztes Ziel keine Neuigkeit.
+ */
+export function followMessage(before: number | null | undefined, now?: number | null) {
+  if (before === undefined || now === undefined || before === now) return null;
+  return now === null ? "Ich geh wieder meiner Wege." : "Ich stell mich dazu.";
+}
+
 /** Grundfarbe eines Jellys. `undefined` bei einer Farbe, die die App nicht kennt. */
 export function stagePlayerHex(color: string) {
   return Object.hasOwn(PET_COLORS, color) ? PET_COLORS[color as PetColor].hex : undefined;

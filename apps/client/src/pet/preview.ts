@@ -118,6 +118,9 @@ export const PREVIEW_PLAYERS: StagePlayer[] = [
     sign: "cs2",
     follow_player_id: null,
     last_seen_at: 0,
+    area_id: null,
+    home_x: 0,
+    home_y: 0,
   },
   {
     id: 1,
@@ -128,6 +131,9 @@ export const PREVIEW_PLAYERS: StagePlayer[] = [
     sign: null,
     follow_player_id: null,
     last_seen_at: 0,
+    area_id: null,
+    home_x: 0,
+    home_y: 0,
   },
 ];
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   filterStagePlayers,
+  followMessage,
   partnerLook,
   PET_COLORS,
   PREVIEW_PLAYERS,
@@ -45,5 +46,16 @@ describe("stage players", () => {
     expect(partnerLook(PREVIEW_PLAYERS, 99)).toBeNull();
     const future = [{ ...PREVIEW_PLAYERS[0], id: 7, color: "future", cosmetic: null }];
     expect(partnerLook(future, 7)).toEqual({ color: "mint", cosmetic: null });
+  });
+  it("comments on a new target, also when the server ends it", () => {
+    expect(followMessage(null, 7)).toBe("Ich stell mich dazu.");
+    expect(followMessage(7, 8)).toBe("Ich stell mich dazu.");
+    expect(followMessage(7, null)).toBe("Ich geh wieder meiner Wege.");
+  });
+  it("stays quiet about what is no news", () => {
+    expect(followMessage(7, 7)).toBeNull();
+    expect(followMessage(null, null)).toBeNull();
+    expect(followMessage(undefined, 7)).toBeNull();
+    expect(followMessage(7)).toBeNull();
   });
 });

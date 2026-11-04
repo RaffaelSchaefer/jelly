@@ -13,6 +13,10 @@ import { PREVIEW_CATALOG, PREVIEW_GAME, type Catalog, type Game, type ServerEven
 
 /** Abstand der Lebenszeichen. Der Server wartet `presence_window` (90 min), bis er abwesend meldet. */
 const PRESENCE_INTERVAL_MS = 5 * 60_000;
+/** Die Karte in der Vorschau, so groß wie das Fenster in `src-tauri/src/map.rs`. */
+const MAP_PAGE = "/map.html";
+const MAP_PREVIEW_NAME = "jelly-map";
+const MAP_PREVIEW_FEATURES = "width=960,height=800";
 
 /** Ob das Jelly gerade an einer laufenden LAN teilnimmt. In der Vorschau spielt es immer mit. */
 export function inRunningLan(game: Game, ready: boolean) {
@@ -86,7 +90,16 @@ export function useBackendCall(onFailure: () => void) {
     await backend.windowAction(action).catch((cause) => setError(String(cause)));
   }, []);
 
-  return { busy, error, inFlight, run, windowAction };
+  /** Öffnet die Karte, in der Vorschau als Browser-Fenster. Fehler landen ebenfalls in der Anzeige. */
+  const openMap = useCallback(async () => {
+    if (!desktop) {
+      window.open(MAP_PAGE, MAP_PREVIEW_NAME, MAP_PREVIEW_FEATURES);
+      return;
+    }
+    await backend.openMap().catch((cause) => setError(String(cause)));
+  }, []);
+
+  return { busy, error, inFlight, run, windowAction, openMap };
 }
 
 /** Hört auf Ereignisse zum eigenen Jelly, solange `enabled` gilt. */

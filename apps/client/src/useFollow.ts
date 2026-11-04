@@ -5,11 +5,27 @@
  * @module
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import * as backend from "./backend";
-import { PREVIEW_PLAYERS, sortStagePlayers, type StagePlayer } from "./pet";
+import { followMessage, PREVIEW_PLAYERS, sortStagePlayers, type StagePlayer } from "./pet";
 import { inRunningLan, type useBackendCall, type useGameState } from "./useGame";
+
+/**
+ * Meldet, was das Jelly zu einem neuen Ziel sagt. Als Effekt, nicht in `setFollow`: Auch die Karte
+ * im anderen Fenster und der Server ändern das Ziel, hier kommt es nur als neuer Stand an.
+ */
+function useFollowReaction(
+  target: number | null | undefined,
+  onChanged: (message: string) => void,
+) {
+  const last = useRef(target);
+  useEffect(() => {
+    const message = followMessage(last.current, target);
+    last.current = target;
+    if (message) onChanged(message);
+  }, [target, onChanged]);
+}
 
 /**
  * Stellt das Jelly über denselben Aufrufschutz wie die übrigen Aktionen zu einem anderen.
@@ -28,6 +44,8 @@ export function useFollow(
   const ownId = game.me?.id;
   /** `null`, solange die Bühne noch keine Liste geliefert hat. */
   const [players, setPlayers] = useState<StagePlayer[] | null>(null);
+  // Vor dem ersten Laden steht hier der Vorschau-Stand, und ein gespeichertes Ziel ist nichts Neues.
+  useFollowReaction(ready ? game.me?.follow_player_id : undefined, onChanged);
 
   /**
    * Liest die Liste. Scheitert es, bleibt die letzte stehen und die Fehleranzeige meldet es.
@@ -59,10 +77,9 @@ export function useFollow(
           me: current.me && { ...current.me, follow_player_id: playerId },
         }));
       }
-      onChanged(playerId === null ? "Ich geh wieder meiner Wege." : "Ich stell mich dazu.");
       return true;
     },
-    [allowed, inFlight, run, setGame, patchGame, onChanged],
+    [allowed, inFlight, run, setGame, patchGame],
   );
 
   return {

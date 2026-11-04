@@ -9,6 +9,8 @@
  * @module
  */
 
+import type { StageArea } from "@jelly/stage";
+
 /** Farbvariante des Pets (Rust: `Color`, Server: Katalog `colors`). */
 export type PetColor = "mint" | "lilac" | "peach";
 
@@ -105,7 +107,7 @@ export interface Me {
   awards: { title: string; cosmetic_key: string | null; given_at: number }[];
 }
 
-/** Ein Jelly aus `GET /v1/stage` (Rust: `StagePlayer`). Raumkarte und Heimplatz liest die App nicht. */
+/** Ein Jelly aus `GET /v1/stage` (Rust: `StagePlayer`). */
 export interface StagePlayer {
   id: number;
   name: string;
@@ -116,11 +118,21 @@ export interface StagePlayer {
   sign: string | null;
   follow_player_id: number | null;
   last_seen_at: number;
+  /** `null` ohne Bereich und ohne Lounge. */
+  area_id: number | null;
+  /** Heimplatz in Prozent der Bühne. */
+  home_x: number;
+  home_y: number;
 }
 
-/** Wer gerade auf der Bühne steht (Rust: `Stage`). Abwesende filtert schon der Server. */
+/**
+ * Raumkarte und wer gerade auf der Bühne steht (Rust: `Stage`, `StageArea`). Abwesende filtert
+ * schon der Server.
+ */
 export interface Stage {
+  last_event_id: number;
   server_time: number;
+  areas: StageArea[];
   players: StagePlayer[];
 }
 

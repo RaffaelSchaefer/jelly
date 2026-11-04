@@ -86,8 +86,8 @@ fn emote_errors_keep_the_server_message() {
 }
 
 #[test]
-fn the_stage_from_the_docs_parses_without_its_room_map() {
-    // Beispiel aus `apps/server/docs/api.md`. Raumkarte und Heimplatz liest die App nicht.
+fn the_stage_from_the_docs_parses_with_its_room_map() {
+    // Beispiel aus `apps/server/docs/api.md`.
     let body = r#"{
       "last_event_id": 42, "server_time": 1795000000000,
       "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "kind": "seats" }],
@@ -100,6 +100,11 @@ fn the_stage_from_the_docs_parses_without_its_room_map() {
     let stage: Stage = serde_json::from_str(body).unwrap();
     assert_eq!(stage.players[0].name, "Glibber");
     assert_eq!(stage.players[0].follow_player_id, Some(2));
+    assert_eq!(stage.players[0].area_id, Some(1));
+    assert_eq!(stage.players[0].home_x, 24.2);
+    assert_eq!(stage.last_event_id, 42);
+    assert_eq!(stage.areas[0].kind, "seats");
+    assert_eq!(stage.areas[0].width, 50.0);
 }
 
 #[test]

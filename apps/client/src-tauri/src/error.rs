@@ -69,6 +69,10 @@ pub enum Error {
     /// Eine Aktion braucht ein Konto, es gibt aber noch kein Token.
     #[error("Du bist noch nicht registriert.")]
     NotRegistered,
+
+    /// Das Fenster der Karte ließ sich nicht öffnen.
+    #[error("Die Karte konnte nicht geöffnet werden: {0}")]
+    Window(#[source] tauri::Error),
 }
 
 /// Serialisiert den Fehler als seine Meldung, denn mehr braucht die Oberfläche nicht.

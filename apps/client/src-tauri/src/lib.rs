@@ -10,6 +10,7 @@
 //! - [`store`]: lädt und speichert den lokalen Stand atomar als `jelly.json`.
 //! - [`api`]: Typen aus dem Server-Vertrag und der HTTP-Client.
 //! - [`events`]: leitet den Ereignis-Stream des Servers an die Oberfläche weiter.
+//! - [`map`]: das Fenster mit der Karte.
 //! - [`error`]: alle Fehler samt deutscher Meldung für die Oberfläche.
 //! - [`commands`]: die Tauri-Befehle, die die Oberfläche aufruft.
 //!
@@ -25,10 +26,14 @@ pub mod api;
 mod commands;
 pub mod error;
 pub mod events;
+pub mod map;
 pub mod pet;
 pub mod store;
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, WindowEvent};
+
+/// Label des Pet-Fensters aus `tauri.conf.json`.
+pub const MAIN_WINDOW: &str = "main";
 
 /// Startet die App: Single-Instance-Schutz, Sitzungs-State und alle Befehle.
 ///
@@ -43,6 +48,13 @@ pub fn run() {
             focus_main_window(app)
         }))
         .manage(commands::GameState::default())
+        .on_window_event(|window, event| match (window.label(), event) {
+            // Ohne das Pet hat die Karte keinen Sinn, und die App liefe mit ihr ohne Pet weiter.
+            (MAIN_WINDOW, WindowEvent::CloseRequested { .. }) => map::close(window.app_handle()),
+            // Die Karte vertritt das Pet. Ist sie zu, kommt das Pet zurück.
+            (map::MAP_WINDOW, WindowEvent::Destroyed) => map::on_closed(window.app_handle()),
+            _ => {}
+        })
         .invoke_handler(tauri::generate_handler![
             commands::get_game,
             commands::get_catalog,
@@ -53,6 +65,8 @@ pub fn run() {
             commands::set_sign,
             commands::set_follow,
             commands::get_stage,
+            commands::get_map_state,
+            commands::open_map,
             commands::redeem_code,
             commands::start_partner_emote,
             commands::join_partner_emote,
@@ -67,7 +81,7 @@ pub fn run() {
 
 /// Holt das Pet-Fenster aus der Taskleiste und gibt ihm den Fokus.
 fn focus_main_window(app: &AppHandle) {
-    let Some(window) = app.get_webview_window("main") else {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
         return;
     };
     if let Err(error) = window

@@ -102,6 +102,16 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
   „Weggehen“ beendet das (`DELETE /v1/follow`). Die Lupe öffnet ein Suchfeld, das die Liste nach Namen
   filtert. `follow.changed` lädt den Stand neu, denn der Server darf das Dazustellen von sich aus
   beenden. Die Browser-Vorschau zeigt zwei Beispiel-Jellies.
+- Der Karten-Tropfen rechts unten am Jelly öffnet die Halle mit allen Jellies in einem eigenen Fenster,
+  dieselbe 3D-Bühne wie auf dem Beamer (`@jelly/stage`, Daten aus `GET /v1/stage`). Das eigene Jelly trägt seine
+  Farbe im Namen und eine Markierung über dem Kopf, sein Ziel eine weiße. Unter dem Zeiger zeigt jedes
+  Jelly seinen Namen, auch im Gedränge. Ein Klick stellt das eigene Jelly dazu, ein zweiter Klick auf
+  das Ziel oder „Weggehen“ beendet das. Das Pet reagiert darauf wie bei der Liste, auch wenn der Server
+  das Dazustellen beendet. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
+  die doppelte Auflösung des Beamers und schließt sich mit dem Pet. Solange sie offen ist, ist das Pet
+  versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
+  Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. Die Browser-Vorschau zeigt
+  die Halle der Server-Demo.
 - Der Reiter „Partner-Emote“ im selben Panel startet ein Partner-Emote (`POST /v1/partner-emote`): Der
   vierstellige Code steht in einer Stoppuhr, deren Ring leer läuft und im letzten Viertel drängt. Man
   sagt ihn dem Partner, der ihn in vier Ziffernfelder tippt. Die letzte Ziffer schickt ihn ab
@@ -162,6 +172,8 @@ src/
   Studio.tsx          Anpassen direkt am Jelly: Blobs, Popovers, Namensschild
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
   SignPicker.tsx      Schild-Tropfen und Kapsel-Säule
+  MapDrop.tsx         Karten-Tropfen
+  map/                Karte im eigenen Fenster (map.html), ohne React: Seite, Daten, Vorschau
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
   panels/             Inhalte der Glas-Panels (Beitritt, XP und Dabei mit Reitern, Level, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
@@ -178,11 +190,12 @@ src-tauri/
   src/commands.rs     Tauri-Befehle, die die Oberfläche aufruft
   src/api.rs          Typen aus dem Server-Vertrag und HTTP-Client
   src/events.rs       Ereignis-Stream des Servers an die Oberfläche weiterleiten
+  src/map.rs          Fenster der Karte öffnen und schließen
   src/error.rs        alle Fehler mit deutscher Meldung für die Oberfläche
   src/pet.rs          lokaler Stand und reine Regeln, ohne Dateizugriff und Netz
   src/store.rs        lokalen Stand atomar laden und speichern
   tauri.conf.json     Desktop-Fenster und Content Security Policy
-  capabilities/       Berechtigungen für Fensterbedienung und Server-Ereignisse
+  capabilities/       Berechtigungen je Fenster: Fensterbedienung und Server-Ereignisse
 blender/              Cosmetic-Pipeline und Referenzkörper für Blender
 scripts/              Hilfsskripte (Rust-Pfad, Design-System-Bundle, Blender-Export)
 ```

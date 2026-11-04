@@ -10,6 +10,8 @@
  * @module
  */
 
+import type { StageEvent } from "@jelly/stage";
+
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
@@ -75,6 +77,19 @@ export const setFollow = (playerId: number | null) => invoke<Game>("set_follow",
 /** Liest, wer gerade auf der Bühne steht (`get_stage`). */
 export const getStage = () => invoke<Stage>("get_stage");
 
+/** Was die Karte bei jedem Lesen bekommt (Rust: `MapState`). */
+export interface MapState {
+  ownId: number;
+  reducedMotion: boolean;
+  stage: Stage;
+}
+
+/** Liest, was die Karte zeigt (`get_map_state`). */
+export const getMapState = () => invoke<MapState>("get_map_state");
+
+/** Öffnet die Karte im eigenen Fenster oder holt sie nach vorn (`open_map`). */
+export const openMap = () => invoke<void>("open_map");
+
 /** Löst einen Event-Code ein (`redeem_code`). */
 export const redeemCode = (code: string) => invoke<RedeemResult>("redeem_code", { code });
 
@@ -108,6 +123,10 @@ export const presence = () => invoke<Game>("presence");
 /** Hört auf Ereignisse zum eigenen Jelly. Liefert die Funktion zum Abmelden. */
 export const onServerEvent = (handler: (event: ServerEvent) => void) =>
   listen<ServerEvent>("server-event", (event) => handler(event.payload));
+
+/** Hört für die Karte auf alle Ereignisse der LAN. Liefert die Funktion zum Abmelden. */
+export const onStageEvent = (handler: (event: StageEvent) => void) =>
+  listen<StageEvent>("stage-event", (event) => handler(event.payload));
 
 /** Was die Fensterknöpfe tun. Freigegeben in `src-tauri/capabilities/main.json`. */
 export type WindowAction = "drag" | "minimize" | "close";
