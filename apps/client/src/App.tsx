@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
-import { desktop } from "./backend";
+import { desktop, resizeWindow } from "./backend";
 import JoinPanel from "./panels/JoinPanel";
 import LevelUpPanel from "./panels/LevelUpPanel";
 import SettingsPanel from "./panels/SettingsPanel";
@@ -41,6 +41,8 @@ function stageStyle(size: number) {
   const layout = stageLayout(size);
   return {
     "--pet-scale": layout.scale,
+    "--window-width": `${layout.window.width}px`,
+    "--window-height": `${layout.window.height}px`,
     "--stage-height": `${layout.stage}px`,
     "--canvas-top": `${layout.canvas.top}px`,
     "--canvas-width": `${layout.canvas.width}px`,
@@ -49,6 +51,14 @@ function stageStyle(size: number) {
     "--bubble-top": `${layout.bubbleTop}px`,
     "--tools-offset": `${layout.toolsOffset}px`,
   } as CSSProperties;
+}
+
+/** Hält das Desktop-Fenster so groß wie seinen Inhalt. Es wächst nach unten, der Kopf bleibt stehen. */
+function useWindowFit(size: number) {
+  const { width, height } = stageLayout(size).window;
+  useEffect(() => {
+    if (desktop) void resizeWindow(width, height);
+  }, [width, height]);
 }
 
 /** Ob erst ein Konto oder ein Beitritt nötig ist, bevor das Pet mitspielt. */
@@ -213,6 +223,7 @@ export default function App() {
   const { settings } = game.game;
   const me = game.game.me ?? PREVIEW_ME;
   const sliders = useSettingSliders(game);
+  useWindowFit(sliders.size);
   const joining = needsJoin(game);
   usePokeKeys(game.interact, panel === null && !joining);
 

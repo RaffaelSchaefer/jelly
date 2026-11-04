@@ -16,8 +16,8 @@
 .at-gesicht { --x: var(--anchor-gesicht-x); --y: var(--anchor-gesicht-y); --size: calc(40px * clamp(0.8, var(--pet-scale, 1), 1.15)); --phase: -2s; }
 .at-effekte { --x: var(--anchor-effekte-x); --y: var(--anchor-effekte-y); --size: calc(38px * clamp(0.8, var(--pet-scale, 1), 1.15)); --phase: -4s; }
 .at-koerper { --x: var(--anchor-koerper-x); --y: var(--anchor-koerper-y); --size: calc(54px * clamp(0.8, var(--pet-scale, 1), 1.15)); --phase: -1s; }
-/* Die Canvas wird ab 150 % breiter als das Fenster (420 px). Blobs bleiben im Fenster. */
-.blob-shape, .blob, .pop { position: absolute; left: clamp(calc(50% - 188px), var(--x), calc(50% + 188px)); top: var(--y); }
+/* Die Canvas ist breiter als das Fenster (384 px). Blobs bleiben im Fenster. */
+.blob-shape, .blob, .pop { position: absolute; left: clamp(calc(50% - 170px), var(--x), calc(50% + 170px)); top: var(--y); }
 
 .blob-shape, .blob { width: var(--size); height: var(--size); translate: -50% -50%; animation: blob-float 5s ease-in-out infinite alternate var(--phase); transition: scale 350ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 .studio[data-open] .blob-shape { scale: 0.78; }
@@ -37,6 +37,8 @@
 .opens-up { translate: -50% calc(-100% - 20px); transform-origin: 50% 100%; }
 .opens-down { translate: -50% 18px; transform-origin: 50% 0; }
 .opens-left { translate: calc(-100% - 22px) -50%; transform-origin: 100% 50%; }
+/* Links fehlt der Platz: Solange die Farben offen sind, rückt der Blob nach rechts, die drei Farben enden 8 px vor dem Fensterrand. */
+.studio:has(.pop.at-koerper) .at-koerper { --x: max(var(--anchor-koerper-x), calc(50% - 36px)); }
 .opens-right { translate: 18px -50%; transform-origin: 0 50%; }
 .ink .pop > button { animation: pop-ink 200ms ease-out 140ms both; }
 
@@ -65,7 +67,7 @@
 .name-tag:hover, .name-tag:focus-within { scale: 1.06; }
 
 /* Vom Fenstermittelpunkt aus gerechnet, damit es bei jeder Pet-Größe im Fenster bleibt. */
-.studio-done { position: absolute; top: 2px; left: calc(50% + 130px); padding: 6px 14px; border: 0; border-radius: 14px; background: transparent; color: #fff; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px #0008; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.studio-done { position: absolute; top: 2px; left: calc(50% + 122px); padding: 6px 14px; border: 0; border-radius: 14px; background: transparent; color: #fff; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px #0008; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 .studio-done:hover { scale: 1.08; }
 
 /* Der Bodenschatten bliebe beim Zoom in der Luft hängen. */

@@ -17,6 +17,8 @@
   --line: color-mix(in srgb, var(--accent) 15%, transparent);
   /* Weiße Schrift auf Glas: Das Fenster ist durchsichtig, dahinter kann heller Desktop liegen. */
   --glass-ink-shadow: 0 1px 2px #000c, 0 0 7px #0009;
+  /* Dasselbe für Symbole, die ohne Hintergrund auf dem Desktop liegen. */
+  --glass-icon-shadow: drop-shadow(0 0 1px #0006) drop-shadow(0 1px 3px #0004);
 }
 :root[data-pet-color='lilac'] { --accent: #dcc2fb; --accent-ink: #2a1546; --base: #231e2d; --backdrop: #3a3047; --backdrop-deep: #16131d; }
 :root[data-pet-color='peach'] { --accent: #ffcfa3; --accent-ink: #44210d; --base: #2a221e; --backdrop: #463830; --backdrop-deep: #1b1614; }
@@ -46,15 +48,24 @@ html[data-surface='preview'] body::before { content: ''; position: fixed; inset:
 .preview-footer code { color: #d4e0d8; font-size: 11px; }
 .status-dot { background: var(--accent); width: 5px; height: 5px; border-radius: 50%; }
 
-.pet-window { width: 420px; height: 620px; position: relative; padding: 12px 22px 28px; margin: 0 auto; }
+.pet-window { width: var(--window-width, 384px); height: var(--window-height, 430px); position: relative; padding: 8px 22px 14px; margin: 0 auto; }
 html[data-surface='preview'] .pet-window { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); }
-.window-tools { position: relative; z-index: 2; display: flex; justify-content: space-between; height: 30px; opacity: 0.65; transform: translateY(var(--tools-offset, 0px)); transition: transform 0.25s ease; }
+.window-tools { position: relative; z-index: 2; display: flex; justify-content: space-between; height: 30px; transform: translateY(var(--tools-offset, 0px)); transition: transform 0.25s ease; }
 /* Open panels reach up to the top, so the tools go back up out of their way. */
 .pet-window:has(.panel) .window-tools { transform: none; }
 .window-tools-right { display: flex; gap: 1px; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; width: 30px; height: 30px; padding: 5px; }
 .icon-button:hover:enabled { background: #ffffff10; }
 .drag-handle { cursor: grab; touch-action: none; }
+/* Griff und Fensterknöpfe tragen in Ruhe keinen Hintergrund, erst unter dem Zeiger. Das Fenster ist durchsichtig, darum hebt ein weicher Schatten die Symbole auch auf hellem Desktop ab. Der durchsichtige Rand hält die Maße. */
+.drag-handle, .window-tools-right { border: 1px solid transparent; border-radius: 9px; }
+.window-tools .icon-button { color: #f4f8fa; transition: background 120ms, box-shadow 120ms; }
+.window-tools .icon-button svg { filter: var(--glass-icon-shadow); }
+.window-tools .icon-button:hover:enabled, .window-tools .icon-button:focus-visible { background: var(--surface-solid); box-shadow: inset 0 0 0 1px #ffffff33, 0 3px 10px #0004; }
+.window-tools-right .icon-button { height: 28px; }
+.drag-handle svg { stroke-width: 2.6; }
+/* In der Browser-Vorschau sind sie gesperrt und sollen trotzdem wie in der App aussehen. */
+.window-tools button:disabled { opacity: 1; }
 .pet-stage { position: relative; height: var(--stage-height, 330px); display: flex; flex-direction: column; align-items: center; }
 .speech { position: relative; z-index: 2; max-width: 330px; margin: var(--bubble-top, 20px) 0 0; padding: 10px 20px; border-radius: 19px; background: color-mix(in srgb, var(--surface-solid) calc((1 - var(--studio-ready, 0)) * 100%), transparent); color: #fff; font-size: 12.5px; font-weight: 600; line-height: 17px; letter-spacing: 0.1px; text-align: center; text-wrap: balance; text-shadow: var(--glass-ink-shadow); pointer-events: none; transform-origin: 50% 100%; transition: background 300ms; animation: speech-pop 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both, speech-float 4.5s ease-in-out infinite alternate; }
 /* Die Sprechblase ist Glas aus dem Shader. Text und Schwanz stehen hier, der Hintergrund gilt nur, solange das Glas noch fehlt: ohne WebGL und im Design-System. */
@@ -78,7 +89,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .dock nav { display: flex; gap: 3px; }
 .dock nav button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #c6ccd0; }
 .dock nav button svg { width: 17px; height: 17px; }
-.dock nav button:hover { background: #ffffff0d; color: #f4f8fa; }
+.dock nav button:hover { background: #ffffff1f; color: #f4f8fa; }
 .dock nav button[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
 .panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; max-height: calc(var(--stage-height, 330px) + 28px); overflow-y: auto; scrollbar-gutter: stable both-edges; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
 /* Panels fill the stage above the dock (tools + stage + gap - panel gap - window padding), never past the window top.
@@ -184,7 +195,8 @@ input + .primary-button { margin-top: 16px; }
 .error span { line-height: 1.6; margin-top: 6px; overflow-wrap: anywhere; max-height: 160px; overflow-y: auto; }
 .error button { border: 1px solid #ffded566; color: inherit; background: #ffffff0e; padding: 8px; margin-top: 10px; border-radius: 6px; }
 .render-fallback { display: block; padding: 70px 35px; font-size: 12px; line-height: 1.7; text-align: center; color: #d6e0e4; }
-.loading { font-size: 11px; text-align: center; margin: 4px; }
+/* Unter dem Dock ist kein Platz mehr: Das Fenster endet kurz danach. */
+.loading { position: absolute; left: 0; right: 0; bottom: 62px; z-index: 3; margin: 0; font-size: 11px; text-align: center; }
 /* Reiter „Einlösen“: Ticket im Textring. `paused` statt ausgeschaltet, damit der Ring beim Verlassen stehen bleibt, statt zurückzuspringen. */
 .redeem { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 4px; }
 .redeem-seal { position: relative; display: grid; place-items: center; width: 172px; height: 172px; border-radius: 50%; color: var(--accent); background: radial-gradient(circle, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 64%); }
@@ -224,6 +236,6 @@ input + .primary-button { margin-top: 16px; }
 html[data-reduced-motion] .speech, html[data-reduced-motion] .speech * { animation: none; transition: none; }
 html[data-reduced-motion] .redeem-ring, html[data-reduced-motion] .redeem-seal::after, html[data-reduced-motion] .redeem-ticket, html[data-reduced-motion] .redeem-ticket::after, html[data-reduced-motion] .redeem-shimmer { animation: none; }
 html[data-reduced-motion] .redeem-seal::before, html[data-reduced-motion] .redeem-ticket svg, html[data-reduced-motion] .redeem-send, html[data-reduced-motion] .redeem-send svg { transition: none; }
-@media (max-width: 500px) { .preview-header { top: 16px; left: 18px; right: 18px; }.preview-label { display: none; }.preview-header div > span { font-size: 10px; }.preview-footer { font-size: 9px; flex-wrap: wrap; bottom: 16px; }.preview-footer code { font-size: 9px; }.pet-window { width: min(420px, 100vw); } }
+@media (max-width: 500px) { .preview-header { top: 16px; left: 18px; right: 18px; }.preview-label { display: none; }.preview-header div > span { font-size: 10px; }.preview-footer { font-size: 9px; flex-wrap: wrap; bottom: 16px; }.preview-footer code { font-size: 9px; }.pet-window { width: min(var(--window-width, 384px), 100vw); } }
 @media (max-height: 740px) { html[data-surface='preview'] .pet-window { transform: translate(-50%, -50%) scale(0.85); } }
 @media (max-height: 610px) { html[data-surface='preview'] .preview-header, html[data-surface='preview'] .preview-footer { display: none; } html[data-surface='preview'] .pet-window { transform: translate(-50%, -50%) scale(0.75); } }

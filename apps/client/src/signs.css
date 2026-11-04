@@ -4,7 +4,7 @@
  * Jelly, die Säule immer am linken Fensterrand.
  */
 .sign-controls {
-  --sign-left: calc(50% - 198px);
+  --sign-left: calc(50% - 180px);
   /* Mitte des Tropfens vor der Säule: Er folgt dem Körper, je größer das Jelly, desto weiter außen. */
   --sign-drop-x: calc(-40px - 85px * var(--pet-scale, 1));
   /* Höhe der Säule mit acht Kapseln samt Überschrift und Rand. */
@@ -16,7 +16,7 @@
     calc(var(--canvas-top, 43px) - var(--canvas-height, 315px) / 4 + var(--sign-column))
   );
   /* Wie weit Kapseln und Füllung beim Ein- und Ausfahren zum Tropfen hinüberrücken. */
-  --sign-to-drop: calc(160px - 85px * var(--pet-scale, 1));
+  --sign-to-drop: calc(142px - 85px * var(--pet-scale, 1));
   /* Unter 80 % etwas flacher: Sonst schnitte die Canvas unten den Schatten des Tropfens ab. */
   --sign-pill-height: clamp(26px, calc(12px + 20px * var(--pet-scale, 1)), 28px);
   --sign-gap: 2px;

@@ -87,24 +87,26 @@ describe("stage layout", () => {
       bubbleTop: 20,
       toolsOffset: 0,
       stage: 330,
+      window: { width: 384, height: 430 },
     });
   });
   it("keeps a small pet on the ground and the stage tall enough for the panels", () => {
     const small = stageLayout(PET_SIZE.min);
     expect(small.feet).toBe(299);
     expect(small.stage).toBe(330);
+    expect(small.window.height).toBe(430);
     expect(small.canvas.height).toBeCloseTo(315 * 0.7);
     // Die Fensterknöpfe wandern mit der Sprechblase nach unten und halten ihren Abstand.
     expect(small.toolsOffset).toBeCloseTo(small.bubbleTop - 20);
     expect(small.toolsOffset).toBeGreaterThan(0);
   });
-  it("grows a big pet downwards, keeps the bubble above his head and fits the window", () => {
+  it("grows a big pet downwards, keeps the bubble above his head and grows the window along", () => {
     const big = stageLayout(PET_SIZE.max);
     expect(big.bubbleTop).toBe(20);
     expect(big.toolsOffset).toBe(0);
     expect(big.feet).toBeCloseTo(43 + 52 + 204 * 1.5);
-    // Fensterrand + Knöpfe + Bühne + Dock (Abstand und Höhe) + unterer Rand bleiben unter 620 px.
-    expect(12 + 30 + big.stage + 8 + 38 + 28).toBeLessThanOrEqual(620);
+    // Fensterrand + Knöpfe + Bühne + Dock (Abstand und Höhe) + unterer Rand.
+    expect(big.window).toEqual({ width: 384, height: 8 + 30 + big.stage + 8 + 40 + 14 });
   });
   it("clamps sizes outside the allowed range", () => {
     expect(stageLayout(10).scale).toBe(0.7);

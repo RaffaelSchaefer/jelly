@@ -11,6 +11,7 @@
  */
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -89,3 +90,7 @@ export async function windowAction(action: WindowAction) {
   if (action === "minimize") return current.minimize();
   return current.close();
 }
+
+/** Setzt die Größe des Pet-Fensters in CSS-Pixeln. Die linke obere Ecke bleibt stehen. */
+export const resizeWindow = (width: number, height: number) =>
+  getCurrentWindow().setSize(new LogicalSize(width, height));
