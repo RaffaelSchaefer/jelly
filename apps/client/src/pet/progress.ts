@@ -1,16 +1,22 @@
 /**
- * Level, Abklingzeiten und Tagesverlauf, abgeleitet aus XP und Verlauf.
+ * Level, Abklingzeiten und Stupser-Wartezeit, abgeleitet aus dem Stand des Servers.
+ *
+ * Alle Zeiten sind Unix-Millisekunden auf der Uhr des Servers. `now` kommt deshalb immer aus
+ * `server_time` plus der seither vergangenen Zeit, nie direkt aus `Date.now()`.
  *
  * @module
  */
 
-import { REPORT, type Entry, type Report } from "./types";
+import type { Report, Reports } from "./types";
 
-/** XP pro Level. */
+/** XP pro Level, wie beim Server. */
 const XP_PER_LEVEL = 100;
 
+/** Millisekunden pro Minute. */
+const MINUTE_MS = 60_000;
+
 /**
- * Level und Fortschritt zum nächsten Level, wie `Pet::level` in Rust.
+ * Level und Fortschritt zum nächsten Level, wie `CalculateLevel` beim Server.
  *
  * @returns `level` (ab 1), `current` (XP im laufenden Level) und `remaining` (XP bis zum nächsten).
  */
@@ -23,26 +29,25 @@ export function levelProgress(xp: number) {
   };
 }
 
-/**
- * Ob `action` zum Zeitpunkt `now` (Unix-Sekunden) gemeldet werden kann, nach denselben Regeln wie
- * `Pet::check_report` in Rust.
- *
- * @returns `waitMinutes`: Minuten bis zur nächsten Meldung dieser Art (0 = sofort). `left`: wie
- *   viele Meldungen im laufenden 24-Stunden-Fenster noch frei sind.
- */
-export function reportStatus(log: Entry[], action: Report, now: number) {
-  const recent = log.filter((entry) => entry.action !== "event" && now - entry.at < REPORT.window);
-  const last = recent
-    .filter((entry) => entry.action === action && now - entry.at < REPORT.cooldown)
-    .at(-1);
-  return {
-    waitMinutes: last ? Math.ceil((REPORT.cooldown - (now - last.at)) / 60) : 0,
-    left: Math.max(0, REPORT.perWindow - recent.length),
-  };
+/** Aufgerundete Minuten bis `at`, 0 wenn es schon so weit ist. */
+export function minutesUntil(at: number, now: number) {
+  return Math.max(0, Math.ceil((at - now) / MINUTE_MS));
 }
 
-/** Einträge vom lokalen Kalendertag von `now` (Unix-Sekunden), neueste zuerst. */
-export function todaysEntries(log: Entry[], now: number) {
-  const day = new Date(now * 1000).toDateString();
-  return log.filter((entry) => new Date(entry.at * 1000).toDateString() === day).reverse();
+/**
+ * Ob `action` gemeldet werden kann.
+ *
+ * @param reports - Stand vom Server, `null` außerhalb einer laufenden LAN.
+ * @returns `waitMinutes`: Minuten bis zur nächsten Meldung dieser Art (0 = sofort). `left`: wie
+ *   viele Meldungen im laufenden Fenster noch frei sind.
+ */
+export function reportStatus(reports: Reports | null, action: Report, now: number) {
+  if (!reports) return { waitMinutes: 0, left: 0 };
+  const readyAt = action === "food" ? reports.food_ready_at : reports.drink_ready_at;
+  return { waitMinutes: minutesUntil(readyAt, now), left: reports.reports_left };
+}
+
+/** Minuten bis zum nächsten Stupser mit XP, `null` außerhalb einer laufenden LAN. */
+export function pokeWaitMinutes(nextPokeAt: number | null, now: number) {
+  return nextPokeAt === null ? null : minutesUntil(nextPokeAt, now);
 }
