@@ -310,7 +310,7 @@ das Lesen und ist die einzige Ausnahme. Spieler-Secrets gehören immer in den He
   eine Siegerehrung) und `none` (noch nichts zugewiesen). Unbekannte Werte sind wie `none` zu behandeln.
 - `prop` nennt das Modell, das dort steht, leer heißt blanker Boden. `blocks` sagt, ob Jellies außen herum laufen müssen.
   Beides kommt aus der Karte. Ein unbekanntes `prop` zeigt die Bühne als blanken Boden.
-- `rotation` dreht eine Zone in Grad im Uhrzeigersinn um ihre Mitte, `0` zeigt nach Norden (Richtung `y` = 0). `x`, `y`,
+- `rotation` dreht eine Zone in Grad im Uhrzeigersinn um ihre Mitte, bei `0` zeigt die Vorderseite des Modells zur Kamera (Richtung größeres `y`), bei `90` nach links. `x`, `y`,
   `width` und `height` sagen, wo sie ohne Drehung stünde. Die Größe auf dem Boden bleibt gleich. Weil Prozent auf beiden
   Achsen verschieden lang sind, muss ein Renderer in Bodeneinheiten drehen, nicht in Prozent.
 - `name` hat nur eine Zone der Art `public`, bei allen anderen ist es `null`.
@@ -461,7 +461,7 @@ Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der 
 - `id` ist ein freier Text, höchstens 64 Zeichen, und erkennt die Zone beim nächsten Import wieder. Bekannte Zonen behalten
   Zuweisung und Sitzplatz-Code. Neue beginnen mit `none`. Fehlt eine, wird sie entfernt, und ihre Jellies verlieren den Platz.
   Von Hand angelegte Zonen bleiben unberührt.
-- `rotation` ist optional, von 0 bis unter 360 Grad, Nachkommastellen sind erlaubt. Fehlt sie, zeigt die Zone nach Norden.
+- `rotation` ist optional, von 0 bis unter 360 Grad, Nachkommastellen sind erlaubt. Fehlt sie, zeigt das Modell zur Kamera.
   Alle vier Ecken müssen nach dem Drehen im Raum liegen. Hindernis und Plätze der Zone drehen sich mit.
 - Der Import läuft auch während einer LAN und sendet `stage.changed`.
 - Ist eine Zone ungültig, ändert sich nichts, und es folgt `400 invalid_map`. Unbekannte Props hindern den Import nicht,

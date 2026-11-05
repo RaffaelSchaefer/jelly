@@ -46,7 +46,8 @@ type Area struct {
 	Y      float64 `json:"y"`
 	Width  float64 `json:"width"`
 	Height float64 `json:"height"`
-	// Rotation is in degrees, clockwise around the middle of the area. 0 points north.
+	// Rotation is in degrees, clockwise around the middle of the area. At 0, a model
+	// faces the camera.
 	Rotation float64 `json:"rotation"`
 	Kind     string  `json:"kind"`
 	// Blocks keeps jellies out, they walk around this zone.

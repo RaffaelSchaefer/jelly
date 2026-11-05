@@ -74,10 +74,10 @@ func TestHomeSpotsStayInsideARotatedArea(t *testing.T) {
 	}
 }
 
-func TestATurnPointsClockwiseFromNorth(t *testing.T) {
+func TestATurnGoesClockwiseSeenFromAbove(t *testing.T) {
 	east := rules.NewTurn(90).Apply(rules.FloorOffset{X: 0, Z: -1})
 	if math.Abs(east.X-1) > 1e-9 || math.Abs(east.Z) > 1e-9 {
-		t.Fatalf("north turned by 90 degrees: %+v", east)
+		t.Fatalf("back of the room turned by 90 degrees: %+v", east)
 	}
 	turn := rules.NewTurn(37.5)
 	back := turn.Undo(turn.Apply(rules.FloorOffset{X: 3, Z: 4}))

@@ -29,8 +29,8 @@ type Turn struct {
 	isTurned bool
 }
 
-// NewTurn returns a clockwise turn seen from above, where 0 degrees points north, toward y = 0. It
-// keeps sine and cosine, because the grid asks once per cell and zone.
+// NewTurn returns a clockwise turn seen from above. It keeps sine and cosine, because the grid asks
+// once per cell and zone.
 func NewTurn(degrees float64) Turn {
 	if degrees == 0 {
 		return Turn{sine: 0, cosine: 1, isTurned: false}

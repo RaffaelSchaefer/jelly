@@ -1462,7 +1462,7 @@
             "type": "string"
           },
           "rotation": {
-            "description": "Degrees clockwise seen from above, from 0 up to below 360. The zone turns around its middle and keeps its size on the floor. Percent has a different length on each axis, so turn it on the floor and not in percent. 0 means the model faces north, toward `y` = 0.",
+            "description": "Degrees clockwise seen from above, from 0 up to below 360. The zone turns around its middle and keeps its size on the floor. Percent has a different length on each axis, so turn it on the floor and not in percent. At 0, the front of the model faces the camera, toward larger `y`.",
             "format": "double",
             "type": "number"
           },

@@ -23,7 +23,8 @@ type MapZone struct {
 	Y      float64 `json:"y"`
 	Width  float64 `json:"width"`
 	Height float64 `json:"height"`
-	// Rotation is in degrees, clockwise around the middle of the zone. Without one it points north.
+	// Rotation is in degrees, clockwise around the middle of the zone. Without one, a model faces
+	// the camera.
 	Rotation float64 `json:"rotation"`
 	Blocks   bool    `json:"blocks"`
 	Prop     string  `json:"prop"`

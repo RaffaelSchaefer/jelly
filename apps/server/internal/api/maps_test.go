@@ -203,7 +203,7 @@ func TestImportTakesARotationAndNoticesWhenItChanges(t *testing.T) {
 		`"prop":"desk"`
 	testFixture.importMap(table + `}`)
 	if got := testFixture.findMapArea("table").Rotation; got != 0 {
-		t.Fatalf("a zone without rotation points north: %v", got)
+		t.Fatalf("a zone without rotation stays unturned: %v", got)
 	}
 	report := testFixture.importMap(table + `,"rotation":37.5}`)
 	if len(report.Updated) != 1 || testFixture.findMapArea("table").Rotation != 37.5 {
