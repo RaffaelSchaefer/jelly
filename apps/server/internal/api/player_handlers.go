@@ -19,8 +19,8 @@ const (
 	cacheControlNoStore = "no-store"
 )
 
-// errUnknownAction reports an action that the server does not know.
-var errUnknownAction = errors.New("unknown action")
+// errUnknownReportKind reports an action that the server does not know.
+var errUnknownReportKind = errors.New("unknown action")
 
 // KeyBody is a request that names one entry of a fixed list.
 type KeyBody struct {
@@ -341,7 +341,7 @@ func (server *apiServer) handleReport(
 ) (*jsonOutput[ActionAnswer], error) {
 	kind := input.Body.Kind
 	if kind != rules.ActionFood && kind != rules.ActionDrink {
-		return nil, errUnknownAction
+		return nil, errUnknownReportKind
 	}
 	gainedXP, state, err := server.Store.ApplyReport(ctx, playerID, kind, server.currentMillis())
 	return answerWith(ActionAnswer{XPGained: gainedXP, Me: state}, err)

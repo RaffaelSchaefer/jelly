@@ -123,7 +123,7 @@ func TestGatheringNeedsSensibleInput(t *testing.T) {
 		`{"kind":"food","seconds":60,"winner_id":1}`,
 	} {
 		requireProblem(t, testFixture.callAdmin("POST", gatheringPath, body),
-			http.StatusBadRequest, "invalid_input")
+			http.StatusBadRequest, "invalid_request")
 	}
 	requireProblem(t, testFixture.callAdmin("POST", gatheringPath,
 		`{"kind":"ceremony","seconds":60,"winner_id":999}`), http.StatusConflict, "not_joined")

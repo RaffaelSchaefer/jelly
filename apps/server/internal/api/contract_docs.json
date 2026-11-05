@@ -1,5 +1,5 @@
 {
-  "overview": "The contract between the Jelly server and its clients, the desktop app and the stage page.\n\n**Authentication:** A player sends `Authorization: Bearer <secret>`. A new secret only arrives from `POST /v1/auth/redeem` or `POST /v1/auth/recover`, and clients keep it to themselves. The stage page reads with the stage key in the query `key`, which allows reading only.\n\n**Units:** All times are milliseconds since 1970 in server time. Use `server_time` from an answer for countdowns instead of the clock of the device. All positions on the stage are percent of the room. Distances in rules such as `near_distance` and `walk_speed` count jelly units: a jelly is about 1.7 wide, the hall 21 wide and 40 deep.\n\n**Growth:** Answers can gain fields, event types, catalog entries, enum values and error codes in any version, so clients ignore what they do not know. Requests reject unknown fields. A breaking change gets a new path version.\n\n**Errors:** Every error has the form `{\"error\":{\"code\",\"message\"}}`. `code` is stable and meant for code, `message` is German and meant for people, so show it for unknown codes. `invalid_body` answers with 400 (no valid JSON), 408 or 413 (body too slow or too large), 415 (not JSON) or 422 (unknown or missing field, wrong type). After a network error, read `GET /v1/players/me` before repeating an action, because it may have counted already. `401` means the secret is no longer valid. Never delete a secret because of a network error.",
+  "overview": "The contract between the Jelly server and its clients, the desktop app and the stage page.\n\n**Authentication:** A player sends `Authorization: Bearer <secret>`. A new secret only arrives from `POST /v1/auth/redeem` or `POST /v1/auth/recover`, and clients keep it to themselves. The stage page reads with the stage key in the query `key`, which allows reading only.\n\n**Units:** All times are milliseconds since 1970 in server time. Use `server_time` from an answer for countdowns instead of the clock of the device. All positions on the stage are percent of the room. Distances in rules such as `near_distance` and `walk_speed` count jelly units: a jelly is about 1.7 wide, the hall 21 wide and 40 deep.\n\n**Growth:** Answers can gain fields, event types, catalog entries, enum values and error codes in any version, so clients ignore what they do not know. Requests reject unknown fields. A breaking change gets a new path version.\n\n**Errors:** Every error has the form `{\"error\":{\"code\",\"message\"}}`. `code` is stable and meant for code, `message` is German and meant for people, so show it for unknown codes. `invalid_request` answers with 400 (no valid JSON), 408 or 413 (body too slow or too large), 415 (not JSON) or 422 (unknown or missing field, wrong type). After a network error, read `GET /v1/players/me` before repeating an action, because it may have counted already. `401` means the secret is no longer valid. Never delete a secret because of a network error.",
   "operations": {
     "getCatalog": "Works without an account. Clients read keys, names and labels from here instead of hard-coding them. Secret achievements are not listed.",
     "getMe": "The main read of the app. Open the stream afterwards with `since` set to `last_event_id`, so nothing gets lost in between.",
@@ -22,7 +22,7 @@
     "id": "The number of the player.",
     "key": "The stage key, for the stage page. Players send their secret as a bearer token instead.",
     "since": "The last event ID the client knows, usually `last_event_id` from a state it just read.",
-    "topics": "Comma-separated list of `events` and `moves`. Without it, both arrive. Unknown topics answer `400 invalid_input`.",
+    "topics": "Comma-separated list of `events` and `moves`. Without it, both arrive. Unknown topics answer `400 invalid_request`.",
     "Last-Event-ID": "Sent by the browser or the client when it reconnects, and takes priority over `since`."
   },
   "schemas": {
@@ -33,7 +33,6 @@
         "title": "German title to show.",
         "description": "German text that says how to earn it.",
         "scope": "`permanent` stays across all LANs, `lan` can be earned again at each LAN.",
-        "secret": "Secret achievements are not listed in the catalog, so this is false there.",
         "goal": "How often the action has to happen until it is earned.",
         "record_unit": "German unit of the personal record. With it, the achievement has one stage and then only tracks the best value."
       }
@@ -79,15 +78,15 @@
       }
     },
     "Cosmetic": {
-      "description": "One item a jelly can wear. It unlocks through `level` or `requires_event`. With neither of them, it is only given as an award.",
+      "description": "One item a jelly can wear.",
       "fields": {
         "key": "Stable key of the cosmetic.",
         "name": "German name to show.",
         "scope": "`permanent` counts progress over all LANs, `lan` only counts the current LAN.",
         "slot": "The place on the jelly that wears it, one of `cosmetic_slots`.",
         "colorable": "Whether it takes a color from `cosmetic_colors`. The others always look the same.",
-        "level": "The level that unlocks it.",
-        "requires_event": "Whether it unlocks through an event code."
+        "unlock": "How a player gets it: `level` from reaching `level`, `event` from an event code, `award` as a prize from the orga, `none` not at all. Treat new values like `none`.",
+        "level": "The level that unlocks it, only with `unlock` `level`."
       }
     },
     "EarnedAchievement": {

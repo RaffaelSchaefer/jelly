@@ -218,7 +218,7 @@ func buildErrorTable() string {
 // listDocumentedProblems returns every error answer of the contract.
 func listDocumentedProblems() []problem {
 	problems := []problem{
-		problemInvalidBody(), problemNotFound(), problemRateLimited(), problemInternal(),
+		problemInvalidRequest(), problemNotFound(), problemRateLimited(), problemInternal(),
 	}
 	for _, known := range listKnownErrors() {
 		problems = append(problems, known.answer)

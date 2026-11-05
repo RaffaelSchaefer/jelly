@@ -136,7 +136,7 @@ func TestEventCodes(t *testing.T) {
 
 	response := testFixture.callAPI("POST", "/v1/event-codes/redemptions",
 		token, `{"code":"falsch"}`)
-	requireProblem(t, response, http.StatusBadRequest, "invalid_event_code")
+	requireProblem(t, response, http.StatusForbidden, "invalid_event_code")
 	response = testFixture.callAPI("POST", "/v1/event-codes/redemptions",
 		token, `{"code":" TURNIER "}`)
 	redeemed := decodeBody[store.RedeemedCode](t, response)
@@ -157,7 +157,7 @@ func TestEventCodes(t *testing.T) {
 	other := testFixture.registerPlayer("B")
 	response = testFixture.callAPI("POST", "/v1/event-codes/redemptions",
 		other, `{"code":"TURNIER"}`)
-	requireProblem(t, response, http.StatusBadRequest, "invalid_event_code")
+	requireProblem(t, response, http.StatusForbidden, "invalid_event_code")
 }
 
 func TestCosmeticsRequireUnlock(t *testing.T) {

@@ -76,7 +76,7 @@ func translateLibraryError(ctx huma.Context, _ string, value any) (any, error) {
 		return value, nil
 	}
 	ctx.SetHeader("Content-Type", contentTypeJSON)
-	return problemInvalidBody().toResponse(), nil
+	return problemInvalidRequest().toResponse(), nil
 }
 
 // addOperation registers a documented route under the version.

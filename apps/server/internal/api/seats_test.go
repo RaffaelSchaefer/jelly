@@ -330,7 +330,7 @@ func TestRecoveryCodeNeedsAnAccountAndASensibleTime(t *testing.T) {
 	playerID := testFixture.loadMe(testFixture.registerPlayer("Zeit")).ID
 	for _, body := range []string{`{"valid_seconds":0}`, `{"valid_seconds":99999999}`} {
 		requireProblem(t, testFixture.createRecoveryCode(playerID, body),
-			http.StatusBadRequest, "invalid_input")
+			http.StatusBadRequest, "invalid_request")
 	}
 }
 

@@ -143,7 +143,7 @@ func TestContractListsEveryEventAndError(t *testing.T) {
 			t.Errorf("the stream route does not list %s", eventType[1])
 		}
 	}
-	codes := []string{"invalid_body", "too_far", "name_taken", "internal", "not_found"}
+	codes := []string{"invalid_request", "too_far", "name_taken", "internal", "not_found"}
 	for _, code := range codes {
 		if !strings.Contains(document.Info.Description, "`"+code+"`") {
 			t.Errorf("the overview does not list %s", code)
@@ -196,7 +196,7 @@ func TestContractRejectsInvalidRequestsInTheCommonForm(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			response := testFixture.callAPI("POST", "/v1/reports", token, testCase.body)
-			requireProblem(t, response, testCase.status, "invalid_body")
+			requireProblem(t, response, testCase.status, "invalid_request")
 		})
 	}
 }
@@ -209,7 +209,7 @@ func TestOtherContentTypesAreRejected(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	testFixture.handler.ServeHTTP(recorder, request)
 	requireProblem(t, apiResponse{status: recorder.Code, body: recorder.Body.Bytes()},
-		http.StatusUnsupportedMediaType, "invalid_body")
+		http.StatusUnsupportedMediaType, "invalid_request")
 }
 
 func TestUnknownPathsAnswerInTheCommonForm(t *testing.T) {

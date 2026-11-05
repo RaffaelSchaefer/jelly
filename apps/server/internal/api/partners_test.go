@@ -42,7 +42,7 @@ func TestPartnerEmoteFlow(t *testing.T) {
 	requireProblem(t, response, http.StatusBadRequest, "unknown_partner_emote")
 	response = testFixture.callAPI("POST", "/v1/partner-emotes", first,
 		`{"key":"hop","partner_ids":[`+firstID+`]}`)
-	requireProblem(t, response, http.StatusBadRequest, "partner_self")
+	requireProblem(t, response, http.StatusBadRequest, "invalid_partner")
 
 	inviteID := testFixture.invitePartner(first, second)
 	response = testFixture.callAPI("POST", "/v1/partner-emotes", first,

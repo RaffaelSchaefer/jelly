@@ -158,7 +158,7 @@ func TestImportRefusesBrokenMapsWithoutChangingAnything(t *testing.T) {
 			http.StatusBadRequest, "invalid_map")
 	}
 	requireProblem(t, testFixture.callAdmin("PUT", mapPath, `{"version":1,"kind":"x"}`),
-		http.StatusBadRequest, "invalid_body")
+		http.StatusBadRequest, "invalid_request")
 	if areas := testFixture.loadStage().Areas; len(areas) != 0 {
 		t.Fatalf("areas: %+v", areas)
 	}

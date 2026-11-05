@@ -114,9 +114,7 @@ func listPlayerErrors() []knownError {
 		{store.ErrLANOverlap, problem{
 			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
 		}},
-		{store.ErrInvalidInput, problem{
-			http.StatusBadRequest, "invalid_input", "Die Angaben sind unvollständig.",
-		}},
+		{store.ErrInvalidInput, problemInvalidRequest()},
 		{store.ErrAreaNotFound, problem{
 			http.StatusNotFound, "area_not_found", "Diesen Bereich gibt es nicht.",
 		}},
@@ -185,9 +183,7 @@ func listStackErrors() []knownError {
 // listInviteErrors returns the errors of partner emote invites.
 func listInviteErrors() []knownError {
 	return []knownError{
-		{store.ErrInvalidPartner, problem{
-			http.StatusBadRequest, "invalid_partner", "Dieses Jelly kannst du nicht auffordern.",
-		}},
+		{store.ErrInvalidPartner, problemInvalidPartner()},
 		{store.ErrInviteOpen, problem{
 			http.StatusConflict, "partner_emote_open", "Du hast dieses Jelly schon aufgefordert.",
 		}},
@@ -240,7 +236,7 @@ func listGameErrors() []knownError {
 			http.StatusConflict, "not_joined", "Du nimmst an dieser LAN noch nicht teil.",
 		}},
 		{store.ErrEventCodeInvalid, problem{
-			http.StatusBadRequest, "invalid_event_code", "Dieser Event-Code gilt gerade nicht.",
+			http.StatusForbidden, "invalid_event_code", "Dieser Event-Code gilt gerade nicht.",
 		}},
 		{store.ErrEventCodeRedeemed, problem{
 			http.StatusConflict, "event_code_redeemed",
@@ -262,9 +258,7 @@ func listGameErrors() []knownError {
 		{store.ErrTooFar, problem{
 			http.StatusConflict, "too_far", "Ihr steht nicht nah genug beieinander.",
 		}},
-		{store.ErrPartnerSelf, problem{
-			http.StatusBadRequest, "partner_self", "Dafür brauchst du ein anderes Jelly.",
-		}},
+		{store.ErrPartnerSelf, problemInvalidPartner()},
 		{rules.ErrUnknownPartnerEmote, problem{
 			http.StatusBadRequest, "unknown_partner_emote", "Dieses Partner-Emote gibt es nicht.",
 		}},
@@ -280,18 +274,25 @@ func listGameErrors() []knownError {
 		{rules.ErrUnknownSign, problem{
 			http.StatusBadRequest, "unknown_sign", "Dieses Schild gibt es nicht.",
 		}},
-		{errUnknownAction, problemUnknownAction()},
+		{errUnknownReportKind, problemUnknownReportKind()},
 	}
 }
 
-// problemUnknownAction is the response to an unknown action.
-func problemUnknownAction() problem {
-	return problem{http.StatusBadRequest, "unknown_action", "Diese Aktion gibt es nicht."}
+// problemUnknownReportKind is the response to an unknown kind of report.
+func problemUnknownReportKind() problem {
+	return problem{http.StatusBadRequest, "unknown_report_kind", "Diese Meldung gibt es nicht."}
 }
 
-// problemInvalidBody is the response to an invalid request.
-func problemInvalidBody() problem {
-	return problem{http.StatusBadRequest, "invalid_body", "Die Anfrage ist ungültig."}
+// problemInvalidPartner is the response to an invite for the own or an unsuitable jelly.
+func problemInvalidPartner() problem {
+	return problem{
+		http.StatusBadRequest, "invalid_partner", "Dieses Jelly kannst du nicht auffordern.",
+	}
+}
+
+// problemInvalidRequest is the response to a request with a broken body, parameter or value.
+func problemInvalidRequest() problem {
+	return problem{http.StatusBadRequest, "invalid_request", "Die Anfrage ist ungültig."}
 }
 
 // problemNotFound is the response to a path outside the contract.
@@ -326,11 +327,11 @@ func (server *apiServer) readLimitedJSON(
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(target)
 	if err != nil {
-		server.writeProblem(writer, problemInvalidBody())
+		server.writeProblem(writer, problemInvalidRequest())
 		return false
 	}
 	if !errors.Is(decoder.Decode(&struct{}{}), io.EOF) {
-		server.writeProblem(writer, problemInvalidBody())
+		server.writeProblem(writer, problemInvalidRequest())
 		return false
 	}
 	return true
