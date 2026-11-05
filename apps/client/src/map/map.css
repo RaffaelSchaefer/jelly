@@ -23,6 +23,15 @@ button:focus-visible { outline: 2px solid #2059ed; outline-offset: 3px; }
 #leave:hover { background: #262e38; }
 #leave[hidden] { display: none; }
 
+/* Den Tropfen von „Weggehen“ zeichnet `glass.ts`, nur so hoch wie der Knopf samt Schatten. Ohne WebGL fehlt `data-glass`, dann gelten die Farben oben. */
+#glass { position: absolute; top: 0; left: 0; z-index: 2; display: block; width: 100%; height: 128px; pointer-events: none; }
+/* Hell wie am Jelly. Auf dem blassen Glas hält der Schatten den Text lesbar. */
+html[data-glass] #leave { background: transparent; color: #ffffff; text-shadow: 0 1px 2px #0b1a2bb3, 0 0 6px #0b1a2b66; box-shadow: none; transition: scale 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+/* Der Tropfen liest die Lage des Knopfs ab und wächst mit ihm. */
+html[data-glass] #leave:hover { background: transparent; scale: 1.12; }
+html[data-glass] #leave:active { scale: 0.94; }
+@media (prefers-reduced-motion: reduce) { html[data-glass] #leave { transition: none; } }
+
 #status { position: absolute; right: 1.5rem; bottom: 1.5rem; left: 1.5rem; z-index: 3; margin: 0; padding: 0.6rem 1rem; border-radius: 0.5rem; background: #171d25; color: #f4f7f8; font: 0.875rem system-ui, sans-serif; text-align: center; }
 #status[data-problem] { background: #4f1c0b; }
 #status[hidden] { display: none; }

@@ -39,19 +39,23 @@ export function stagePlayerHex(color: string) {
   return Object.hasOwn(PET_COLORS, color) ? PET_COLORS[color as PetColor].hex : undefined;
 }
 
+/**
+ * Eine Farbe, die die App kennt. Eine unbekannte wird zur Grundfarbe: Ein neuerer Server kann sie
+ * liefern.
+ */
+export function knownPetColor(color: string): PetColor {
+  return stagePlayerHex(color) ? (color as PetColor) : "mint";
+}
+
 /** Wie ein anderes Jelly aussieht, wenn es für ein Partner-Emote herüberkommt. */
 export interface PartnerLook {
   color: PetColor;
   equipped: Equipped;
 }
 
-/**
- * Das Aussehen von Jelly `id`, oder `null`, wenn es nicht auf der Bühne steht. Eine Farbe, die die
- * App nicht kennt, wird zur Grundfarbe: Ein neuerer Server kann sie liefern.
- */
+/** Das Aussehen von Jelly `id`, oder `null`, wenn es nicht auf der Bühne steht. */
 export function partnerLook(players: StagePlayer[], id: number): PartnerLook | null {
   const player = players.find((item) => item.id === id);
   if (!player) return null;
-  const color = stagePlayerHex(player.color) ? (player.color as PetColor) : "mint";
-  return { color, equipped: player.equipped };
+  return { color: knownPetColor(player.color), equipped: player.equipped };
 }

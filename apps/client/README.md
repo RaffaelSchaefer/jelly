@@ -116,7 +116,8 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   das Dazustellen beendet. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
   die doppelte Auflösung des Beamers und schließt sich mit dem Pet. Solange sie offen ist, ist das Pet
   versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
-  Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. Die Browser-Vorschau zeigt
+  Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. „Weggehen“
+  ist ein Tropfen aus demselben flüssigen Glas wie am Jelly, in dessen Farbe. Die Browser-Vorschau zeigt
   die Halle der Server-Demo.
 - Der Reiter „Partner-Emote“ im selben Panel fordert ein anderes Jelly auf (`POST /v1/partner-emotes`):
   Erst die Geste wählen, dann das Jelly aus der Liste der Bühne. Wer zu weit weg steht, erfährt es vom

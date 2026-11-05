@@ -11,6 +11,8 @@
 import { createStageView, type ScreenPoint, type StageState, type StageView } from "@jelly/stage";
 
 import { desktop, windowAction } from "../backend";
+import { knownPetColor } from "../pet";
+import { startGlass, type GlassLayer } from "./glass";
 import { createDesktopSource, type MapSource } from "./source";
 import "./map.css";
 
@@ -37,6 +39,8 @@ interface MapPage {
   status: HTMLElement;
   /** `null`, bis die Bühne läuft. */
   view: StageView | null;
+  /** `null` ohne WebGL: Dann bleibt „Weggehen“ einfarbig. */
+  glass: GlassLayer | null;
   targetId: number | null;
   /** Ein Aufruf zum Dazustellen läuft. Sie laufen einzeln, damit keiner einen neueren überholt. */
   following: boolean;
@@ -76,7 +80,9 @@ function applyState(page: MapPage, state: StageState) {
     const remaining = Math.max(0, own.follow_until - state.server_time);
     page.followEnd = setTimeout(() => page.view?.reload(), remaining + FOLLOW_END_GRACE_MS);
   }
-  page.view?.setReducedMotion(reducedMotion || OS_REDUCED_MOTION.matches);
+  const reduced = reducedMotion || OS_REDUCED_MOTION.matches;
+  page.view?.setReducedMotion(reduced);
+  if (own) page.glass?.setLook(knownPetColor(own.color), reduced);
   page.note = state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "";
   page.readProblem = "";
   renderStatus(page);
@@ -143,6 +149,20 @@ function listenToWindowTools() {
   });
 }
 
+/**
+ * Legt das Glas unter „Weggehen“. `data-glass` nimmt dem Knopf in `map.css` den eigenen
+ * Hintergrund.
+ */
+function startButtonGlass(page: MapPage) {
+  try {
+    const canvas = document.querySelector<HTMLCanvasElement>("#glass")!;
+    page.glass = startGlass(canvas, document.querySelector<HTMLElement>("#frame")!);
+    document.documentElement.toggleAttribute("data-glass", true);
+  } catch {
+    page.glass = null;
+  }
+}
+
 /** Startet die Bühne. Ohne WebGL bleibt nur der Hinweis. */
 function startView(page: MapPage) {
   try {
@@ -174,6 +194,7 @@ async function startMap() {
     leave: document.querySelector<HTMLButtonElement>("#leave")!,
     status: document.querySelector<HTMLElement>("#status")!,
     view: null,
+    glass: null,
     targetId: null,
     following: false,
     followEnd: undefined,
@@ -183,6 +204,7 @@ async function startMap() {
   };
   listenToInput(page);
   listenToWindowTools();
+  startButtonGlass(page);
   startView(page);
 }
 

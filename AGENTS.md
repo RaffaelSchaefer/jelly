@@ -69,8 +69,9 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `source.ts` beschreibt ihre Daten, `labels.ts` und `picking.ts` zeichnen Namen und finden das Jelly
   unter dem Zeiger, `moves.ts` und `walking.ts` spielen die Wege des Servers ab, der Rest ist der Raum.
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
-  `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau). `src/MapDrop.tsx`: der Glas-Tropfen
-  am Jelly, der sie öffnet.
+  `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `glass.ts` (Glas von „Weggehen“, eigene
+  Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
+  sie öffnet.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
   `events.rs` (Server-Stream), `map.rs` (Fenster der Karte), `error.rs`, `pet.rs` (lokaler Stand,
