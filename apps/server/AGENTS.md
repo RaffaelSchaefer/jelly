@@ -158,6 +158,9 @@ die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit do
 - Jedes Feature entsteht in einem eigenen Branch `feature/<name>` und geht per Pull Request nach `main`.
 - `docs/openapi.json` wird mit `pnpm openapi` aus dem fertigen Code erzeugt und mitgemergt. Sie wird nie
   von Hand geändert, ein Test vergleicht sie mit dem Code.
+- Clients bauen auf `docs/openapi.json`, also braucht jeder Weg, Parameter und jedes Feld eine Beschreibung.
+  Die Texte stehen in `internal/api/contract_docs.json`, Go-Kommentare landen nicht im Dokument. Fehlt ein
+  Text oder beschreibt einer etwas, das es nicht mehr gibt, scheitern `pnpm openapi` und die Tests.
 - `internal/api` beschreibt die Wege für App und Bühne mit huma unter `/v1`. Handler geben einfache
   Fehler zurück, `addOperation` übersetzt sie über `listKnownErrors`. `/health` und `/admin/api` nutzen
   weiter `net/http` und stehen nicht im Vertrag. `GET /version` steht im Vertrag, aber außerhalb von

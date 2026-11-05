@@ -93,6 +93,9 @@ func (server *apiServer) buildHandler() http.Handler {
 	contract := buildContractAPI(mux)
 	server.addContractRoutes(contract)
 	finishContract(contract)
+	for _, gap := range describeContract(contract) {
+		server.Logger.Warn("contract docs do not match the code", "gap", gap)
+	}
 	server.addStreamRoute(mux)
 	mux.HandleFunc(versionPrefix+"/", func(writer http.ResponseWriter, _ *http.Request) {
 		server.writeProblem(writer, problemNotFound())

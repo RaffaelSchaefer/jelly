@@ -1,0 +1,472 @@
+{
+  "overview": "The contract between the Jelly server and its clients, the desktop app and the stage page.\n\n**Authentication:** A player sends `Authorization: Bearer <secret>`. The secret only ever arrives in the answer of `POST /v1/auth/redeem`, and clients keep it to themselves. The stage page reads with the stage key in the query `key`, which allows reading only.\n\n**Units:** All times are milliseconds since 1970 in server time. Use `server_time` from an answer for countdowns instead of the clock of the device. All positions on the stage are percent of the room. Distances in rules such as `near_distance` and `walk_speed` count jelly units: a jelly is about 1.7 wide, the hall 21 wide and 40 deep.\n\n**Growth:** Answers can gain fields, event types, catalog entries, enum values and error codes in any version, so clients ignore what they do not know. Requests reject unknown fields. A breaking change gets a new path version.\n\n**Errors:** Every error has the form `{\"error\":{\"code\",\"message\"}}`. `code` is stable and meant for code, `message` is German and meant for people, so show it for unknown codes. `invalid_body` answers with 400 (no valid JSON), 408 or 413 (body too slow or too large), 415 (not JSON) or 422 (unknown or missing field, wrong type). After a network error, read `GET /v1/players/me` before repeating an action, because it may have counted already. `401` means the secret is no longer valid. Never delete a secret because of a network error.",
+  "operations": {
+    "getCatalog": "Works without an account. Clients read keys, names and labels from here instead of hard-coding them. Secret achievements are not listed.",
+    "getMe": "The main read of the app. Open the stream afterwards with `since` set to `last_event_id`, so nothing gets lost in between.",
+    "updateMe": "Missing fields stay unchanged, and an empty request changes nothing and sends no event. Can answer `invalid_name`, `invalid_color` and `name_taken`.",
+    "getPlayer": "Works for every player with an account. An unknown or removed player answers `404 player_not_found`.",
+    "createReport": "Earns XP within the rules of the LAN. Can answer `report_cooldown`, `report_limit`, `no_active_lan` and `not_joined`. After a report the jelly walks to a snack bar for `snack_run_seconds`.",
+    "redeemEventCode": "Earns the XP of the code once per player. Can answer `invalid_event_code` and `event_code_redeemed`.",
+    "playEmote": "All screens hear about it through the event `emote`. Can answer `unknown_emote` and `emote_cooldown`.",
+    "showSign": "The sign stays up until it is lowered or replaced. Answers `unknown_sign` for a key that is not in the catalog.",
+    "lowerSign": "Lowering without a sign changes nothing.",
+    "startStack": "Everyone nearby can climb on it with `POST /v1/stacks/members`. It falls apart after `stack_seconds`. Starting a stack ends a trip or following.",
+    "leaveStack": "The jellies above slide down one level.",
+    "listPartnerEmotes": "Lets an app bring back its popups after a restart.",
+    "getStage": "Takes a player secret or the stage key. Afterwards open the stream with `since` set to `last_event_id`. `moves` holds the current walk of each jelly.",
+    "endTrip": "Ends a trip or following at once, and the jelly walks back to its place."
+  },
+  "parameters": {
+    "cursor": "Where the page starts, the `next_cursor` of the page before. Empty for the first page.",
+    "limit": "How many entries a page holds at most.",
+    "id": "The number of the player.",
+    "key": "The stage key, for the stage page. Players send their secret as a bearer token instead.",
+    "since": "The last event ID the client knows, usually `last_event_id` from a state it just read.",
+    "topics": "Comma-separated list of `events` and `moves`. Without it, both arrive. Unknown topics answer `400 invalid_input`.",
+    "Last-Event-ID": "Sent by the browser or the client when it reconnects, and takes priority over `since`."
+  },
+  "schemas": {
+    "Achievement": {
+      "description": "One achievement of the catalog.",
+      "fields": {
+        "key": "Stable key of the achievement.",
+        "title": "German title to show.",
+        "description": "German text that says how to earn it.",
+        "scope": "`permanent` stays across all LANs, `lan` can be earned again at each LAN.",
+        "secret": "Secret achievements are not listed in the catalog, so this is false there.",
+        "goal": "How often the action has to happen until it is earned.",
+        "record_unit": "German unit of the personal record. With it, the achievement has one stage and then only tracks the best value."
+      }
+    },
+    "ActionAnswer": {
+      "description": "The result of an action that can earn XP.",
+      "fields": {
+        "xp_gained": "XP this action earned. 0 is no error, for example after a poke that came too early.",
+        "me": "The state of the player after the action."
+      }
+    },
+    "Badge": {
+      "description": "Shows that a player attended a LAN.",
+      "fields": {
+        "slug": "Stable short name of the LAN.",
+        "name": "Name of the LAN to show."
+      }
+    },
+    "Catalog": {
+      "description": "The fixed lists of the server. Entries can be added in any version.",
+      "fields": {
+        "colors": "Colors a jelly can have.",
+        "emotes": "Emotes for `POST /v1/emotes`.",
+        "partner_emotes": "Emotes for `POST /v1/partner-emotes`.",
+        "signs": "Signs for `PUT /v1/signs/current`.",
+        "cosmetics": "All cosmetics. Some can only be given as an award.",
+        "cosmetic_slots": "The places on a jelly that can wear a cosmetic.",
+        "cosmetic_colors": "Hex colors that colorable cosmetics can take.",
+        "achievements": "All achievements that are not secret."
+      }
+    },
+    "CatalogEntry": {
+      "description": "One choice of a fixed list.",
+      "fields": {
+        "key": "Stable key to send to the server.",
+        "label": "German text to show."
+      }
+    },
+    "CodeBody": {
+      "description": "A request with one event code.",
+      "fields": {
+        "code": "The code as the player typed it."
+      }
+    },
+    "Cosmetic": {
+      "description": "One item a jelly can wear. It unlocks through `level` or `requires_event`. With neither of them, it is only given as an award.",
+      "fields": {
+        "key": "Stable key of the cosmetic.",
+        "name": "German name to show.",
+        "scope": "`permanent` counts progress over all LANs, `lan` only counts the current LAN.",
+        "slot": "The place on the jelly that wears it, one of `cosmetic_slots`.",
+        "colorable": "Whether it takes a color from `cosmetic_colors`. The others always look the same.",
+        "level": "The level that unlocks it.",
+        "requires_event": "Whether it unlocks through an event code."
+      }
+    },
+    "EarnedAchievement": {
+      "description": "An achievement in the history of a player.",
+      "fields": {
+        "key": "Key of the achievement. Secret ones are not in the catalog, so show `title`.",
+        "title": "German title to show.",
+        "lan_slug": "The LAN it was earned at, or null for one that stays across LANs.",
+        "earned_at": "When it was earned.",
+        "best": "The personal record, only for record achievements.",
+        "record_unit": "German unit of the record, only for record achievements."
+      }
+    },
+    "EquipBody": {
+      "description": "Changes one cosmetic slot.",
+      "fields": {
+        "slot": "The slot to change, one of `cosmetic_slots`.",
+        "key": "The cosmetic to put on, out of `cosmetics` in the state. Without it, the slot is emptied.",
+        "color": "Hex color from `cosmetic_colors`, only for colorable cosmetics."
+      }
+    },
+    "EquippedCosmetic": {
+      "description": "What a jelly wears in one slot.",
+      "fields": {
+        "key": "Key of the cosmetic.",
+        "color": "The chosen hex color, null for cosmetics that are not colorable."
+      }
+    },
+    "ErrorDetails": {
+      "description": "The content of an error answer.",
+      "fields": {
+        "code": "Stable code for programs. The overview of this document lists all codes.",
+        "message": "German text for people. Show it for codes the client does not know."
+      }
+    },
+    "ErrorResponse": {
+      "description": "The form of every error answer.",
+      "fields": {
+        "error": "What went wrong."
+      }
+    },
+    "Event": {
+      "description": "One entry of the event log. It holds IDs and keys, never names.",
+      "fields": {
+        "id": "Rising number of the event, the `since` of a later reconnect.",
+        "type": "What happened. The stream route lists all types, unknown ones are ignored.",
+        "player_id": "The player it is about, null for events of the whole stage.",
+        "payload": "Details that depend on `type`, see the stream route.",
+        "created_at": "When it happened."
+      }
+    },
+    "FollowBody": {
+      "description": "Names the jelly to follow.",
+      "fields": {
+        "player_id": "The player to follow. Circles of followers answer `400 invalid_follow`."
+      }
+    },
+    "HighlightBody": {
+      "description": "Names the jelly to light up.",
+      "fields": {
+        "player_id": "The player to light up, which can be the own one."
+      }
+    },
+    "InviteAnswerBody": {
+      "description": "Changes an open partner emote.",
+      "fields": {
+        "id": "The partner emote to change.",
+        "state": "`accepted` or `declined` from the invited jelly, `cancelled` from the one who asked."
+      }
+    },
+    "InviteBody": {
+      "description": "Asks for a partner emote.",
+      "fields": {
+        "key": "The emote, out of `partner_emotes` in the catalog.",
+        "partner_ids": "The invited jellies, exactly one for now."
+      }
+    },
+    "KeyBody": {
+      "description": "A request that names one entry of a fixed list.",
+      "fields": {
+        "key": "The key from the catalog."
+      }
+    },
+    "LANInfo": {
+      "description": "The newest LAN of an account, which does not have to be the running one.",
+      "fields": {
+        "slug": "Stable short name of the LAN.",
+        "name": "Name of the LAN to show.",
+        "active": "Whether this LAN runs right now."
+      }
+    },
+    "LANPeriod": {
+      "description": "When a LAN runs.",
+      "fields": {
+        "slug": "Stable short name of the LAN.",
+        "name": "Name of the LAN to show.",
+        "starts_at": "When it starts.",
+        "ends_at": "When it ends."
+      }
+    },
+    "LANStatus": {
+      "description": "Which LAN runs and which comes next.",
+      "fields": {
+        "server_time": "The time of the server when it answered.",
+        "current": "The running LAN, or null.",
+        "next": "The next LAN, or null.",
+        "joined": "With a secret, whether this player takes part in the running LAN. Otherwise null."
+      }
+    },
+    "Move": {
+      "description": "One walk of a jelly, planned by the server so all screens show the same. Between two points the jelly walks straight, after the last one it stands there. A newer move of the same jelly replaces this one and starts where the jelly is at its `start_at`.",
+      "fields": {
+        "player_id": "The jelly that walks.",
+        "kind": "Why it walks: `wander`, `follow`, `trip`, `snack` or `stack`. Treat new values like `wander`.",
+        "start_at": "When the walk starts. New walks start about one second in the future, so they reach every screen in time.",
+        "points": "The way to walk. A single point means the jelly stands there.",
+        "level": "How many jellies stand below this one, once it arrived at the last point. Above 0 only on a stack."
+      }
+    },
+    "PartnerInvite": {
+      "description": "A request for a partner emote.",
+      "fields": {
+        "id": "Number of the invite, for answering it.",
+        "key": "The emote, out of `partner_emotes` in the catalog.",
+        "from_id": "The jelly that asked.",
+        "partner_ids": "The invited jellies.",
+        "state": "`pending`, `accepted`, `declined` or `cancelled`.",
+        "expires_at": "When it runs out unanswered."
+      }
+    },
+    "PartnerInviteList": {
+      "description": "The open partner emotes of the player.",
+      "fields": {
+        "items": "The invites.",
+        "next_cursor": "Always null for now, kept so this list can get pages later."
+      }
+    },
+    "PartnerInviteResult": {
+      "description": "A partner emote after a change.",
+      "fields": {
+        "partner_emote": "The invite in its new state.",
+        "xp_gained": "XP this change earned. Both jellies earn once per partner and LAN, afterwards it is 0.",
+        "me": "The state of the player after the change."
+      }
+    },
+    "PlayerAward": {
+      "description": "A prize in the history of a player, given by the orga.",
+      "fields": {
+        "title": "Free text of the orga.",
+        "cosmetic_key": "The cosmetic that came with it, or null.",
+        "given_at": "When it was given."
+      }
+    },
+    "PlayerList": {
+      "description": "One page of the player list.",
+      "fields": {
+        "items": "The players of this page.",
+        "next_cursor": "The `cursor` of the next page, null on the last page."
+      }
+    },
+    "PlayerProfile": {
+      "description": "What every account can read about another player.",
+      "fields": {
+        "id": "The number of the player.",
+        "name": "The name of the jelly.",
+        "color": "The color of the jelly, out of `colors` in the catalog.",
+        "equipped": "What the jelly wears, by slot.",
+        "xp": "XP in the newest LAN of the player.",
+        "level": "Level in the newest LAN of the player.",
+        "total_xp": "XP over all LANs.",
+        "lans_attended": "How many LANs the player was active at.",
+        "badges": "One badge for each attended LAN.",
+        "achievements": "The earned achievements.",
+        "awards": "The prizes from the orga."
+      }
+    },
+    "PlayerState": {
+      "description": "The state of the own player, the answer of most actions. Fields that only make sense during a LAN are null outside of one.",
+      "fields": {
+        "server_time": "The time of the server when it answered, for countdowns.",
+        "last_event_id": "Where to open the stream to miss nothing after this state.",
+        "id": "The number of the player. It can be known to others and opens nothing without the secret.",
+        "name": "The name of the jelly.",
+        "color": "The color of the jelly, out of `colors` in the catalog.",
+        "equipped": "What the jelly wears, by slot.",
+        "hidden": "Whether the orga hid this jelly from the stage.",
+        "lan": "The newest LAN of the account, which does not have to be the running one. Null without any. `GET /v1/lans/current` says whether one runs.",
+        "xp": "XP in the LAN of `lan`.",
+        "level": "Level in the LAN of `lan`.",
+        "total_xp": "XP over all LANs.",
+        "next_poke_at": "When the next poke can earn XP. Null outside an active LAN.",
+        "reports": "What the player can report now. Null outside an active LAN.",
+        "sign": "Key of the raised sign, or null.",
+        "follow_player_id": "The jelly this one follows, or null. The server can end following by itself, so always read this field.",
+        "follow_until": "When following ends by itself, or null. No event announces the end.",
+        "trip": "The running trip, or null.",
+        "lans_attended": "How many LANs the player was active at.",
+        "badges": "One badge for each attended LAN.",
+        "cosmetics": "Keys of all cosmetics this player may wear.",
+        "achievements": "The earned achievements.",
+        "awards": "The prizes from the orga."
+      }
+    },
+    "ProfileBody": {
+      "description": "Changes the profile. Missing fields stay unchanged.",
+      "fields": {
+        "name": "The new name: 1 to 24 characters of Latin letters, umlauts, ß, digits, spaces and `. _ ' -`, at least one letter or digit. The prefix `Jelly-` is reserved.",
+        "color": "The new color, out of `colors` in the catalog."
+      }
+    },
+    "PublicPlayer": {
+      "description": "One line of the player list.",
+      "fields": {
+        "id": "The number of the player.",
+        "name": "The name of the jelly.",
+        "color": "The color of the jelly, out of `colors` in the catalog.",
+        "level": "The level of the jelly."
+      }
+    },
+    "RedeemAnswer": {
+      "description": "The account behind a code. This is the only place where a secret is ever sent.",
+      "fields": {
+        "secret": "The secret to send as a bearer token from now on. Keep it safe, it cannot be read again.",
+        "me": "The state of the player."
+      }
+    },
+    "RedeemBody": {
+      "description": "Exchanges a code for an account.",
+      "fields": {
+        "code": "The seat code or the code of a LAN.",
+        "name": "The name of a new account, with the same rules as in `PATCH /v1/players/me`.",
+        "color": "The color of a new account, out of `colors` in the catalog."
+      }
+    },
+    "RedeemedCode": {
+      "description": "The result of an event code.",
+      "fields": {
+        "title": "The title of the code, as the orga wrote it.",
+        "xp_gained": "The XP the code earned.",
+        "me": "The state of the player after the code."
+      }
+    },
+    "ReportBody": {
+      "description": "Names what the player reports.",
+      "fields": {
+        "kind": "`food` or `drink`."
+      }
+    },
+    "ReportStatus": {
+      "description": "What a player can report right now.",
+      "fields": {
+        "food_ready_at": "When food can be reported again, 0 if nothing was reported yet.",
+        "drink_ready_at": "When a drink can be reported again, 0 if nothing was reported yet.",
+        "reports_left": "How many reports are left in the current time window of the LAN."
+      }
+    },
+    "Room": {
+      "description": "What the coordinates of the stage mean.",
+      "fields": {
+        "width": "Width of the room in `unit`.",
+        "height": "Height of the room in `unit`.",
+        "unit": "The unit of all positions, `percent` for now."
+      }
+    },
+    "Stack": {
+      "description": "A tower of jellies at one spot.",
+      "fields": {
+        "id": "Number of the stack, for climbing on it.",
+        "x": "Position of the stack in percent of the stage width.",
+        "y": "Position of the stack in percent of the stage height.",
+        "ends_at": "When it falls apart.",
+        "member_ids": "The jellies on it, from the bottom to the top."
+      }
+    },
+    "StackAnswer": {
+      "description": "A stack after a change.",
+      "fields": {
+        "stack": "The stack in its new form.",
+        "me": "The state of the player after the change."
+      }
+    },
+    "StackMemberBody": {
+      "description": "Names the stack to climb on.",
+      "fields": {
+        "stack_id": "The stack, out of `stacks` in `GET /v1/stage`."
+      }
+    },
+    "StageAnswer": {
+      "description": "Everything a stage or a map needs to start.",
+      "fields": {
+        "last_event_id": "Where to open the stream to miss nothing after this state.",
+        "server_time": "The time of the server when it answered. Moves are played against this clock.",
+        "room": "What the coordinates mean.",
+        "areas": "The zones of the room.",
+        "players": "All jellies on the stage. Absent ones are not listed.",
+        "stacks": "The running stacks.",
+        "moves": "The current walk of each jelly. New ones arrive in the stream as `move`."
+      }
+    },
+    "StageArea": {
+      "description": "One zone of the room, in percent of the stage. It has no name.",
+      "fields": {
+        "id": "Number of the zone.",
+        "x": "Left edge.",
+        "y": "Top edge.",
+        "width": "Width.",
+        "height": "Height.",
+        "kind": "What the zone is for. Jellies stand in `seats`, `stage`, `lounge` and `visitors`, walk around `desk` and `snackbar` and over `cable`. `none` is not assigned yet. It also decides what the stage draws."
+      }
+    },
+    "StagePlayer": {
+      "description": "A jelly as the stage shows it.",
+      "fields": {
+        "id": "The number of the player.",
+        "name": "The name of the jelly.",
+        "color": "The color of the jelly, out of `colors` in the catalog.",
+        "equipped": "What the jelly wears, by slot.",
+        "level": "The level in the running LAN.",
+        "sign": "Key of the raised sign, or null.",
+        "follow_player_id": "The jelly this one follows, or null.",
+        "follow_until": "When following ends by itself, or null.",
+        "last_seen_at": "When the player was last active.",
+        "area_id": "The zone the jelly belongs to, or null.",
+        "is_visitor": "A jelly without a place of its own wanders through the zones of kind `visitors`.",
+        "trip": "The running trip, or null.",
+        "home_x": "The place of the jelly in percent of the stage width. Where it is right now comes from `moves`.",
+        "home_y": "The place of the jelly in percent of the stage height. Where it is right now comes from `moves`."
+      }
+    },
+    "StagePoint": {
+      "description": "A point on the stage, for example the goal of a trip. A point outside answers `400 invalid_trip`.",
+      "fields": {
+        "x": "Percent of the stage width.",
+        "y": "Percent of the stage height."
+      }
+    },
+    "Trip": {
+      "description": "A running walk to a point on the stage.",
+      "fields": {
+        "x": "The goal in percent of the stage width.",
+        "y": "The goal in percent of the stage height.",
+        "until": "When the jelly walks back to its place."
+      }
+    },
+    "VersionInfo": {
+      "description": "Tells an app whether it can still talk to this server.",
+      "fields": {
+        "api_version": "The version of this API, in the form `1.2.3`.",
+        "min_client_version": "The oldest app that still works, in the form `1.2.3`. Empty means no minimum."
+      }
+    },
+    "Waypoint": {
+      "description": "A point of a move.",
+      "fields": {
+        "x": "Percent of the stage width.",
+        "y": "Percent of the stage height.",
+        "t": "Milliseconds after `start_at` when the jelly reaches this point."
+      }
+    }
+  },
+  "events": [
+    { "type": "player.active", "meaning": "A jelly came to the stage.", "player": "the player", "payload": "`{}`" },
+    { "type": "player.updated", "meaning": "A jelly changed.", "player": "the player", "payload": "`{}`, or `{\"edited\":true}` if the player changed it" },
+    { "type": "player.hidden", "meaning": "The orga hid a jelly.", "player": "the player", "payload": "`{}`" },
+    { "type": "player.removed", "meaning": "An account was deleted.", "player": "null", "payload": "`{\"player_id\"}`" },
+    { "type": "xp.gained", "meaning": "A player earned XP. `source` is `poke`, `food`, `drink`, `event` or `partner`.", "player": "the player", "payload": "`{\"amount\",\"source\"}`" },
+    { "type": "level.up", "meaning": "A player reached a new level.", "player": "the player", "payload": "`{\"level\"}`" },
+    { "type": "achievement.earned", "meaning": "A player earned an achievement.", "player": "the player", "payload": "`{\"key\"}`" },
+    { "type": "award.given", "meaning": "The orga gave a prize. `title` is free text.", "player": "the player", "payload": "`{\"title\"}`" },
+    { "type": "emote", "meaning": "A jelly plays an emote.", "player": "the player", "payload": "`{\"key\"}`" },
+    { "type": "partner.emote", "meaning": "Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden.", "player": "who accepted", "payload": "`{\"key\",\"partner_id\"}`, `partner_id` is who asked" },
+    { "type": "partner_emote.updated", "meaning": "A partner emote was created or changed. The app of an invited jelly finds itself in `partner_ids` and shows its popup.", "player": "who acted", "payload": "`{\"id\",\"key\",\"from_id\",\"partner_ids\",\"state\",\"expires_at\"}`" },
+    { "type": "sign.changed", "meaning": "A jelly raised or lowered a sign.", "player": "the player", "payload": "`{\"key\"}`, null when lowered" },
+    { "type": "follow.changed", "meaning": "A jelly started following, or ended following or a trip.", "player": "the player", "payload": "`{\"target_id\"}`, null when it ended" },
+    { "type": "trip.changed", "meaning": "A jelly started a trip.", "player": "the player", "payload": "`{\"x\",\"y\",\"until\"}`" },
+    { "type": "stack.changed", "meaning": "A stack was started or changed.", "player": "the player", "payload": "The stack, only `{\"id\"}` after climbing down" },
+    { "type": "highlight", "meaning": "A jelly lights up so it can be found.", "player": "who asked", "payload": "`{\"target_id\",\"until\"}`" },
+    { "type": "stage.changed", "meaning": "The room changed, so read `GET /v1/stage` again.", "player": "null", "payload": "`{}`" },
+    { "type": "move", "meaning": "A jelly starts a walk. This message has no ID and is not part of the event log.", "player": "`player_id` of the move", "payload": "The data is a whole `Move`, not an `Event`" },
+    { "type": "reset", "meaning": "The stream dropped events for this client, so read the state again.", "player": "none", "payload": "None" }
+  ]
+}

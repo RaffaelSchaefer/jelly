@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -83,6 +84,70 @@ func TestContractAllowsResponsesToGrowAndNullsWhereTheyHappen(t *testing.T) {
 	body := schemas["RedeemBody"].Value
 	if body.AdditionalProperties.Has == nil || *body.AdditionalProperties.Has {
 		t.Error("requests must reject unknown fields")
+	}
+}
+
+func TestContractDescribesEveryRouteFieldAndParameter(t *testing.T) {
+	generated, err := api.BuildOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := openapi3.NewLoader().LoadFromData(generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, item := range document.Paths.Map() {
+		for method, operation := range item.Operations() {
+			if operation.Description == "" {
+				t.Errorf("%s %s has no description", method, path)
+			}
+			for _, parameter := range operation.Parameters {
+				if parameter.Value.Description == "" {
+					t.Errorf("%s %s: %s has no description", method, path, parameter.Value.Name)
+				}
+			}
+		}
+	}
+	for name, schema := range document.Components.Schemas {
+		if schema.Value.Description == "" {
+			t.Errorf("schema %s has no description", name)
+		}
+		for field, property := range schema.Value.Properties {
+			if property.Value.Description == "" {
+				t.Errorf("%s.%s has no description", name, field)
+			}
+		}
+	}
+}
+
+func TestContractListsEveryEventAndError(t *testing.T) {
+	generated, err := api.BuildOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := openapi3.NewLoader().LoadFromData(generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream := document.Paths.Find("/v1/stage/events").Get.Description
+	source, err := os.ReadFile("../store/events.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventTypes := regexp.MustCompile(`(?m)^\s+Event\w+\s*=\s*"([^"]+)"`).FindAllSubmatch(source, -1)
+	if len(eventTypes) == 0 {
+		t.Fatal("found no event types in store/events.go")
+	}
+	for _, eventType := range eventTypes {
+		if !strings.Contains(stream, "`"+string(eventType[1])+"`") {
+			t.Errorf("the stream route does not list %s", eventType[1])
+		}
+	}
+	codes := []string{"invalid_body", "too_far", "name_taken", "internal", "not_found"}
+	for _, code := range codes {
+		if !strings.Contains(document.Info.Description, "`"+code+"`") {
+			t.Errorf("the overview does not list %s", code)
+		}
 	}
 }
 

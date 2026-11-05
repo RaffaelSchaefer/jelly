@@ -283,6 +283,13 @@ func problemNotFound() problem {
 	return problem{http.StatusNotFound, "not_found", "Diesen Weg gibt es nicht."}
 }
 
+// problemInternal is the response to a failure on the server.
+func problemInternal() problem {
+	return problem{
+		http.StatusInternalServerError, "internal", "Auf dem Server ist ein Fehler aufgetreten.",
+	}
+}
+
 // problemRateLimited is the response when too many attempts arrive at once.
 func problemRateLimited() problem {
 	return problem{http.StatusTooManyRequests, "rate_limited", "Zu viele Versuche, bitte warten."}
@@ -325,9 +332,7 @@ func (server *apiServer) translateError(ctx context.Context, route string, err e
 		logFailure = server.Logger.DebugContext
 	}
 	logFailure(ctx, "request failed", "route", route, "error", err)
-	return problem{
-		http.StatusInternalServerError, "internal", "Auf dem Server ist ein Fehler aufgetreten.",
-	}
+	return problemInternal()
 }
 
 // isClientGone reports a request cancelled by its own client, which is no fault of the server.

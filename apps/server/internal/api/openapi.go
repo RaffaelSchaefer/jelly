@@ -16,7 +16,7 @@ import (
 
 const (
 	// APIVersion is the version of `/v1`. Every new feature raises it, see `docs/api.md`.
-	APIVersion = "1.8.0"
+	APIVersion = "1.9.0"
 	apiTitle   = "Jelly API"
 	// versionPrefix only changes for a breaking change, which then lives next to the old one.
 	versionPrefix = "/v1"
@@ -255,6 +255,10 @@ func BuildOpenAPI() ([]byte, error) {
 	contract := buildContractAPI(http.NewServeMux())
 	server.addContractRoutes(contract)
 	finishContract(contract)
+	gaps := describeContract(contract)
+	if len(gaps) > 0 {
+		return nil, fmt.Errorf("%w: %s", errContractDocs, strings.Join(gaps, "; "))
+	}
 	document, err := contract.OpenAPI().Downgrade()
 	if err != nil {
 		return nil, fmt.Errorf("build OpenAPI document: %w", err)
