@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
@@ -33,6 +34,7 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/lans/{id}/areas/{area}/code":    server.handleIssueSeatCode,
 		"GET /admin/api/lans/{id}/seat-codes":            server.handleListSeatCodes,
 		"PUT /admin/api/lans/{id}/players/{player}/area": server.handleAssignArea,
+		"PUT /admin/api/lans/{id}/map":                   server.handleImportMap,
 	}
 	for pattern, handler := range routes {
 		mux.HandleFunc(pattern, server.requireAdmin(handler))
@@ -243,6 +245,7 @@ func (server *apiServer) handleCreateArea(writer http.ResponseWriter, request *h
 	if !server.readJSON(writer, request, &body) {
 		return
 	}
+	body.MapID = ""
 	area, err := server.Store.CreateArea(request.Context(), lanID, body, server.currentMillis())
 	server.writeOutcome(writer, request, area, err)
 }
@@ -265,6 +268,37 @@ func (server *apiServer) handleUpdateArea(writer http.ResponseWriter, request *h
 	body.ID = areaID
 	err := server.Store.UpdateArea(request.Context(), lanID, body, server.currentMillis())
 	server.writeOutcome(writer, request, body, err)
+}
+
+// handleImportMap brings the zones of a LAN in line with a map file and reports what changed.
+func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var roomMap rules.RoomMap
+	if !server.readLimitedJSON(writer, request, &roomMap, maxMapBytes) {
+		return
+	}
+	if !rules.IsMapSizeValid(roomMap) {
+		server.writeProblem(writer, problem{
+			http.StatusBadRequest, codeInvalidMap,
+			"Dieses Kartenformat kennt der Server nicht, oder die Karte ist zu groß.",
+		})
+		return
+	}
+	invalid := rules.ListInvalidMapZones(roomMap.Zones)
+	if len(invalid) > 0 {
+		server.writeProblem(writer, problem{
+			http.StatusBadRequest, codeInvalidMap,
+			"Diese Zonen sind ungültig: " + strings.Join(invalid, ", "),
+		})
+		return
+	}
+	report, err := server.Store.ImportMap(
+		request.Context(), lanID, roomMap, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, report, err)
 }
 
 // handleDeleteArea removes an area and the assignments to it.

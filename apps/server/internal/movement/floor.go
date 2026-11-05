@@ -70,10 +70,8 @@ func roundValue(value float64) float64 {
 
 // toFloorRect converts an area to its rectangle on the floor.
 func toFloorRect(area rules.Area) floorRect {
-	start := toFloorPoint(Point{X: float64(area.X), Y: float64(area.Y)})
-	end := toFloorPoint(Point{
-		X: float64(area.X + area.Width), Y: float64(area.Y + area.Height),
-	})
+	start := toFloorPoint(Point{X: area.X, Y: area.Y})
+	end := toFloorPoint(Point{X: area.X + area.Width, Y: area.Y + area.Height})
 	return floorRect{MinX: start.X, MinZ: start.Z, MaxX: end.X, MaxZ: end.Z}
 }
 

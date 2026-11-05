@@ -38,8 +38,8 @@ var (
 	ErrEmoteCooldown = errors.New("emote is on cooldown")
 	// ErrInvalidFollow reports a jelly that cannot be followed.
 	ErrInvalidFollow = errors.New("cannot stand next to this jelly")
-	// ErrInvalidTrip reports a trip to a point outside the stage.
-	ErrInvalidTrip = errors.New("point is outside the stage")
+	// ErrInvalidTrip reports a trip to a point outside the stage or inside a zone that blocks.
+	ErrInvalidTrip = errors.New("no jelly can stand on this point")
 	// ErrTooFar reports two jellies that do not stand next to each other.
 	ErrTooFar = errors.New("jellies are too far apart")
 	// ErrStackNotFound reports a stack that does not exist or has fallen apart.

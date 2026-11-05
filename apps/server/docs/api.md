@@ -27,6 +27,7 @@ Aktuelle Version: **1.8.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.11.0  | Brechend: `desk`, `cable` und `snackbar` sind keine Zuweisungen mehr, sondern Props. Neu in `areas`: `blocks`, `prop`, `name`, Positionen dürfen Bruchteile haben. Neue Zuweisungen `queue`, `public`, `spectators`, `winner`. Kartenformat mit `PUT /admin/api/lans/{id}/map`. `POST /trips/goto` lehnt blockende Zonen ab, Jellies füllen die Fläche von `queue`-Zonen |
 | 1.10.0  | Brechend: `POST /auth/redeem` nimmt das Secret an, das Konto tritt bei und behält es, Sitzplatz-Codes holen kein Konto mehr zurück und können an ein Konto gebunden sein, `seat_assigned` in der Antwort. Neu: `POST /auth/recover` und `POST /admin/api/players/{id}/recovery-code`. `area_occupied` entfällt |
 | 1.9.0   | `docs/openapi.json` beschreibt alle Wege, Parameter und Felder, dazu alle Fehlercodes und Stream-Nachrichten. Keine Änderung am Verhalten |
 | 1.8.0   | Der LAN-Code legt auch vor und nach der LAN Konten an, XP gibt es weiter nur während der LAN |
@@ -46,6 +47,7 @@ dem Client abgestimmt. Ab der ersten LAN bekommt jede brechende Änderung einen 
 
 | Version | Änderung | Begründung |
 | ------- | -------- | ---------- |
+| 1.11.0  | `kind` in `areas` nennt nur noch das Verhalten, siehe [Bühne](#bühne) | Was dort steht, kommt aus der Karte. Beides war doppelt und konnte sich widersprechen |
 | 1.10.0  | `POST /auth/redeem` und Codes, siehe [Anmeldung](#anmeldung) | Ein Sitzplatz-Code öffnete sonst ein fremdes Konto. Das Secret gehört zum Konto, nicht zur LAN |
 
 ## Grundlagen
@@ -75,6 +77,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 422    | `invalid_body`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
 | 400    | `invalid_input`, `invalid_rules`          | Admin-Angaben oder `since` sind ungültig  |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
+| 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
 | 400    | `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color` | Cosmetic passt nicht |
 | 400    | `unknown_action`, `unknown_emote`         | Eintrag steht nicht in der festen Liste   |
@@ -246,7 +249,8 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 
 - `POST /trips/goto` schickt das Jelly zu einem Punkt, `x` und `y` sind Prozentwerte der Bühne. Es läuft zur freien
   Stelle am nächsten dran und nach `trip_seconds` zurück auf seinen Platz. `trip` im Stand nennt `x`, `y` und `until`.
-  Punkte außerhalb der Bühne ergeben `400 invalid_trip`.
+  Punkte außerhalb der Bühne oder in einer Zone mit `blocks` ergeben `400 invalid_trip`, alles andere ist erlaubt, auch ein
+  fremder Platz. Öffentliche Orte findet man über `name` in `areas`.
 - `POST /trips/follow` läuft einem anderen Jelly nach. Bekommt das Ziel einen neuen Weg, plant der Server selbst nach.
   Nach `follow_seconds` läuft das Jelly zurück auf seinen Platz, `follow_until` im Stand nennt die Zeit. Dann werden
   `follow_player_id` und `follow_until` ohne eigenes Ereignis wieder `null`. Dasselbe Jelly erneut zu wählen verlängert
@@ -294,12 +298,16 @@ das Lesen und ist die einzige Ausnahme. Spieler-Secrets gehören immer in den He
 }
 ```
 
-- Bereiche und Heimplätze sind Prozentwerte der Bühne. Bereiche haben keine Namen.
-- `kind` ist die Zuweisung einer Zone. Jellies stehen in `seats` (Plätze an den Spieltischen, mit Code ein Sitzplatz),
-  `stage` (Bühne für Turniere und Public Gaming), `lounge` (Chillout-Lounge) und `visitors` (Besucher-Zone). Um `desk`
-  (Tisch) und `snackbar` (Theke) laufen sie herum, über `cable` (Kabelkanal am Boden) hinweg. `none` heißt: noch
-  nichts zugewiesen. Die Art entscheidet auch, was die Bühne zeichnet, und sie passt die Deko dem Rechteck an.
-- Der Admin vergibt die Zuweisung und einen freien Namen. Der Name bleibt beim Admin, der Code schaut nur auf `kind`.
+- Bereiche und Heimplätze sind Prozentwerte der Bühne, auch Bruchteile. Bereiche dürfen sich überlappen, etwa ein Sofa in
+  der Lounge.
+- `kind` ist die Zuweisung einer Zone und sagt nur, wie Jellies sie nutzen: `seats` (Plätze, mit Code ein Sitzplatz),
+  `stage` (Bühne für Turniere und Public Gaming), `lounge` (Chillout-Lounge), `visitors` (Besucher-Zone), `queue` (hier
+  stellen sich Jellies an), `public` (benannter Ort, zu dem man sein Jelly schicken kann), `spectators` und `winner` (für
+  eine Siegerehrung) und `none` (noch nichts zugewiesen). Unbekannte Werte sind wie `none` zu behandeln.
+- `prop` nennt das Modell, das dort steht, leer heißt blanker Boden. `blocks` sagt, ob Jellies außen herum laufen müssen.
+  Beides kommt aus der Karte. Ein unbekanntes `prop` zeigt die Bühne als blanken Boden.
+- `name` hat nur eine Zone der Art `public`, bei allen anderen ist es `null`.
+- Der Admin vergibt die Zuweisung. Der Code schaut nur auf `kind`, `blocks` und `prop`, nie auf den Namen.
 - Jellies ohne eigenen Bereich sind Besucher (`is_visitor`). Sie wandern durch alle Zonen der Art `visitors`, ohne solche
   Zonen durch die Lounge mit der kleinsten ID, ohne Lounge über die ganze Bühne. `area_id` nennt dabei die erste
   dieser Zonen oder bleibt `null`.
@@ -320,9 +328,9 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
   Weitere Werte können dazukommen und sind wie `wander` zu behandeln.
 - Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Jelly-Einheiten pro Sekunde. Ein Jelly ist etwa
   1,7 breit, die Halle 21 breit und 40 tief.
-- Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur nächsten Theke und danach zurück. War der Weg lang,
-  wartet es ab seiner Ankunft noch kurz. Wie viele hinter eine Theke passen, folgt aus ihrer Breite. Ist sie voll, geht
-  das Jelly zur nächsten mit Platz. Sind alle voll, stellt es sich nah dazu.
+- Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur nächsten Zone der Art `queue` und danach zurück. War
+  der Weg lang, wartet es ab seiner Ankunft noch kurz. Jellies füllen die ganze Fläche der Zone. Ist sie voll, geht das
+  Jelly zur nächsten mit Platz. Sind alle voll, stellt es sich nah dazu. Ohne solche Zonen bleibt es, wo es ist.
 - Wo ein Jelly läuft, bestimmt nur der Server. Er merkt sich die Positionen alle 30 Sekunden. Nach einem Neustart macht
   jedes Jelly dort weiter, ein neuer `move` kann also um bis zu 30 Sekunden Weg springen. Ausflug, Folgen, Stapel und
   Thekenlauf laufen auch während eines Ausfalls ab. Danach läuft das Jelly von selbst zurück zu seinem Platz.
@@ -401,12 +409,34 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`, der Schlüssel muss im Katalog stehen |
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
-| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind","name"}` |
+| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind","name","blocks","prop"}` |
+| `PUT /admin/api/lans/{id}/map`                   | Kartendatei, siehe unten. Antwort: `{"created","updated","removed","unknown_props","unassigned_players"}` |
 | `POST /admin/api/lans/{id}/areas/{area}/code`    | `{"player_id"}`, optional, bindet den Code ans Konto |
 | `GET /admin/api/lans/{id}/seat-codes`            | Antwort: Codes mit `used_at`, `player_id`, `name` und `is_seated`, ob das Konto dort sitzt |
-| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height","kind","name"}` bei `PUT` |
+| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height","kind","name","blocks","prop"}` bei `PUT` |
 | `PUT /admin/api/lans/{id}/players/{player}/area` | `{"area_id"}` von `seats`, `stage`, `lounge` oder `visitors`, `null` entfernt ihn |
 
 Beim Bearbeiten eines Bereichs bleiben seine Jellies zugeordnet, solange dort Jellies stehen können.
-Wird er gelöscht oder zu `desk`, `cable` oder `snackbar`, verlieren sie ihn und stehen in der Lounge,
+Wird er gelöscht oder zu einer Art, in der niemand zugehörig ist, verlieren sie ihn und stehen in der Lounge,
 bis ein Admin sie neu zuweist.
+
+### Kartendatei
+
+Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der Admin danach in der Datenbank.
+
+```json
+{
+  "version": 1,
+  "zones": [
+    { "id": "sofa-1", "name": "Sofa Lounge", "x": 50.5, "y": 10.25, "width": 10, "height": 5, "blocks": true, "prop": "couch" }
+  ]
+}
+```
+
+- `id` ist ein freier Text, höchstens 64 Zeichen, und erkennt die Zone beim nächsten Import wieder. Bekannte Zonen behalten
+  Zuweisung und Sitzplatz-Code. Neue beginnen mit `none`. Fehlt eine, wird sie entfernt, und ihre Jellies verlieren den Platz.
+  Von Hand angelegte Zonen bleiben unberührt.
+- Der Import läuft auch während einer LAN und sendet `stage.changed`.
+- Ist eine Zone ungültig, ändert sich nichts, und es folgt `400 invalid_map`. Unbekannte Props hindern den Import nicht,
+  stehen aber in `unknown_props`. Die bekannten Props stehen in `ListProps` in `internal/rules/maps.go`.
+- Größere Modelle und viele kleine Props sind beide erlaubt: Sets wie `stage-set` stehen neben ihren Teilen.

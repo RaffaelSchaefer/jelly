@@ -95,7 +95,8 @@ type Planner struct {
 	walkSpeed   float64
 	areas       []rules.Area
 	floor       *grid
-	snackBars   []floorRect
+	// queueZones are where jellies line up, shrunk so they stay inside.
+	queueZones []floorRect
 	// visitorZones are where visitors wander, shrunk so they stay inside.
 	visitorZones []floorRect
 	walkers      map[int64]*walker
@@ -228,12 +229,14 @@ func (planner *Planner) syncRoom(areas []rules.Area) {
 	}
 	planner.areas = slices.Clone(areas)
 	planner.floor = newGrid(listRoomRect(), listObstacles(areas), jellyRadius)
-	planner.snackBars = nil
+	planner.queueZones = nil
 	planner.visitorZones = nil
 	for _, area := range areas {
 		switch area.Kind {
-		case rules.AreaKindSnackbar:
-			planner.snackBars = append(planner.snackBars, toFloorRect(area))
+		case rules.AreaKindQueue:
+			planner.queueZones = append(
+				planner.queueZones, shrinkRect(toFloorRect(area), edgeMargin),
+			)
 		case rules.AreaKindVisitors:
 			planner.visitorZones = append(
 				planner.visitorZones, shrinkRect(toFloorRect(area), edgeMargin),

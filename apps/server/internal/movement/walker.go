@@ -1,7 +1,9 @@
 package movement
 
 import (
+	"cmp"
 	"math"
+	"slices"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -22,14 +24,12 @@ const (
 	replanDistance  = 0.75
 	spotCandidates  = 64
 	spotSpacing     = personalSpace * half
+	queueSpacing    = personalSpace * 1.01
 	goldenAngle     = 2.399963
 	fullShare       = 1.0
-	snackGap        = 1.1
-	snackRows       = 2
-	// A jelly from the far end of the hall still waits this long at the counter.
-	snackWaitMillis  = 5000
-	snackSpreadShare = 0.8
-	sidesPerJelly    = 2
+	// A jelly from the far end of the hall still waits this long in the queue.
+	snackWaitMillis = 5000
+	sidesPerJelly   = 2
 )
 
 // routePoint is a point of a route with its absolute time.
@@ -61,8 +61,6 @@ type walker struct {
 	move         Move
 	nextWanderAt int64
 	isVisitor    bool
-	// snackBar is the index of the counter it went to on its last snack run.
-	snackBar int
 	// followedEnd is where the followed jelly was heading when this jelly last planned.
 	followedEnd floorPoint
 }
@@ -134,7 +132,7 @@ func (planner *Planner) findPlan(now int64, player Player) walkPlan {
 	}
 	walker := planner.walkers[player.ID]
 	isAtSnack := walker.plan.kind == KindSnack && now < walker.findArrival()+snackWaitMillis
-	if len(planner.snackBars) > 0 && (player.SnackUntil > now || isAtSnack) {
+	if len(planner.queueZones) > 0 && (player.SnackUntil > now || isAtSnack) {
 		return walkPlan{kind: KindSnack}
 	}
 	if player.Trip != nil {
@@ -256,50 +254,66 @@ func (planner *Planner) findFollowGoal(walker *walker) floorPoint {
 	return planner.findFreeSpot(walker, beside, listRoomRect())
 }
 
-// findSnackSpot returns a random place behind a counter, seen from the camera.
+// findSnackSpot returns the free place closest to the jelly in the closest queue zone with room.
+// If all of them are full, it stands as close as it can to the closest zone.
 func (planner *Planner) findSnackSpot(now int64, walker *walker) floorPoint {
-	walker.snackBar = planner.pickSnackBar(now, walker)
-	bar := planner.snackBars[walker.snackBar]
-	share := (fullShare-snackSpreadShare)*half + snackSpreadShare*planner.random.Float64()
-	return floorPoint{X: bar.MinX + share*(bar.MaxX-bar.MinX), Z: bar.MinZ - snackGap}
-}
-
-// pickSnackBar returns the closest counter with room left. If all are full, it returns the closest
-// one, and the jellies stand around it.
-func (planner *Planner) pickSnackBar(now int64, walker *walker) int {
 	position := walker.findPositionAt(now)
-	closest, closestFree := 0, noCell
-	for index, bar := range planner.snackBars {
-		distance := measureRectDistance(position, bar)
-		if distance < measureRectDistance(position, planner.snackBars[closest]) {
-			closest = index
-		}
-		isCloserFree := closestFree == noCell ||
-			distance < measureRectDistance(position, planner.snackBars[closestFree])
-		if isCloserFree && planner.countSnackVisitors(walker, index) < countSnackPlaces(bar) {
-			closestFree = index
+	zones := slices.Clone(planner.queueZones)
+	slices.SortStableFunc(zones, func(first, second floorRect) int {
+		return cmp.Compare(
+			measureRectDistance(position, first),
+			measureRectDistance(position, second),
+		)
+	})
+	for _, zone := range zones {
+		spot, found := planner.findQueuePlace(walker, position, zone)
+		if found {
+			return spot
 		}
 	}
-	if closestFree != noCell {
-		return closestFree
-	}
-	return closest
+	return planner.findFreeSpot(walker, findRectCenter(zones[0]), listRoomRect())
 }
 
-// countSnackVisitors returns how many other jellies are at this counter or on their way there.
-func (planner *Planner) countSnackVisitors(walker *walker, bar int) int {
-	visitors := 0
-	for playerID, other := range planner.walkers {
-		if playerID != walker.playerID && other.plan.kind == KindSnack && other.snackBar == bar {
-			visitors++
+// findQueuePlace looks at the places of a queue zone, which fill all of its area without gaps. It
+// returns the free one closest to the position.
+func (planner *Planner) findQueuePlace(
+	walker *walker, position floorPoint, zone floorRect,
+) (floorPoint, bool) {
+	closest, found := floorPoint{X: 0, Z: 0}, false
+	for _, place := range listQueuePlaces(zone) {
+		isCloser := !found || measureDistance(position, place) < measureDistance(position, closest)
+		if isCloser && planner.floor.isWalkable(place) && planner.isFreeSpot(walker, place) {
+			closest, found = place, true
 		}
 	}
-	return visitors
+	return closest, found
 }
 
-// countSnackPlaces returns how many jellies fit behind a counter.
-func countSnackPlaces(bar floorRect) int {
-	return max(1, int((bar.MaxX-bar.MinX)/personalSpace)) * snackRows
+// listQueuePlaces returns the places of a queue zone in rows, one body apart and centered.
+func listQueuePlaces(zone floorRect) []floorPoint {
+	columns := countPlacesAlong(zone.MaxX - zone.MinX)
+	rows := countPlacesAlong(zone.MaxZ - zone.MinZ)
+	places := make([]floorPoint, 0, columns*rows)
+	for row := range rows {
+		for column := range columns {
+			places = append(places, floorPoint{
+				X: zone.MinX + (zone.MaxX-zone.MinX)*(float64(column)+half)/float64(columns),
+				Z: zone.MinZ + (zone.MaxZ-zone.MinZ)*(float64(row)+half)/float64(rows),
+			})
+		}
+	}
+	return places
+}
+
+// countPlacesAlong returns how many jellies fit next to each other on a length, at least one. Rows
+// keep a little more than the personal space, so all of their places count as free.
+func countPlacesAlong(length float64) int {
+	return max(1, int(length/queueSpacing))
+}
+
+// findRectCenter returns the middle of a rectangle.
+func findRectCenter(rect floorRect) floorPoint {
+	return floorPoint{X: (rect.MinX + rect.MaxX) * half, Z: (rect.MinZ + rect.MaxZ) * half}
 }
 
 // drawPause returns how long a jelly stands before it wanders on.

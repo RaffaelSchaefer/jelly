@@ -51,6 +51,23 @@ func (columns tripColumns) findRunningTrip(now int64) *Trip {
 	return &Trip{X: columns.x.Float64, Y: columns.y.Float64, Until: columns.until.Int64}
 }
 
+// requireFreeFloor rejects a point inside a zone that blocks. Anything else is a valid goal, also a
+// seat of someone else.
+func requireFreeFloor(ctx context.Context, action actionContext, point rules.StagePoint) error {
+	areas, err := loadAreas(ctx, action.transaction, action.lan.id)
+	if err != nil {
+		return err
+	}
+	plain := make([]rules.Area, 0, len(areas))
+	for _, area := range areas {
+		plain = append(plain, area.Area)
+	}
+	if !rules.IsOnFreeFloor(point, plain) {
+		return ErrInvalidTrip
+	}
+	return nil
+}
+
 // StartTrip sends a jelly to a point on the stage. It replaces following or an earlier trip.
 func (store *Store) StartTrip(
 	ctx context.Context, playerID int64, point rules.StagePoint, now int64,
@@ -59,7 +76,11 @@ func (store *Store) StartTrip(
 		return PlayerState{}, ErrInvalidTrip
 	}
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		err := removeStackMember(ctx, action)
+		err := requireFreeFloor(ctx, action, point)
+		if err != nil {
+			return err
+		}
+		err = removeStackMember(ctx, action)
 		if err != nil {
 			return err
 		}

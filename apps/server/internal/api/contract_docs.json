@@ -5,7 +5,7 @@
     "getMe": "The main read of the app. Open the stream afterwards with `since` set to `last_event_id`, so nothing gets lost in between.",
     "updateMe": "Missing fields stay unchanged, and an empty request changes nothing and sends no event. Can answer `invalid_name`, `invalid_color` and `name_taken`.",
     "getPlayer": "Works for every player with an account. An unknown or removed player answers `404 player_not_found`.",
-    "createReport": "Earns XP within the rules of the LAN. Can answer `report_cooldown`, `report_limit`, `no_active_lan` and `not_joined`. After a report the jelly walks to a snack bar for `snack_run_seconds`.",
+    "createReport": "Earns XP within the rules of the LAN. Can answer `report_cooldown`, `report_limit`, `no_active_lan` and `not_joined`. After a report the jelly walks to a zone of kind `queue` for `snack_run_seconds`.",
     "redeemEventCode": "Earns the XP of the code once per player. Can answer `invalid_event_code` and `event_code_redeemed`.",
     "playEmote": "All screens hear about it through the event `emote`. Can answer `unknown_emote` and `emote_cooldown`.",
     "showSign": "The sign stays up until it is lowered or replaced. Answers `unknown_sign` for a key that is not in the catalog.",
@@ -402,14 +402,17 @@
       }
     },
     "StageArea": {
-      "description": "One zone of the room, in percent of the stage. It has no name.",
+      "description": "One zone of the room, in percent of the stage. Zones can overlap.",
       "fields": {
         "id": "Number of the zone.",
         "x": "Left edge.",
         "y": "Top edge.",
         "width": "Width.",
         "height": "Height.",
-        "kind": "What the zone is for. Jellies stand in `seats`, `stage`, `lounge` and `visitors`, walk around `desk` and `snackbar` and over `cable`. `none` is not assigned yet. It also decides what the stage draws."
+        "kind": "How jellies use the zone. They belong to `seats`, `stage`, `lounge` and `visitors`, line up in `queue`, and `public` is a named place to go to. `spectators` and `winner` are for a ceremony, `none` is not assigned yet. Treat new values like `none`.",
+        "blocks": "Whether jellies walk around this zone. `POST /v1/trips/goto` refuses points in it.",
+        "prop": "The model that stands here, or empty for bare floor. Unknown props show bare floor.",
+        "name": "The name of a `public` zone to show, null for all other kinds."
       }
     },
     "StagePlayer": {
@@ -432,7 +435,7 @@
       }
     },
     "StagePoint": {
-      "description": "A point on the stage, for example the goal of a trip. A point outside answers `400 invalid_trip`.",
+      "description": "A point on the stage, for example the goal of a trip. A point outside or in a zone with `blocks` answers `400 invalid_trip`.",
       "fields": {
         "x": "Percent of the stage width.",
         "y": "Percent of the stage height."

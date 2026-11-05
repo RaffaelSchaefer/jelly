@@ -14,6 +14,12 @@ import (
 
 const maxBodyBytes = 4 << 10
 
+const (
+	// maxMapBytes is the limit for map files, far above a hall with two thousand zones.
+	maxMapBytes    = 1 << 20
+	codeInvalidMap = "invalid_map"
+)
+
 // Field names shared by several responses.
 const (
 	fieldCreated = "created"
@@ -247,7 +253,7 @@ func listGameErrors() []knownError {
 			"Zu diesem Jelly kannst du dich nicht stellen.",
 		}},
 		{store.ErrInvalidTrip, problem{
-			http.StatusBadRequest, "invalid_trip", "Dieser Punkt liegt nicht auf der Bühne.",
+			http.StatusBadRequest, "invalid_trip", "Auf diesem Punkt kann kein Jelly stehen.",
 		}},
 		{store.ErrTooFar, problem{
 			http.StatusConflict, "too_far", "Ihr steht nicht nah genug beieinander.",
@@ -305,7 +311,14 @@ func problemRateLimited() problem {
 func (server *apiServer) readJSON(
 	writer http.ResponseWriter, request *http.Request, target any,
 ) bool {
-	decoder := json.NewDecoder(http.MaxBytesReader(writer, request.Body, maxBodyBytes))
+	return server.readLimitedJSON(writer, request, target, maxBodyBytes)
+}
+
+// readLimitedJSON is `readJSON` with its own limit for the size of the body.
+func (server *apiServer) readLimitedJSON(
+	writer http.ResponseWriter, request *http.Request, target any, limit int64,
+) bool {
+	decoder := json.NewDecoder(http.MaxBytesReader(writer, request.Body, limit))
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(target)
 	if err != nil {

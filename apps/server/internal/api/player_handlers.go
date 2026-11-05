@@ -215,8 +215,9 @@ func (server *apiServer) addActionRoutes(contract huma.API) {
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "goToPoint", Method: http.MethodPost, Path: "/trips/goto",
 		Summary: "Walk to a point and come back after a while",
-		Description: "`x` and `y` are percent of the stage. The jelly walks to the free spot " +
-			"closest to the point and back after `trip_seconds`. This ends following.",
+		Description: "`x` and `y` are percent of the stage, also the seat of someone else. A " +
+			"point in a zone with `blocks` answers `400 invalid_trip`. The jelly walks to the " +
+			"free spot closest to the point and back after `trip_seconds`. This ends following.",
 	}, server.handleStartTrip)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "followPlayer", Method: http.MethodPost, Path: "/trips/follow",

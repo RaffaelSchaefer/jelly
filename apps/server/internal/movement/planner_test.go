@@ -12,7 +12,7 @@ const start = int64(1_000_000)
 // makeRoster puts jellies with these IDs into a large lounge with a desk row behind it.
 func makeRoster(playerIDs ...int64) movement.Roster {
 	lounge := rules.Area{X: 10, Y: 10, Width: 60, Height: 30, Kind: rules.AreaKindLounge}
-	desk := rules.Area{X: 0, Y: 45, Width: 80, Height: 3, Kind: rules.AreaKindDesk}
+	desk := rules.Area{X: 0, Y: 45, Width: 80, Height: 3, Kind: rules.AreaKindNone, Blocks: true}
 	roster := movement.Roster{WalkSpeed: 1.4, Areas: []rules.Area{lounge, desk}}
 	for index, playerID := range playerIDs {
 		roster.Players = append(roster.Players, movement.Player{
@@ -172,10 +172,10 @@ func TestFollowingEndsWhenTheTargetLeaves(t *testing.T) {
 	}
 }
 
-func TestSnackRunGoesToTheCounterAndBack(t *testing.T) {
+func TestSnackRunGoesToTheQueueAndBack(t *testing.T) {
 	planner := movement.NewPlanner()
 	roster := makeRoster(1)
-	bar := rules.Area{X: 60, Y: 60, Width: 20, Height: 3, Kind: rules.AreaKindSnackbar}
+	bar := rules.Area{X: 60, Y: 60, Width: 20, Height: 3, Kind: rules.AreaKindQueue}
 	roster.Areas = append(roster.Areas, bar)
 	planner.Advance(start, roster)
 	roster.Players[0].SnackUntil = start + 14_000
@@ -185,13 +185,13 @@ func TestSnackRunGoesToTheCounterAndBack(t *testing.T) {
 		t.Fatalf("kind = %s", move.Kind)
 	}
 	end := endOf(move)
-	if end.X < 60 || end.X > 80 || end.Y > 60 {
+	if end.X < 60 || end.X > 80 || end.Y < 60 || end.Y > 63 {
 		t.Fatalf("waits at %+v", end)
 	}
 	arrival := move.StartAt + move.Points[len(move.Points)-1].T
 	planner.Advance(arrival+1000, roster)
 	if kind := findMove(t, planner).Kind; kind != movement.KindSnack {
-		t.Fatalf("a jelly waits at the counter after a long walk, kind = %s", kind)
+		t.Fatalf("a jelly waits in the queue after a long walk, kind = %s", kind)
 	}
 	planner.Advance(arrival+6000, roster)
 	if kind := findMove(t, planner).Kind; kind != movement.KindWander {
@@ -302,12 +302,12 @@ func TestPositionsAreSavedAtTheirOwnRate(t *testing.T) {
 	}
 }
 
-func TestSnackRunsPreferTheClosestCounterUntilItIsFull(t *testing.T) {
+func TestSnackRunsPreferTheClosestQueueUntilItIsFull(t *testing.T) {
 	planner := movement.NewPlanner()
 	roster := makeRoster(1, 2, 3, 4, 5)
 	roster.Areas = append(roster.Areas,
-		rules.Area{X: 10, Y: 42, Width: 20, Height: 2, Kind: rules.AreaKindSnackbar},
-		rules.Area{X: 60, Y: 42, Width: 20, Height: 2, Kind: rules.AreaKindSnackbar},
+		rules.Area{X: 10, Y: 60, Width: 20, Height: 20, Kind: rules.AreaKindQueue},
+		rules.Area{X: 60, Y: 60, Width: 20, Height: 20, Kind: rules.AreaKindQueue},
 	)
 	for index := range roster.Players {
 		roster.Players[index].Home = movement.Point{X: 20, Y: 20 + 3*float64(index)}
@@ -325,16 +325,46 @@ func TestSnackRunsPreferTheClosestCounterUntilItIsFull(t *testing.T) {
 			atSecond++
 		}
 	}
-	if atFirst != 4 || atSecond != 1 {
-		t.Fatalf("%d at the first counter, %d at the second", atFirst, atSecond)
+	// The zone is 3.4 by 7.2 jelly units inside its margin, so it has one column of three places.
+	if atFirst != 3 || atSecond != 2 {
+		t.Fatalf("%d in the first queue, %d in the second", atFirst, atSecond)
 	}
 }
 
-func TestFullCountersLetJelliesStandAroundThem(t *testing.T) {
+func TestQueueFillsTheWholeAreaWithoutSharingSpots(t *testing.T) {
 	planner := movement.NewPlanner()
 	roster := makeRoster(1, 2, 3, 4, 5, 6)
 	roster.Areas = append(roster.Areas,
-		rules.Area{X: 40, Y: 60, Width: 5, Height: 2, Kind: rules.AreaKindSnackbar},
+		rules.Area{X: 30, Y: 60, Width: 40, Height: 12, Kind: rules.AreaKindQueue},
+	)
+	planner.Advance(start, roster)
+	for index := range roster.Players {
+		roster.Players[index].SnackUntil = start + 60_000
+	}
+	planner.Advance(start+1000, roster)
+	rows := map[float64]bool{}
+	ends := map[movement.Point]bool{}
+	for _, move := range planner.ListCurrentMoves() {
+		end := endOf(move)
+		ends[end] = true
+		rows[end.Y] = true
+		if end.X < 30 || end.X > 70 || end.Y < 60 || end.Y > 72 {
+			t.Fatalf("outside the zone: %+v", end)
+		}
+	}
+	if len(ends) != 6 {
+		t.Fatalf("jellies share spots: %v", ends)
+	}
+	if len(rows) < 2 {
+		t.Fatalf("the zone has to fill in depth, not only along one row: %v", rows)
+	}
+}
+
+func TestFullQueuesLetJelliesStandAroundThem(t *testing.T) {
+	planner := movement.NewPlanner()
+	roster := makeRoster(1, 2, 3, 4, 5, 6)
+	roster.Areas = append(roster.Areas,
+		rules.Area{X: 40, Y: 60, Width: 5, Height: 2, Kind: rules.AreaKindQueue},
 	)
 	planner.Advance(start, roster)
 	for index := range roster.Players {
@@ -346,7 +376,7 @@ func TestFullCountersLetJelliesStandAroundThem(t *testing.T) {
 		end := endOf(move)
 		ends[end] = true
 		if end.X < 15 || end.X > 70 || end.Y < 45 || end.Y > 75 {
-			t.Fatalf("too far from the counter: %+v", end)
+			t.Fatalf("too far from the queue: %+v", end)
 		}
 	}
 	if len(ends) != 6 {
