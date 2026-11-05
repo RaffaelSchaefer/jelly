@@ -22,7 +22,13 @@
         </div>
       </div>
       <canvas id="map" role="img" aria-label="Karte der LAN-Halle mit allen Jellies"></canvas>
-      <button id="leave" type="button" hidden>Weggehen</button>
+      <canvas id="glass" aria-hidden="true"></canvas>
+      <button id="leave" class="glass-pill" type="button" data-liquid="calm" hidden>Weggehen</button>
+      <div id="partner-bar" hidden>
+        <p id="partner-note" class="glass-pill" role="status" data-liquid="calm"></p>
+        <button id="partner-cancel" class="glass-pill" type="button" data-liquid="calm">Abbrechen</button>
+      </div>
+      <div id="partner-menu" role="group" aria-label="Partner-Emote wählen" hidden></div>
       <p id="status" role="status" hidden></p>
     </div>
     <script type="module" src="/src/map/main.ts"></script>

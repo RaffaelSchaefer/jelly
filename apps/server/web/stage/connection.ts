@@ -9,6 +9,7 @@ import {
   STATE_EVENTS,
   type StageCatalog,
   type StageEvent,
+  type StageMove,
   type StageSource,
   type StageState,
   type StreamListener,
@@ -16,13 +17,17 @@ import {
 
 const API_PREFIX = "/v1";
 const PATH_STATE = `${API_PREFIX}/stage`;
-const PATH_STREAM = `${API_PREFIX}/events/stream`;
+const PATH_STREAM = `${API_PREFIX}/stage/events`;
 const PATH_CATALOG = `${API_PREFIX}/catalog`;
 const QUERY_KEY = "key";
 const QUERY_SINCE = "since";
 const REOPEN_DELAY_MS = 5000;
 /** The stage reads one state at a time, so a hanging request must not hold up the next ones. */
 const READ_TIMEOUT_MS = 10_000;
+/** A jelly starts walking. These messages are not part of the event log and have no ID. */
+const MOVE_MESSAGE = "move";
+/** The server dropped events for this stream, so the state has to be read again. */
+const RESET_MESSAGE = "reset";
 
 /** Reports a failed request with its HTTP status. */
 export class RequestError extends Error {
@@ -74,6 +79,10 @@ function openEventStream(stageKey: string, firstEventId: number, listener: Strea
     for (const type of [...STATE_EVENTS, ...ANIMATION_EVENTS]) {
       source.addEventListener(type, handleMessage);
     }
+    source.addEventListener(MOVE_MESSAGE, (message: MessageEvent<string>) =>
+      listener.onMove(JSON.parse(message.data) as StageMove),
+    );
+    source.addEventListener(RESET_MESSAGE, () => listener.onReset());
     source.onopen = () => listener.onConnectionChange(true);
     source.onerror = () => {
       listener.onConnectionChange(false);

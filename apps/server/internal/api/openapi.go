@@ -16,7 +16,7 @@ import (
 
 const (
 	// APIVersion is the version of `/v1`. Every new feature raises it, see `docs/api.md`.
-	APIVersion = "1.1.0"
+	APIVersion = "1.8.0"
 	apiTitle   = "Jelly API"
 	// versionPrefix only changes for a breaking change, which then lives next to the old one.
 	versionPrefix = "/v1"
@@ -177,7 +177,18 @@ func (server *apiServer) authenticateViewer(ctx huma.Context, next func(huma.Con
 		next(ctx)
 		return
 	}
-	server.authenticatePlayer(ctx, next)
+	server.authenticatePlayer(ctx, func(authenticated huma.Context) {
+		operationCtx := authenticated.Context()
+		err := server.Store.RequireCurrentEntry(
+			operationCtx, readPlayerID(operationCtx), server.currentMillis(),
+		)
+		if err != nil {
+			answer := server.translateError(operationCtx, ctx.Operation().OperationID, err)
+			server.writeContractProblem(authenticated, answer)
+			return
+		}
+		next(authenticated)
+	})
 }
 
 // limitRegistrations protects registration, where no player is known yet.

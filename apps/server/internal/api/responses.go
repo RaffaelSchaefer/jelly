@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
@@ -18,7 +19,7 @@ const (
 	fieldCreated = "created"
 	fieldDeleted = "deleted"
 	fieldHidden  = "hidden"
-	fieldToken   = "token"
+	fieldSecret  = "secret"
 	fieldUpdated = "updated"
 )
 
@@ -75,7 +76,10 @@ type knownError struct {
 
 // listKnownErrors returns all errors the client may learn about.
 func listKnownErrors() []knownError {
-	return append(listPlayerErrors(), listGameErrors()...)
+	return slices.Concat(
+		listPlayerErrors(), listSeatErrors(), listCosmeticErrors(), listInviteErrors(),
+		listGameErrors(), listStackErrors(),
+	)
 }
 
 // listPlayerErrors covers accounts, access and admin input.
@@ -129,6 +133,87 @@ func listPlayerErrors() []knownError {
 	}
 }
 
+// listCosmeticErrors returns the errors of the cosmetic slots.
+func listCosmeticErrors() []knownError {
+	return []knownError{
+		{rules.ErrUnknownSlot, problem{
+			http.StatusBadRequest, "unknown_slot", "Diesen Platz für Cosmetics gibt es nicht.",
+		}},
+		{
+			rules.ErrUnknownCosmetic,
+			problem{
+				http.StatusBadRequest,
+				"unknown_cosmetic",
+				"Dieses Cosmetic passt nicht auf diesen Platz.",
+			},
+		},
+		{rules.ErrInvalidCosmeticColor, problem{
+			http.StatusBadRequest, "invalid_cosmetic_color", "Diese Farbe geht hier nicht.",
+		}},
+		{store.ErrCosmeticLocked, problem{
+			http.StatusConflict, "cosmetic_locked",
+			"Dieses Cosmetic ist noch nicht freigeschaltet.",
+		}},
+	}
+}
+
+// listStackErrors returns the errors of stacks and highlights.
+func listStackErrors() []knownError {
+	return []knownError{
+		{store.ErrStackNotFound, problem{
+			http.StatusNotFound, "stack_not_found", "Diesen Stapel gibt es nicht mehr.",
+		}},
+		{store.ErrStackFull, problem{
+			http.StatusConflict, "stack_full", "Dieser Stapel ist schon hoch genug.",
+		}},
+		{store.ErrInvalidHighlight, problem{
+			http.StatusBadRequest, "invalid_highlight", "Dieses Jelly kannst du nicht hervorheben.",
+		}},
+		{store.ErrHighlightCooldown, problem{
+			http.StatusConflict, "highlight_cooldown", "Warte kurz bis zum nächsten Hervorheben.",
+		}},
+	}
+}
+
+// listInviteErrors returns the errors of partner emote invites.
+func listInviteErrors() []knownError {
+	return []knownError{
+		{store.ErrInvalidPartner, problem{
+			http.StatusBadRequest, "invalid_partner", "Dieses Jelly kannst du nicht auffordern.",
+		}},
+		{store.ErrInviteOpen, problem{
+			http.StatusConflict, "partner_emote_open", "Du hast dieses Jelly schon aufgefordert.",
+		}},
+		{store.ErrInviteNotFound, problem{
+			http.StatusNotFound, "partner_emote_not_found", "Diese Aufforderung gibt es nicht.",
+		}},
+		{store.ErrInviteClosed, problem{
+			http.StatusConflict, "partner_emote_closed", "Diese Aufforderung ist schon vorbei.",
+		}},
+		{
+			store.ErrInvalidInviteAnswer,
+			problem{
+				http.StatusBadRequest,
+				"invalid_partner_emote_state",
+				"Das geht bei dieser Aufforderung nicht.",
+			},
+		},
+	}
+}
+
+// listSeatErrors returns the errors of seat codes.
+func listSeatErrors() []knownError {
+	return []knownError{
+		{store.ErrCodeRedeemed, problem{
+			http.StatusConflict, "code_redeemed",
+			"Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben.",
+		}},
+		{store.ErrAreaOccupied, problem{
+			http.StatusConflict, "area_occupied", "In diesem Bereich stehen mehrere Jellies.",
+		}},
+	}
+}
+
 // listGameErrors covers LAN participation and player actions.
 func listGameErrors() []knownError {
 	return []knownError{
@@ -137,13 +222,6 @@ func listGameErrors() []knownError {
 		}},
 		{store.ErrNotJoined, problem{
 			http.StatusConflict, "not_joined", "Du nimmst an dieser LAN noch nicht teil.",
-		}},
-		{store.ErrAlreadyJoined, problem{
-			http.StatusConflict, "already_joined", "Du nimmst an dieser LAN schon teil.",
-		}},
-		{store.ErrCosmeticLocked, problem{
-			http.StatusConflict, "cosmetic_locked",
-			"Dieses Cosmetic ist noch nicht freigeschaltet.",
 		}},
 		{store.ErrEventCodeInvalid, problem{
 			http.StatusBadRequest, "invalid_event_code", "Dieser Event-Code gilt gerade nicht.",
@@ -162,14 +240,14 @@ func listGameErrors() []knownError {
 			http.StatusBadRequest, "invalid_follow",
 			"Zu diesem Jelly kannst du dich nicht stellen.",
 		}},
-		{store.ErrPartnerCodeInvalid, problem{
-			http.StatusBadRequest, "invalid_partner_code", "Dieser Code gilt gerade nicht.",
+		{store.ErrInvalidTrip, problem{
+			http.StatusBadRequest, "invalid_trip", "Dieser Punkt liegt nicht auf der Bühne.",
+		}},
+		{store.ErrTooFar, problem{
+			http.StatusConflict, "too_far", "Ihr steht nicht nah genug beieinander.",
 		}},
 		{store.ErrPartnerSelf, problem{
 			http.StatusBadRequest, "partner_self", "Dafür brauchst du ein anderes Jelly.",
-		}},
-		{store.ErrPartnerCodesBusy, problem{
-			http.StatusConflict, "partner_codes_busy", "Gerade sind alle Codes belegt.",
 		}},
 		{rules.ErrUnknownPartnerEmote, problem{
 			http.StatusBadRequest, "unknown_partner_emote", "Dieses Partner-Emote gibt es nicht.",

@@ -8,7 +8,6 @@ import {
   createEffects,
   findMotionPose,
   findEmote,
-  findVisitors,
   isFreshEvent,
   isPulseEvent,
   updateEffects,
@@ -113,14 +112,19 @@ test("rewards make a jelly bounce, emotes do not", () => {
   assert.equal(isPulseEvent({ ...event, type: "emote" }), false);
 });
 
-test("food and drink send the jelly on a snack run, a poke does not", () => {
+test("a highlight lights up the named jelly, not the one who asked", () => {
   const catalog = { signs: [], achievements: [] };
-  const event = { id: 1, type: "xp.gained", player_id: 4, created_at: 0 };
-  const food = createEffects({ ...event, payload: { amount: 15, source: "food" } }, catalog, 1000);
-  const poke = createEffects({ ...event, payload: { amount: 3, source: "poke" } }, catalog, 1000);
-  assert.deepEqual([...findVisitors(food, 5000)], [4]);
-  assert.equal(findVisitors(food, 20_000).size, 0, "the run ends");
-  assert.equal(findVisitors(poke, 5000).size, 0);
+  const event = {
+    id: 1,
+    type: "highlight",
+    player_id: 4,
+    payload: { target_id: 9, until: 10_500 },
+    created_at: 500,
+  };
+  assert.deepEqual(createEffects(event, catalog, 1000), [
+    { playerId: 9, startedAt: 1000, endsAt: 11_000, kind: "spotlight" },
+  ]);
+  assert.deepEqual(createEffects({ ...event, payload: {} }, catalog, 1000), []);
 });
 
 test("the newest emote replaces its predecessor and expires after three seconds", () => {

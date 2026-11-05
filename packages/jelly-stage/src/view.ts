@@ -10,34 +10,32 @@ import type { StageEffect } from "./effects.ts";
 import type { JellyCast, JellySpot } from "./jellies.ts";
 import type { LabelAnchor } from "./labels.ts";
 import type { ScreenPoint } from "./lens.ts";
-import type { NavGrid } from "./navigation.ts";
 import type { StageScene } from "./scene.ts";
 import type { StageSource } from "./source.ts";
-import type { StageCatalog, StageEvent, StageState } from "./types.ts";
-import type { StageLookup } from "./wander.ts";
+import type { StageCatalog, StageEvent, StageMove, StageState } from "./types.ts";
 import type { FloorRect, ScenePoint } from "./world.ts";
 
-import { calculateGoals } from "./crowd.ts";
-import {
-  createEffects,
-  findVisitors,
-  isFreshEvent,
-  isPulseEvent,
-  updateEffects,
-} from "./effects.ts";
+import { createEffects, isFreshEvent, isPulseEvent, updateEffects } from "./effects.ts";
 import { createFurniture } from "./furniture.ts";
 import { createJellyCast, pulseJelly, syncJellies, updateJellies } from "./jellies.ts";
 import { drawLabels } from "./labels.ts";
 import { bendToLens, LENS_RANGE } from "./lens.ts";
 import { applyLens, createLensPass, type LensPass } from "./lensPass.ts";
-import { createNavGrid } from "./navigation.ts";
+import {
+  findLevels,
+  findPositions,
+  listHighlighted,
+  pruneMoves,
+  type StageHighlight,
+} from "./moves.ts";
 import { pickJelly } from "./picking.ts";
 import { disposeProps } from "./props.ts";
 import { createStageScene, findViewer, projectToScreen, resizeStageScene } from "./scene.ts";
 import { ANIMATION_EVENTS, STATE_EVENTS } from "./source.ts";
 import { createVenue, updateVenue } from "./venue.ts";
-import { calculateCanvasDensity, JELLY_RADIUS, ROOM } from "./world.ts";
-import { findSnackBar, listObstacleRects, listStageRects } from "./zones.ts";
+import { findSnackRunners, keepNewerMove } from "./walking.ts";
+import { calculateCanvasDensity } from "./world.ts";
+import { listStageRects } from "./zones.ts";
 
 /** Many events in a row cause only one reload. */
 const RELOAD_DELAY_MS = 500;
@@ -56,6 +54,8 @@ const ANIMATION_EVENT_TYPES = new Set(ANIMATION_EVENTS);
 export interface StageMarks {
   ownId: number | null;
   targetId: number | null;
+  /** While set, only the jellies that light up can be hovered and picked. */
+  highlight?: StageHighlight | null;
 }
 
 /** What a view is shown on, where its data comes from and how it looks. */
@@ -87,6 +87,8 @@ export interface StageView {
   setPointer: (point: ScreenPoint | null) => void;
   /** Returns the player of the nearest jelly at a point in CSS pixels. The own jelly never counts. */
   pickAt: (point: ScreenPoint) => number | null;
+  /** Reports whether the own jelly is the frontmost one at a point in CSS pixels. */
+  isOwnAt: (point: ScreenPoint) => boolean;
   setReducedMotion: (reduced: boolean) => void;
 }
 
@@ -95,7 +97,8 @@ interface StageMemory {
   options: StageViewOptions;
   state: StageState | null;
   catalog: StageCatalog | null;
-  lookup: StageLookup;
+  /** The newest move of each jelly, by player ID. */
+  moves: Map<number, StageMove>;
   clockOffset: number;
   signLabels: Map<string, string>;
   effects: StageEffect[];
@@ -107,9 +110,7 @@ interface StageMemory {
   streamOpened: boolean;
   /** The room as last built, to notice when the areas change. */
   roomKey: string;
-  grid: NavGrid;
   stages: FloorRect[];
-  snackBar: FloorRect | null;
   stage: StageScene;
   lens: LensPass;
   cast: JellyCast;
@@ -119,21 +120,12 @@ interface StageMemory {
   pointer: ScreenPoint | null;
   /** Where the jellies were in the last frame, from back to front. */
   anchors: LabelAnchor[];
+  /** The jellies that light up in this frame. */
+  highlighted: Set<number>;
   reducedMotion: boolean;
 }
 
-/** Returns where every jelly wants to stand right now. */
-function findGoals(memory: StageMemory, now: number, visitors = findVisitors(memory.effects, now)) {
-  return calculateGoals(memory.state?.players ?? [], {
-    lookup: memory.lookup,
-    serverTime: now + memory.clockOffset,
-    grid: memory.grid,
-    visitors,
-    snackBar: memory.snackBar,
-  });
-}
-
-/** Builds furniture, venue, walkable floor, stages and snack bar again when the areas changed. */
+/** Builds furniture, venue and stages again when the areas changed. */
 function rebuildRoom(memory: StageMemory, state: StageState): void {
   const roomKey = JSON.stringify(state.areas);
   if (roomKey === memory.roomKey) {
@@ -147,24 +139,23 @@ function rebuildRoom(memory: StageMemory, state: StageState): void {
   disposeProps(memory.venue);
   memory.venue = createVenue(state.areas);
   memory.stage.scene.add(memory.furniture, memory.venue);
-  memory.grid = createNavGrid(ROOM, listObstacleRects(state.areas), JELLY_RADIUS);
   memory.stages = listStageRects(state.areas);
-  memory.snackBar = findSnackBar(state.areas);
-  for (const shown of memory.cast.jellies.values()) {
-    shown.walker.path = [];
-  }
 }
 
 /** Takes over a new state. */
 function applyState(memory: StageMemory, state: StageState): void {
   memory.state = state;
   memory.clockOffset = state.server_time - Date.now();
-  memory.lookup = {
-    players: new Map(state.players.map((player) => [player.id, player])),
-    areas: new Map(state.areas.map((area) => [area.id, area])),
-  };
+  for (const move of state.moves) {
+    keepNewerMove(memory.moves, move);
+  }
+  pruneMoves(memory.moves, state.players);
   rebuildRoom(memory, state);
-  syncJellies(memory.cast, state.players, findGoals(memory, Date.now()));
+  syncJellies(
+    memory.cast,
+    state.players,
+    findPositions(state.players, memory.moves, Date.now() + memory.clockOffset),
+  );
 }
 
 /** Handles one stream event. A source may also report events the stage does not know. */
@@ -204,6 +195,8 @@ async function readEverything(memory: StageMemory): Promise<void> {
     memory.streamOpened = true;
     source.subscribe(state.last_event_id, {
       onEvent: (event) => handleEvent(memory, event),
+      onMove: (move) => keepNewerMove(memory.moves, move),
+      onReset: () => void reload(memory),
       onConnectionChange: (isOpen) => onConnectionChange?.(isOpen),
     });
   }
@@ -244,14 +237,17 @@ function fitCanvas(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D,
 /** Moves every jelly one frame on and returns where they stand now. */
 function moveJellies(memory: StageMemory, seconds: number, now: number): JellySpot[] {
   const time = performance.now() / 1000;
-  const visitors = findVisitors(memory.effects, now);
+  const serverTime = now + memory.clockOffset;
+  const positions = findPositions(memory.state?.players ?? [], memory.moves, serverTime);
+  const { ownId, highlight } = memory.marks;
+  memory.highlighted = highlight ? listHighlighted(positions, ownId, highlight) : new Set();
   const spots = updateJellies(memory.cast, {
-    goals: findGoals(memory, now, visitors),
-    grid: memory.grid,
+    positions,
+    levels: findLevels(memory.moves, serverTime),
     viewer: findViewer(memory.stage.camera),
     camera: memory.stage.camera.position,
     effects: memory.effects,
-    visitors,
+    visitors: findSnackRunners(memory.moves),
     stages: memory.stages,
     seconds,
     time,
@@ -264,13 +260,29 @@ function moveJellies(memory: StageMemory, seconds: number, now: number): JellySp
   return spots;
 }
 
+/** Returns the player of the jelly at a point that can be picked right now. */
+function pickAvailable(memory: StageMemory, point: ScreenPoint): number | null {
+  const { ownId, highlight } = memory.marks;
+  const anchors = highlight
+    ? memory.anchors.filter((anchor) => memory.highlighted.has(anchor.player.id))
+    : memory.anchors;
+  return pickJelly(anchors, point, ownId);
+}
+
+/** Reports whether the own jelly is the frontmost one at a point. */
+function isOwnAt(memory: StageMemory, point: ScreenPoint): boolean {
+  const { ownId } = memory.marks;
+  return ownId !== null && pickJelly(memory.anchors, point, null) === ownId;
+}
+
 /** Finds the jelly under the pointer and shows on the canvas that it can be clicked. */
 function findHovered(memory: StageMemory, canvas: HTMLCanvasElement): number | null {
   if (!memory.pointer) {
     return null;
   }
-  const hoveredId = pickJelly(memory.anchors, memory.pointer, memory.marks.ownId);
-  canvas.style.cursor = hoveredId === null ? "" : "pointer";
+  const isOwn = !memory.marks.highlight && isOwnAt(memory, memory.pointer);
+  const hoveredId = isOwn ? null : pickAvailable(memory, memory.pointer);
+  canvas.style.cursor = isOwn || hoveredId !== null ? "pointer" : "";
   return hoveredId;
 }
 
@@ -302,7 +314,11 @@ function paintFrame(
     effects: memory.effects,
     signLabels: memory.signLabels,
     now,
-    marks: { ...memory.marks, hoveredId: findHovered(memory, context.canvas) },
+    marks: {
+      ...memory.marks,
+      hoveredId: findHovered(memory, context.canvas),
+      highlightedIds: memory.highlighted,
+    },
   });
 }
 
@@ -340,7 +356,7 @@ function createMemory(options: StageViewOptions): StageMemory {
     options,
     state: null,
     catalog: null,
-    lookup: { players: new Map(), areas: new Map() },
+    moves: new Map(),
     clockOffset: 0,
     signLabels: new Map(),
     effects: [],
@@ -349,9 +365,7 @@ function createMemory(options: StageViewOptions): StageMemory {
     reloadAgain: false,
     streamOpened: false,
     roomKey: "",
-    grid: createNavGrid(ROOM, [], JELLY_RADIUS),
     stages: [],
-    snackBar: null,
     stage,
     lens: createLensPass(options.lensStrength ?? LENS_RANGE.usual),
     cast,
@@ -360,6 +374,7 @@ function createMemory(options: StageViewOptions): StageMemory {
     marks: { ownId: null, targetId: null },
     pointer: null,
     anchors: [],
+    highlighted: new Set(),
     reducedMotion: false,
   };
 }
@@ -386,7 +401,8 @@ export function createStageView(options: StageViewOptions): StageView {
     setPointer: (point) => {
       memory.pointer = point;
     },
-    pickAt: (point) => pickJelly(memory.anchors, point, memory.marks.ownId),
+    pickAt: (point) => pickAvailable(memory, point),
+    isOwnAt: (point) => isOwnAt(memory, point),
     setReducedMotion: (reduced) => {
       memory.reducedMotion = reduced;
     },

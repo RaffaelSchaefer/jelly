@@ -1,0 +1,79 @@
+//! Die Befehle zur Bühne: wer dort steht und was die Karte zeigt.
+
+use serde::Serialize;
+use tauri::{AppHandle, State};
+
+use super::{session::session, GameState};
+use crate::{
+    api::Stage,
+    error::{Error, Result},
+    map,
+};
+
+/// Was die Karte bei jedem Lesen bekommt.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapState {
+    /// Das eigene Jelly. Frisch je Lesen, denn ein neuer Code kann es ändern.
+    own_id: i64,
+    /// Einstellung „Weniger Bewegung“.
+    reduced_motion: bool,
+    /// Raumkarte und Jellies vom Server.
+    stage: Stage,
+}
+
+/// Liest, wer gerade auf der Bühne steht.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler.
+#[tauri::command]
+pub async fn get_stage(app: AppHandle, state: State<'_, GameState>) -> Result<Stage> {
+    let api = {
+        let mut slot = state.0.lock().await;
+        let session = session(&app, &mut slot).await?;
+        session.registered()?;
+        session.api.clone()
+    };
+    // Ohne Lock: Hinge diese Anfrage, warteten alle Aktionen des Pets mit.
+    api.stage().await
+}
+
+/// Liest, was die Karte zeigt. Öffnet keine Sitzung, das Laden gehört dem Pet-Fenster.
+///
+/// # Fehler
+///
+/// [`Error::NotRegistered`] ohne geladene Sitzung oder Konto, sonst Netzwerk- oder Serverfehler.
+#[tauri::command]
+pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Result<MapState> {
+    let (api, own_id, reduced_motion) = {
+        let mut slot = state.0.lock().await;
+        let session = slot.as_mut().ok_or(Error::NotRegistered)?;
+        // Über `refresh`, damit der neue Stream beim frischen Stand beginnt und das Pet nichts
+        // zweimal hört, was es schon gehört hat.
+        if !session.stream.is_running() {
+            session.refresh(&app).await?;
+        }
+        let own_id = session.registered()?.id;
+        let reduced_motion = session.store.local.settings.reduced_motion;
+        (session.api.clone(), own_id, reduced_motion)
+    };
+    let stage = api.stage().await?;
+    Ok(MapState {
+        own_id,
+        reduced_motion,
+        stage,
+    })
+}
+
+/// Öffnet die Karte oder holt sie nach vorn.
+///
+/// Asynchron, denn ein Fenster aus einem synchronen Befehl blockiert unter Windows die App.
+///
+/// # Fehler
+///
+/// [`Error::Window`], wenn sich das Fenster nicht öffnen lässt.
+#[tauri::command]
+pub async fn open_map(app: AppHandle) -> Result<()> {
+    map::open(&app)
+}

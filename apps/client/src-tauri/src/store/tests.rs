@@ -4,12 +4,12 @@ use super::*;
 use crate::pet::{DEFAULT_SIZE, MAX_SIZE, MAX_VOLUME};
 
 #[test]
-fn token_and_settings_survive_reopening() {
+fn secret_and_settings_survive_reopening() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("nested").join("jelly.json");
     let mut store = Store::open(path.clone()).unwrap();
-    assert_eq!(store.local.token, None);
-    store.set_token("geheim".into()).unwrap();
+    assert_eq!(store.local.secret, None);
+    store.set_secret("geheim".into()).unwrap();
     store
         .set_settings(Settings {
             reduced_motion: true,
@@ -19,7 +19,7 @@ fn token_and_settings_survive_reopening() {
         })
         .unwrap();
     let restored = Store::open(path).unwrap();
-    assert_eq!(restored.local.token.as_deref(), Some("geheim"));
+    assert_eq!(restored.local.secret.as_deref(), Some("geheim"));
     assert!(restored.local.settings.reduced_motion);
     assert_eq!(restored.local.settings.size, 130);
     assert!(!restored.local.settings.sound);
@@ -34,7 +34,7 @@ fn a_save_file_without_sound_loads_with_sound_on_at_full_volume() {
         r#"{"schemaVersion":2,"token":"geheim","settings":{"reducedMotion":true,"size":110}}"#;
     fs::write(&path, older).unwrap();
     let restored = Store::open(path).unwrap();
-    assert_eq!(restored.local.token.as_deref(), Some("geheim"));
+    assert_eq!(restored.local.secret.as_deref(), Some("geheim"));
     assert!(restored.local.settings.reduced_motion);
     assert!(restored.local.settings.sound);
     assert_eq!(restored.local.settings.volume, MAX_VOLUME);
@@ -77,12 +77,15 @@ fn failed_save_keeps_last_successful_state() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("jelly.json");
     let mut store = Store::open(path.clone()).unwrap();
-    store.set_token("alt".into()).unwrap();
+    store.set_secret("alt".into()).unwrap();
     fs::create_dir(path.with_extension("tmp")).unwrap();
-    assert!(matches!(store.set_token("neu".into()), Err(Error::Save(_))));
-    assert_eq!(store.local.token.as_deref(), Some("alt"));
+    assert!(matches!(
+        store.set_secret("neu".into()),
+        Err(Error::Save(_))
+    ));
+    assert_eq!(store.local.secret.as_deref(), Some("alt"));
     assert_eq!(
-        Store::open(path).unwrap().local.token.as_deref(),
+        Store::open(path).unwrap().local.secret.as_deref(),
         Some("alt")
     );
 }

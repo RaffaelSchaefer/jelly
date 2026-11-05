@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -45,38 +46,42 @@ type PlayerState struct {
 	// ServerTime lets a client with a wrong clock show correct countdowns.
 	ServerTime int64 `json:"server_time"`
 	// LastEventID is where a client opens the stream to miss nothing after this state.
-	LastEventID    int64               `json:"last_event_id"`
-	ID             int64               `json:"id"`
-	Name           string              `json:"name"`
-	Color          string              `json:"color"`
-	Cosmetic       *string             `json:"cosmetic"`
-	Hidden         bool                `json:"hidden"`
-	LAN            *LANInfo            `json:"lan"`
-	XP             int                 `json:"xp"`
-	Level          int                 `json:"level"`
-	TotalXP        int                 `json:"total_xp"`
-	NextPokeAt     *int64              `json:"next_poke_at"`
-	Reports        *rules.ReportStatus `json:"reports"`
-	Sign           *string             `json:"sign"`
-	FollowPlayerID *int64              `json:"follow_player_id"`
-	LANsAttended   int                 `json:"lans_attended"`
-	Badges         []Badge             `json:"badges"`
-	Cosmetics      []string            `json:"cosmetics"`
-	Achievements   []EarnedAchievement `json:"achievements"`
-	Awards         []PlayerAward       `json:"awards"`
+	LastEventID    int64                       `json:"last_event_id"`
+	ID             int64                       `json:"id"`
+	Name           string                      `json:"name"`
+	Color          string                      `json:"color"`
+	Equipped       map[string]EquippedCosmetic `json:"equipped"`
+	Hidden         bool                        `json:"hidden"`
+	LAN            *LANInfo                    `json:"lan"`
+	XP             int                         `json:"xp"`
+	Level          int                         `json:"level"`
+	TotalXP        int                         `json:"total_xp"`
+	NextPokeAt     *int64                      `json:"next_poke_at"`
+	Reports        *rules.ReportStatus         `json:"reports"`
+	Sign           *string                     `json:"sign"`
+	FollowPlayerID *int64                      `json:"follow_player_id"`
+	FollowUntil    *int64                      `json:"follow_until"`
+	Trip           *Trip                       `json:"trip"`
+	LANsAttended   int                         `json:"lans_attended"`
+	Badges         []Badge                     `json:"badges"`
+	Cosmetics      []string                    `json:"cosmetics"`
+	Achievements   []EarnedAchievement         `json:"achievements"`
+	Awards         []PlayerAward               `json:"awards"`
 }
 
 // entryRow is the latest entry as stored in the database.
 type entryRow struct {
-	lanID     int64
-	info      LANInfo
-	startsAt  int64
-	endsAt    int64
-	rulesJSON string
-	joinedAt  int64
-	xp        int
-	sign      sql.NullString
-	follow    sql.NullInt64
+	lanID           int64
+	info            LANInfo
+	startsAt        int64
+	endsAt          int64
+	rulesJSON       string
+	joinedAt        int64
+	xp              int
+	sign            sql.NullString
+	follow          sql.NullInt64
+	trip            tripColumns
+	followStartedAt int64
 }
 
 // LoadPlayerState returns the state of a player.
@@ -126,24 +131,24 @@ func loadState(ctx context.Context, database querier, playerID, now int64) (Play
 // loadAccount reads the account row with its lifetime totals.
 func loadAccount(ctx context.Context, database querier, playerID int64) (PlayerState, error) {
 	state := PlayerState{ID: playerID}
-	var cosmetic sql.NullString
 	var hiddenAt sql.NullInt64
-	const selectAccountSQL = `SELECT name, color, cosmetic_key, hidden_at,
-			(SELECT COUNT(*) FROM lan_entries WHERE player_id = players.id),
+	const selectAccountSQL = `SELECT name, color, hidden_at,
+			(SELECT COUNT(*) FROM lan_entries WHERE player_id = players.id AND last_seen_at > 0),
 			(SELECT COALESCE(SUM(xp), 0) FROM lan_entries WHERE player_id = players.id)
 		FROM players WHERE id = ?`
 	err := database.QueryRowContext(ctx, selectAccountSQL, playerID).
-		Scan(&state.Name, &state.Color, &cosmetic, &hiddenAt, &state.LANsAttended, &state.TotalXP)
+		Scan(&state.Name, &state.Color, &hiddenAt, &state.LANsAttended, &state.TotalXP)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PlayerState{}, ErrUnauthorized
 	}
 	if err != nil {
 		return PlayerState{}, fmt.Errorf("load player: %w", err)
 	}
-	if cosmetic.Valid {
-		state.Cosmetic = &cosmetic.String
-	}
 	state.Hidden = hiddenAt.Valid
+	state.Equipped, err = loadEquipped(ctx, database, playerID)
+	if err != nil {
+		return PlayerState{}, err
+	}
 	return state, nil
 }
 
@@ -151,12 +156,14 @@ func loadAccount(ctx context.Context, database querier, playerID int64) (PlayerS
 func loadProgress(ctx context.Context, database querier, state *PlayerState, now int64) error {
 	var row entryRow
 	const selectLatestEntrySQL = `SELECT l.id, l.slug, l.name, l.starts_at, l.ends_at,
-			l.rules, e.joined_at, e.xp, e.sign_key, e.follow_player_id
+			l.rules, e.joined_at, e.xp, e.sign_key, e.follow_player_id,
+			e.trip_x, e.trip_y, e.trip_until, e.follow_started_at
 		FROM lan_entries e JOIN lans l ON l.id = e.lan_id
 		WHERE e.player_id = ? ORDER BY l.starts_at DESC LIMIT 1`
 	err := database.QueryRowContext(ctx, selectLatestEntrySQL, state.ID).
 		Scan(&row.lanID, &row.info.Slug, &row.info.Name, &row.startsAt, &row.endsAt,
-			&row.rulesJSON, &row.joinedAt, &row.xp, &row.sign, &row.follow)
+			&row.rulesJSON, &row.joinedAt, &row.xp, &row.sign, &row.follow,
+			&row.trip.x, &row.trip.y, &row.trip.until, &row.followStartedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -173,9 +180,7 @@ func loadProgress(ctx context.Context, database querier, state *PlayerState, now
 	if row.sign.Valid {
 		state.Sign = &row.sign.String
 	}
-	if row.follow.Valid {
-		state.FollowPlayerID = &row.follow.Int64
-	}
+	state.Trip = row.trip.findRunningTrip(now)
 	return loadActiveTimers(ctx, database, state, row, now)
 }
 
@@ -193,6 +198,8 @@ func loadActiveTimers(
 	}
 	nextPokeAt := rules.CalculateNextPokeTime(gameRules, lastPokeAt, row.joinedAt)
 	state.NextPokeAt = &nextPokeAt
+	follow := findRunningFollow(gameRules, row.follow, row.followStartedAt, now)
+	state.FollowPlayerID, state.FollowUntil = follow.playerID, follow.until
 	history, err := loadReportHistory(ctx, database, row.lanID, state.ID)
 	if err != nil {
 		return err
@@ -243,7 +250,7 @@ func loadUnlockedCosmetics(
 func loadBadges(ctx context.Context, database querier, playerID int64) ([]Badge, error) {
 	const selectBadgesSQL = `SELECT l.slug, l.name
 		FROM lan_entries e JOIN lans l ON l.id = e.lan_id
-		WHERE e.player_id = ? ORDER BY l.starts_at DESC`
+		WHERE e.player_id = ? AND e.last_seen_at > 0 ORDER BY l.starts_at DESC`
 	rows, err := database.QueryContext(ctx, selectBadgesSQL, playerID)
 	if err != nil {
 		return nil, fmt.Errorf("load badges: %w", err)
@@ -324,4 +331,92 @@ func loadPlayerAwards(
 		return nil, fmt.Errorf("load awards: %w", err)
 	}
 	return awards, nil
+}
+
+// PlayerProfile is what every account can read about another player.
+type PlayerProfile struct {
+	ID           int64                       `json:"id"`
+	Name         string                      `json:"name"`
+	Color        string                      `json:"color"`
+	Equipped     map[string]EquippedCosmetic `json:"equipped"`
+	XP           int                         `json:"xp"`
+	Level        int                         `json:"level"`
+	TotalXP      int                         `json:"total_xp"`
+	LANsAttended int                         `json:"lans_attended"`
+	Badges       []Badge                     `json:"badges"`
+	Achievements []EarnedAchievement         `json:"achievements"`
+	Awards       []PlayerAward               `json:"awards"`
+}
+
+// LoadPlayerProfile returns the profile of a player. A hidden player does not exist for others.
+func (store *Store) LoadPlayerProfile(
+	ctx context.Context, playerID, now int64,
+) (PlayerProfile, error) {
+	state, err := store.LoadPlayerState(ctx, playerID, now)
+	if errors.Is(err, ErrUnauthorized) {
+		return PlayerProfile{}, ErrPlayerNotFound
+	}
+	if err != nil {
+		return PlayerProfile{}, err
+	}
+	if state.Hidden {
+		return PlayerProfile{}, ErrPlayerNotFound
+	}
+	return PlayerProfile{
+		ID: state.ID, Name: state.Name, Color: state.Color, Equipped: state.Equipped,
+		XP: state.XP, Level: state.Level, TotalXP: state.TotalXP,
+		LANsAttended: state.LANsAttended, Badges: state.Badges,
+		Achievements: state.Achievements, Awards: state.Awards,
+	}, nil
+}
+
+// PublicPlayer is one line of the player list.
+type PublicPlayer struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+	Level int    `json:"level"`
+}
+
+// PlayerList is one page of the player list. Without a next cursor, it is the last one.
+type PlayerList struct {
+	Items      []PublicPlayer `json:"items"`
+	NextCursor *string        `json:"next_cursor"`
+}
+
+// ListPublicPlayers returns visible players after a cursor, with the level of their latest LAN.
+func (store *Store) ListPublicPlayers(
+	ctx context.Context, afterID int64, limit int,
+) (PlayerList, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	list := PlayerList{Items: []PublicPlayer{}, NextCursor: nil}
+	const selectPublicPlayersSQL = `SELECT p.id, p.name, p.color, COALESCE((
+			SELECT e.xp FROM lan_entries e WHERE e.player_id = p.id
+			ORDER BY e.lan_id DESC LIMIT 1), 0)
+		FROM players p WHERE p.id > ? AND p.hidden_at IS NULL ORDER BY p.id LIMIT ?`
+	rows, err := store.readDB.QueryContext(queryCtx, selectPublicPlayersSQL, afterID, limit+1)
+	if err != nil {
+		return list, fmt.Errorf("list players: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var player PublicPlayer
+		var lanXP int
+		err = rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP)
+		if err != nil {
+			return list, fmt.Errorf("read player: %w", err)
+		}
+		player.Level = rules.CalculateLevel(lanXP)
+		list.Items = append(list.Items, player)
+	}
+	if err := rows.Err(); err != nil {
+		return list, fmt.Errorf("list players: %w", err)
+	}
+	if len(list.Items) > limit {
+		list.Items = list.Items[:limit]
+		cursor := strconv.FormatInt(list.Items[limit-1].ID, 10)
+		list.NextCursor = &cursor
+	}
+	return list, nil
 }

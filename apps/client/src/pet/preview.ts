@@ -6,7 +6,7 @@
  * @module
  */
 
-import { PET_SIZE, VOLUME, type Catalog, type Game, type Me, type StagePlayer } from "./types";
+import { PET_SIZE, VOLUME, type Catalog, type Game, type Me } from "./types";
 
 /** Auszug aus dem Server-Katalog. */
 export const PREVIEW_CATALOG: Catalog = {
@@ -39,13 +39,49 @@ export const PREVIEW_CATALOG: Catalog = {
     { key: "food", label: "Wer holt mit Essen?" },
   ],
   cosmetics: [
-    { key: "headset", name: "Headset", scope: "permanent", level: 2 },
-    { key: "beanie", name: "Mütze", scope: "permanent", level: 3 },
-    { key: "party-hat", name: "Party-Hut", scope: "permanent", requires_event: true },
-    { key: "pixel-glasses", name: "Pixel-Brille", scope: "permanent", level: 5 },
-    { key: "hood", name: "Kapuze", scope: "permanent", level: 6 },
-    { key: "crown", name: "Krone", scope: "lan", level: 10 },
+    {
+      key: "headset",
+      name: "Headset",
+      scope: "permanent",
+      slot: "head",
+      colorable: false,
+      level: 2,
+    },
+    { key: "beanie", name: "Mütze", scope: "permanent", slot: "head", colorable: true, level: 3 },
+    {
+      key: "party-hat",
+      name: "Party-Hut",
+      scope: "permanent",
+      slot: "head",
+      colorable: false,
+      requires_event: true,
+    },
+    {
+      key: "pixel-glasses",
+      name: "Pixel-Brille",
+      scope: "permanent",
+      slot: "face",
+      colorable: false,
+      level: 5,
+    },
+    { key: "hood", name: "Kapuze", scope: "permanent", slot: "head", colorable: true, level: 6 },
+    { key: "crown", name: "Krone", scope: "lan", slot: "head", colorable: false, level: 10 },
+    {
+      key: "golden-cup",
+      name: "Goldener Pokal",
+      scope: "permanent",
+      slot: "hands",
+      colorable: false,
+    },
   ],
+  cosmetic_slots: [
+    { key: "head", label: "Kopf" },
+    { key: "hands", label: "Hände" },
+    { key: "body", label: "Körper" },
+    { key: "face", label: "Gesicht" },
+    { key: "aura", label: "Aura" },
+  ],
+  cosmetic_colors: ["#ffffff", "#2b2d42", "#e5534b", "#ff9f43", "#ffd45c"],
   achievements: [
     {
       key: "hatched",
@@ -90,7 +126,7 @@ export const PREVIEW_ME: Me = {
   id: 0,
   name: "Pixel",
   color: "mint",
-  cosmetic: null,
+  equipped: {},
   hidden: false,
   lan: { slug: "vorschau", name: "Vorschau-LAN", active: true },
   xp: 235,
@@ -100,42 +136,14 @@ export const PREVIEW_ME: Me = {
   reports: { food_ready_at: 0, drink_ready_at: 0, reports_left: 8 },
   sign: null,
   follow_player_id: null,
+  follow_until: null,
+  trip: null,
   lans_attended: 1,
   badges: [],
   cosmetics: ["headset", "beanie"],
   achievements: [{ key: "hatched", title: "Frisch geschlüpft", lan_slug: null, earned_at: 0 }],
   awards: [],
 };
-
-/** Zwei andere Jellies auf der Bühne, damit das Panel „Dabei“ etwas zeigt. */
-export const PREVIEW_PLAYERS: StagePlayer[] = [
-  {
-    id: 2,
-    name: "Wabbel",
-    color: "peach",
-    cosmetic: null,
-    level: 4,
-    sign: "cs2",
-    follow_player_id: null,
-    last_seen_at: 0,
-    area_id: null,
-    home_x: 0,
-    home_y: 0,
-  },
-  {
-    id: 1,
-    name: "Glibber",
-    color: "lilac",
-    cosmetic: "beanie",
-    level: 2,
-    sign: null,
-    follow_player_id: null,
-    last_seen_at: 0,
-    area_id: null,
-    home_x: 0,
-    home_y: 0,
-  },
-];
 
 /** Startzustand der Oberfläche, solange Rust noch nichts geliefert hat. */
 export const PREVIEW_GAME: Game = {
@@ -148,5 +156,5 @@ export const PREVIEW_GAME: Game = {
     joined: true,
   },
   serverUrl: "",
-  tokenRejected: false,
+  secretRejected: false,
 };

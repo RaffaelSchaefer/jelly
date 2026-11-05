@@ -10,7 +10,7 @@ export * from "./colors";
 export * from "./cosmetics";
 export * from "./layout";
 export * from "./mouth";
-export * from "./partnerCode";
+export * from "./partner";
 export * from "./preview";
 export * from "./progress";
 export * from "./reports";

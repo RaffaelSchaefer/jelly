@@ -80,7 +80,7 @@ func TestContractAllowsResponsesToGrowAndNullsWhereTheyHappen(t *testing.T) {
 	if state.Properties["badges"].Value.Nullable {
 		t.Error("lists are empty rather than null")
 	}
-	body := schemas["RegisterBody"].Value
+	body := schemas["RedeemBody"].Value
 	if body.AdditionalProperties.Has == nil || *body.AdditionalProperties.Has {
 		t.Error("requests must reject unknown fields")
 	}
@@ -104,7 +104,7 @@ func TestServerServesItsContract(t *testing.T) {
 	if document.Info.Version != api.APIVersion {
 		t.Errorf("version = %q", document.Info.Version)
 	}
-	for _, path := range []string{"/v1/register", "/v1/stage", "/v1/events/stream"} {
+	for _, path := range []string{"/v1/auth/redeem", "/v1/stage", "/v1/stage/events"} {
 		if _, found := document.Paths[path]; !found {
 			t.Errorf("contract misses %s", path)
 		}
@@ -124,13 +124,13 @@ func TestContractRejectsInvalidRequestsInTheCommonForm(t *testing.T) {
 		name, body string
 		status     int
 	}{
-		{"unknown field", `{"action":"poke","xp":999}`, http.StatusUnprocessableEntity},
+		{"unknown field", `{"kind":"food","xp":999}`, http.StatusUnprocessableEntity},
 		{"missing field", `{}`, http.StatusUnprocessableEntity},
 		{"no JSON", `poke`, http.StatusBadRequest},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			response := testFixture.callAPI("POST", "/v1/actions", token, testCase.body)
+			response := testFixture.callAPI("POST", "/v1/reports", token, testCase.body)
 			requireProblem(t, response, testCase.status, "invalid_body")
 		})
 	}
@@ -138,7 +138,7 @@ func TestContractRejectsInvalidRequestsInTheCommonForm(t *testing.T) {
 
 func TestOtherContentTypesAreRejected(t *testing.T) {
 	testFixture := newFixture(t)
-	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/v1/register",
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/v1/auth/redeem",
 		strings.NewReader(buildRegisterBody("A", "mint")))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -150,7 +150,7 @@ func TestOtherContentTypesAreRejected(t *testing.T) {
 func TestUnknownPathsAnswerInTheCommonForm(t *testing.T) {
 	testFixture := newFixture(t)
 	for _, call := range [][2]string{
-		{"GET", "/v1/nope"}, {"POST", "/v1/nope"}, {"GET", "/v1/actions"}, {"PUT", "/v1/me"},
+		{"GET", "/v1/nope"}, {"POST", "/v1/nope"}, {"GET", "/v1/pokes"}, {"PUT", "/v1/players/me"},
 	} {
 		response := testFixture.callAPI(call[0], call[1], "", "")
 		requireProblem(t, response, http.StatusNotFound, "not_found")

@@ -1,7 +1,7 @@
-//! Was das Gerät selbst weiß: Token, Einstellungen und ein paar reine Regeln für den Server.
+//! Was das Gerät selbst weiß: Secret, Einstellungen und ein paar reine Regeln für den Server.
 //!
 //! XP, Level, Cosmetics und Erfolge bestimmt der Server (siehe [`crate::api`]). Hier bleiben nur
-//! das Token und die Geräte-Einstellungen Größe, Bewegung, Geräusche und Lautstärke, dazu reine Funktionen ohne
+//! das Secret und die Geräte-Einstellungen Größe, Bewegung, Geräusche und Lautstärke, dazu reine Funktionen ohne
 //! IO und ohne Uhr. Zeitpunkte kommen als Parameter herein, damit sich jede Regel direkt testen lässt.
 //!
 //! Die Oberfläche spiegelt Typen und Grenzwerte in `src/pet/types.ts`. Wer hier etwas ändert,
@@ -53,6 +53,18 @@ pub enum Action {
     Drink,
 }
 
+/// Wie sich eine Aufforderung zu einem Partner-Emote ändern kann. In JSON klein geschrieben.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum InviteState {
+    /// Das aufgeforderte Jelly macht mit.
+    Accepted,
+    /// Das aufgeforderte Jelly lehnt ab.
+    Declined,
+    /// Wer aufgefordert hat, zieht zurück.
+    Cancelled,
+}
+
 /// Einstellungen, die nur dieses Gerät betreffen und nie zum Server gehen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -96,16 +108,17 @@ impl Default for Settings {
 pub struct Local {
     /// Version des Dateiformats, siehe [`SCHEMA_VERSION`].
     pub schema_version: u8,
-    /// Token vom Server. Gibt es nur einmal bei der Registrierung, darum nie still löschen.
-    #[serde(default)]
-    pub token: Option<String>,
+    /// Secret vom Server. Gibt es nur einmal beim Einlösen eines Codes, darum nie still löschen.
+    /// In der Datei heißt es weiter `token`, so gelten vorhandene Spielstände.
+    #[serde(default, rename = "token")]
+    pub secret: Option<String>,
     /// Geräte-Einstellungen.
     #[serde(default)]
     pub settings: Settings,
 }
 
 impl Local {
-    /// Ein leerer Stand ohne Token.
+    /// Ein leerer Stand ohne Secret.
     pub fn new() -> Self {
         Self {
             schema_version: SCHEMA_VERSION,

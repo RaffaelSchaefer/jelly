@@ -31,33 +31,3 @@ func TestCalculateRegisterRetryGrowsWithALimit(t *testing.T) {
 		t.Errorf("jitter must add up to the delay again: %v", got)
 	}
 }
-
-func TestOfferBoardDropsExpiredAndReplacedCodes(t *testing.T) {
-	board := &offerBoard{}
-	board.addOffer(partnerOffer{code: "old", botIndex: 1, expiresAt: 1000})
-	board.addOffer(partnerOffer{code: "new", botIndex: 1, expiresAt: 1000})
-	if offer, found := board.takeOffer(2, 500); !found || offer.code != "new" {
-		t.Fatalf("a new code replaces the old one: %+v", offer)
-	}
-	board.addOffer(partnerOffer{code: "late", botIndex: 1, expiresAt: 1000})
-	if _, found := board.takeOffer(2, 1000); found {
-		t.Fatal("an expired code must not be handed out")
-	}
-	board.addOffer(partnerOffer{code: "own", botIndex: 1, expiresAt: 1000})
-	if _, found := board.takeOffer(1, 500); found {
-		t.Fatal("a bot must not take its own code")
-	}
-}
-
-func TestOfferBoardReturnKeepsNewerCode(t *testing.T) {
-	board := &offerBoard{}
-	board.addOffer(partnerOffer{code: "new", botIndex: 1, expiresAt: 1000})
-	board.returnOffer(partnerOffer{code: "old", botIndex: 1, expiresAt: 1000})
-	offer, found := board.takeOffer(2, 500)
-	if !found || offer.code != "new" {
-		t.Fatalf("offer: %+v", offer)
-	}
-	if _, found = board.takeOffer(2, 500); found {
-		t.Fatal("the old code must not come back")
-	}
-}

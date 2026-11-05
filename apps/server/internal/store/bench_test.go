@@ -35,7 +35,7 @@ func openBenchStore(b *testing.B) (*store.Store, []int64, int64) {
 	now := startsAt.Add(time.Hour).UnixMilli()
 	playerIDs := make([]int64, 0, benchPlayers)
 	for index := range benchPlayers {
-		_, state, err := database.RegisterPlayer(b.Context(), store.RegisterRequest{
+		_, state, err := database.RedeemCode(b.Context(), store.RedeemRequest{
 			Code: benchJoinCode, Name: "Bench" + strconv.Itoa(index), Color: "mint",
 		}, now)
 		if err != nil {

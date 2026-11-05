@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
@@ -14,96 +13,18 @@ import (
 // nameConflictMessage is the driver message for a duplicate name.
 const nameConflictMessage = "UNIQUE constraint failed: players.name_key"
 
-// RegisterRequest holds the details of a new account.
-type RegisterRequest struct {
-	Code  string
-	Name  string
-	Color string
-}
-
-// ProfileUpdate holds optional profile changes. A nil field stays unchanged, and an empty
-// Cosmetic takes the current one off.
+// ProfileUpdate holds optional profile changes. A nil field stays unchanged.
 type ProfileUpdate struct {
-	Name     *string
-	Color    *string
-	Cosmetic *string
+	Name  *string
+	Color *string
 }
 
 // newPlayer is a validated account, ready to be stored.
 type newPlayer struct {
-	code  string
 	token string
 	name  string
 	color string
 	now   int64
-}
-
-// RegisterPlayer creates an account with an entry in the current LAN and returns its token.
-func (store *Store) RegisterPlayer(
-	ctx context.Context, request RegisterRequest, now int64,
-) (string, PlayerState, error) {
-	name, err := rules.NormalizeName(request.Name)
-	if err != nil {
-		return "", PlayerState{}, fmt.Errorf("validate name: %w", err)
-	}
-	err = rules.ValidateColor(request.Color)
-	if err != nil {
-		return "", PlayerState{}, fmt.Errorf("validate color: %w", err)
-	}
-	player := newPlayer{
-		code:  request.Code,
-		token: generateToken(),
-		name:  name,
-		color: request.Color,
-		now:   now,
-	}
-	var state PlayerState
-	err = store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		var workErr error
-		state, workErr = registerInTransaction(ctx, transaction, player)
-		return workErr
-	})
-	if err != nil {
-		return "", PlayerState{}, err
-	}
-	return player.token, state, nil
-}
-
-// JoinCurrentLAN adds an existing account to the running LAN.
-func (store *Store) JoinCurrentLAN(
-	ctx context.Context, playerID int64, code string, now int64,
-) (PlayerState, error) {
-	var state PlayerState
-	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		lan, workErr := loadActiveLAN(ctx, transaction, now)
-		if workErr != nil {
-			return workErr
-		}
-		if !matchSecret(lan.joinCodeHash, code) {
-			return ErrInvalidCode
-		}
-		workErr = requireLANEntry(ctx, transaction, lan.id, playerID)
-		if workErr == nil {
-			return ErrAlreadyJoined
-		}
-		if !errors.Is(workErr, ErrNotJoined) {
-			return workErr
-		}
-		workErr = insertLANEntry(ctx, transaction, lan, playerID, now)
-		if workErr != nil {
-			return workErr
-		}
-		workErr = removeLockedCosmetic(ctx, transaction, playerID, now)
-		if workErr != nil {
-			return workErr
-		}
-		state, workErr = loadState(ctx, transaction, playerID, now)
-		return workErr
-	})
-	if err != nil {
-		return PlayerState{}, err
-	}
-	return state, nil
 }
 
 // FindPlayerByToken returns the account ID for a token.
@@ -123,7 +44,7 @@ func (store *Store) FindPlayerByToken(ctx context.Context, token string) (int64,
 	return playerID, nil
 }
 
-// UpdateProfile changes name, color or cosmetic and returns the new state.
+// UpdateProfile changes name or color and returns the new state.
 func (store *Store) UpdateProfile(
 	ctx context.Context, playerID int64, update ProfileUpdate, now int64,
 ) (PlayerState, error) {
@@ -149,28 +70,6 @@ func (store *Store) UpdateProfile(
 	return state, nil
 }
 
-// registerInTransaction checks the join code and writes the account and its entry.
-func registerInTransaction(
-	ctx context.Context, transaction *sql.Tx, player newPlayer,
-) (PlayerState, error) {
-	lan, err := loadActiveLAN(ctx, transaction, player.now)
-	if err != nil {
-		return PlayerState{}, err
-	}
-	if !matchSecret(lan.joinCodeHash, player.code) {
-		return PlayerState{}, ErrInvalidCode
-	}
-	playerID, err := insertPlayer(ctx, transaction, player)
-	if err != nil {
-		return PlayerState{}, err
-	}
-	err = insertLANEntry(ctx, transaction, lan, playerID, player.now)
-	if err != nil {
-		return PlayerState{}, err
-	}
-	return loadState(ctx, transaction, playerID, player.now)
-}
-
 // insertPlayer writes the `players` row and translates a duplicate name.
 func insertPlayer(ctx context.Context, transaction *sql.Tx, player newPlayer) (int64, error) {
 	const insertPlayerSQL = `INSERT INTO players
@@ -191,9 +90,47 @@ func insertPlayer(ctx context.Context, transaction *sql.Tx, player newPlayer) (i
 	return playerID, nil
 }
 
+// neverSeen is the last activity of a jelly that has only registered so far.
+const neverSeen int64 = 0
+
 // insertLANEntry writes the entry, which is also the badge, and announces the jelly.
 func insertLANEntry(
 	ctx context.Context, transaction *sql.Tx, lan activeLAN, playerID, now int64,
+) error {
+	err := writeLANEntry(ctx, transaction, lan, newLANEntry{playerID, now, now})
+	if err != nil {
+		return err
+	}
+	err = appendEvent(ctx, transaction, eventRecord{
+		lanID: lan.id, eventType: EventPlayerActive, scope: scopePublic,
+		playerID: playerID, payload: struct{}{}, now: now,
+	})
+	if err != nil {
+		return err
+	}
+	return grantNewAchievements(ctx, transaction, achievementInput{
+		lan: lan, playerID: playerID, now: now, restHours: 0, sessionHours: 0, isPoke: false,
+	})
+}
+
+// insertFutureEntry registers an account for a LAN that has not started. It counts as attended and
+// shows on the stage only once the player does something during the LAN.
+func insertFutureEntry(
+	ctx context.Context, transaction *sql.Tx, lan activeLAN, playerID, now int64,
+) error {
+	return writeLANEntry(ctx, transaction, lan, newLANEntry{playerID, now, neverSeen})
+}
+
+// newLANEntry is an account joining a LAN.
+type newLANEntry struct {
+	playerID   int64
+	joinedAt   int64
+	lastSeenAt int64
+}
+
+// writeLANEntry checks the player limit of the LAN and writes the entry.
+func writeLANEntry(
+	ctx context.Context, transaction *sql.Tx, lan activeLAN, entry newLANEntry,
 ) error {
 	var playerCount int
 	const countEntriesSQL = `SELECT COUNT(*) FROM lan_entries WHERE lan_id = ?`
@@ -207,20 +144,11 @@ func insertLANEntry(
 	const insertEntrySQL = `INSERT INTO lan_entries
 		(lan_id, player_id, joined_at, last_seen_at, session_started_at) VALUES (?, ?, ?, ?, ?)`
 	_, err = transaction.ExecContext(ctx, insertEntrySQL,
-		lan.id, playerID, now, now, now)
+		lan.id, entry.playerID, entry.joinedAt, entry.lastSeenAt, entry.joinedAt)
 	if err != nil {
 		return fmt.Errorf("insert entry: %w", err)
 	}
-	err = appendEvent(ctx, transaction, eventRecord{
-		lanID: lan.id, eventType: EventPlayerActive, scope: scopePublic,
-		playerID: playerID, payload: struct{}{}, now: now,
-	})
-	if err != nil {
-		return err
-	}
-	return grantNewAchievements(ctx, transaction, achievementInput{
-		lan: lan, playerID: playerID, now: now, restHours: 0, sessionHours: 0, isPoke: false,
-	})
+	return nil
 }
 
 // applyProfileUpdate validates and writes the requested changes.
@@ -244,9 +172,6 @@ func applyProfileUpdate(
 			return fmt.Errorf("update color: %w", err)
 		}
 	}
-	if update.Cosmetic != nil {
-		return updatePlayerCosmetic(ctx, transaction, playerID, *update.Cosmetic)
-	}
 	return nil
 }
 
@@ -267,59 +192,6 @@ func updatePlayerName(
 		return fmt.Errorf("update name: %w", err)
 	}
 	return nil
-}
-
-// updatePlayerCosmetic wears an unlocked cosmetic or, with an empty key, takes it off.
-func updatePlayerCosmetic(
-	ctx context.Context, transaction *sql.Tx, playerID int64, cosmeticKey string,
-) error {
-	var stored any
-	if cosmeticKey != "" {
-		unlocked, err := loadUnlockedCosmetics(ctx, transaction, playerID)
-		if err != nil {
-			return err
-		}
-		if !slices.Contains(unlocked, cosmeticKey) {
-			return ErrCosmeticLocked
-		}
-		stored = cosmeticKey
-	}
-	const updateCosmeticSQL = `UPDATE players SET cosmetic_key = ? WHERE id = ?`
-	_, err := transaction.ExecContext(ctx, updateCosmeticSQL, stored, playerID)
-	if err != nil {
-		return fmt.Errorf("update cosmetic: %w", err)
-	}
-	return nil
-}
-
-// removeLockedCosmetic takes off a cosmetic that no longer counts, such as last LAN's crown.
-func removeLockedCosmetic(
-	ctx context.Context, transaction *sql.Tx, playerID, now int64,
-) error {
-	var worn sql.NullString
-	const selectCosmeticSQL = `SELECT cosmetic_key FROM players WHERE id = ?`
-	err := transaction.QueryRowContext(ctx, selectCosmeticSQL, playerID).Scan(&worn)
-	if err != nil {
-		return fmt.Errorf("load cosmetic: %w", err)
-	}
-	if !worn.Valid {
-		return nil
-	}
-	unlocked, err := loadUnlockedCosmetics(ctx, transaction, playerID)
-	if err != nil {
-		return err
-	}
-	if slices.Contains(unlocked, worn.String) {
-		return nil
-	}
-	err = updatePlayerCosmetic(ctx, transaction, playerID, "")
-	if err != nil {
-		return err
-	}
-	return appendEvent(ctx, transaction, eventRecord{
-		lanID: 0, eventType: EventPlayerUpdated, scope: scopePublic,
-		playerID: playerID, payload: struct{}{}, now: now,
-	})
 }
 
 // recordProfileEdit writes the event and evaluates achievements if a LAN is running.

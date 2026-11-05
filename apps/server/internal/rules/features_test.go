@@ -310,3 +310,41 @@ func TestValidateClientVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateEquip(t *testing.T) {
+	palette := rules.ListCosmeticColors()[0]
+	other := "#123456"
+	testCases := []struct {
+		name, slot, key string
+		color           *string
+		want            error
+	}{
+		{"fixed cosmetic", rules.SlotHead, "crown", nil, nil},
+		{"color from the palette", rules.SlotHead, "beanie", &palette, nil},
+		{"emptying a slot", rules.SlotAura, "", nil, nil},
+		{"unknown slot", "tail", "", nil, rules.ErrUnknownSlot},
+		{"other slot", rules.SlotFace, "crown", nil, rules.ErrUnknownCosmetic},
+		{
+			"color outside the palette",
+			rules.SlotHead,
+			"beanie",
+			&other,
+			rules.ErrInvalidCosmeticColor,
+		},
+		{
+			"color on a fixed cosmetic",
+			rules.SlotHead,
+			"crown",
+			&palette,
+			rules.ErrInvalidCosmeticColor,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := rules.ValidateEquip(testCase.slot, testCase.key, testCase.color)
+			if !errors.Is(got, testCase.want) {
+				t.Fatalf("ValidateEquip() = %v, want %v", got, testCase.want)
+			}
+		})
+	}
+}

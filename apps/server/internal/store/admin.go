@@ -162,6 +162,12 @@ func (store *Store) GiveAward(ctx context.Context, award NewAward, now int64) er
 	if award.Title == "" {
 		return ErrInvalidInput
 	}
+	if award.CosmeticKey != nil {
+		err := rules.ValidateAwardCosmetic(*award.CosmeticKey)
+		if err != nil {
+			return fmt.Errorf("validate award cosmetic: %w", err)
+		}
+	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		err := insertAward(ctx, transaction, award, now)
 		if err != nil {

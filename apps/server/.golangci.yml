@@ -15,7 +15,12 @@ formatters:
   enable:
     - gofumpt
     - goimports
+    - golines
   settings:
+    golines:
+      max-len: 100
+      tab-len: 4
+      shorten-comments: true
     goimports:
       local-prefixes:
         - github.com/RaffaelSchaefer/jelly/apps/server
@@ -227,6 +232,21 @@ linters:
               desc: Rules stay pure functions.
             - pkg: log
               desc: Rules stay pure functions.
+        pure-movement:
+          files:
+            - "**/internal/movement/*.go"
+            - "!$test"
+          deny:
+            - pkg: context
+              desc: Movement stays pure calculations.
+            - pkg: database/sql
+              desc: Movement stays pure calculations.
+            - pkg: net/http
+              desc: Movement stays pure calculations.
+            - pkg: os
+              desc: Movement stays pure calculations.
+            - pkg: time
+              desc: Movement receives times as arguments.
         web-layer:
           files:
             - "**/internal/web/*.go"

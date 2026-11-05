@@ -23,8 +23,12 @@ const (
 	EventEmote            = "emote"
 	EventSignChanged      = "sign.changed"
 	EventFollowChanged    = "follow.changed"
+	EventTripChanged      = "trip.changed"
+	EventStackChanged     = "stack.changed"
+	EventHighlight        = "highlight"
 	EventStageChanged     = "stage.changed"
 	EventPartnerEmote     = "partner.emote"
+	EventPartnerInvite    = "partner_emote.updated"
 	maxEventsPerQueryRows = 200
 )
 

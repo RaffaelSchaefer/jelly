@@ -8,7 +8,7 @@ Schnittstelle in [docs/api.md](docs/api.md).
 
 ```sh
 pnpm lint      # golangci-lint und oxlint, müssen ohne Befund durchlaufen
-pnpm format    # golangci-lint fmt und oxfmt
+pnpm format    # golangci-lint fmt und run --fix, dazu oxfmt; vor Handarbeit an Lint-Befunden
 pnpm test      # go test ./... und die Tests der Seiten
 pnpm check-types  # tsc für web/
 pnpm bench     # Benchmarks der Datenbankzugriffe
@@ -16,7 +16,7 @@ pnpm bench:load  # Lasttest mit dem Simulator, siehe benchmarks/README.md
 pnpm openapi   # docs/openapi.json aus dem Code erzeugen, nach jeder Änderung an /v1
 pnpm build     # Seiten bauen (go generate ./internal/web), dann go build
 pnpm demo      # Wegwerf-Server mit 70 simulierten Jellies, um die Bühne anzusehen
-go test -race -count=1 ./...   # vor jedem Abschluss, sobald Nebenläufigkeit beteiligt ist
+go test -race -count=1 ./...   # vor jedem PR
 ```
 
 `pnpm lint` und `pnpm format` starten `golangci-lint` in der festen Version v2.15.0 über `go run`.
@@ -50,6 +50,9 @@ AGENTS.md im Root. Deutsch bleiben nur die Meldungen, die die App anzeigt (`mess
 
 - Es gibt genau einen Einstiegspunkt: `cmd/jelly-server`. Weitere Werkzeuge sind Unterbefehle.
 - `internal/rules` enthält reine Funktionen ohne IO und ohne Uhr. Zeiten kommen als Argument herein.
+- `internal/movement` plant die Wege der Jellies, ebenfalls ohne IO und ohne Uhr. Den Stand bekommt es
+  vom Aufrufer. `internal/api` stößt es an, sobald jemand die Bühne liest, und sonst über
+  `RunMovement`, die einzige langlebige Goroutine neben dem HTTP-Server.
 - `internal/store` kennt SQLite, aber kein HTTP. `internal/api` kennt HTTP, aber kein SQL.
 - Nur `cmd/jelly-server` liest die Umgebung, wählt die echte Uhr und darf den Prozess beenden.
 - `internal/simulator` spielt nur über die öffentliche API und kennt weder `store` noch `rules`.
@@ -85,7 +88,7 @@ Standard ist linearer Code.
   sie, was passiert bei Fehlern, Abbruch und Neustart? Das Ergebnis steht direkt darüber in einem
   Kommentar, der `Concurrency plan:` enthält. Das prüft `internal/architecture`, Tests sind ausgenommen.
 - Channels nur, wenn es mehrere Schreiber gibt. Sonst reichen Rückgabewerte oder `sync.WaitGroup`.
-- `go test -race` muss durchlaufen.
+- `go test -race` muss vor jedem PR durchlaufen.
 
 ## Kontexte
 
@@ -129,8 +132,8 @@ SQL und TypeScript. Tests dürfen Erwartungswerte direkt nennen, weil sie dort b
 - Einfaches TypeScript ohne Framework. Die Bühne selbst kommt aus `@jelly/stage`, in `web/stage` stehen
   nur die Seite und der Weg zum Server (`connection.ts`). Kommentare, Namen und `@module`-Kopf wie im
   Go-Code auf Englisch, sichtbare Texte auf Deutsch.
-- Für `packages/jelly-stage` gelten dieselben Regeln. Reine Logik (`wander.ts`, `world.ts`,
-  `navigation.ts`, `walking.ts`, `crowd.ts`, `zones.ts`, `lens.ts`, `effects.ts`, `picking.ts`) kennt
+- Für `packages/jelly-stage` gelten dieselben Regeln. Reine Logik (`world.ts`, `walking.ts`, `moves.ts`,
+  `zones.ts`, `lens.ts`, `effects.ts`, `picking.ts`, `random.ts`) kennt
   weder DOM noch Canvas noch three.js und hat Tests daneben (`*.test.ts`). Alles mit DOM, Canvas oder
   three.js bleibt so dünn wie möglich.
 - Shader stehen in `packages/jelly-stage/src/shaders/*.glsl` und werden per `?raw` importiert (esbuild

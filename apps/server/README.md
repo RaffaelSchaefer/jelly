@@ -18,7 +18,7 @@ JELLY_JOIN_CODE=geheim go run ./cmd/jelly-server create-lan \
   -from 2026-01-01T00:00:00+01:00 -to 2027-01-01T00:00:00+01:00
 JELLY_STAGE_KEY=buehne JELLY_ADMIN_SECRET=admin go run ./cmd/jelly-server
 
-curl -X POST localhost:8080/v1/register -H 'Content-Type: application/json' \
+curl -X POST localhost:8080/v1/auth/redeem -H 'Content-Type: application/json' \
   -d '{"code":"geheim","name":"Glibber","color":"mint"}'
 ```
 

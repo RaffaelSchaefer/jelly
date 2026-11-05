@@ -6,15 +6,23 @@
  */
 
 export { LENS_RANGE, type ScreenPoint } from "./lens.ts";
+export type { StageHighlight } from "./moves.ts";
 export { ANIMATION_EVENTS, STATE_EVENTS, type StageSource, type StreamListener } from "./source.ts";
 export type {
   AreaKind,
   CatalogEntry,
+  EquippedCosmetic,
   EventPayload,
+  MovePoint,
   StageArea,
   StageCatalog,
   StageEvent,
+  StageMove,
   StagePlayer,
+  StagePoint,
+  StageRoom,
+  StageStack,
   StageState,
+  StageTrip,
 } from "./types.ts";
 export { createStageView, type StageMarks, type StageView, type StageViewOptions } from "./view.ts";

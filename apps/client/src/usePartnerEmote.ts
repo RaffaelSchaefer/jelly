@@ -1,6 +1,9 @@
 /**
- * Partner-Emotes: einen Code für ein anderes Jelly erzeugen oder mit dessen Code beitreten. In der
- * Vorschau ohne Backend.
+ * Partner-Emotes im Pet: Aufforderungen anderer Jellies beantworten und das Duett zeigen.
+ * Auffordern geht auf der Karte (`map/partner.ts`).
+ *
+ * Wer auffordert, erfährt die Antwort aus dem Stream. Wer annimmt, hat die Geste aus seiner
+ * Antwort.
  *
  * @module
  */
@@ -9,42 +12,27 @@ import { useCallback, useEffect, useState } from "react";
 
 import * as backend from "./backend";
 import {
+  classifyInvite,
   partnerLook,
-  PREVIEW_PLAYERS,
   type CatalogEntry,
+  type InviteChange,
+  type PartnerInvite,
   type PartnerLook,
   type ServerEvent,
+  type StagePlayer,
 } from "./pet";
 import { inRunningLan, useServerEvents, type useBackendCall, type useGameState } from "./useGame";
 
-/** Ein laufendes Angebot: Code und Geste, bis `expiresAt` (Server-Zeit). */
-export interface PartnerOffer {
-  code: string;
-  key: string;
-  expiresAt: number;
-  /** Gesamte Laufzeit des Codes. Die Uhr ist voll, wenn noch so viel übrig ist. */
-  durationMs: number;
+/** Die Aufforderung eines anderen Jellys. */
+export interface IncomingInvite {
+  invite: PartnerInvite;
+  fromName: string;
+  /** Anzeigetext der Geste. */
+  label: string;
 }
 
-/** Wie lange ein Code in der Vorschau gilt. Im Betrieb bestimmt das der Server. */
-const PREVIEW_CODE_MS = 120_000;
-
-/** Wer in der Vorschau herüberkommt. */
-const PREVIEW_PARTNER_ID = 1;
-
-/** Das Angebot der Vorschau, ohne Server. */
-function previewOffer(key: string): PartnerOffer {
-  const expiresAt = Date.now() + PREVIEW_CODE_MS;
-  return { code: "4242", key, expiresAt, durationMs: PREVIEW_CODE_MS };
-}
-
-/**
- * Das Angebot aus der Antwort des Servers. Nach einem Start gibt es immer ein Konto mit
- * Server-Zeit.
- */
-function offerFrom({ code, key, expiresAt, game }: backend.PartnerOffer): PartnerOffer {
-  return { code, key, expiresAt, durationMs: expiresAt - game.me!.server_time };
-}
+/** Name, wenn das Jelly gerade nicht auf der Bühne steht. */
+const UNKNOWN_NAME = "Ein Jelly";
 
 /** Was das Jelly nach einem gelungenen Partner-Emote sagt. */
 function partnerMessage(xpGained: number) {
@@ -52,16 +40,15 @@ function partnerMessage(xpGained: number) {
 }
 
 /**
- * Wie der Partner aussieht. `null`, wenn das nicht zu erfahren ist: Dann tanzt das Jelly allein.
+ * Die Jellies der Bühne. Leer, wenn das nicht zu erfahren ist.
  *
  * Nicht über den Aufrufschutz: Der verwirft Aufrufe, solange ein anderer läuft, und zeigte ein
- * Scheitern als Fehler, obwohl nur der zweite Tänzer fehlt.
+ * Scheitern als Fehler, obwohl nur Name oder zweiter Tänzer fehlen.
  */
-function fetchPartnerLook(partnerId: number): Promise<PartnerLook | null> {
-  if (!backend.desktop) return Promise.resolve(partnerLook(PREVIEW_PLAYERS, partnerId));
+function fetchStagePlayers(): Promise<StagePlayer[]> {
   return backend.getStage().then(
-    (stage) => partnerLook(stage.players, partnerId),
-    () => null,
+    (stage) => stage.players,
+    () => [],
   );
 }
 
@@ -79,8 +66,9 @@ export function usePlayPartner(
 ) {
   return useCallback<PlayPartner>(
     async (entry, text, partnerId) => {
-      // Erst das Aussehen, so steht der Partner ab dem ersten Bild da.
-      const look = entry && partnerId !== null ? await fetchPartnerLook(partnerId) : null;
+      // Erst das Aussehen, so steht der Partner ab dem ersten Bild da. Ohne tanzt das Jelly allein.
+      const look =
+        entry && partnerId !== null ? partnerLook(await fetchStagePlayers(), partnerId) : null;
       if (entry) showEmote(entry, look);
       say(text);
     },
@@ -89,106 +77,113 @@ export function usePlayPartner(
 }
 
 /**
- * Der eigene Code, bis er abläuft oder jemand beitritt. Ein `partner.emote` aus dem Stream trägt
- * die Geste, die XP kommen als eigenes `xp.gained` hinterher.
+ * Räumt eine Aufforderung beim Ablauf weg: Dazu kommt kein Ereignis, die Uhr läuft gegen den
+ * Server.
  */
-function useOffer(state: ReturnType<typeof useGameState>, ready: boolean, onPlay: PlayPartner) {
-  const { catalog, offset } = state;
-  const [offer, setOffer] = useState<PartnerOffer | null>(null);
-
-  // Ein abgelaufener Code verschwindet von selbst, gegen die Uhr des Servers.
+function useInviteExpiry(expiresAt: number | undefined, offset: number, onExpired: () => void) {
   useEffect(() => {
-    if (!offer) return;
-    const remaining = offer.expiresAt - (Date.now() + offset);
-    const timer = window.setTimeout(() => setOffer(null), Math.max(0, remaining));
+    if (expiresAt === undefined) return;
+    const remaining = expiresAt - (Date.now() + offset);
+    const timer = window.setTimeout(onExpired, Math.max(0, remaining));
     return () => window.clearTimeout(timer);
-  }, [offer, offset]);
+  }, [expiresAt, offset, onExpired]);
+}
+
+/** Was {@link usePartnerEmote} zusätzlich braucht. Beides sollte stabil sein. */
+export interface PartnerReactions {
+  /** Zeigt die Geste lokal, denn vom Server kommt dafür kein eigenes Emote-Ereignis. */
+  play: PlayPartner;
+  /** Lässt das Jelly etwas sagen. */
+  say: (text: string) => void;
+}
+
+/** Die offene fremde Aufforderung und wie Ereignisse sie und das Duett ändern. */
+function useIncomingInvite(
+  state: ReturnType<typeof useGameState>,
+  ready: boolean,
+  { play, say }: PartnerReactions,
+) {
+  const { catalog, offset, game } = state;
+  const ownId = game.me?.id;
+  const [incoming, setIncoming] = useState<IncomingInvite | null>(null);
+  const clearIncoming = useCallback(() => setIncoming(null), []);
+  useInviteExpiry(incoming?.invite.expires_at, offset, clearIncoming);
+
+  /** Eine Aufforderung hat sich geändert. Nur eine offene fremde zeigt etwas Neues. */
+  const applyChange = useCallback(
+    async ({ role, invite }: InviteChange) => {
+      if (role === "mine") {
+        if (invite.state === "declined") say("Gerade passt es wohl nicht.");
+        return;
+      }
+      if (invite.state !== "pending") {
+        setIncoming((now) => (now?.invite.id === invite.id ? null : now));
+        return;
+      }
+      const players = await fetchStagePlayers();
+      const fromName = players.find((item) => item.id === invite.from_id)?.name ?? UNKNOWN_NAME;
+      const entry = catalog.partner_emotes.find((item) => item.key === invite.key);
+      setIncoming({ invite, fromName, label: entry?.label ?? invite.key });
+    },
+    [catalog.partner_emotes, say],
+  );
 
   const onEvent = useCallback(
     (event: ServerEvent) => {
+      if (event.type === "partner_emote.updated") {
+        const change = classifyInvite(event.payload, ownId);
+        if (change) void applyChange(change);
+        return;
+      }
       if (event.type !== "partner.emote") return;
       const key = String(event.payload?.key);
-      onPlay(
-        catalog.partner_emotes.find((item) => item.key === key),
-        "Jemand macht mit!",
-        event.player_id,
-      );
-      setOffer(null);
+      const entry = catalog.partner_emotes.find((item) => item.key === key);
+      play(entry, "Jemand macht mit!", event.player_id);
     },
-    [catalog.partner_emotes, onPlay],
+    [ownId, applyChange, catalog.partner_emotes, play],
   );
   useServerEvents(backend.desktop && ready, onEvent);
 
-  return [offer, setOffer] as const;
+  return [incoming, setIncoming] as const;
 }
 
 /**
- * Startet und betritt Partner-Emotes über denselben Aufrufschutz wie die übrigen Aktionen.
+ * Antwortet über denselben Aufrufschutz wie die übrigen Aktionen.
  *
- * @param onPlay - Zeigt die Geste lokal, denn vom Server kommt dafür kein eigenes Emote-Ereignis.
- *   Sollte stabil sein.
+ * @param react - Was das Jelly dazu tut und sagt.
  */
 export function usePartnerEmote(
   state: ReturnType<typeof useGameState>,
   call: ReturnType<typeof useBackendCall>,
   ready: boolean,
-  onPlay: PlayPartner,
+  react: PartnerReactions,
 ) {
-  const { game, catalog, setGame } = state;
+  const { catalog, setGame } = state;
   const { busy, inFlight, run } = call;
-  const allowed = inRunningLan(game, ready);
-  const [offer, setOffer] = useOffer(state, ready, onPlay);
+  const { play } = react;
+  const [incoming, setIncoming] = useIncomingInvite(state, ready, react);
 
-  /** Erzeugt einen Code für `key`. Ein neuer Code ersetzt den alten. `true`, wenn es geklappt hat. */
-  const startPartner = useCallback(
-    async (key: string) => {
-      if (!allowed || inFlight.current) return false;
-      if (!backend.desktop) {
-        setOffer(previewOffer(key));
-        return true;
-      }
-      const next = await run(() => backend.startPartnerEmote(key));
-      if (!next) return false;
+  /**
+   * Antwortet auf die fremde Aufforderung. Scheitert das Annehmen, etwa weil die Jellies zu weit
+   * auseinander stehen, bleibt sie offen und lässt sich noch einmal annehmen.
+   */
+  const answerInvite = useCallback(
+    async (accepted: boolean) => {
+      if (!incoming || inFlight.current) return;
+      const entry = catalog.partner_emotes.find((item) => item.key === incoming.invite.key);
+      const answer = accepted ? "accepted" : "declined";
+      const next = await run(() => backend.answerPartner(incoming.invite.id, answer));
+      if (!next) return;
       setGame(next.game);
-      setOffer(offerFrom(next));
-      return true;
+      setIncoming(null);
+      if (accepted) play(entry, partnerMessage(next.xpGained), incoming.invite.from_id);
     },
-    [allowed, inFlight, run, setGame],
+    [incoming, inFlight, catalog.partner_emotes, setIncoming, play, run, setGame],
   );
-
-  /** Tritt mit `code` bei. `true`, wenn es geklappt hat. */
-  const joinPartner = useCallback(
-    async (code: string) => {
-      if (!allowed || inFlight.current) return false;
-      const partnerEmotes = catalog.partner_emotes;
-      if (!backend.desktop) {
-        // Der Code wählt die Geste, so sind in der Vorschau alle zu sehen.
-        const entry = partnerEmotes[Number(code) % partnerEmotes.length];
-        onPlay(entry, partnerMessage(2), PREVIEW_PARTNER_ID);
-        return true;
-      }
-      const next = await run(() => backend.joinPartnerEmote(code));
-      if (!next) return false;
-      setGame(next.game);
-      onPlay(
-        partnerEmotes.find((item) => item.key === next.key),
-        partnerMessage(next.xpGained),
-        next.partnerId,
-      );
-      return true;
-    },
-    [allowed, inFlight, run, setGame, catalog.partner_emotes, onPlay],
-  );
-
-  /** Zurück zur Auswahl. Der Code gilt beim Server weiter, ein Beitritt spielt die Geste trotzdem. */
-  const dismissOffer = useCallback(() => setOffer(null), [setOffer]);
 
   return {
-    offer,
-    dismissOffer,
-    startPartner,
-    joinPartner,
-    partnerAllowed: allowed,
-    partnerDisabled: !allowed || busy,
+    incoming,
+    answerInvite,
+    partnerDisabled: !inRunningLan(state.game, ready) || busy,
   };
 }

@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
@@ -18,7 +17,7 @@ func (store *Store) ApplyEmote(
 		return PlayerState{}, fmt.Errorf("validate emote: %w", err)
 	}
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		lastEmoteAt, err := loadLastEmoteTime(ctx, action.transaction, playerID)
+		lastEmoteAt, err := loadLastEventTime(ctx, action.transaction, playerID, EventEmote)
 		if err != nil {
 			return err
 		}
@@ -53,45 +52,11 @@ func (store *Store) UpdateSign(
 	})
 }
 
-// UpdateFollow stands next to another jelly or, with a target of 0, walks away.
-func (store *Store) UpdateFollow(
-	ctx context.Context, playerID, targetID, now int64,
-) (PlayerState, error) {
-	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		var current sql.NullInt64
-		const selectFollowSQL = `SELECT follow_player_id FROM lan_entries
-			WHERE lan_id = ? AND player_id = ?`
-		err := action.transaction.QueryRowContext(ctx, selectFollowSQL,
-			action.lan.id, playerID).Scan(&current)
-		if err != nil {
-			return fmt.Errorf("load follow: %w", err)
-		}
-		if current.Int64 == targetID {
-			return nil
-		}
-		var stored any
-		if targetID != 0 {
-			err = requireFollowTarget(ctx, action, targetID)
-			if err != nil {
-				return err
-			}
-			stored = targetID
-		}
-		const updateFollowSQL = `UPDATE lan_entries SET follow_player_id = ?
-			WHERE lan_id = ? AND player_id = ?`
-		_, err = action.transaction.ExecContext(ctx, updateFollowSQL,
-			stored, action.lan.id, playerID)
-		if err != nil {
-			return fmt.Errorf("update follow: %w", err)
-		}
-		payload := map[string]any{"target_id": stored}
-		err = appendVisibleEvent(ctx, action, EventFollowChanged, payload)
-		if err != nil || targetID == 0 {
-			return err
-		}
-		return grantFoundCompany(ctx, action, targetID)
-	})
-}
+// congaFollowers is how many jellies behind the same one make a line.
+const congaFollowers = 2
+
+// lighthouseMembers is how many jellies make a stack a lighthouse.
+const lighthouseMembers = 2
 
 // grantFoundCompany rewards the visitor and the visited jelly if its search sign is up.
 func grantFoundCompany(ctx context.Context, action actionContext, targetID int64) error {
@@ -117,35 +82,16 @@ func grantFoundCompany(ctx context.Context, action actionContext, targetID int64
 	return grantAchievementOnce(ctx, target, rules.AchievementFoundCompany)
 }
 
-// requireFollowTarget allows only other visible jellies of the running LAN.
-func requireFollowTarget(ctx context.Context, action actionContext, targetID int64) error {
-	if targetID == action.playerID {
-		return ErrInvalidFollow
-	}
-	var found int
-	const findFollowTargetSQL = `SELECT 1
-		FROM lan_entries e JOIN players p ON p.id = e.player_id
-		WHERE e.lan_id = ? AND e.player_id = ? AND p.hidden_at IS NULL`
-	err := action.transaction.QueryRowContext(ctx, findFollowTargetSQL,
-		action.lan.id, targetID).Scan(&found)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrInvalidFollow
-	}
-	if err != nil {
-		return fmt.Errorf("check follow target: %w", err)
-	}
-	return nil
-}
-
-// loadLastEmoteTime returns the last emote of a player, or 0 without one.
-func loadLastEmoteTime(ctx context.Context, database querier, playerID int64) (int64, error) {
-	var lastEmoteAt int64
-	const selectLastEmoteSQL = `SELECT COALESCE(MAX(created_at), 0) FROM event_log
+// loadLastEventTime returns when a player last caused this kind of event, or 0 if never.
+func loadLastEventTime(
+	ctx context.Context, database querier, playerID int64, eventType string,
+) (int64, error) {
+	var lastAt int64
+	const selectLastEventSQL = `SELECT COALESCE(MAX(created_at), 0) FROM event_log
 		WHERE player_id = ? AND type = ?`
-	err := database.QueryRowContext(ctx, selectLastEmoteSQL,
-		playerID, EventEmote).Scan(&lastEmoteAt)
+	err := database.QueryRowContext(ctx, selectLastEventSQL, playerID, eventType).Scan(&lastAt)
 	if err != nil {
-		return 0, fmt.Errorf("load last emote: %w", err)
+		return 0, fmt.Errorf("load last event: %w", err)
 	}
-	return lastEmoteAt, nil
+	return lastAt, nil
 }

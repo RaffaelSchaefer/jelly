@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"net/http"
+	"slices"
 	"time"
 )
 
@@ -29,22 +31,29 @@ const (
 	actionPartner = "partner"
 )
 
+const (
+	// noJelly marks that the stage has no other jelly yet.
+	noJelly        int64 = 0
+	inviteAccepted       = "accepted"
+)
+
 // apiPrefix is the version of the API that the simulator speaks.
 const apiPrefix = "/v1"
 
 // Field names and paths of the API.
 const (
-	fieldCode     = "code"
-	fieldKey      = "key"
-	fieldAction   = "action"
-	pathActions   = apiPrefix + "/actions"
-	pathEmote     = apiPrefix + "/emote"
-	pathFollow    = apiPrefix + "/follow"
-	pathSign      = apiPrefix + "/sign"
-	pathState     = apiPrefix + "/stage"
-	pathRegister  = apiPrefix + "/register"
-	pathOffer     = apiPrefix + "/partner-emote"
-	pathJoinOffer = apiPrefix + "/partner-emote/join"
+	fieldCode    = "code"
+	fieldKey     = "key"
+	fieldKind    = "kind"
+	pathPokes    = apiPrefix + "/pokes"
+	pathReports  = apiPrefix + "/reports"
+	pathEmote    = apiPrefix + "/emotes"
+	pathFollow   = apiPrefix + "/trips/follow"
+	pathTrip     = apiPrefix + "/trips/current"
+	pathSign     = apiPrefix + "/signs/current"
+	pathState    = apiPrefix + "/stage"
+	pathRegister = apiPrefix + "/auth/redeem"
+	pathInvites  = apiPrefix + "/partner-emotes"
 )
 
 const (
@@ -63,7 +72,6 @@ var errRegisterRejected = errors.New("server rejected the registration")
 // bot is one simulated player.
 type bot struct {
 	client   apiClient
-	board    *offerBoard
 	results  *counters
 	config   Config
 	index    int
@@ -208,8 +216,8 @@ func (player *bot) register(ctx context.Context) error {
 		"color":   colors[player.index%len(colors)],
 	}
 	var answer struct {
-		Token string `json:"token"`
-		Me    struct {
+		Secret string `json:"secret"`
+		Me     struct {
 			ID int64 `json:"id"`
 		} `json:"me"`
 	}
@@ -218,8 +226,8 @@ func (player *bot) register(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if status == http.StatusCreated {
-			player.token = answer.Token
+		if status == http.StatusOK {
+			player.token = answer.Secret
 			player.playerID = answer.Me.ID
 			return nil
 		}
@@ -237,7 +245,7 @@ func (player *bot) register(ctx context.Context) error {
 func (player *bot) act(ctx context.Context, action string) (int, error) {
 	switch action {
 	case actionReport:
-		return player.post(ctx, pathActions, map[string]string{fieldAction: pickKey(listReports())})
+		return player.post(ctx, pathReports, map[string]string{fieldKind: pickKey(listReports())})
 	case actionEmote:
 		return player.post(ctx, pathEmote, map[string]string{fieldKey: pickKey(listEmotes())})
 	case actionSign:
@@ -247,7 +255,7 @@ func (player *bot) act(ctx context.Context, action string) (int, error) {
 	case actionPartner:
 		return player.doPartnerEmote(ctx)
 	default:
-		return player.post(ctx, pathActions, map[string]string{fieldAction: actionPoke})
+		return player.post(ctx, pathPokes, nil)
 	}
 }
 
@@ -264,6 +272,13 @@ func (player *bot) postForAnswer(
 ) (int, error) {
 	return player.client.send(ctx, apiCall{
 		method: http.MethodPost, path: path, token: player.token, body: body, target: target,
+	})
+}
+
+// patch sends a change.
+func (player *bot) patch(ctx context.Context, path string, body any) (int, error) {
+	return player.client.send(ctx, apiCall{
+		method: http.MethodPatch, path: path, token: player.token, body: body,
 	})
 }
 
@@ -296,11 +311,20 @@ func (player *bot) changeSign(ctx context.Context) (int, error) {
 	return player.remove(ctx, pathSign)
 }
 
-// changeFollow stands next to a random other jelly from the stage, or walks away.
+// changeFollow follows a random other jelly from the stage, or goes back.
 func (player *bot) changeFollow(ctx context.Context) (int, error) {
 	if pickNumber(followChoices) == 0 {
-		return player.remove(ctx, pathFollow)
+		return player.remove(ctx, pathTrip)
 	}
+	target, status, err := player.pickOtherJelly(ctx)
+	if err != nil || target == noJelly {
+		return status, err
+	}
+	return player.post(ctx, pathFollow, map[string]int64{"player_id": target})
+}
+
+// pickOtherJelly returns a random other jelly from the stage, if there is one.
+func (player *bot) pickOtherJelly(ctx context.Context) (int64, int, error) {
 	var stage struct {
 		Players []struct {
 			ID int64 `json:"id"`
@@ -308,7 +332,7 @@ func (player *bot) changeFollow(ctx context.Context) (int, error) {
 	}
 	status, err := player.get(ctx, pathState, &stage)
 	if err != nil || status != http.StatusOK {
-		return status, err
+		return noJelly, status, err
 	}
 	others := make([]int64, 0, len(stage.Players))
 	for _, other := range stage.Players {
@@ -317,37 +341,75 @@ func (player *bot) changeFollow(ctx context.Context) (int, error) {
 		}
 	}
 	if len(others) == 0 {
-		return status, nil
+		return noJelly, status, nil
 	}
-	target := others[pickNumber(len(others))]
-	return player.put(ctx, pathFollow, map[string]int64{"player_id": target})
+	return others[pickNumber(len(others))], status, nil
 }
 
-// doPartnerEmote enters the code of another bot, or leaves a new one if none is waiting.
+// pickNearbyJelly returns the jelly closest to this one, because partner emotes need nearness.
+func (player *bot) pickNearbyJelly(ctx context.Context) (int64, int, error) {
+	var stage struct {
+		Moves []stageMove `json:"moves"`
+	}
+	status, err := player.get(ctx, pathState, &stage)
+	if err != nil || status != http.StatusOK {
+		return noJelly, status, err
+	}
+	own := slices.IndexFunc(stage.Moves, func(move stageMove) bool {
+		return move.PlayerID == player.playerID
+	})
+	if own < 0 {
+		return noJelly, status, nil
+	}
+	closest, shortest := noJelly, math.Inf(1)
+	for _, other := range stage.Moves {
+		distance := other.measureTo(stage.Moves[own])
+		if other.PlayerID != player.playerID && distance < shortest {
+			closest, shortest = other.PlayerID, distance
+		}
+	}
+	return closest, status, nil
+}
+
+// stageMove is the part of a move that tells where a jelly is heading.
+type stageMove struct {
+	PlayerID int64 `json:"player_id"`
+	Points   []struct {
+		X float64 `json:"x"`
+		Y float64 `json:"y"`
+	} `json:"points"`
+}
+
+// measureTo returns how far apart the ends of two moves are, in percent of the stage.
+func (move stageMove) measureTo(other stageMove) float64 {
+	end, otherEnd := move.Points[len(move.Points)-1], other.Points[len(other.Points)-1]
+	return math.Hypot(end.X-otherEnd.X, end.Y-otherEnd.Y)
+}
+
+// doPartnerEmote accepts an invite that waits for this bot, or asks another jelly.
 func (player *bot) doPartnerEmote(ctx context.Context) (int, error) {
-	offer, found := player.board.takeOffer(player.index, player.config.Now().UnixMilli())
-	if found {
-		return player.enterOffer(ctx, offer)
+	var open struct {
+		Items []struct {
+			ID         int64   `json:"id"`
+			PartnerIDs []int64 `json:"partner_ids"`
+		} `json:"items"`
 	}
-	var answer struct {
-		Code      string `json:"code"`
-		ExpiresAt int64  `json:"expires_at"`
+	status, err := player.get(ctx, pathInvites, &open)
+	if err != nil || status != http.StatusOK {
+		return status, err
 	}
-	body := map[string]string{fieldKey: pickKey(listPartnerEmotes())}
-	status, err := player.postForAnswer(ctx, pathOffer, body, &answer)
-	if err == nil && status == http.StatusOK {
-		player.board.addOffer(partnerOffer{
-			code: answer.Code, botIndex: player.index, expiresAt: answer.ExpiresAt,
-		})
+	for _, invite := range open.Items {
+		if slices.Contains(invite.PartnerIDs, player.playerID) {
+			return player.patch(ctx, pathInvites, map[string]any{
+				"id": invite.ID, "state": inviteAccepted,
+			})
+		}
 	}
-	return status, err
-}
-
-// enterOffer sends a code. A limited attempt never reached the code, so another bot can try it.
-func (player *bot) enterOffer(ctx context.Context, offer partnerOffer) (int, error) {
-	status, err := player.post(ctx, pathJoinOffer, map[string]string{fieldCode: offer.code})
-	if err == nil && status == http.StatusTooManyRequests {
-		player.board.returnOffer(offer)
+	target, status, err := player.pickNearbyJelly(ctx)
+	if err != nil || target == noJelly {
+		return status, err
 	}
-	return status, err
+	return player.post(ctx, pathInvites, map[string]any{
+		fieldKey: pickKey(listPartnerEmotes()), "partner_ids": []int64{target},
+	})
 }

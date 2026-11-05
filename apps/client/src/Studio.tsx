@@ -13,10 +13,11 @@ import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 
 import "./studio.css";
 import {
-  equippedRegion,
   REGIONS,
   regionItems,
+  wornRegions,
   type Catalog,
+  type CosmeticSlot,
   type Me,
   type PetColor,
   type StudioRegionId,
@@ -34,8 +35,8 @@ export interface StudioProps {
   /** Die offene Region. Sie liegt außerhalb, weil auch die Kamera ihr folgt. */
   region: StudioRegionId | null;
   onRegion: (region: StudioRegionId | null) => void;
-  /** Bekommt die ID zum Anlegen oder `null` zum Ablegen. */
-  onEquip: (id: string | null) => void;
+  /** Bekommt den Platz und die ID zum Anlegen oder `null` zum Ablegen. */
+  onEquip: (slot: CosmeticSlot, id: string | null) => void;
   onColor: (color: PetColor) => void;
   /** Liefert `false`, wenn der Name abgelehnt wurde. */
   onName: (name: string) => Promise<boolean>;
@@ -62,7 +63,7 @@ export default function Studio(props: StudioProps) {
 
   const open = REGIONS.find((item) => item.id === region);
   const items = open ? regionItems(open, me, catalog) : [];
-  const worn = equippedRegion(me);
+  const worn = wornRegions(me);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Escape" || !region) return;
@@ -83,7 +84,7 @@ export default function Studio(props: StudioProps) {
   }
 
   function pick(id: string | null) {
-    if (open?.slot) onEquip(id);
+    if (open?.slot) onEquip(open.slot, id);
     else onColor(id as PetColor);
   }
 
@@ -102,7 +103,7 @@ export default function Studio(props: StudioProps) {
             ref={index === 0 ? firstBlob : undefined}
             region={item}
             open={item.id === region}
-            worn={item.id === worn}
+            worn={worn.includes(item.id)}
             onToggle={() => onRegion(item.id === region ? null : item.id)}
           />
         ))}

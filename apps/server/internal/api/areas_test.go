@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
@@ -166,4 +167,43 @@ func findOnlyAssignment(t *testing.T, body []byte) *int64 {
 		t.Fatalf("assignments: %v %s", err, body)
 	}
 	return list.Assignments[0].AreaID
+}
+
+func TestZoneNameStaysWithTheAdmin(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.createArea(
+		`{"x":0,"y":0,"width":50,"height":50,"kind":"none","name":"Rechte Ecke"}`,
+	)
+	response := testFixture.callAdmin("GET", "/admin/api/lans/1/areas", "")
+	if !strings.Contains(string(response.body), "Rechte Ecke") {
+		t.Fatalf("admin = %s", response.body)
+	}
+	stage := testFixture.callAPI("GET", "/v1/stage?key="+stageKey, "", "")
+	if strings.Contains(string(stage.body), "Rechte Ecke") {
+		t.Fatalf("stage = %s", stage.body)
+	}
+}
+
+func TestPlayerWithoutASeatIsAVisitorInTheVisitorZone(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.registerPlayer("A")
+	testFixture.createArea(`{"x":5,"y":12,"width":40,"height":10,"kind":"lounge"}`)
+	zoneID := testFixture.createArea(`{"x":5,"y":60,"width":40,"height":20,"kind":"visitors"}`)
+	player := testFixture.loadStage().Players[0]
+	if !player.IsVisitor || player.AreaID == nil ||
+		strconv.FormatInt(*player.AreaID, 10) != zoneID {
+		t.Fatalf("player = %+v", player)
+	}
+}
+
+func TestZoneWithoutAssignmentTakesNoJelly(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	playerID := strconv.FormatInt(testFixture.loadMe(token).ID, 10)
+	zoneID := testFixture.createArea(`{"x":0,"y":0,"width":50,"height":50,"kind":"none"}`)
+	response := testFixture.callAdmin("PUT", "/admin/api/lans/1/players/"+playerID+"/area",
+		`{"area_id":`+zoneID+`}`)
+	if response.status == http.StatusOK {
+		t.Fatalf("assign: %s", response.body)
+	}
 }

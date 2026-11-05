@@ -5,7 +5,7 @@
  * @module
  */
 
-import type { StageCatalog, StageEvent, StageState } from "./types.ts";
+import type { StageCatalog, StageEvent, StageMove, StageState } from "./types.ts";
 
 /** Events that change what the state holds, so it has to be read again. */
 export const STATE_EVENTS = [
@@ -17,6 +17,7 @@ export const STATE_EVENTS = [
   "sign.changed",
   "follow.changed",
   "stage.changed",
+  "stack.changed",
 ];
 
 /** Events that only trigger animations. */
@@ -26,11 +27,16 @@ export const ANIMATION_EVENTS = [
   "award.given",
   "emote",
   "partner.emote",
+  "highlight",
 ];
 
 /** What the view wants to hear from the event stream. */
 export interface StreamListener {
   onEvent: (event: StageEvent) => void;
+  /** A jelly starts walking. These messages have no ID and are not part of the event log. */
+  onMove: (move: StageMove) => void;
+  /** Events were dropped for this stream, so the state has to be read again. */
+  onReset: () => void;
   onConnectionChange: (isOpen: boolean) => void;
 }
 

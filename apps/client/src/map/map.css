@@ -19,9 +19,27 @@ button:focus-visible { outline: 2px solid #2059ed; outline-offset: 3px; }
 #drag { cursor: grab; }
 
 /* Right below the tools: The hall is deeper than wide and narrows towards the back, so this corner stays free. */
-#leave { position: absolute; top: 48px; right: 1rem; z-index: 3; padding: 0.55rem 1rem; border: 0; border-radius: 11px; background: #171d25; color: #f4f8fa; font: 600 0.8125rem system-ui, sans-serif; box-shadow: 0 3px 10px #0003; }
-#leave:hover { background: #262e38; }
+#leave { position: absolute; top: 48px; right: 1rem; z-index: 3; }
 #leave[hidden] { display: none; }
+
+/* Knöpfe und Hinweise der Karte. Ohne WebGL fehlt `data-glass`, dann bleiben sie einfarbig. */
+.glass-pill { margin: 0; padding: 0.55rem 1rem; border: 0; border-radius: 11px; background: #171d25; color: #f4f8fa; font: 600 0.8125rem system-ui, sans-serif; box-shadow: 0 3px 10px #0003; }
+button.glass-pill:hover { background: #262e38; }
+
+/* Die Tropfen zeichnet `glass.ts` über das ganze Fenster. Hell wie am Jelly, auf dem blassen Glas hält der Schatten den Text lesbar. */
+#glass { position: absolute; inset: 0; z-index: 2; display: block; width: 100%; height: 100%; pointer-events: none; }
+html[data-glass] .glass-pill { background: transparent; color: #ffffff; text-shadow: 0 1px 2px #0b1a2bb3, 0 0 6px #0b1a2b66; box-shadow: none; transition: scale 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+/* Der Tropfen liest die Lage des Knopfs ab und wächst mit ihm. */
+html[data-glass] button.glass-pill:hover { background: transparent; scale: 1.06; }
+html[data-glass] button.glass-pill:active { scale: 0.96; }
+@media (prefers-reduced-motion: reduce) { html[data-glass] .glass-pill { transition: none; } }
+
+/* Das Fenster mit den Gesten sitzt am eigenen Jelly, `partner.ts` setzt die Lage. Dicht genug, damit die Kapseln ineinanderfließen. */
+#partner-menu { position: absolute; z-index: 3; display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+#partner-menu[hidden] { display: none; }
+/* Oben in der Mitte: Dort liegen weder Fensterknöpfe noch „Weggehen“. */
+#partner-bar { position: absolute; top: 12px; left: 50%; z-index: 3; display: flex; gap: 6px; translate: -50% 0; white-space: nowrap; }
+#partner-bar[hidden] { display: none; }
 
 #status { position: absolute; right: 1.5rem; bottom: 1.5rem; left: 1.5rem; z-index: 3; margin: 0; padding: 0.6rem 1rem; border-radius: 0.5rem; background: #171d25; color: #f4f7f8; font: 0.875rem system-ui, sans-serif; text-align: center; }
 #status[data-problem] { background: #4f1c0b; }

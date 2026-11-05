@@ -53,10 +53,9 @@ type LANStatus struct {
 
 // activeLAN is the running LAN with its rules.
 type activeLAN struct {
-	id           int64
-	timezone     string
-	joinCodeHash string
-	gameRules    rules.Rules
+	id        int64
+	timezone  string
+	gameRules rules.Rules
 }
 
 // querier is what [sql.DB] and [sql.Tx] share for queries.
@@ -235,10 +234,10 @@ func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON s
 func loadActiveLAN(ctx context.Context, database querier, now int64) (activeLAN, error) {
 	var lan activeLAN
 	var rulesJSON string
-	const selectActiveLANSQL = `SELECT id, timezone, join_code_hash, rules FROM lans
+	const selectActiveLANSQL = `SELECT id, timezone, rules FROM lans
 		WHERE starts_at <= ? AND ends_at > ?`
 	err := database.QueryRowContext(ctx, selectActiveLANSQL, now, now).
-		Scan(&lan.id, &lan.timezone, &lan.joinCodeHash, &rulesJSON)
+		Scan(&lan.id, &lan.timezone, &rulesJSON)
 	if errors.Is(err, sql.ErrNoRows) {
 		return activeLAN{}, ErrNoActiveLAN
 	}

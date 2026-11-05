@@ -10,12 +10,21 @@
     "reports_per_window": 8,
     "presence_window": 5400,
     "emote_cooldown": 3,
-    "partner_code_seconds": 120,
+    "partner_invite_seconds": 120,
     "partner_xp": 2,
     "full_house_percent": 33,
     "max_players": 120,
     "max_streams": 200,
-    "max_player_streams": 3
+    "max_player_streams": 3,
+    "snack_run_seconds": 14,
+    "trip_seconds": 300,
+    "follow_seconds": 1800,
+    "near_distance": 6,
+    "walk_speed": 1.4,
+    "stack_seconds": 120,
+    "stack_max_members": 0,
+    "highlight_seconds": 10,
+    "highlight_cooldown": 30
   },
   "poke": [
     { "name": "first poke counts immediately", "elapsed_seconds": null, "xp": 3 },

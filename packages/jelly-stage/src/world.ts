@@ -20,8 +20,6 @@ export const GOLDEN_ANGLE = 2.399963;
 export const ROOM_WIDTH = 21;
 /** Depth of the room in jelly units, see {@link ROOM_WIDTH}. */
 export const ROOM_DEPTH = 40;
-/** How far the body of a jelly reaches from its center, seen from above. Raised hands reach further. */
-export const JELLY_RADIUS = 0.8;
 /**
  * The canvas has twice as many pixels per side as the screen, and the browser smooths them down.
  * That also smooths the edges of the raymarched jellies, which the GPU's own anti-aliasing misses.
@@ -93,25 +91,6 @@ export function shrinkRect(rect: FloorRect, margin: number): FloorRect {
   const [minX = 0, maxX = 0] = shrinkSpan(rect.minX, rect.maxX);
   const [minZ = 0, maxZ = 0] = shrinkSpan(rect.minZ, rect.maxZ);
   return { minX, minZ, maxX, maxZ };
-}
-
-/** Places a point of `from` at the same relative spot in `to`. Points outside `from` are clamped. */
-export function remapIntoRect(point: FloorPoint, from: FloorRect, to: FloorRect): FloorPoint {
-  const remap = (
-    value: number,
-    [low, high]: number[],
-    [targetLow = 0, targetHigh = 0]: number[],
-  ) => {
-    const share =
-      low !== undefined && high !== undefined && high > low
-        ? Math.min(1, Math.max(0, (value - low) / (high - low)))
-        : 0.5;
-    return targetLow + share * (targetHigh - targetLow);
-  };
-  return {
-    x: remap(point.x, [from.minX, from.maxX], [to.minX, to.maxX]),
-    z: remap(point.z, [from.minZ, from.maxZ], [to.minZ, to.maxZ]),
-  };
 }
 
 /** Returns the distance between two floor points. */

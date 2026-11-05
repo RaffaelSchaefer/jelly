@@ -1,5 +1,5 @@
 /**
- * Das animierte Pet: das Jelly aus `@jelly/scene`, sein angelegtes Cosmetic und sein Schild.
+ * Das animierte Pet: das Jelly aus `@jelly/scene`, seine Cosmetics und sein Schild.
  *
  * Hier wird nur verdrahtet. Bau und Bewegung des Jellys stehen in `packages/jelly-scene`, das auch
  * die Bühne des Servers nutzt.
@@ -27,9 +27,12 @@ import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { ActiveEmote } from "../useEmotes";
 import type { ActiveVoice } from "../useJellyVoice";
 
-import { COSMETICS, mouthAt, PET_COLORS, type PetColor } from "../pet";
+import { mouthAt, PET_COLORS, wornCosmetics, type Equipped, type PetColor } from "../pet";
 import Cosmetic from "./Cosmetic";
 import SignBoard from "./SignBoard";
+
+/** Ein Jelly ohne Angabe trägt nichts. */
+const NOTHING_WORN: Equipped = {};
 
 /** Die Mundform dieses Bildes. Bei reduzierter Bewegung lächelt das Jelly nur. */
 function currentMouth(
@@ -79,8 +82,8 @@ export interface CharacterProps {
   reducedMotion: boolean;
   /** Text auf der Tafel in seinen Händen. Solange er eine hält, bleiben die Hände draußen. */
   sign?: string | null;
-  /** ID des angelegten Cosmetics. */
-  cosmetic?: string | null;
+  /** Was das Jelly trägt, je Platz. */
+  equipped?: Equipped;
   /** Bekommt das aktuelle Jelly, etwa für die Anker des Studios. Sollte stabil sein. */
   onJelly?: (jelly: Jelly | null) => void;
   /** Lokal bestätigte Geste, unabhängig von der Szenenuhr. */
@@ -97,13 +100,15 @@ export default function Character({
   pulse,
   reducedMotion,
   sign = null,
-  cosmetic = null,
+  equipped = NOTHING_WORN,
   onJelly,
   emote,
   voiced,
   role = "own",
 }: CharacterProps) {
-  const worn = COSMETICS.find((item) => item.id === cosmetic);
+  const worn = wornCosmetics(equipped);
+  const onHead = worn.filter((item) => item.slot !== "aura");
+  const onBody = worn.filter((item) => item.slot === "aura");
   const jelly = useMemo(() => createJelly(PET_COLORS[color]), [color]);
   const motion = useRef(createMotion(pulse));
   const stand = useRef<Group>(null);
@@ -141,11 +146,14 @@ export default function Character({
   return (
     <group ref={stand}>
       <primitive object={jelly.root}>
-        {/* Kopf- und Gesichts-Cosmetics wippen mit dem Kopf, Effekte bleiben beim Körper. */}
-        {worn && worn.slot !== "Effekte"
-          ? createPortal(<Cosmetic id={worn.id} color={color} />, jelly.faceAnchor)
-          : null}
-        {worn?.slot === "Effekte" ? <Cosmetic id={worn.id} color={color} /> : null}
+        {/* Kopf- und Gesichts-Cosmetics wippen mit dem Kopf, die Aura bleibt beim Körper. */}
+        {createPortal(
+          onHead.map((item) => <Cosmetic key={item.id} id={item.id} color={color} />),
+          jelly.faceAnchor,
+        )}
+        {onBody.map((item) => (
+          <Cosmetic key={item.id} id={item.id} color={color} />
+        ))}
         <SignBoard jelly={jelly} label={sign} color={color} reducedMotion={reducedMotion} />
       </primitive>
     </group>

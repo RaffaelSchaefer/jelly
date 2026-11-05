@@ -1,15 +1,18 @@
 package api_test
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/api"
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
 // openStream opens the event stream with a token, or with the stage key without one. It returns
@@ -18,7 +21,7 @@ func openStream(
 	ctx context.Context, t *testing.T, server *httptest.Server, token string,
 ) (int, []byte) {
 	t.Helper()
-	address := server.URL + "/v1/events/stream"
+	address := server.URL + "/v1/stage/events"
 	if token == "" {
 		address += "?key=" + stageKey
 	}
@@ -139,5 +142,62 @@ func TestVersionWorksWithoutAnAccountOutsideTheVersionPath(t *testing.T) {
 	}
 	if got := testFixture.callAPI("GET", "/v1/version", "", "").status; got != http.StatusNotFound {
 		t.Fatalf("versioned path = %d", got)
+	}
+}
+
+// readStreamEvents reads SSE lines until `count` events arrived.
+func readStreamEvents(t *testing.T, scanner *bufio.Scanner, count int) []string {
+	t.Helper()
+	types := []string{}
+	for len(types) < count && scanner.Scan() {
+		if eventType, found := strings.CutPrefix(scanner.Text(), "event: "); found {
+			types = append(types, eventType)
+		}
+	}
+	if len(types) < count {
+		t.Fatalf("stream ended after %v: %v", types, scanner.Err())
+	}
+	return types
+}
+
+func TestStreamDeliversReplaysAndStops(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	server := httptest.NewServer(testFixture.handler)
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		server.URL+"/v1/stage/events?since=0&topics=events&key="+stageKey, http.NoBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if got := response.Header.Get("Content-Type"); got != "text/event-stream" {
+		t.Fatalf("content type = %q", got)
+	}
+	scanner := bufio.NewScanner(response.Body)
+	replayed := readStreamEvents(t, scanner, 1)
+	if replayed[0] != store.EventPlayerActive {
+		t.Fatalf("replay = %v", replayed)
+	}
+
+	testFixture.callAPI("POST", "/v1/emotes", token, `{"key":"wave"}`)
+	live := readStreamEvents(t, scanner, 1)
+	if live[0] != store.EventEmote {
+		t.Fatalf("live = %v", live)
+	}
+
+	testFixture.stopping.Store(true)
+	for scanner.Scan() {
+		continue
+	}
+	if err := ctx.Err(); err != nil {
+		t.Fatalf("stream did not end when the server stopped: %v", err)
 	}
 }

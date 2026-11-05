@@ -112,7 +112,7 @@ func TestNamesOnlyUseTheFixedCharacters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		requireProblem(t, testFixture.callAPI("POST", "/v1/register", "", string(body)),
+		requireProblem(t, testFixture.callAPI("POST", "/v1/auth/redeem", "", string(body)),
 			http.StatusBadRequest, "invalid_name")
 	}
 	testFixture.registerPlayer("Jörg_Müller-2 O'Neil")
@@ -122,7 +122,7 @@ func TestEmptyProfileUpdateChangesNothing(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 	before := testFixture.loadMe(token).LastEventID
-	response := testFixture.callAPI("PATCH", "/v1/me", token, `{}`)
+	response := testFixture.callAPI("PATCH", "/v1/players/me", token, `{}`)
 	state := decodeBody[store.PlayerState](t, response)
 	if state.LastEventID != before {
 		t.Fatal("an empty update wrote an event")
@@ -172,7 +172,7 @@ func TestLANFullRejectsMorePlayers(t *testing.T) {
 		string(body)); response.status != http.StatusOK {
 		t.Fatalf("rules: %d %s", response.status, response.body)
 	}
-	requireProblem(t, testFixture.callAPI("POST", "/v1/register", "",
+	requireProblem(t, testFixture.callAPI("POST", "/v1/auth/redeem", "",
 		buildRegisterBody("B", "mint")),
 		http.StatusConflict, "lan_full")
 }
@@ -184,12 +184,12 @@ func TestJoinCodeCanBeReplaced(t *testing.T) {
 	if response.status != http.StatusOK {
 		t.Fatalf("join code: %d %s", response.status, response.body)
 	}
-	requireProblem(t, testFixture.callAPI("POST", "/v1/register", "",
+	requireProblem(t, testFixture.callAPI("POST", "/v1/auth/redeem", "",
 		buildRegisterBody("B", "mint")),
 		http.StatusForbidden, "invalid_code")
 	body := `{"code":"neu-2026","name":"B","color":"mint"}`
-	if got := testFixture.callAPI("POST", "/v1/register", "",
-		body); got.status != http.StatusCreated {
+	if got := testFixture.callAPI("POST", "/v1/auth/redeem", "",
+		body); got.status != http.StatusOK {
 		t.Fatalf("register: %d %s", got.status, got.body)
 	}
 	requireProblem(t, testFixture.callAdmin("PUT", "/admin/api/lans/99/join-code",
@@ -201,9 +201,9 @@ func TestStrangersCannotUseUpTheLimitsOfOthers(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 	for range 300 {
-		testFixture.callAPI("POST", "/v1/event-codes/redeem", "", `{"code":"x"}`)
+		testFixture.callAPI("POST", "/v1/event-codes/redemptions", "", `{"code":"x"}`)
 	}
-	response := testFixture.callAPI("POST", "/v1/event-codes/redeem", token, `{"code":"x"}`)
+	response := testFixture.callAPI("POST", "/v1/event-codes/redemptions", token, `{"code":"x"}`)
 	requireProblem(t, response, http.StatusBadRequest, "invalid_event_code")
 	cookie := testFixture.loginAdmin()
 	if cookie == "" {
@@ -217,7 +217,8 @@ func TestOnePlayerCannotFloodTheServer(t *testing.T) {
 	other := testFixture.registerPlayer("B")
 	limited := false
 	for range 200 {
-		if testFixture.callAPI("GET", "/v1/me", flooder, "").status == http.StatusTooManyRequests {
+		if testFixture.callAPI("GET", "/v1/players/me",
+			flooder, "").status == http.StatusTooManyRequests {
 			limited = true
 			break
 		}
@@ -225,7 +226,7 @@ func TestOnePlayerCannotFloodTheServer(t *testing.T) {
 	if !limited {
 		t.Fatal("no limit reached")
 	}
-	if response := testFixture.callAPI("GET", "/v1/me", other,
+	if response := testFixture.callAPI("GET", "/v1/players/me", other,
 		""); response.status != http.StatusOK {
 		t.Fatalf("other player: %d", response.status)
 	}
@@ -236,9 +237,9 @@ func TestFollowingTheSameTargetAgainWritesNothing(t *testing.T) {
 	token := testFixture.registerPlayer("A")
 	target := testFixture.loadMe(testFixture.registerPlayer("B")).ID
 	body := fmt.Sprintf(`{"player_id":%d}`, target)
-	testFixture.callAPI("PUT", "/v1/follow", token, body)
+	testFixture.callAPI("POST", "/v1/trips/follow", token, body)
 	before := testFixture.loadMe(token).LastEventID
-	testFixture.callAPI("PUT", "/v1/follow", token, body)
+	testFixture.callAPI("POST", "/v1/trips/follow", token, body)
 	if after := testFixture.loadMe(token).LastEventID; after != before {
 		t.Fatalf("event IDs moved from %d to %d", before, after)
 	}

@@ -5,7 +5,9 @@
  * @module
  */
 
-import type { StageEvent, StageSource, StreamListener } from "@jelly/stage";
+import type { StageEvent, StageMove, StageSource, StreamListener } from "@jelly/stage";
+
+import type { CatalogEntry, PartnerInvite } from "../pet";
 
 import * as backend from "../backend";
 
@@ -15,6 +17,14 @@ export interface MapSource extends StageSource {
   readOwn: () => { id: number | null; reducedMotion: boolean };
   /** Stellt das Jelly neben ein anderes oder mit `null` weg. Liefert das neue Ziel. */
   setFollow: (playerId: number | null) => Promise<number | null>;
+  /** Die Gesten, die zwei Jellies zusammen machen können. */
+  readPartnerEmotes: () => Promise<CatalogEntry[]>;
+  /** Fordert ein Jelly zu einem Partner-Emote auf. */
+  invitePartner: (key: string, partnerId: number) => Promise<PartnerInvite>;
+  /** Zieht die eigene Aufforderung zurück. */
+  cancelInvite: (id: number) => Promise<void>;
+  /** Hört auf alle Ereignisse der LAN, auch auf solche, die die Bühne nicht kennt. */
+  onInviteEvent: (handler: (event: StageEvent) => void) => void;
 }
 
 /**
@@ -25,12 +35,21 @@ export interface MapSource extends StageSource {
  */
 export async function createDesktopSource(): Promise<MapSource> {
   const early: StageEvent[] = [];
+  const earlyMoves: StageMove[] = [];
   let listener: StreamListener | null = null;
   let own = { id: null as number | null, reducedMotion: false };
+  let onInvite: ((event: StageEvent) => void) | null = null;
   await backend.onStageEvent((event) => {
+    onInvite?.(event);
     if (listener) listener.onEvent(event);
     else early.push(event);
   });
+  await backend.onStageMove((move) => {
+    if (listener) listener.onMove(move);
+    else earlyMoves.push(move);
+  });
+  // Vor dem ersten Lesen gibt es nichts zurückzusetzen: Das Lesen holt ohnehin den neuen Stand.
+  await backend.onStreamReset(() => listener?.onReset());
   return {
     readState: async () => {
       const state = await backend.getMapState();
@@ -43,11 +62,20 @@ export async function createDesktopSource(): Promise<MapSource> {
       for (const event of early.splice(0)) {
         if (event.id > firstEventId) next.onEvent(event);
       }
+      for (const move of earlyMoves.splice(0)) next.onMove(move);
     },
     readOwn: () => own,
     setFollow: async (playerId) => {
       const game = await backend.setFollow(playerId);
       return game.me?.follow_player_id ?? null;
+    },
+    readPartnerEmotes: async () => (await backend.getCatalog()).partner_emotes,
+    invitePartner: async (key, partnerId) => (await backend.invitePartner(key, partnerId)).invite,
+    cancelInvite: async (id) => {
+      await backend.answerPartner(id, "cancelled");
+    },
+    onInviteEvent: (handler) => {
+      onInvite = handler;
     },
   };
 }

@@ -17,6 +17,7 @@ const (
 	AdminActionRules       = "lan.rules"
 	AdminActionJoinCode    = "lan.join_code"
 	AdminActionEventCode   = "event_code.create"
+	AdminActionSeatCode    = "seat.code"
 
 	maxAdminActionRows = 200
 )

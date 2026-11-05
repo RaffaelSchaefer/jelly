@@ -94,12 +94,11 @@ func Run(
 		return Stats{}, err
 	}
 	client := apiClient{httpClient: httpClient, baseURL: strings.TrimRight(config.BaseURL, "/")}
-	board := &offerBoard{guard: sync.Mutex{}, offers: []partnerOffer{}}
 	results := &counters{}
 	var waitGroup sync.WaitGroup
 	for index := range config.Players {
 		player := bot{
-			client: client, board: board, results: results, config: config,
+			client: client, results: results, config: config,
 			index: index, playerID: 0, token: "",
 		}
 		// Concurrency plan: one goroutine per bot, started here. Each ends when ctx ends and

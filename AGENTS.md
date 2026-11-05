@@ -11,7 +11,7 @@ Oberfläche mit React Three Fiber (`src/`), dazu `apps/server` in Go. Das 3D-Jel
 `packages/jelly-scene` (`@jelly/scene`), App und Bühne des Servers zeigen damit dasselbe Jelly. Die
 3D-Bühne steht in `packages/jelly-stage` (`@jelly/stage`), Server-Seite und Karte der App zeigen
 damit dieselbe Halle. Der Server entscheidet über XP, Level, Cosmetics und Erfolge. In der App spricht
-Rust mit ihm und hält das Token, lokal liegen nur Token und Geräte-Einstellungen. Die Oberfläche zeigt
+Rust mit ihm und hält das Secret, lokal liegen nur Secret und Geräte-Einstellungen. Die Oberfläche zeigt
 nur an. Regeln, Aufbau und Vertrag des Servers stehen in
 [apps/server/README.md](apps/server/README.md) und [apps/server/docs/api.md](apps/server/docs/api.md).
 
@@ -51,10 +51,12 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
   `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
   `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
-- `src/panels/PeoplePanel.tsx`: Panel „Dabei“ mit zwei Reitern. `src/useFollow.ts`,
-  `src/panels/FollowTab.tsx`: Dazustellen zu einem anderen Jelly, die Liste kommt aus `GET /v1/stage`.
-  `src/usePartnerEmote.ts`, `src/panels/PartnerTab.tsx`: Partner-Emotes mit Code
-  (`POST /v1/partner-emote` und `/join`), der Beitritt erreicht den Startenden per `partner.emote`.
+- Dazustellen geht auf der Karte (`src/map/main.ts`), `src/useFollow.ts` lässt das Pet darauf reagieren.
+  Partner-Emotes als Aufforderung
+  (`POST` und `PATCH /v1/partner-emotes`): Auffordern geht in `src/map/partner.ts`, Antworten und Duett im Pet
+  (`src/usePartnerEmote.ts`, `src/panels/PartnerInvitePopup.tsx`). Das andere Jelly erfährt davon per
+  `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`. Beide Ereignisse schließen
+  die Karte (`closes_map` in `src-tauri/src/events.rs`).
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
   (Noten, reine Logik): die Stimme des Jellys. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
@@ -66,18 +68,19 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben).
 - `packages/jelly-stage/src/`: die Bühne als reines Three.js. `view.ts` startet sie auf einer Canvas,
   `source.ts` beschreibt ihre Daten, `labels.ts` und `picking.ts` zeichnen Namen und finden das Jelly
-  unter dem Zeiger, der Rest ist der Raum und wie die Jellies darin laufen.
+  unter dem Zeiger, `moves.ts` und `walking.ts` spielen die Wege des Servers ab, der Rest ist der Raum.
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
-  `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau). `src/MapDrop.tsx`: der Glas-Tropfen
-  am Jelly, der sie öffnet.
+  `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
+  `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
+  sie öffnet.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
-  `api.rs` (HTTP), `api/types.rs` (Server-Typen),
+  `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
   `events.rs` (Server-Stream), `map.rs` (Fenster der Karte), `error.rs`, `pet.rs` (lokaler Stand,
   reine Regeln), `store.rs` (atomares Speichern von `jelly.json`).
 
 ## Regeln, die man leicht übersieht
 
-- **Server, Rust und TypeScript spiegeln sich.** Server-Typen stehen in `api/types.rs` und
+- **Server, Rust und TypeScript spiegeln sich.** Server-Typen stehen in `api/types.rs`, `api/stage.rs` und
   `src/pet/types.ts` mit den snake_case-Namen aus `apps/server/docs/openapi.json`, lokale Typen in
   `pet.rs` und `types.ts`. Immer alle Seiten ändern. Der Server erzwingt, die App zeigt nur an.
 - **Server-Typen ohne `deny_unknown_fields`.** Der Server darf Felder, Ereignisse und Fehlercodes

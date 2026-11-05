@@ -7,15 +7,16 @@
  * @module
  */
 
+import { isPartnerMotionKey } from "@jelly/scene/partner-emotes";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { desktop, resizeWindow } from "./backend";
 import JoinPanel from "./panels/JoinPanel";
 import LevelUpPanel from "./panels/LevelUpPanel";
-import PeoplePanel, { PEOPLE_TABS, type PeopleTab } from "./panels/PeoplePanel";
+import PartnerInvitePopup from "./panels/PartnerInvitePopup";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
-import { PREVIEW_ME, stageLayout, type Me, type Report } from "./pet";
+import { PREVIEW_ME, stageLayout, type Cosmetic, type Me, type Report } from "./pet";
 import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
 import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
@@ -27,13 +28,12 @@ const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").
 /** Panels im Glas-Stil. „Aussehen“, Emotes und Schilder sind keine, sie liegen direkt auf der Bühne. */
 type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs">;
 
-/** Überschrift des offenen Panels. Bei XP und „Dabei“ setzt sie der gewählte Reiter. */
-function panelTitle(panel: GlassPanelId, xpTab: XpTab, peopleTab: PeopleTab, me: Me) {
+/** Überschrift des offenen Panels. Bei XP setzt sie der gewählte Reiter. */
+function panelTitle(panel: GlassPanelId, xpTab: XpTab, me: Me) {
   const titles: Record<GlassPanelId, string> = {
     lan: XP_TABS.find((tab) => tab.id === xpTab)!.title,
     levelup: `${me.name} ist eine Stufe weiter.`,
     settings: "Ein bisschen Feintuning.",
-    follow: PEOPLE_TABS.find((tab) => tab.id === peopleTab)!.title,
   };
   return titles[panel];
 }
@@ -63,7 +63,7 @@ function useWindowFit(size: number) {
   }, [width, height]);
 }
 
-/** Ob erst ein Konto oder ein Beitritt nötig ist, bevor das Pet mitspielt. */
+/** Ob erst ein Code nötig ist, bevor das Pet mitspielt. */
 function needsJoin({ game, ready }: PetGame) {
   if (!desktop || !ready) return false;
   return game.me === null || (game.lan.current !== null && game.lan.joined === false);
@@ -92,16 +92,14 @@ interface PanelContentProps {
   game: PetGame;
   me: Me;
   xpTab: XpTab;
-  peopleTab: PeopleTab;
   sliders: ReturnType<typeof useSettingSliders>;
   onXpTab: (tab: XpTab) => void;
-  onPeopleTab: (tab: PeopleTab) => void;
   onClose: () => void;
 }
 
 /** Inhalt des offenen Panels. */
 function PanelContent(props: PanelContentProps) {
-  const { panel, game, me, xpTab, peopleTab, sliders, onXpTab, onPeopleTab, onClose } = props;
+  const { panel, game, me, xpTab, sliders, onXpTab, onClose } = props;
   const { catalog, ready, busy } = game;
   const disabled = busy || !ready;
   if (panel === "lan") {
@@ -118,14 +116,11 @@ function PanelContent(props: PanelContentProps) {
     );
   }
   if (panel === "levelup") {
-    const equipAndClose = (id: string) => {
-      void game.equip(id);
+    const equipAndClose = (item: Cosmetic) => {
+      void game.equip(item.slot, item.id);
       onClose();
     };
     return <LevelUpPanel {...{ me, catalog, disabled, onClose }} onEquip={equipAndClose} />;
-  }
-  if (panel === "follow") {
-    return <PeoplePanel {...{ game, me }} tab={peopleTab} onTab={onPeopleTab} />;
   }
   const { settings } = game.game;
   return (
@@ -159,13 +154,6 @@ function PetDock({
         onClick={() => onToggle("lan")}
       />
       <DockButton
-        icon="users"
-        label="Dabei"
-        title="Dabei"
-        expanded={panel === "follow"}
-        onClick={() => onToggle("follow")}
-      />
-      <DockButton
         icon="palette"
         label="Aussehen"
         title="Aussehen"
@@ -197,15 +185,14 @@ function Status({ game }: { game: PetGame }) {
   );
 }
 
-/** Konto anlegen oder beitreten, statt Panels und Dock. */
+/** Code einlösen, statt Panels und Dock. */
 function JoinControls({ game }: { game: PetGame }) {
   return (
     <Panel title="Willkommen auf der LAN.">
       <JoinPanel
         game={game.game}
         disabled={game.busy}
-        onRegister={(code, name, color) => void game.register(code, name, color)}
-        onJoin={(code) => void game.joinLan(code)}
+        onRedeem={(code, name, color) => void game.redeemAccess(code, name, color)}
       />
     </Panel>
   );
@@ -229,11 +216,36 @@ function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
   return panel !== null && panel !== "look" && panel !== "emotes" && panel !== "signs";
 }
 
+/** Was über dem Dock steht: der Code, eine Aufforderung oder das offene Panel. */
+function OverDock({
+  panel,
+  joining,
+  ...content
+}: Omit<PanelContentProps, "panel"> & { panel: PanelId | null; joining: boolean }) {
+  const { game, me, xpTab, onClose } = content;
+  if (joining) return <JoinControls game={game} />;
+  // Vor dem Panel: Eine Aufforderung läuft ab, das Panel kann warten.
+  if (game.incoming) {
+    return (
+      <PartnerInvitePopup
+        incoming={game.incoming}
+        disabled={game.partnerDisabled}
+        onAnswer={(accepted) => void game.answerInvite(accepted)}
+      />
+    );
+  }
+  if (!isGlassPanel(panel)) return null;
+  return (
+    <Panel title={panelTitle(panel, xpTab, me)} onClose={onClose}>
+      <PanelContent panel={panel} {...content} />
+    </Panel>
+  );
+}
+
 /** Die ganze App. */
 export default function App() {
   const [panel, setPanel] = useState<PanelId | null>(null);
   const [xpTab, setXpTab] = useState<XpTab>("overview");
-  const [peopleTab, setPeopleTab] = useState<PeopleTab>("follow");
   const openLevelUp = useCallback(() => setPanel("levelup"), []);
   const game = usePet(openLevelUp);
   const { settings } = game.game;
@@ -247,10 +259,11 @@ export default function App() {
 
   const close = useCallback(() => setPanel(null), []);
   // Das Panel verdeckt Jelly und Sprechblase: Sonst sähe man vom Partner-Emote nichts.
-  const partnerOpen = panel === "follow" && peopleTab === "partner";
+  const duet = game.activeEmote !== null && isPartnerMotionKey(game.activeEmote.key);
+  const panelOpen = isGlassPanel(panel);
   useEffect(() => {
-    if (partnerOpen && game.activeEmote) close();
-  }, [partnerOpen, game.activeEmote, close]);
+    if (duet && panelOpen) close();
+  }, [duet, panelOpen, close]);
   // Das Level-Panel gehört zum XP-Knopf: Der schließt es auch.
   const toggle = (next: PanelId) =>
     setPanel((current) =>
@@ -276,16 +289,10 @@ export default function App() {
           onClose={close}
         />
         <section className="pet-controls" aria-label="Pet-Steuerung">
-          {joining ? <JoinControls game={game} /> : null}
-          {!joining && isGlassPanel(panel) ? (
-            <Panel title={panelTitle(panel, xpTab, peopleTab, me)} onClose={close}>
-              <PanelContent
-                {...{ panel, game, me, xpTab, peopleTab, sliders, onClose: close }}
-                onXpTab={setXpTab}
-                onPeopleTab={setPeopleTab}
-              />
-            </Panel>
-          ) : null}
+          <OverDock
+            {...{ panel, joining, game, me, xpTab, sliders, onClose: close }}
+            onXpTab={setXpTab}
+          />
           {joining ? null : <PetDock me={me} panel={panel} onToggle={toggle} />}
         </section>
         <Status game={game} />

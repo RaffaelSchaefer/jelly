@@ -9,6 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"golang.org/x/time/rate"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/movement"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
@@ -52,6 +53,8 @@ type apiServer struct {
 	playerRequests *playerLimiters
 	// streams limits the open event streams.
 	streams *streamSlots
+	// planner decides where the jellies walk.
+	planner *movement.Planner
 }
 
 // newAPIServer creates the state that all routes share.
@@ -63,12 +66,29 @@ func newAPIServer(dependencies Dependencies) *apiServer {
 		codeAttempts:   newPlayerLimiters(codeAttemptsPerMinute, codeAttemptBurst),
 		playerRequests: newPlayerLimiters(playerRequestsPerMinute, playerRequestBurst),
 		streams:        newStreamSlots(),
+		planner:        movement.NewPlanner(),
 	}
 }
 
-// NewHandler builds the HTTP handler.
+// NewHandler builds the HTTP handler without the background work, which is enough for tests.
 func NewHandler(dependencies Dependencies) http.Handler {
+	return NewService(dependencies).Handler
+}
+
+// Service is the HTTP handler together with the work that runs without any request.
+type Service struct {
+	Handler http.Handler
+	server  *apiServer
+}
+
+// NewService builds the handler and prepares the background work.
+func NewService(dependencies Dependencies) *Service {
 	server := newAPIServer(dependencies)
+	return &Service{Handler: server.buildHandler(), server: server}
+}
+
+// buildHandler registers all routes.
+func (server *apiServer) buildHandler() http.Handler {
 	mux := http.NewServeMux()
 	contract := buildContractAPI(mux)
 	server.addContractRoutes(contract)
@@ -80,9 +100,9 @@ func NewHandler(dependencies Dependencies) http.Handler {
 	server.addHealthRoute(mux)
 	server.addSessionRoutes(mux)
 	server.addAdminRoutes(mux)
-	if dependencies.Web != nil {
+	if server.Web != nil {
 		// Without a method, so that it does not collide with the catch-all of the version above.
-		mux.Handle("/", dependencies.Web)
+		mux.Handle("/", server.Web)
 	}
 	return mux
 }
@@ -94,6 +114,7 @@ func (server *apiServer) addContractRoutes(contract huma.API) {
 	server.addActionRoutes(contract)
 	server.addPartnerRoutes(contract)
 	server.addStageRoutes(contract)
+	server.addStackRoutes(contract)
 }
 
 // currentMillis returns the current server time in Unix milliseconds.

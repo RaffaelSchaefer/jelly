@@ -3,11 +3,16 @@
 // All times are Unix milliseconds.
 package rules
 
-import "errors"
+import (
+	"errors"
+	"slices"
+)
 
 const (
 	// NoPokeYet marks that a player has not earned poke XP in this LAN.
 	NoPokeYet int64 = 0
+	// NoStackLimit lets stacks grow as high as the players can build them.
+	NoStackLimit = 0
 
 	xpPerLevel      = 100
 	millisPerSecond = 1000
@@ -22,12 +27,20 @@ const (
 	defaultReportsPerWindow      = 8
 	defaultPresenceWindowSeconds = 5400
 	defaultEmoteCooldownSeconds  = 3
-	defaultPartnerCodeSeconds    = 120
+	defaultPartnerInviteSeconds  = 120
 	defaultPartnerXP             = 2
 	defaultFullHousePercent      = 33
 	defaultMaxPlayers            = 120
 	defaultMaxStreams            = 200
 	defaultMaxPlayerStreams      = 3
+	defaultSnackRunSeconds       = 14
+	defaultTripSeconds           = 300
+	defaultFollowSeconds         = 1800
+	defaultNearDistance          = 6.0
+	defaultWalkSpeed             = 1.4
+	defaultStackSeconds          = 120
+	defaultHighlightSeconds      = 10
+	defaultHighlightCooldown     = 30
 	maxPercent                   = 100
 )
 
@@ -56,8 +69,8 @@ type Rules struct {
 	PresenceWindowSeconds int64 `json:"presence_window"`
 	// EmoteCooldownSeconds is the time between two emotes of one player.
 	EmoteCooldownSeconds int64 `json:"emote_cooldown"`
-	// PartnerCodeSeconds is how long a partner emote code can be entered.
-	PartnerCodeSeconds int64 `json:"partner_code_seconds"`
+	// PartnerInviteSeconds is how long a partner emote invite can be answered.
+	PartnerInviteSeconds int64 `json:"partner_invite_seconds"`
 	// PartnerXP is the XP both players get for a partner emote with someone new in this LAN.
 	PartnerXP int `json:"partner_xp"`
 	// FullHousePercent is the share of the LAN's players that must redeem one event code together.
@@ -68,63 +81,99 @@ type Rules struct {
 	MaxStreams int `json:"max_streams"`
 	// MaxPlayerStreams limits the open event streams of one player.
 	MaxPlayerStreams int `json:"max_player_streams"`
+	// SnackRunSeconds is how long a jelly stays at the snack bar after a food or drink report.
+	SnackRunSeconds int64 `json:"snack_run_seconds"`
+	// TripSeconds is how long a jelly stays at the point of a trip before it walks back.
+	TripSeconds int64 `json:"trip_seconds"`
+	// FollowSeconds is how long a jelly follows another one before it walks back.
+	FollowSeconds int64 `json:"follow_seconds"`
+	// NearDistance is how far apart two jellies count as next to each other, in jelly units. A
+	// jelly is about 1.7 wide, the hall 21 wide and 40 deep.
+	NearDistance float64 `json:"near_distance"`
+	// WalkSpeed is how fast jellies walk in jelly units per second, so a walk takes its length
+	// divided by this.
+	WalkSpeed float64 `json:"walk_speed"`
+	// StackSeconds is how long a stack stands before it falls apart.
+	StackSeconds int64 `json:"stack_seconds"`
+	// StackMaxMembers limits how many jellies fit on one stack. 0 means no limit.
+	StackMaxMembers int `json:"stack_max_members"`
+	// HighlightSeconds is how long a highlighted jelly lights up.
+	HighlightSeconds int64 `json:"highlight_seconds"`
+	// HighlightCooldownSeconds is the time between two highlights of one player.
+	HighlightCooldownSeconds int64 `json:"highlight_cooldown"`
 }
 
 // DefaultRules returns the starting values of a new LAN.
 func DefaultRules() Rules {
 	return Rules{
-		PokeIntervalSeconds:   defaultPokeIntervalSeconds,
-		PokeXP:                defaultPokeXP,
-		PokeMaxTicks:          defaultPokeMaxTicks,
-		FoodXP:                defaultFoodXP,
-		DrinkXP:               defaultDrinkXP,
-		ReportCooldownSeconds: defaultReportCooldownSeconds,
-		ReportWindowSeconds:   defaultReportWindowSeconds,
-		ReportsPerWindow:      defaultReportsPerWindow,
-		PresenceWindowSeconds: defaultPresenceWindowSeconds,
-		EmoteCooldownSeconds:  defaultEmoteCooldownSeconds,
-		PartnerCodeSeconds:    defaultPartnerCodeSeconds,
-		PartnerXP:             defaultPartnerXP,
-		FullHousePercent:      defaultFullHousePercent,
-		MaxPlayers:            defaultMaxPlayers,
-		MaxStreams:            defaultMaxStreams,
-		MaxPlayerStreams:      defaultMaxPlayerStreams,
+		PokeIntervalSeconds:      defaultPokeIntervalSeconds,
+		PokeXP:                   defaultPokeXP,
+		PokeMaxTicks:             defaultPokeMaxTicks,
+		FoodXP:                   defaultFoodXP,
+		DrinkXP:                  defaultDrinkXP,
+		ReportCooldownSeconds:    defaultReportCooldownSeconds,
+		ReportWindowSeconds:      defaultReportWindowSeconds,
+		ReportsPerWindow:         defaultReportsPerWindow,
+		PresenceWindowSeconds:    defaultPresenceWindowSeconds,
+		EmoteCooldownSeconds:     defaultEmoteCooldownSeconds,
+		PartnerInviteSeconds:     defaultPartnerInviteSeconds,
+		PartnerXP:                defaultPartnerXP,
+		FullHousePercent:         defaultFullHousePercent,
+		MaxPlayers:               defaultMaxPlayers,
+		MaxStreams:               defaultMaxStreams,
+		MaxPlayerStreams:         defaultMaxPlayerStreams,
+		SnackRunSeconds:          defaultSnackRunSeconds,
+		TripSeconds:              defaultTripSeconds,
+		FollowSeconds:            defaultFollowSeconds,
+		NearDistance:             defaultNearDistance,
+		WalkSpeed:                defaultWalkSpeed,
+		StackSeconds:             defaultStackSeconds,
+		StackMaxMembers:          NoStackLimit,
+		HighlightSeconds:         defaultHighlightSeconds,
+		HighlightCooldownSeconds: defaultHighlightCooldown,
 	}
 }
 
 // ValidateRules rejects values that would break the game, such as a zero interval.
 func ValidateRules(gameRules Rules) error {
-	for _, duration := range []int64{
-		gameRules.PokeIntervalSeconds, gameRules.PokeMaxTicks, gameRules.ReportCooldownSeconds,
-		gameRules.ReportWindowSeconds, gameRules.PresenceWindowSeconds,
-		gameRules.PartnerCodeSeconds,
-	} {
-		if duration <= 0 {
-			return ErrInvalidRules
-		}
-	}
-	for _, amount := range []int{
-		gameRules.PokeXP, gameRules.FoodXP, gameRules.DrinkXP, gameRules.ReportsPerWindow,
-		gameRules.PartnerXP,
-	} {
-		if amount < 0 {
-			return ErrInvalidRules
-		}
-	}
-	if gameRules.EmoteCooldownSeconds < 0 {
+	isValid := areDurationsValid(gameRules) && areAmountsValid(gameRules) &&
+		areLimitsValid(gameRules) && gameRules.StackMaxMembers >= NoStackLimit &&
+		gameRules.NearDistance > 0 && gameRules.WalkSpeed > 0 &&
+		gameRules.FullHousePercent >= 1 && gameRules.FullHousePercent <= maxPercent
+	if !isValid {
 		return ErrInvalidRules
-	}
-	if gameRules.FullHousePercent < 1 || gameRules.FullHousePercent > maxPercent {
-		return ErrInvalidRules
-	}
-	for _, limit := range []int{
-		gameRules.MaxPlayers, gameRules.MaxStreams, gameRules.MaxPlayerStreams,
-	} {
-		if limit < 1 {
-			return ErrInvalidRules
-		}
 	}
 	return nil
+}
+
+// areDurationsValid checks all times: most must pass, but a cooldown can be switched off.
+func areDurationsValid(gameRules Rules) bool {
+	durations := []int64{
+		gameRules.PokeIntervalSeconds, gameRules.PokeMaxTicks, gameRules.ReportCooldownSeconds,
+		gameRules.ReportWindowSeconds, gameRules.PresenceWindowSeconds,
+		gameRules.PartnerInviteSeconds, gameRules.SnackRunSeconds, gameRules.TripSeconds,
+		gameRules.StackSeconds, gameRules.HighlightSeconds, gameRules.FollowSeconds,
+	}
+	cooldowns := []int64{
+		gameRules.EmoteCooldownSeconds, gameRules.HighlightCooldownSeconds,
+	}
+	return !slices.ContainsFunc(durations, func(value int64) bool { return value <= 0 }) &&
+		!slices.ContainsFunc(cooldowns, func(value int64) bool { return value < 0 })
+}
+
+// areAmountsValid checks all XP values, where 0 is allowed.
+func areAmountsValid(gameRules Rules) bool {
+	return !slices.ContainsFunc([]int{
+		gameRules.PokeXP, gameRules.FoodXP, gameRules.DrinkXP, gameRules.ReportsPerWindow,
+		gameRules.PartnerXP,
+	}, func(value int) bool { return value < 0 })
+}
+
+// areLimitsValid checks all limits, which need room for at least one.
+func areLimitsValid(gameRules Rules) bool {
+	return !slices.ContainsFunc([]int{
+		gameRules.MaxPlayers, gameRules.MaxStreams, gameRules.MaxPlayerStreams,
+	}, func(value int) bool { return value < 1 })
 }
 
 // CalculateLevel returns the level for the XP of a LAN, starting at 1.
@@ -157,6 +206,50 @@ func CalculateNextPokeTime(gameRules Rules, lastPokeAt, joinedAt int64) int64 {
 // IsPresent reports whether a jelly with this last activity belongs on the stage.
 func IsPresent(gameRules Rules, lastSeenAt, now int64) bool {
 	return now-lastSeenAt < gameRules.PresenceWindowSeconds*millisPerSecond
+}
+
+// CalculateSnackRunEnd returns when a snack run after this report ends. Without a report, it lies
+// in the past.
+func CalculateSnackRunEnd(gameRules Rules, lastSnackAt int64) int64 {
+	if lastSnackAt == 0 {
+		return 0
+	}
+	return lastSnackAt + gameRules.SnackRunSeconds*millisPerSecond
+}
+
+// CalculateTripEnd returns when a trip started now ends.
+func CalculateTripEnd(gameRules Rules, now int64) int64 {
+	return now + gameRules.TripSeconds*millisPerSecond
+}
+
+// CalculateFollowEnd returns when a jelly that started to follow at this time walks back.
+func CalculateFollowEnd(gameRules Rules, startedAt int64) int64 {
+	return startedAt + gameRules.FollowSeconds*millisPerSecond
+}
+
+// CalculateFollowCutoff returns the time after which a started follow is still running.
+func CalculateFollowCutoff(gameRules Rules, now int64) int64 {
+	return now - gameRules.FollowSeconds*millisPerSecond
+}
+
+// CalculateStackEnd returns when a stack started now falls apart.
+func CalculateStackEnd(gameRules Rules, now int64) int64 {
+	return now + gameRules.StackSeconds*millisPerSecond
+}
+
+// IsStackFull reports whether a stack with this many jellies takes no more.
+func IsStackFull(gameRules Rules, members int) bool {
+	return gameRules.StackMaxMembers != NoStackLimit && members >= gameRules.StackMaxMembers
+}
+
+// CalculateHighlightEnd returns when a highlight started now goes out.
+func CalculateHighlightEnd(gameRules Rules, now int64) int64 {
+	return now + gameRules.HighlightSeconds*millisPerSecond
+}
+
+// IsHighlightAllowed reports whether a player may highlight again. `lastAt` is 0 without one.
+func IsHighlightAllowed(gameRules Rules, lastAt, now int64) bool {
+	return lastAt == 0 || now-lastAt >= gameRules.HighlightCooldownSeconds*millisPerSecond
 }
 
 // IsEmoteAllowed reports whether a player may emote again. `lastEmoteAt` is 0 without an emote.

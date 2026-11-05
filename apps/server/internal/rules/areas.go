@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	stageSize = 100
+	stageSize       = 100
+	roomUnitPercent = "percent"
 	// Keeps home spots away from the area edge, so wandering jellies stay inside.
 	homeMarginPercent = 10
 	// Steps of the R2 sequence, which fills a rectangle evenly for any number of places.
@@ -15,9 +16,13 @@ const (
 	spreadStepY = 0.5698402909980532
 )
 
-// Kinds of areas. Jellies stand on seats, on the stage and in the lounge, walk over cables and
-// walk around desks and the snack bar.
+// What a zone is assigned to. Jellies stand on seats, on the stage, in the lounge and in visitor
+// zones, walk over cables and around desks and the snack bar. The code only looks at this, never at
+// the name of a zone. A zone without an assignment means nothing yet.
 const (
+	AreaKindVisitors = "visitors"
+	AreaKindNone     = "none"
+
 	AreaKindSeats    = "seats"
 	AreaKindDesk     = "desk"
 	AreaKindCable    = "cable"
@@ -38,10 +43,33 @@ type Area struct {
 	Kind   string `json:"kind"`
 }
 
+// Room says what the coordinates of the stage mean, so they can become meters without a new API.
+type Room struct {
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	Unit   string `json:"unit"`
+}
+
+// DescribeRoom returns the size of the room. All coordinates are percent so far.
+func DescribeRoom() Room {
+	return Room{Width: stageSize, Height: stageSize, Unit: roomUnitPercent}
+}
+
 // HomeSpot is where a jelly wanders around, in percent of the stage.
 type HomeSpot struct {
 	X float64 `json:"home_x"`
 	Y float64 `json:"home_y"`
+}
+
+// StagePoint is a point on the stage, in percent.
+type StagePoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+// IsOnStage reports whether a point lies on the stage. NaN fails both comparisons.
+func IsOnStage(point StagePoint) bool {
+	return point.X >= 0 && point.X <= stageSize && point.Y >= 0 && point.Y <= stageSize
 }
 
 // ValidateArea checks one area. Areas may touch or overlap, the layout is only a rough map.
@@ -61,12 +89,14 @@ func ValidateArea(area Area) error {
 func listAreaKinds() []string {
 	return []string{
 		AreaKindSeats, AreaKindDesk, AreaKindCable, AreaKindStage, AreaKindLounge, AreaKindSnackbar,
+		AreaKindVisitors, AreaKindNone,
 	}
 }
 
 // IsStandingKind reports whether jellies can belong to an area of this kind.
 func IsStandingKind(kind string) bool {
-	return kind == AreaKindSeats || kind == AreaKindStage || kind == AreaKindLounge
+	return kind == AreaKindSeats || kind == AreaKindStage || kind == AreaKindLounge ||
+		kind == AreaKindVisitors
 }
 
 // WholeStage returns the area of a jelly that has no area assigned.

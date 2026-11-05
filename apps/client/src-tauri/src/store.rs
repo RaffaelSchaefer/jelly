@@ -24,13 +24,13 @@ pub struct Store {
 }
 
 impl Store {
-    /// Öffnet den Stand unter `path`. Fehlt die Datei, beginnt ein leerer Stand ohne Token.
+    /// Öffnet den Stand unter `path`. Fehlt die Datei, beginnt ein leerer Stand ohne Secret.
     ///
     /// # Fehler
     ///
     /// [`Error::Open`], wenn die Datei nicht lesbar ist, [`Error::Corrupt`], wenn sie kein
     /// gültiges JSON ist, oder ein Fehler aus [`Local::validate`]. In allen Fällen bleibt die Datei
-    /// unangetastet, damit das Token nicht still verloren geht.
+    /// unangetastet, damit das Secret nicht still verloren geht.
     pub fn open(path: PathBuf) -> Result<Self> {
         let local = match fs::read(&path) {
             Ok(contents) => serde_json::from_slice::<Local>(&contents).map_err(Error::Corrupt)?,
@@ -41,14 +41,14 @@ impl Store {
         Ok(Self { local, path })
     }
 
-    /// Merkt sich ein neues Token, etwa nach der Registrierung.
+    /// Merkt sich ein neues Secret, etwa nach dem Einlösen eines Codes.
     ///
     /// # Fehler
     ///
     /// [`Error::Save`], wenn das Speichern scheitert.
-    pub fn set_token(&mut self, token: String) -> Result<()> {
+    pub fn set_secret(&mut self, secret: String) -> Result<()> {
         self.commit(Local {
-            token: Some(token),
+            secret: Some(secret),
             ..self.local.clone()
         })
     }

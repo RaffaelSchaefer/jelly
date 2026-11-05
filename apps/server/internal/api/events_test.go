@@ -9,7 +9,7 @@ import (
 func TestXPEventsNameTheirSource(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
-	testFixture.callAPI("POST", "/v1/actions", token, `{"action":"food"}`)
+	testFixture.callAPI("POST", "/v1/reports", token, `{"kind":"food"}`)
 	events, err := testFixture.database.ListEventsAfter(t.Context(), 0)
 	if err != nil {
 		t.Fatal(err)

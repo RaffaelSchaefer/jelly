@@ -6,7 +6,7 @@
 // Studio-Licht glänzt wie das Jelly. Am Rand schillert sie wie eine Seifenblase.
 //
 // Gerechnet wird in CSS-Pixeln mit y nach unten, wie im DOM. Die Normale zeigt mit y nach oben, wie
-// in der Szene. MAX_SHAPES und SOLO_SHAPES kommen als #define aus LiquidGlass.tsx.
+// in der Szene. MAX_SHAPES, SOLO_SHAPES, SHADOW und BODY_CENTER kommen als #define aus glassMaterial.ts.
 
 uniform sampler2D uBackdrop;
 uniform vec2 uBuffer;
@@ -27,8 +27,7 @@ const float WOBBLE = 0.12;
 const float SOLO_WOBBLE = 0.04;
 // Weiter weg spielt die genaue Form keine Rolle mehr, der Schatten reicht nicht so weit.
 const float FAR = 48.0;
-// Wie viel Jelly-Farbe in der Mitte und am Rand im Tropfen steckt.
-const float BODY_CENTER = 0.32;
+// Wie viel Jelly-Farbe am Rand im Tropfen steckt. Die Mitte setzt BODY_CENTER.
 const float BODY_EDGE = 0.6;
 // Wie stark sich eine lange Fläche auch der Länge nach wölbt. Sonst spiegelt sie das Licht als Strich.
 const float BULGE = 0.55;
@@ -181,7 +180,7 @@ vec4 glassAt(vec2 uv, vec2 p, vec4 field) {
 
 // Der weiche Schatten, den der Tropfen auf alles darunter wirft.
 vec4 shadowed(vec4 behind, vec2 p) {
-  float shade = 0.3 * (1.0 - smoothstep(-6.0, 14.0, fieldAt(p - vec2(2.0, 7.0)).x));
+  float shade = SHADOW * (1.0 - smoothstep(-6.0, 14.0, fieldAt(p - vec2(2.0, 7.0)).x));
   return behind * (1.0 - shade) + vec4(0.0, 0.0, 0.0, shade);
 }
 

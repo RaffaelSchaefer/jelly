@@ -12,6 +12,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/movement"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
@@ -20,11 +21,13 @@ const (
 	streamKeepAliveTick = 30
 	// A client that takes longer to accept data has stalled and loses its stream.
 	streamWriteTimeout = 10 * time.Second
-	pathStream         = versionPrefix + "/events/stream"
+	pathStream         = versionPrefix + "/stage/events"
 	querySince         = "since"
 	paramInQuery       = "query"
 	paramInHeader      = "header"
 	headerLastEventID  = "Last-Event-ID"
+	// Tells a client it missed too much and has to read its state again.
+	streamResetMessage = "event: reset\ndata: {}\n\n"
 	// Enough to bridge a short outage on a busy LAN.
 	maxPlayerReplayEvents = 1000
 )
@@ -41,7 +44,11 @@ func (server *apiServer) addStageRoutes(contract huma.API) {
 		OperationID: "streamEvents", Method: http.MethodGet, Path: pathStream,
 		Summary: "Receive events as server-sent events",
 		Description: "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. " +
-			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events. " +
+			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events, " +
+			"further back they get `reset` and read their state again. " +
+			"`topics` is a comma-separated list of `events` and `moves`, without it both arrive. " +
+			"Messages of type `move` have no ID and carry a `Move`. " +
+			"Every new connection first gets the current move of each jelly. " +
 			"Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
 		Security:   listViewerSecurity(),
 		Parameters: buildStreamParameters(),
@@ -64,6 +71,7 @@ func buildStreamParameters() []*huma.Param {
 		{Name: querySince, In: paramInQuery, Schema: integer},
 		{Name: headerLastEventID, In: paramInHeader, Schema: integer},
 		{Name: queryStageKey, In: paramInQuery, Schema: &huma.Schema{Type: huma.TypeString}},
+		{Name: queryTopics, In: paramInQuery, Schema: &huma.Schema{Type: huma.TypeString}},
 	}
 }
 
@@ -83,15 +91,27 @@ func buildStreamResponse(contract huma.API) *huma.Response {
 	}
 }
 
-// handleState returns all visible jellies and the event ID to resume from.
-func (server *apiServer) handleState(
-	ctx context.Context, _ *noInput,
-) (*jsonOutput[store.StageState], error) {
-	return answerWith(server.Store.LoadStageState(ctx, server.currentMillis()))
+// StageAnswer is everything a stage needs to start, with the current move of each jelly.
+type StageAnswer struct {
+	store.StageState
+
+	Moves []movement.Move `json:"moves"`
 }
 
-// handleStream sends new events as SSE. It reads the event log in a loop instead of using a
-// broadcaster, so a restart or slow client cannot lose events and no extra goroutine is needed.
+// handleState returns all visible jellies, their moves and the event ID to resume from.
+func (server *apiServer) handleState(
+	ctx context.Context, _ *noInput,
+) (*jsonOutput[StageAnswer], error) {
+	state, err := server.Store.LoadStageState(ctx, server.currentMillis())
+	if err != nil {
+		return answerWith(StageAnswer{}, err)
+	}
+	server.advanceMovement(ctx)
+	return answerWith(StageAnswer{StageState: state, Moves: server.planner.ListCurrentMoves()}, nil)
+}
+
+// handleStream sends new events and moves as SSE. It reads the event log in a loop instead of using
+// a broadcaster, so a restart or slow client cannot lose events and no extra goroutine is needed.
 func (server *apiServer) handleStream(
 	writer http.ResponseWriter, request *http.Request, viewerID int64,
 ) {
@@ -99,7 +119,12 @@ func (server *apiServer) handleStream(
 		return
 	}
 	defer server.streams.releaseSlot(viewerID)
-	afterID, err := server.findStreamStart(request, viewerID)
+	topics, err := parseStreamTopics(request)
+	if err != nil {
+		server.writeError(writer, request, err)
+		return
+	}
+	afterID, isTooOld, err := server.findStreamStart(request, viewerID)
 	if err != nil {
 		server.writeError(writer, request, err)
 		return
@@ -109,18 +134,25 @@ func (server *apiServer) handleStream(
 		return
 	}
 	writer.Header().Set("Content-Type", "text/event-stream")
-	writer.Header().Set("Cache-Control", "no-store")
+	writer.Header().Set("Cache-Control", cacheControlNoStore)
 	writer.WriteHeader(http.StatusOK)
+	if isTooOld {
+		_, err = io.WriteString(writer, streamResetMessage)
+		if err != nil {
+			return
+		}
+	}
 	if controller.Flush() != nil {
 		return
 	}
-	server.sendStreamTicks(writer, request, controller, afterID)
+	cursor := &streamCursor{topics: topics, afterEvent: afterID, afterMove: 0}
+	server.sendStreamTicks(writer, request, controller, cursor)
 }
 
 // sendStreamTicks regularly writes new events until the client or the server stops.
 func (server *apiServer) sendStreamTicks(
 	writer http.ResponseWriter, request *http.Request,
-	controller *http.ResponseController, afterID int64,
+	controller *http.ResponseController, cursor *streamCursor,
 ) {
 	ticker := time.NewTicker(streamPollInterval)
 	defer ticker.Stop()
@@ -133,11 +165,10 @@ func (server *apiServer) sendStreamTicks(
 		if server.IsStopping() {
 			return
 		}
-		events, err := server.Store.ListEventsAfter(request.Context(), afterID)
-		if err != nil || extendWriteDeadline(controller) != nil {
+		if extendWriteDeadline(controller) != nil {
 			return
 		}
-		afterID, err = writeStreamTick(writer, events, afterID, tick)
+		err := server.writeStreamUpdates(request.Context(), writer, cursor, tick)
 		if err != nil || controller.Flush() != nil {
 			return
 		}
@@ -152,6 +183,15 @@ func (server *apiServer) claimStream(
 	if viewerID != noViewerPlayer && !server.playerRequests.allowAttempt(viewerID) {
 		server.writeProblem(writer, problemRateLimited())
 		return false
+	}
+	if viewerID != noViewerPlayer {
+		err := server.Store.RequireCurrentEntry(
+			request.Context(), viewerID, server.currentMillis(),
+		)
+		if err != nil {
+			server.writeError(writer, request, err)
+			return false
+		}
 	}
 	gameRules, err := server.Store.LoadCurrentRules(request.Context(), server.currentMillis())
 	if err != nil {
@@ -194,27 +234,31 @@ func writeStreamTick(
 }
 
 // findStreamStart uses `Last-Event-ID` from a reconnect, then `?since=`, then the newest event.
-// Players only get recent events, so the log does not tell them who was active when.
-func (server *apiServer) findStreamStart(request *http.Request, viewerID int64) (int64, error) {
+// Players only get recent events, so the log does not tell them who was active when. Further back,
+// they start at the newest event and are told to read their state again.
+func (server *apiServer) findStreamStart(
+	request *http.Request, viewerID int64,
+) (int64, bool, error) {
 	latestID, err := server.Store.LoadLatestEventID(request.Context())
 	if err != nil {
-		return 0, fmt.Errorf("find stream start: %w", err)
+		return 0, false, fmt.Errorf("find stream start: %w", err)
 	}
 	start := request.Header.Get(headerLastEventID)
 	if start == "" {
 		start = request.URL.Query().Get(querySince)
 	}
 	if start == "" {
-		return latestID, nil
+		return latestID, false, nil
 	}
 	afterID, err := strconv.ParseInt(start, 10, 64)
 	if err != nil || afterID < 0 {
-		return 0, store.ErrInvalidInput
+		return 0, false, store.ErrInvalidInput
 	}
-	if viewerID != noViewerPlayer {
-		return max(afterID, latestID-maxPlayerReplayEvents), nil
+	oldestID := latestID - maxPlayerReplayEvents
+	if viewerID != noViewerPlayer && afterID < oldestID {
+		return latestID, true, nil
 	}
-	return afterID, nil
+	return afterID, false, nil
 }
 
 // writeStreamEvents writes events in SSE format and returns the ID of the last one.

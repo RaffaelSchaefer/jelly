@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -12,9 +13,10 @@ import (
 )
 
 const (
-	pathMe     = "/me"
-	pathSign   = "/sign"
-	pathFollow = "/follow"
+	pathMe              = "/players/me"
+	pathSign            = "/signs/current"
+	pathCurrentTrip     = "/trips/current"
+	cacheControlNoStore = "no-store"
 )
 
 // errUnknownAction reports an action that the server does not know.
@@ -30,29 +32,41 @@ type CodeBody struct {
 	Code string `json:"code"`
 }
 
-// RegisterBody creates an account.
-type RegisterBody struct {
+// RedeemBody exchanges a code for a secret. Name and color are needed for a new account only.
+type RedeemBody struct {
 	Code  string `json:"code"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
+	Name  string `json:"name,omitempty"`
+	Color string `json:"color,omitempty"`
 }
 
-// RegisterAnswer holds the token, which is only ever sent here.
-type RegisterAnswer struct {
-	Token string            `json:"token"`
-	Me    store.PlayerState `json:"me"`
+// RedeemAnswer holds the secret, which is only ever sent here.
+type RedeemAnswer struct {
+	Secret string            `json:"secret"`
+	Me     store.PlayerState `json:"me"`
+}
+
+// redeemOutput keeps the secret out of every cache.
+type redeemOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         RedeemAnswer
 }
 
 // ProfileBody changes the profile. Missing fields stay unchanged.
 type ProfileBody struct {
-	Name     *string `json:"name,omitempty"`
-	Color    *string `json:"color,omitempty"`
-	Cosmetic *string `json:"cosmetic,omitempty"`
+	Name  *string `json:"name,omitempty"`
+	Color *string `json:"color,omitempty"`
 }
 
-// ActionBody names a poke or a food or drink report.
-type ActionBody struct {
-	Action string `json:"action"`
+// EquipBody changes one slot. Without a key, the slot is emptied.
+type EquipBody struct {
+	Slot  string  `json:"slot"`
+	Key   string  `json:"key,omitempty"`
+	Color *string `json:"color,omitempty"`
+}
+
+// ReportBody names a food or drink report.
+type ReportBody struct {
+	Kind string `json:"kind"`
 }
 
 // ActionAnswer tells how much XP an action earned.
@@ -75,12 +89,14 @@ type VersionInfo struct {
 
 // Catalog holds the fixed lists. Secret achievements are not part of it.
 type Catalog struct {
-	Colors        []rules.CatalogEntry `json:"colors"`
-	Emotes        []rules.CatalogEntry `json:"emotes"`
-	PartnerEmotes []rules.CatalogEntry `json:"partner_emotes"`
-	Signs         []rules.CatalogEntry `json:"signs"`
-	Cosmetics     []rules.Cosmetic     `json:"cosmetics"`
-	Achievements  []rules.Achievement  `json:"achievements"`
+	Colors         []rules.CatalogEntry `json:"colors"`
+	Emotes         []rules.CatalogEntry `json:"emotes"`
+	PartnerEmotes  []rules.CatalogEntry `json:"partner_emotes"`
+	Signs          []rules.CatalogEntry `json:"signs"`
+	Cosmetics      []rules.Cosmetic     `json:"cosmetics"`
+	Slots          []rules.CatalogEntry `json:"cosmetic_slots"`
+	CosmeticColors []string             `json:"cosmetic_colors"`
+	Achievements   []rules.Achievement  `json:"achievements"`
 }
 
 // addLANRoutes registers what a client reads before it has joined.
@@ -135,23 +151,37 @@ func (server *apiServer) addPlayerRoutes(contract huma.API) {
 		Summary: "Read the fixed lists",
 	}, handleCatalog)
 	addOperation(server, contract, huma.Operation{
-		OperationID: "registerPlayer", Method: http.MethodPost, Path: "/register",
-		Summary: "Create an account", DefaultStatus: http.StatusCreated,
+		OperationID: "redeemCode", Method: http.MethodPost, Path: "/auth/redeem",
+		Summary: "Exchange a code for a secret",
+		Description: "A seat code creates an account on that seat or brings back the account it " +
+			"belongs to. Name and color are required for a new account. Any older secret of the " +
+			"account stops working. A used code answers `409 code_redeemed`.",
 		Middlewares: huma.Middlewares{server.limitRegistrations},
-	}, server.handleRegister)
-	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "joinCurrentLAN", Method: http.MethodPost, Path: "/lans/current/join",
-		Summary:     "Join the running LAN with an existing account",
-		Middlewares: huma.Middlewares{server.limitCodeAttempts},
-	}, server.handleJoin)
+	}, server.handleRedeemCode)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "getMe", Method: http.MethodGet, Path: pathMe,
 		Summary: "Read the state of the player",
 	}, server.handleMe)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "updateMe", Method: http.MethodPatch, Path: pathMe,
-		Summary: "Change name, color or cosmetic",
+		Summary: "Change name or color",
 	}, server.handleUpdateProfile)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "listPlayers", Method: http.MethodGet, Path: "/players",
+		Summary: "Read the players, one page at a time",
+		Description: "Pass `next_cursor` of the last page as `cursor`. " +
+			"Without `next_cursor`, it was the last page.",
+	}, server.handleListPublicPlayers)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "getPlayer", Method: http.MethodGet, Path: "/players/{id}",
+		Summary: "Read the profile of a player",
+	}, server.handlePlayerProfile)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "equipCosmetic", Method: http.MethodPut, Path: "/cosmetics/equipped",
+		Summary: "Put on a cosmetic or empty a slot",
+		Description: "Without `key`, the slot is emptied. `color` is hex text from " +
+			"`cosmetic_colors` in the catalog and only works for colorable cosmetics.",
+	}, server.handleEquipCosmetic)
 }
 
 // addActionRoutes registers what a player does during the LAN.
@@ -163,16 +193,21 @@ func (server *apiServer) addActionRoutes(contract huma.API) {
 			"`presence_window` passed since the last action.",
 	}, server.handlePresence)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "applyAction", Method: http.MethodPost, Path: "/actions",
-		Summary: "Poke or report food or drink",
-	}, server.handleAction)
+		OperationID: "pokeJelly", Method: http.MethodPost, Path: "/pokes",
+		Summary:     "Poke the jelly",
+		Description: "A poke that comes too early is no error, it earns `xp_gained: 0`.",
+	}, server.handlePoke)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "redeemEventCode", Method: http.MethodPost, Path: "/event-codes/redeem",
+		OperationID: "createReport", Method: http.MethodPost, Path: "/reports",
+		Summary: "Report food or drink",
+	}, server.handleReport)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "redeemEventCode", Method: http.MethodPost, Path: "/event-codes/redemptions",
 		Summary:     "Redeem an event code",
 		Middlewares: huma.Middlewares{server.limitCodeAttempts},
 	}, server.handleRedeem)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "playEmote", Method: http.MethodPost, Path: "/emote",
+		OperationID: "playEmote", Method: http.MethodPost, Path: "/emotes",
 		Summary: "Play an emote",
 	}, server.handleEmote)
 	addPlayerOperation(server, contract, huma.Operation{
@@ -184,15 +219,22 @@ func (server *apiServer) addActionRoutes(contract huma.API) {
 		Summary: "Lower the sign", DefaultStatus: http.StatusOK,
 	}, server.handleClearSign)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "followPlayer", Method: http.MethodPut, Path: pathFollow,
-		Summary: "Stand next to another jelly",
-		Description: "The server may end this by itself later, " +
+		OperationID: "goToPoint", Method: http.MethodPost, Path: "/trips/goto",
+		Summary: "Walk to a point and come back after a while",
+		Description: "`x` and `y` are percent of the stage. The jelly walks to the free spot " +
+			"closest to the point and back after `trip_seconds`. This ends following.",
+	}, server.handleStartTrip)
+	addPlayerOperation(server, contract, huma.Operation{
+		OperationID: "followPlayer", Method: http.MethodPost, Path: "/trips/follow",
+		Summary: "Follow another jelly",
+		Description: "The jelly walks back after `follow_seconds`, see `follow_until`. " +
+			"The server may end this by itself, " +
 			"so read `follow_player_id` instead of assuming it stays set.",
 	}, server.handleSetFollow)
 	addPlayerOperation(server, contract, huma.Operation{
-		OperationID: "stopFollowing", Method: http.MethodDelete, Path: pathFollow,
-		Summary: "Walk away from the other jelly", DefaultStatus: http.StatusOK,
-	}, server.handleClearFollow)
+		OperationID: "endTrip", Method: http.MethodDelete, Path: pathCurrentTrip,
+		Summary: "Go back to the own place", DefaultStatus: http.StatusOK,
+	}, server.handleEndTrip)
 }
 
 // answerWith wraps a result for the response, or passes on the error.
@@ -212,33 +254,31 @@ func handleCatalog(_ context.Context, _ *noInput) (*jsonOutput[Catalog], error) 
 		}
 	}
 	return answerWith(Catalog{
-		Colors:        rules.ListColors(),
-		Emotes:        rules.ListEmotes(),
-		PartnerEmotes: rules.ListPartnerEmotes(),
-		Signs:         rules.ListSigns(),
-		Cosmetics:     rules.ListCosmetics(),
-		Achievements:  achievements,
+		Colors:         rules.ListColors(),
+		Emotes:         rules.ListEmotes(),
+		PartnerEmotes:  rules.ListPartnerEmotes(),
+		Signs:          rules.ListSigns(),
+		Cosmetics:      rules.ListCosmetics(),
+		Slots:          rules.ListCosmeticSlots(),
+		CosmeticColors: rules.ListCosmeticColors(),
+		Achievements:   achievements,
 	}, nil)
 }
 
-// handleRegister creates an account and returns its token once.
-func (server *apiServer) handleRegister(
-	ctx context.Context, input *jsonInput[RegisterBody],
-) (*jsonOutput[RegisterAnswer], error) {
-	registration := store.RegisterRequest{
+// handleRedeemCode exchanges a code for a secret, which is only ever sent here.
+func (server *apiServer) handleRedeemCode(
+	ctx context.Context, input *jsonInput[RedeemBody],
+) (*redeemOutput, error) {
+	request := store.RedeemRequest{
 		Code: input.Body.Code, Name: input.Body.Name, Color: input.Body.Color,
 	}
-	token, state, err := server.Store.RegisterPlayer(ctx, registration, server.currentMillis())
-	return answerWith(RegisterAnswer{Token: token, Me: state}, err)
-}
-
-// handleJoin adds an existing account to the running LAN.
-func (server *apiServer) handleJoin(
-	ctx context.Context, playerID int64, input *jsonInput[CodeBody],
-) (*jsonOutput[store.PlayerState], error) {
-	return answerWith(
-		server.Store.JoinCurrentLAN(ctx, playerID, input.Body.Code, server.currentMillis()),
-	)
+	secret, state, err := server.Store.RedeemCode(ctx, request, server.currentMillis())
+	if err != nil {
+		return nil, err
+	}
+	return &redeemOutput{
+		CacheControl: cacheControlNoStore, Body: RedeemAnswer{Secret: secret, Me: state},
+	}, nil
 }
 
 // handleMe returns the state of the calling player.
@@ -248,12 +288,55 @@ func (server *apiServer) handleMe(
 	return answerWith(server.Store.LoadPlayerState(ctx, playerID, server.currentMillis()))
 }
 
-// handleUpdateProfile changes name, color or cosmetic.
+// PlayerPathInput names a player in the path.
+type PlayerPathInput struct {
+	ID int64 `minimum:"1" path:"id"`
+}
+
+// PlayerPageInput names a page of the player list.
+type PlayerPageInput struct {
+	Cursor string `query:"cursor"`
+	Limit  int    `query:"limit"  default:"50" maximum:"200" minimum:"1"`
+}
+
+// handlePlayerProfile returns what others can read about a player.
+func (server *apiServer) handlePlayerProfile(
+	ctx context.Context, _ int64, input *PlayerPathInput,
+) (*jsonOutput[store.PlayerProfile], error) {
+	return answerWith(server.Store.LoadPlayerProfile(ctx, input.ID, server.currentMillis()))
+}
+
+// handleListPublicPlayers returns one page of the player list.
+func (server *apiServer) handleListPublicPlayers(
+	ctx context.Context, _ int64, input *PlayerPageInput,
+) (*jsonOutput[store.PlayerList], error) {
+	var afterID int64
+	if input.Cursor != "" {
+		var err error
+		afterID, err = strconv.ParseInt(input.Cursor, 10, 64)
+		if err != nil {
+			return nil, store.ErrInvalidInput
+		}
+	}
+	return answerWith(server.Store.ListPublicPlayers(ctx, afterID, input.Limit))
+}
+
+// handleEquipCosmetic changes one slot.
+func (server *apiServer) handleEquipCosmetic(
+	ctx context.Context, playerID int64, input *jsonInput[EquipBody],
+) (*jsonOutput[store.PlayerState], error) {
+	choice := store.CosmeticChoice{
+		Slot: input.Body.Slot, Key: input.Body.Key, Color: input.Body.Color,
+	}
+	return answerWith(server.Store.EquipCosmetic(ctx, playerID, choice, server.currentMillis()))
+}
+
+// handleUpdateProfile changes name or color.
 func (server *apiServer) handleUpdateProfile(
 	ctx context.Context, playerID int64, input *jsonInput[ProfileBody],
 ) (*jsonOutput[store.PlayerState], error) {
 	update := store.ProfileUpdate{
-		Name: input.Body.Name, Color: input.Body.Color, Cosmetic: input.Body.Cosmetic,
+		Name: input.Body.Name, Color: input.Body.Color,
 	}
 	return answerWith(server.Store.UpdateProfile(ctx, playerID, update, server.currentMillis()))
 }
@@ -265,23 +348,23 @@ func (server *apiServer) handlePresence(
 	return answerWith(server.Store.RecordPresence(ctx, playerID, server.currentMillis()))
 }
 
-// handleAction applies a poke or a food or drink report.
-func (server *apiServer) handleAction(
-	ctx context.Context, playerID int64, input *jsonInput[ActionBody],
+// handlePoke applies a poke.
+func (server *apiServer) handlePoke(
+	ctx context.Context, playerID int64, _ *noInput,
 ) (*jsonOutput[ActionAnswer], error) {
-	var gainedXP int
-	var state store.PlayerState
-	var err error
-	switch input.Body.Action {
-	case rules.ActionPoke:
-		gainedXP, state, err = server.Store.ApplyPoke(ctx, playerID, server.currentMillis())
-	case rules.ActionFood, rules.ActionDrink:
-		gainedXP, state, err = server.Store.ApplyReport(
-			ctx, playerID, input.Body.Action, server.currentMillis(),
-		)
-	default:
-		err = errUnknownAction
+	gainedXP, state, err := server.Store.ApplyPoke(ctx, playerID, server.currentMillis())
+	return answerWith(ActionAnswer{XPGained: gainedXP, Me: state}, err)
+}
+
+// handleReport applies a food or drink report.
+func (server *apiServer) handleReport(
+	ctx context.Context, playerID int64, input *jsonInput[ReportBody],
+) (*jsonOutput[ActionAnswer], error) {
+	kind := input.Body.Kind
+	if kind != rules.ActionFood && kind != rules.ActionDrink {
+		return nil, errUnknownAction
 	}
+	gainedXP, state, err := server.Store.ApplyReport(ctx, playerID, kind, server.currentMillis())
 	return answerWith(ActionAnswer{XPGained: gainedXP, Me: state}, err)
 }
 
@@ -322,7 +405,7 @@ func (server *apiServer) handleClearSign(
 	return answerWith(server.Store.UpdateSign(ctx, playerID, "", server.currentMillis()))
 }
 
-// handleSetFollow stands next to another jelly.
+// handleSetFollow follows another jelly.
 func (server *apiServer) handleSetFollow(
 	ctx context.Context, playerID int64, input *jsonInput[FollowBody],
 ) (*jsonOutput[store.PlayerState], error) {
@@ -330,13 +413,20 @@ func (server *apiServer) handleSetFollow(
 		return nil, store.ErrInvalidFollow
 	}
 	return answerWith(
-		server.Store.UpdateFollow(ctx, playerID, input.Body.PlayerID, server.currentMillis()),
+		server.Store.StartFollow(ctx, playerID, input.Body.PlayerID, server.currentMillis()),
 	)
 }
 
-// handleClearFollow walks away from the other jelly.
-func (server *apiServer) handleClearFollow(
+// handleStartTrip sends the jelly to a point on the stage.
+func (server *apiServer) handleStartTrip(
+	ctx context.Context, playerID int64, input *jsonInput[rules.StagePoint],
+) (*jsonOutput[store.PlayerState], error) {
+	return answerWith(server.Store.StartTrip(ctx, playerID, input.Body, server.currentMillis()))
+}
+
+// handleEndTrip ends a trip or following and goes back to the own place.
+func (server *apiServer) handleEndTrip(
 	ctx context.Context, playerID int64, _ *noInput,
 ) (*jsonOutput[store.PlayerState], error) {
-	return answerWith(server.Store.UpdateFollow(ctx, playerID, 0, server.currentMillis()))
+	return answerWith(server.Store.EndTrip(ctx, playerID, server.currentMillis()))
 }

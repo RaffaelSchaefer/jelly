@@ -8,6 +8,7 @@ import {
   isUnlocked,
   levelCosmetic,
   nextLevelCosmetic,
+  slotLabel,
   unlockLabel,
   type Catalog,
   type Cosmetic,
@@ -16,7 +17,7 @@ import {
 import { Icon, PrimaryButton, XpProgress } from "../ui";
 
 /** Das eben freigeschaltete Teil. */
-function Unlocked({ item, name }: { item: Cosmetic; name: string }) {
+function Unlocked({ item, name, slot }: { item: Cosmetic; name: string; slot: string }) {
   return (
     <section className="xp-section" aria-labelledby="xp-unlocked">
       <h3 id="xp-unlocked">Neu freigeschaltet</h3>
@@ -27,7 +28,7 @@ function Unlocked({ item, name }: { item: Cosmetic; name: string }) {
         <span>
           <strong>{item.name}</strong>
           <small>
-            {item.slot} · gehört jetzt {name}.
+            {slot} · gehört jetzt {name}.
           </small>
         </span>
       </div>
@@ -46,7 +47,7 @@ export default function LevelUpPanel({
   me: Me;
   catalog: Catalog;
   disabled: boolean;
-  onEquip: (id: string) => void;
+  onEquip: (item: Cosmetic) => void;
   onClose: () => void;
 }) {
   const { level } = me;
@@ -60,7 +61,9 @@ export default function LevelUpPanel({
         Level {level - 1} → Level {level}
       </span>
       <XpProgress name={me.name} xp={me.xp} />
-      {unlocked ? <Unlocked item={unlocked} name={me.name} /> : null}
+      {unlocked ? (
+        <Unlocked item={unlocked} name={me.name} slot={slotLabel(unlocked.slot, catalog)} />
+      ) : null}
       {next ? (
         <p className="xp-row xp-next">
           <span>
@@ -74,7 +77,7 @@ export default function LevelUpPanel({
           {unlocked ? "Später" : "Weiter"}
         </button>
         {unlocked ? (
-          <PrimaryButton disabled={disabled} onClick={() => onEquip(unlocked.id)}>
+          <PrimaryButton disabled={disabled} onClick={() => onEquip(unlocked)}>
             Anlegen
           </PrimaryButton>
         ) : null}

@@ -1,7 +1,7 @@
 //! Rust-Backend von **Jelly**, dem Desktop-Begleiter für die LAN am Umwelt-Campus Birkenfeld.
 //!
 //! Über XP, Level, Cosmetics und Erfolge entscheidet der Jelly-Server (`apps/server`). Rust spricht
-//! mit ihm, hält das Token und speichert die Geräte-Einstellungen. Die Oberfläche (React im
+//! mit ihm, hält das Secret und speichert die Geräte-Einstellungen. Die Oberfläche (React im
 //! Tauri-WebView) zeigt nur an und meldet, was passieren soll.
 //!
 //! # Aufbau
@@ -58,18 +58,17 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_game,
             commands::get_catalog,
-            commands::register,
-            commands::join_lan,
+            commands::redeem_access,
             commands::act,
             commands::emote,
             commands::set_sign,
             commands::set_follow,
-            commands::get_stage,
-            commands::get_map_state,
-            commands::open_map,
+            commands::stage::get_stage,
+            commands::stage::get_map_state,
+            commands::stage::open_map,
             commands::redeem_code,
-            commands::start_partner_emote,
-            commands::join_partner_emote,
+            commands::partner::invite_partner,
+            commands::partner::answer_partner,
             commands::update_profile,
             commands::equip_cosmetic,
             commands::update_settings,

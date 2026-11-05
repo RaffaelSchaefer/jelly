@@ -50,7 +50,7 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("load pages: %w", err)
 	}
-	handler := api.NewHandler(api.Dependencies{
+	service := api.NewService(api.Dependencies{
 		Store:            database,
 		Now:              time.Now,
 		Logger:           logger,
@@ -60,7 +60,16 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 		IsStopping:       func() bool { return appCtx.Err() != nil },
 		Web:              pages,
 	})
-	return serveHTTP(appCtx, handler, readEnv("JELLY_ADDR", ":8080"), logger)
+	movementCtx, stopMovement := context.WithCancel(appCtx)
+	defer stopMovement()
+	var waitGroup sync.WaitGroup
+	// Concurrency plan: started once here, ends with stopMovement or the signal and is awaited
+	// below, before the database closes. A failed plan is logged and tried again a second later.
+	waitGroup.Go(func() { service.RunMovement(movementCtx) })
+	serveErr := serveHTTP(appCtx, service.Handler, readEnv("JELLY_ADDR", ":8080"), logger)
+	stopMovement()
+	waitGroup.Wait()
+	return serveErr
 }
 
 // serveHTTP runs until `appCtx` ends or the server fails.
