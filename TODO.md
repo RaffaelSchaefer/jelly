@@ -5,8 +5,8 @@ Was noch zu tun ist. Erledigtes einfach löschen, die Git-Historie merkt es sich
 ## 1. Spielzeit-Tracking für Achievements
 
 Die Erfolge „Erste Runde“ (`first-game`) und „Marathon“ (`marathon`, 10 h am Stück) stehen fest auf
-0, siehe `achievementProgress` in `apps/client/src/pet/achievements.ts`. Daran hängt auch das
-Cosmetic `glow-aura`. Recherche mit Quellen: `apps/client/docs/research/2026-10-21-steam-discord-integration.md`.
+0, siehe `achievementProgress` in `apps/client/src/pet/achievements.ts`. Recherche mit Quellen:
+`apps/client/docs/research/2026-10-21-steam-discord-integration.md`.
 
 - [ ] Quelle festlegen:
   - **Steam Web API, `GetPlayerSummaries` → `gameid`, jede Minute abfragen.** Offiziell. Der

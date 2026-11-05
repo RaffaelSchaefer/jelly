@@ -51,8 +51,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
   `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
   `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
-- Dazustellen geht auf der Karte (`src/map/main.ts`), `src/useFollow.ts` lässt das Pet darauf reagieren.
-  Partner-Emotes als Aufforderung
+- Dazustellen, Ausflug und Hervorheben gehen auf der Karte (`src/map/main.ts`, `src/map/actions.ts`),
+  `src/useFollow.ts` lässt das Pet auf Dazustellen und Ausflug reagieren. Partner-Emotes als Aufforderung
   (`POST` und `PATCH /v1/partner-emotes`): Auffordern geht in `src/map/partner.ts`, Antworten und Duett im Pet
   (`src/usePartnerEmote.ts`, `src/panels/PartnerInvitePopup.tsx`). Das andere Jelly erfährt davon per
   `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`. Beide Ereignisse schließen
@@ -68,10 +68,12 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben).
 - `packages/jelly-stage/src/`: die Bühne als reines Three.js. `view.ts` startet sie auf einer Canvas,
   `source.ts` beschreibt ihre Daten, `labels.ts` und `picking.ts` zeichnen Namen und finden das Jelly
-  unter dem Zeiger, `moves.ts` und `walking.ts` spielen die Wege des Servers ab, der Rest ist der Raum.
+  unter dem Zeiger, `floorPicking.ts` den Punkt auf dem Boden, `pointer.ts` markiert das Ziel eines
+  Ausflugs, `beams.ts` zeichnet das Licht beim Hervorheben, `choiceRings.ts` die Ringe beim Auswählen, `moves.ts` und `walking.ts` spielen die Wege
+  des Servers ab, der Rest ist der Raum.
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
-  `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
+  `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
   sie öffnet.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
