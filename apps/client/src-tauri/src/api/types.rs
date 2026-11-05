@@ -1,5 +1,7 @@
 //! Typen aus dem Server-Vertrag, unverändert in snake_case und offen für neue Felder.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -92,7 +94,32 @@ pub struct Award {
     pub given_at: i64,
 }
 
-/// Stand eines Spielers (`PlayerState`), wie `GET /v1/me` und die meisten Aktionen ihn liefern.
+/// Was ein Jelly auf einem Platz trägt.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EquippedCosmetic {
+    /// Schlüssel aus dem Katalog.
+    pub key: String,
+    /// Farbe als Hex-Wert, bei einfärbbaren Cosmetics.
+    #[serde(default)]
+    pub color: Option<String>,
+}
+
+/// Was ein Jelly trägt, je Platz (`head`, `hands`, `body`, `face`, `aura`).
+pub type Equipped = BTreeMap<String, EquippedCosmetic>;
+
+/// Ein Ausflug zu einem Punkt und zurück.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Trip {
+    /// Ziel von links, in Prozent der Bühne.
+    pub x: f64,
+    /// Ziel von hinten, in Prozent der Bühne.
+    pub y: f64,
+    /// Wann das Jelly zurückläuft, als Server-Zeit.
+    pub until: i64,
+}
+
+/// Stand eines Spielers (`PlayerState`), wie `GET /v1/players/me` und die meisten Aktionen ihn
+/// liefern.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Me {
     /// Uhrzeit des Servers. Countdowns rechnen damit statt mit der Uhr des Geräts.
@@ -105,8 +132,8 @@ pub struct Me {
     pub name: String,
     /// Farbe als Schlüssel aus dem Katalog.
     pub color: String,
-    /// Angelegtes Cosmetic.
-    pub cosmetic: Option<String>,
+    /// Was das Jelly trägt, je Platz.
+    pub equipped: Equipped,
     /// Von der Orga ausgeblendet.
     pub hidden: bool,
     /// Jüngste LAN des Kontos.
@@ -123,8 +150,14 @@ pub struct Me {
     pub reports: Option<Reports>,
     /// Hochgehaltenes Schild.
     pub sign: Option<String>,
-    /// Bei wem das Jelly gerade steht.
+    /// Wem das Jelly gerade nachläuft.
     pub follow_player_id: Option<i64>,
+    /// Wann das Folgen von selbst endet, als Server-Zeit. Dazu kommt kein Ereignis.
+    #[serde(default)]
+    pub follow_until: Option<i64>,
+    /// Laufender Ausflug.
+    #[serde(default)]
+    pub trip: Option<Trip>,
     /// Anzahl besuchter LANs.
     pub lans_attended: i64,
     /// Ein Abzeichen je besuchter LAN.
@@ -137,64 +170,7 @@ pub struct Me {
     pub awards: Vec<Award>,
 }
 
-/// Ein Bereich der Raumkarte aus `GET /v1/stage`, in Prozent der Bühne.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StageArea {
-    /// Bereichs-ID.
-    pub id: i64,
-    /// Linke Kante.
-    pub x: f64,
-    /// Hintere Kante.
-    pub y: f64,
-    /// Breite.
-    pub width: f64,
-    /// Tiefe.
-    pub height: f64,
-    /// Was der Bereich ist, zum Beispiel `seats`. Ein neuerer Server darf Arten ergänzen.
-    pub kind: String,
-}
-
-/// Ein Jelly aus `GET /v1/stage`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StagePlayer {
-    /// Spieler-ID, auch Ziel von `PUT /v1/follow`.
-    pub id: i64,
-    /// Anzeigename.
-    pub name: String,
-    /// Farbe als Schlüssel aus dem Katalog.
-    pub color: String,
-    /// Angelegtes Cosmetic.
-    pub cosmetic: Option<String>,
-    /// Level in dieser LAN.
-    pub level: i64,
-    /// Hochgehaltenes Schild.
-    pub sign: Option<String>,
-    /// Bei wem das Jelly gerade steht.
-    pub follow_player_id: Option<i64>,
-    /// Letztes Lebenszeichen.
-    pub last_seen_at: i64,
-    /// Bereich des Jellys, `None` ohne Bereich und ohne Lounge.
-    pub area_id: Option<i64>,
-    /// Heimplatz von links, in Prozent der Bühne.
-    pub home_x: f64,
-    /// Heimplatz von hinten, in Prozent der Bühne.
-    pub home_y: f64,
-}
-
-/// Antwort von `GET /v1/stage`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Stage {
-    /// Neuestes Ereignis beim Lesen.
-    pub last_event_id: i64,
-    /// Uhrzeit des Servers.
-    pub server_time: i64,
-    /// Die Raumkarte.
-    pub areas: Vec<StageArea>,
-    /// Anwesende und nicht ausgeblendete Jellies, das eigene eingeschlossen.
-    pub players: Vec<StagePlayer>,
-}
-
-/// Antwort von `POST /v1/actions`.
+/// Antwort von `POST /v1/pokes` und `POST /v1/reports`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ActionAnswer {
     /// Gewonnene XP, bei einem zu frühen Stupser 0.
@@ -203,7 +179,7 @@ pub struct ActionAnswer {
     pub me: Me,
 }
 
-/// Antwort von `POST /v1/event-codes/redeem`.
+/// Antwort von `POST /v1/event-codes/redemptions`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Redeemed {
     /// Titel des Events.
@@ -214,33 +190,35 @@ pub struct Redeemed {
     pub me: Me,
 }
 
-/// Antwort von `POST /v1/partner-emote`: der Code, den man dem Partner nennt.
-#[derive(Debug, Clone, Deserialize)]
-pub struct PartnerOffer {
-    /// Vier Ziffern, gilt bis `expires_at`.
-    pub code: String,
+/// Eine Aufforderung zu einem Partner-Emote. Dieselbe Form trägt `partner_emote.updated`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartnerInvite {
+    /// ID, mit der man antwortet.
+    pub id: i64,
     /// Gewähltes Partner-Emote.
     pub key: String,
-    /// Ablauf des Codes als Server-Zeit.
+    /// Wer auffordert.
+    pub from_id: i64,
+    /// Wer aufgefordert wird, vorerst genau ein Jelly.
+    pub partner_ids: Vec<i64>,
+    /// `pending`, `accepted`, `declined` oder `cancelled`.
+    pub state: String,
+    /// Ablauf als Server-Zeit. Dazu kommt kein Ereignis.
     pub expires_at: i64,
-    /// Neuer Stand.
-    pub me: Me,
 }
 
-/// Antwort von `POST /v1/partner-emote/join`.
+/// Antwort von `POST` und `PATCH /v1/partner-emotes`.
 #[derive(Debug, Clone, Deserialize)]
-pub struct PartnerResult {
-    /// Partner-Emote, das der Partner gewählt hat.
-    pub key: String,
-    /// Wer den Code erzeugt hat.
-    pub partner_id: i64,
+pub struct PartnerInviteResult {
+    /// Die Aufforderung nach der Änderung.
+    pub partner_emote: PartnerInvite,
     /// Gewonnene XP, 0 ab dem zweiten Mal mit demselben Partner.
     pub xp_gained: i64,
     /// Neuer Stand.
     pub me: Me,
 }
 
-/// Ein Ereignis aus `GET /v1/events/stream`.
+/// Ein Ereignis aus `GET /v1/stage/events`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerEvent {
     /// Fortlaufende ID, auch `Last-Event-ID` beim Wiederverbinden.
@@ -265,16 +243,29 @@ pub struct Version {
     pub min_client_version: String,
 }
 
-/// Antwort von `POST /v1/register`.
+/// Antwort von `POST /v1/auth/redeem`.
 #[derive(Debug, Clone, Deserialize)]
-pub struct Registered {
-    /// Token, das es nur dieses eine Mal gibt.
-    pub token: String,
-    /// Stand des neuen Kontos.
+pub struct Access {
+    /// Secret, das es nur dieses eine Mal gibt. Ein älteres gilt danach nicht mehr.
+    pub secret: String,
+    /// Stand des Kontos.
     pub me: Me,
 }
 
-/// Körper von `PATCH /v1/me`. Fehlende Felder bleiben unverändert, `cosmetic: ""` legt ab.
+/// Körper von `POST /v1/auth/redeem`. Name und Farbe zählen nur, wenn der Code ein Konto anlegt.
+#[derive(Debug, Clone, Serialize)]
+pub struct AccessBody<'a> {
+    /// Sitzplatz-Code oder gemeinsamer Code der LAN.
+    pub code: &'a str,
+    /// Name eines neuen Kontos.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<&'a str>,
+    /// Farbe eines neuen Kontos.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<Color>,
+}
+
+/// Körper von `PATCH /v1/players/me`. Fehlende Felder bleiben unverändert.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct Profile {
     /// Neuer Name.
@@ -283,7 +274,17 @@ pub struct Profile {
     /// Neue Farbe.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<Color>,
-    /// Neues Cosmetic, leer zum Ablegen.
+}
+
+/// Körper von `PUT /v1/cosmetics/equipped`. Ohne `key` wird der Platz leer.
+#[derive(Debug, Clone, Serialize)]
+pub struct EquipBody {
+    /// Der Platz, zum Beispiel `head`.
+    pub slot: String,
+    /// Das Cosmetic aus dem Katalog.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cosmetic: Option<String>,
+    pub key: Option<String>,
+    /// Farbe aus `cosmetic_colors`, nur bei einfärbbaren Cosmetics.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }

@@ -23,7 +23,7 @@ pub struct GameState(pub(super) Mutex<Option<Session>>);
 
 /// Alles, was zwischen zwei Befehlen erhalten bleibt.
 pub(super) struct Session {
-    /// Lokaler Stand mit Token und Einstellungen.
+    /// Lokaler Stand mit Secret und Einstellungen.
     pub(super) store: Store,
     /// Client für den Server.
     pub(super) api: Api,
@@ -31,8 +31,8 @@ pub(super) struct Session {
     me: Option<(Me, Instant)>,
     /// Welche LAN läuft.
     pub(super) lan: LanStatus,
-    /// Ob der Server das gespeicherte Token abgelehnt hat.
-    pub(super) token_rejected: bool,
+    /// Ob der Server das gespeicherte Secret abgelehnt hat.
+    pub(super) secret_rejected: bool,
     /// Weiterleitung der Server-Ereignisse an die Oberfläche.
     pub(super) stream: EventStream,
 }
@@ -49,8 +49,8 @@ pub struct Game {
     lan: LanStatus,
     /// Adresse des Servers, zur Anzeige.
     server_url: &'static str,
-    /// Ob der Server das gespeicherte Token abgelehnt hat. Dann hilft nur neu registrieren.
-    token_rejected: bool,
+    /// Ob der Server das gespeicherte Secret abgelehnt hat. Dann hilft nur ein neuer Code.
+    secret_rejected: bool,
 }
 
 impl Session {
@@ -62,7 +62,7 @@ impl Session {
     async fn open(app: &AppHandle) -> Result<Self> {
         let directory = app.path().app_data_dir().map_err(Error::DataDir)?;
         let store = Store::open(directory.join("jelly.json"))?;
-        let api = Api::new(store.local.token.clone());
+        let api = Api::new(store.local.secret.clone());
         let version = api.version().await?;
         if client_outdated(CLIENT_VERSION, &version.min_client_version) {
             return Err(Error::Outdated {
@@ -75,32 +75,32 @@ impl Session {
             api,
             me: None,
             lan,
-            token_rejected: false,
+            secret_rejected: false,
             stream: EventStream::default(),
         };
         session.refresh(app).await?;
         Ok(session)
     }
 
-    /// Liest Stand und LAN neu. Ein abgelehntes Token wird gemerkt, aber nicht gelöscht.
+    /// Liest Stand und LAN neu. Ein abgelehntes Secret wird gemerkt, aber nicht gelöscht.
     ///
     /// # Fehler
     ///
     /// Netzwerk- oder Serverfehler beim Lesen des Spielstands oder der laufenden LAN.
     pub(super) async fn refresh(&mut self, app: &AppHandle) -> Result<()> {
-        if !self.api.has_token() {
+        if !self.api.has_secret() {
             self.lan = self.api.current_lan().await?;
             return Ok(());
         }
         match self.api.me().await {
             Ok(me) => {
-                self.token_rejected = false;
+                self.secret_rejected = false;
                 self.set_me(me);
                 self.lan = self.api.current_lan().await?;
                 self.follow_events(app);
             }
             Err(Error::Unauthorized) => {
-                self.token_rejected = true;
+                self.secret_rejected = true;
                 self.me = None;
                 self.stream.stop();
                 // Ohne Konto bekäme die Karte keine Daten mehr.
@@ -136,8 +136,12 @@ impl Session {
         Some(me.server_time.saturating_add(elapsed))
     }
 
-    /// Startet den Ereignis-Stream, falls er nicht schon läuft.
+    /// Startet den Ereignis-Stream, falls er nicht schon läuft. Ohne Teilnahme an der laufenden
+    /// LAN antwortet der Server mit `409`, dann bleibt er zu.
     pub(super) fn follow_events(&mut self, app: &AppHandle) {
+        if self.lan.joined != Some(true) {
+            return;
+        }
         if let Some((me, _)) = &self.me {
             self.stream.ensure(app, &self.api, me);
         }
@@ -154,7 +158,7 @@ impl Session {
             me,
             lan: self.lan.clone(),
             server_url: SERVER_URL,
-            token_rejected: self.token_rejected,
+            secret_rejected: self.secret_rejected,
         }
     }
 }

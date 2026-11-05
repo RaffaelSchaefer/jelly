@@ -1,7 +1,7 @@
 //! Das Fenster mit der Karte: die 3D-Bühne der LAN. Solange es offen ist, vertritt es das Pet.
 //!
 //! Die Seite dazu ist `map.html`, ihre Rechte stehen in `capabilities/map.json`. Sie holt ihre Daten
-//! wie das Pet-Fenster über Tauri-Befehle, das Token bleibt also in Rust.
+//! wie das Pet-Fenster über Tauri-Befehle, das Secret bleibt also in Rust.
 
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 

@@ -52,3 +52,49 @@ fn a_partner_emote_reaches_only_who_started_it() {
     assert!(!is_own_event(&joined(9), 7));
     assert!(!is_own_event(&joined(7), 8));
 }
+
+#[test]
+fn an_invite_reaches_both_sides_and_nobody_else() {
+    let invite = |from: i64, partner: i64| {
+        event(
+            PARTNER_INVITE,
+            Some(from),
+            json!({ "id": 1, "key": "hop", "from_id": from, "partner_ids": [partner],
+                "state": "pending", "expires_at": 0 }),
+        )
+    };
+    assert!(is_own_event(&invite(7, 8), 7));
+    assert!(is_own_event(&invite(7, 8), 8));
+    assert!(!is_own_event(&invite(7, 8), 9));
+}
+
+#[test]
+fn moves_and_resets_are_told_apart_from_events() {
+    let walk = r#"{"player_id":1,"kind":"wander","start_at":5,"level":0,
+        "points":[{"x":1.5,"y":2,"t":0}]}"#;
+    assert!(matches!(
+        parse_message(MOVE_MESSAGE, walk),
+        StreamMessage::Move(walk) if walk.player_id == 1 && walk.points[0].x == 1.5
+    ));
+    assert!(matches!(
+        parse_message(RESET_MESSAGE, "{}"),
+        StreamMessage::Reset
+    ));
+    let xp = r#"{"id":7,"type":"xp.gained","player_id":1,"payload":{},"created_at":1}"#;
+    assert!(matches!(
+        parse_message("xp.gained", xp),
+        StreamMessage::Event(event) if event.kind == "xp.gained"
+    ));
+}
+
+#[test]
+fn messages_from_a_newer_server_are_skipped() {
+    assert!(matches!(
+        parse_message("something.new", "{}"),
+        StreamMessage::Other
+    ));
+    assert!(matches!(
+        parse_message(MOVE_MESSAGE, "broken"),
+        StreamMessage::Other
+    ));
+}

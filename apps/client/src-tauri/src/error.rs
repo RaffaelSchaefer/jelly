@@ -51,8 +51,8 @@ pub enum Error {
         message: String,
     },
 
-    /// Der Server kennt das Token nicht mehr (`401`). Das Token bleibt trotzdem gespeichert.
-    #[error("Dein Zugang gilt nicht mehr. Frag die Orga nach Hilfe oder registriere dich neu.")]
+    /// Der Server kennt das Secret nicht mehr (`401`). Das Secret bleibt trotzdem gespeichert.
+    #[error("Dein Zugang gilt nicht mehr. Hol dir von der Orga einen neuen Code.")]
     Unauthorized,
 
     /// Der Server war nicht erreichbar oder hat keine lesbare Antwort geschickt.
@@ -66,7 +66,7 @@ pub enum Error {
         min: String,
     },
 
-    /// Eine Aktion braucht ein Konto, es gibt aber noch kein Token.
+    /// Eine Aktion braucht ein Konto, es gibt aber noch kein Secret.
     #[error("Du bist noch nicht registriert.")]
     NotRegistered,
 
