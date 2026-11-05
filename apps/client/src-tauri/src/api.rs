@@ -266,6 +266,16 @@ impl Api {
             .await
     }
 
+    /// `POST /v1/trips/goto`: das Jelly macht einen Ausflug zu einem Punkt der Bühne, in Prozent.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa `invalid_trip`.
+    pub async fn go_to(&self, x: f64, y: f64) -> Result<Me> {
+        self.post("/v1/trips/goto", &json!({ "x": x, "y": y }))
+            .await
+    }
+
     /// `DELETE /v1/trips/current`: beendet Folgen und Ausflug und liefert den neuen Stand.
     ///
     /// # Fehler
@@ -273,6 +283,17 @@ impl Api {
     /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
     pub async fn end_trip(&self) -> Result<Me> {
         Self::send(self.request(reqwest::Method::DELETE, "/v1/trips/current")).await
+    }
+
+    /// `POST /v1/highlights`: lässt ein Jelly kurz aufleuchten und liefert den neuen Stand.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa
+    /// `highlight_cooldown` oder `invalid_highlight`.
+    pub async fn highlight(&self, player_id: i64) -> Result<Me> {
+        self.post("/v1/highlights", &json!({ "player_id": player_id }))
+            .await
     }
 
     /// `POST /v1/pokes`: ein Stupser. Ein zu früher ist kein Fehler, sondern `xp_gained: 0`.

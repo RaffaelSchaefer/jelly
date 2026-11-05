@@ -1,9 +1,9 @@
-//! Die Befehle zur Bühne: wer dort steht und was die Karte zeigt.
+//! Die Befehle zur Bühne: wer dort steht, was die Karte zeigt und was man auf ihr auslöst.
 
 use serde::Serialize;
 use tauri::{AppHandle, State};
 
-use super::{session::session, GameState};
+use super::{session::session, Game, GameState};
 use crate::{
     api::Stage,
     error::{Error, Result},
@@ -37,6 +37,40 @@ pub async fn get_stage(app: AppHandle, state: State<'_, GameState>) -> Result<St
     };
     // Ohne Lock: Hinge diese Anfrage, warteten alle Aktionen des Pets mit.
     api.stage().await
+}
+
+/// Schickt das Jelly auf einen Ausflug zu einem Punkt der Bühne, in Prozent.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa `invalid_trip`.
+#[tauri::command]
+pub async fn go_to(app: AppHandle, state: State<'_, GameState>, x: f64, y: f64) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let me = session.api.go_to(x, y).await?;
+    session.set_me(me);
+    Ok(session.game())
+}
+
+/// Lässt ein Jelly aufleuchten. Den Lichtkegel zeichnet die Bühne, sobald das Ereignis ankommt.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa `highlight_cooldown`.
+#[tauri::command]
+pub async fn highlight_player(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    player_id: i64,
+) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let me = session.api.highlight(player_id).await?;
+    session.set_me(me);
+    Ok(session.game())
 }
 
 /// Liest, was die Karte zeigt. Öffnet keine Sitzung, das Laden gehört dem Pet-Fenster.

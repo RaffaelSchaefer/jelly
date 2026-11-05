@@ -76,6 +76,12 @@ export const setSign = (key: string | null) => invoke<Game>("set_sign", { key })
 /** Stellt das Jelly neben ein anderes oder lässt es mit `null` weggehen (`set_follow`). */
 export const setFollow = (playerId: number | null) => invoke<Game>("set_follow", { playerId });
 
+/** Schickt das Jelly auf einen Ausflug zu einem Punkt der Bühne, in Prozent (`go_to`). */
+export const goTo = (x: number, y: number) => invoke<Game>("go_to", { x, y });
+
+/** Lässt ein Jelly aufleuchten (`highlight_player`). */
+export const highlightPlayer = (playerId: number) => invoke<Game>("highlight_player", { playerId });
+
 /** Liest, wer gerade auf der Bühne steht (`get_stage`). */
 export const getStage = () => invoke<Stage>("get_stage");
 

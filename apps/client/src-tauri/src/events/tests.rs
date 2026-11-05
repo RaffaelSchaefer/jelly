@@ -30,6 +30,12 @@ fn only_own_progress_passes() {
         &event("follow.changed", Some(8), walked_away),
         7
     ));
+    let trip = json!({ "x": 10.0, "y": 20.0, "until": 1000 });
+    assert!(is_own_event(
+        &event("trip.changed", Some(7), trip.clone()),
+        7
+    ));
+    assert!(!is_own_event(&event("trip.changed", Some(8), trip), 7));
 }
 
 #[test]
