@@ -9,6 +9,7 @@ import {
   findMovePosition,
   findSnackRunners,
   findStackLevel,
+  isOnTheWay,
   keepNewerMove,
   stepWalker,
 } from "./walking.ts";
@@ -82,4 +83,18 @@ test("a jelly climbs its stack only after it has arrived", () => {
   const climbing = { ...move, kind: "stack", level: 2 };
   assert.equal(findStackLevel(climbing, 2000), 0);
   assert.equal(findStackLevel(climbing, 4000), 2);
+});
+
+test("a jelly is on its way until its trip to the goal has ended", () => {
+  const trip = { ...move, kind: "trip" };
+  const goal = toFloorPoint({ x: 20, y: 30 });
+  assert.equal(isOnTheWay(trip, goal, 3999), true);
+  assert.equal(isOnTheWay(trip, goal, 4000), false);
+});
+
+test("a move from before the click does not count as arrival", () => {
+  const goal = toFloorPoint({ x: 90, y: 90 });
+  assert.equal(isOnTheWay(undefined, goal, 9000), true);
+  assert.equal(isOnTheWay(move, toFloorPoint({ x: 20, y: 30 }), 9000), true);
+  assert.equal(isOnTheWay({ ...move, kind: "trip" }, goal, 9000), true);
 });
