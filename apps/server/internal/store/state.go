@@ -159,8 +159,9 @@ func loadProgress(ctx context.Context, database querier, state *PlayerState, now
 			l.rules, e.joined_at, e.xp, e.sign_key, e.follow_player_id,
 			e.trip_x, e.trip_y, e.trip_until, e.follow_started_at
 		FROM lan_entries e JOIN lans l ON l.id = e.lan_id
-		WHERE e.player_id = ? ORDER BY l.starts_at DESC LIMIT 1`
-	err := database.QueryRowContext(ctx, selectLatestEntrySQL, state.ID).
+		WHERE e.player_id = ?
+		ORDER BY (l.starts_at <= ? AND ? < l.ends_at) DESC, l.starts_at DESC LIMIT 1`
+	err := database.QueryRowContext(ctx, selectLatestEntrySQL, state.ID, now, now).
 		Scan(&row.lanID, &row.info.Slug, &row.info.Name, &row.startsAt, &row.endsAt,
 			&row.rulesJSON, &row.joinedAt, &row.xp, &row.sign, &row.follow,
 			&row.trip.x, &row.trip.y, &row.trip.until, &row.followStartedAt)

@@ -32,25 +32,6 @@ type CodeBody struct {
 	Code string `json:"code"`
 }
 
-// RedeemBody exchanges a code for a secret. Name and color are needed for a new account only.
-type RedeemBody struct {
-	Code  string `json:"code"`
-	Name  string `json:"name,omitempty"`
-	Color string `json:"color,omitempty"`
-}
-
-// RedeemAnswer holds the secret, which is only ever sent here.
-type RedeemAnswer struct {
-	Secret string            `json:"secret"`
-	Me     store.PlayerState `json:"me"`
-}
-
-// redeemOutput keeps the secret out of every cache.
-type redeemOutput struct {
-	CacheControl string `header:"Cache-Control"`
-	Body         RedeemAnswer
-}
-
 // ProfileBody changes the profile. Missing fields stay unchanged.
 type ProfileBody struct {
 	Name  *string `json:"name,omitempty"`
@@ -152,12 +133,25 @@ func (server *apiServer) addPlayerRoutes(contract huma.API) {
 	}, handleCatalog)
 	addOperation(server, contract, huma.Operation{
 		OperationID: "redeemCode", Method: http.MethodPost, Path: "/auth/redeem",
-		Summary: "Exchange a code for a secret",
-		Description: "A seat code creates an account on that seat or brings back the account it " +
-			"belongs to. Name and color are required for a new account. Any older secret of the " +
-			"account stops working. A used code answers `409 code_redeemed`.",
+		Summary: "Bring an account into a LAN with a code",
+		Description: "With a bearer secret, that account joins and keeps its secret. Without " +
+			"one, a new account appears, which needs name and color. A seat code also gives the " +
+			"seat, unless it is taken or the account has another one: then the code is used up, " +
+			"the account is in the LAN, `seat_assigned` is false and the orga assigns a seat. " +
+			"Seats are never given out by chance. A seat code bound to another account answers " +
+			"`403 seat_code_other_account` and stays valid, a used one `409 code_redeemed`. A " +
+			"wrong secret answers `401`, so never send a secret the server rejected before.",
+		Security:    []map[string][]string{{}, {securityBearer: {}}},
 		Middlewares: huma.Middlewares{server.limitRegistrations},
 	}, server.handleRedeemCode)
+	addOperation(server, contract, huma.Operation{
+		OperationID: "recoverAccount", Method: http.MethodPost, Path: "/auth/recover",
+		Summary: "Bring back an account whose secret is lost, with a recovery code",
+		Description: "The orga creates the code for one account. It works once, without a LAN " +
+			"or a seat. The answer holds a new secret, and the old one stops working. " +
+			"An unknown, used or expired code answers `403 invalid_recovery_code`.",
+		Middlewares: huma.Middlewares{server.limitRegistrations},
+	}, server.handleRecoverAccount)
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "getMe", Method: http.MethodGet, Path: pathMe,
 		Summary: "Read the state of the player",
@@ -263,22 +257,6 @@ func handleCatalog(_ context.Context, _ *noInput) (*jsonOutput[Catalog], error) 
 		CosmeticColors: rules.ListCosmeticColors(),
 		Achievements:   achievements,
 	}, nil)
-}
-
-// handleRedeemCode exchanges a code for a secret, which is only ever sent here.
-func (server *apiServer) handleRedeemCode(
-	ctx context.Context, input *jsonInput[RedeemBody],
-) (*redeemOutput, error) {
-	request := store.RedeemRequest{
-		Code: input.Body.Code, Name: input.Body.Name, Color: input.Body.Color,
-	}
-	secret, state, err := server.Store.RedeemCode(ctx, request, server.currentMillis())
-	if err != nil {
-		return nil, err
-	}
-	return &redeemOutput{
-		CacheControl: cacheControlNoStore, Body: RedeemAnswer{Secret: secret, Me: state},
-	}, nil
 }
 
 // handleMe returns the state of the calling player.

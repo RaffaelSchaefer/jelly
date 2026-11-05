@@ -16,6 +16,7 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/players/{id}/show":              server.handleShowPlayer,
 		"POST /admin/api/players/{id}/reset-name":        server.handleResetName,
 		"POST /admin/api/players/{id}/rotate-token":      server.handleRotateToken,
+		"POST /admin/api/players/{id}/recovery-code":     server.handleCreateRecoveryCode,
 		"DELETE /admin/api/players/{id}":                 server.handleDeletePlayer,
 		"GET /admin/api/lans":                            server.handleListLANs,
 		"POST /admin/api/lans":                           server.handleCreateLAN,
@@ -160,7 +161,31 @@ func (server *apiServer) handleCreateEventCode(writer http.ResponseWriter, reque
 	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
 }
 
-// handleIssueSeatCode gives a seat a new code, optionally for an existing account.
+// handleCreateRecoveryCode gives an account a code that replaces a lost secret.
+func (server *apiServer) handleCreateRecoveryCode(
+	writer http.ResponseWriter, request *http.Request,
+) {
+	playerID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var body struct {
+		ValidSeconds *int64 `json:"valid_seconds"`
+	}
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	validSeconds := store.DefaultRecoverySeconds
+	if body.ValidSeconds != nil {
+		validSeconds = *body.ValidSeconds
+	}
+	recovery, err := server.Store.CreateRecoveryCode(
+		request.Context(), playerID, validSeconds, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, recovery, err)
+}
+
+// handleIssueSeatCode gives a seat a new code, optionally bound to an existing account.
 func (server *apiServer) handleIssueSeatCode(writer http.ResponseWriter, request *http.Request) {
 	lanID, valid := server.readPathID(writer, request)
 	if !valid {

@@ -27,6 +27,7 @@ Aktuelle Version: **1.8.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.10.0  | Brechend: `POST /auth/redeem` nimmt das Secret an, das Konto tritt bei und behält es, Sitzplatz-Codes holen kein Konto mehr zurück und können an ein Konto gebunden sein, `seat_assigned` in der Antwort. Neu: `POST /auth/recover` und `POST /admin/api/players/{id}/recovery-code`. `area_occupied` entfällt |
 | 1.9.0   | `docs/openapi.json` beschreibt alle Wege, Parameter und Felder, dazu alle Fehlercodes und Stream-Nachrichten. Keine Änderung am Verhalten |
 | 1.8.0   | Der LAN-Code legt auch vor und nach der LAN Konten an, XP gibt es weiter nur während der LAN |
 | 1.7.0   | Zonen haben im Admin einen Namen, neue Zuweisungen `visitors` und `none`, Besucher wandern (`is_visitor`), Jellies wählen die nächste Theke mit Platz |
@@ -40,7 +41,12 @@ Aktuelle Version: **1.8.0**
 
 ### Brechende Änderungen
 
-Bisher keine. Jede künftige steht hier mit Begründung.
+Vor der ersten LAN 2026 gibt es keinen ausgelieferten Client, deshalb bleiben diese Änderungen in `/v1`. Sie sind mit
+dem Client abgestimmt. Ab der ersten LAN bekommt jede brechende Änderung einen neuen Pfad.
+
+| Version | Änderung | Begründung |
+| ------- | -------- | ---------- |
+| 1.10.0  | `POST /auth/redeem` und Codes, siehe [Anmeldung](#anmeldung) | Ein Sitzplatz-Code öffnete sonst ein fremdes Konto. Das Secret gehört zum Konto, nicht zur LAN |
 
 ## Grundlagen
 
@@ -76,7 +82,9 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 400    | `invalid_event_code`                      | Code unbekannt oder außerhalb seiner Zeit |
 | 400    | `invalid_follow`                          | Zu diesem Jelly kann man sich nicht stellen |
 | 401    | `unauthorized`                            | Token oder Schlüssel fehlt oder ist falsch |
-| 403    | `invalid_code`                            | Anmeldecode stimmt nicht                  |
+| 403    | `invalid_code`                            | Anmeldecode stimmt nicht, oder die LAN des Sitzplatz-Codes ist vorbei |
+| 403    | `seat_code_other_account`                 | Sitzplatz-Code gehört zu einem anderen Konto |
+| 403    | `invalid_recovery_code`                   | Wiederherstellungs-Code stimmt nicht, ist benutzt oder abgelaufen |
 | 403    | `forbidden`                               | Admin-Anmeldung fehlt oder ist abgelaufen |
 | 404    | `player_not_found`, `lan_not_found`       | Eintrag gibt es nicht                     |
 | 404    | `area_not_found`                          | Bereich gehört nicht zu dieser LAN        |
@@ -85,7 +93,6 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
 | 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |
-| 409    | `area_occupied`                           | Bereich hat mehrere Jellies, kein Sitzplatz-Code möglich |
 | 409    | `event_code_redeemed`, `event_code_exists` | Event-Code schon eingelöst oder vorhanden |
 | 409    | `emote_cooldown`, `report_cooldown`       | Zu früh wiederholt                        |
 | 409    | `report_limit`      | Limit erreicht, später erneut versuchen   |
@@ -134,23 +141,32 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 
 ## Anmeldung
 
-Ein einziger Weg tauscht einen Code gegen ein Secret. Danach zählt nur noch das Secret, der Code ist wertlos.
+Das Secret ist nur die Anmeldung des Kontos und hat nichts mit einer LAN zu tun. Über die Teilnahme entscheiden der
+LAN-Code und der Sitzplatz-Code der jeweiligen LAN. `POST /auth/redeem` nimmt beide, das Secret steht wie sonst im
+Header `Authorization`.
 
-| Fall | Admin | `POST /auth/redeem` | Ergebnis |
-| ---- | ----- | ------------------- | -------- |
-| Neuer Sitzplatz | Erzeugt den Code für den Platz | `{"code","name","color"}` | Neues Konto auf dem Platz |
-| Code oder Secret verloren | Erzeugt am Platz einen neuen Code | `{"code"}` | Vorhandenes Konto mit Inventar, altes Secret ungültig |
-| Spätere LAN | Erzeugt einen Code für das Konto | `{"code"}` | Vorhandenes Konto auf dem neuen Platz, altes Secret ungültig |
-| Gemeinsamer Code einer LAN | | `{"code","name","color"}` | Neues Konto ohne Platz, für Gäste, Orga, Tests und als Notlösung |
-| Code schon benutzt | | | `409 code_redeemed` |
+| Code | Mit Secret | Ohne Secret |
+| ---- | ---------- | ----------- |
+| LAN-Code | Das Konto nimmt an der LAN teil, ohne Sitz | Neues Konto, nimmt an der LAN teil, ohne Sitz |
+| Sitzplatz-Code | Das Konto nimmt an der LAN teil und bekommt den Sitz | Neues Konto auf dem Sitz |
+| Sitzplatz-Code, an ein anderes Konto gebunden | `403 seat_code_other_account` | `403 seat_code_other_account` |
 
-Ein Sitzplatz ist ein Bereich der Art `seats` mit einem Code. Geht die Antwort verloren, ist der Code
-verbraucht und der Admin vergibt einen neuen.
+- Ein neues Konto braucht `name` und `color`. Ein vorhandenes behält sein Secret, die Antwort nennt es noch einmal.
+- Beide Codes gelten vor dem Start. Das Konto ist dann angemeldet, XP, Badge und Bühne gibt es erst, wenn es während der
+  LAN aktiv wird. Ein Admin kann ihm schon vorher einen Platz geben.
+- Nach dem Ende legt der LAN-Code nur ein Konto an. Ein Sitzplatz-Code ergibt dann `403 invalid_code`.
+- Ein Sitzplatz-Code gilt einmal, danach folgt `409 code_redeemed`. Ohne Bindung gehört er dem ersten Konto, das ihn
+  einlöst. Die Orga kann ihn über `player_id` an ein Konto binden, die Spieler schicken dafür die `id` aus ihrem Stand mit.
+- Ein abgelehnter Code bleibt gültig, damit ein Fremder ihn nicht entwerten kann.
+- **Kein Sitz:** Ist der Sitz belegt oder hat das Konto in dieser LAN schon einen anderen, ist der Code trotzdem
+  verbraucht und das Konto nimmt an der LAN teil. Die Antwort sagt `seat_assigned: false`, und die Orga weist den Platz von
+  Hand zu. Freie Sitze vergibt der Server nie selbst, das würde den Sitzplan durcheinanderbringen.
 
-Der gemeinsame Code gilt auch außerhalb seiner LAN. Vor dem Start legt er das Konto an und meldet es für die LAN an. Der
-Admin kann ihm dann schon einen Platz geben, sonst wandert es als Besucher. XP, Badge und Bühne gibt es erst, wenn der
-Spieler während der LAN aktiv wird. Nach dem Ende legt der Code nur das Konto an. Für eine spätere LAN gibt der Admin
-diesem Konto einen Sitzplatz-Code.
+**Secret verloren:** Die Orga sucht das Konto und erzeugt einen Wiederherstellungs-Code. `POST /auth/recover` tauscht
+ihn gegen ein neues Secret, das alte gilt ab dann nicht mehr. Der Code gilt einmal, unabhängig von LANs und Sitzen. Er
+läuft nach der beim Erzeugen gewählten Zeit ab, ohne Angabe nach 24 Stunden. Ein neuer ersetzt den älteren des Kontos.
+
+Geht die Antwort verloren, ist ein Sitzplatz-Code verbraucht und der Admin vergibt einen neuen.
 
 Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie Name, Farbe und Cosmetics
 ändern. Bühne, Stream und alles mit XP antworten `409 no_active_lan` oder `not_joined`.
@@ -163,7 +179,8 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `GET /version` (ohne `/v1`) |                                          | `{"api_version","min_client_version"}` |
 | `GET /catalog`            |                                            | Feste Listen, siehe unten      |
 | `GET /lans/current`       |                                            | `{"server_time","current","next","joined"}` |
-| `POST /auth/redeem`       | `{"code","name","color"}`                  | `{"secret","me"}`              |
+| `POST /auth/redeem`       | `{"code","name","color"}`, Secret optional | `{"secret","seat_assigned","me"}` |
+| `POST /auth/recover`      | `{"code"}`                                 | `{"secret","me"}`              |
 | `GET /players/me`         |                                            | Stand                          |
 | `PATCH /players/me`       | `{"name","color"}`, alle optional          | Stand                          |
 | `PUT /cosmetics/equipped` | `{"slot","key","color"}`, ohne `key` leert den Platz | Stand                |
@@ -184,7 +201,7 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `POST /trips/follow`      | `{"player_id"}`                            | Stand                          |
 | `DELETE /trips/current`   |                                            | Stand                          |
 
-Das Secret gibt es nur in der Antwort von `POST /auth/redeem`. `GET /catalog` liefert `colors`,
+Ein neues Secret gibt es nur in der Antwort von `POST /auth/redeem` und `POST /auth/recover`. `GET /catalog` liefert `colors`,
 `emotes`, `partner_emotes`, `signs`, `cosmetics`, `cosmetic_slots`, `cosmetic_colors` und `achievements`, geheime Achievements fehlen dort.
 
 Namen haben 1 bis 24 Zeichen aus lateinischen Buchstaben, Umlauten, `ß`, Ziffern, Leerzeichen und
@@ -198,7 +215,7 @@ alle paar Minuten `POST /presence`. Das gibt keine XP und hält das Jelly auf de
 
 **Nach einem Netzfehler** zuerst `GET /players/me` lesen und nicht blind wiederholen. Die Aktion kann schon
 gezählt haben, eine Wiederholung ergibt dann einen Fehler wie `report_cooldown`. `401` heißt, das Secret
-gilt nicht mehr. Die App fragt dann nach einem neuen Code, sie löscht ihr Secret aber nie wegen eines
+gilt nicht mehr. Die App fragt dann nach einem Wiederherstellungs-Code, sie löscht ihr Secret aber nie wegen eines
 Netzfehlers.
 
 Der Server darf ein `POST /trips/follow` später von sich aus beenden, also zählt immer `follow_player_id` im
@@ -374,6 +391,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/hide`, `/show`     |                                           |
 | `POST /admin/api/players/{id}/reset-name`        |                                           |
 | `POST /admin/api/players/{id}/rotate-token`      | Antwort: `{"secret"}`, nur dieses eine Mal |
+| `POST /admin/api/players/{id}/recovery-code`     | `{"valid_seconds"}`, ohne Angabe 24 Stunden, höchstens 30 Tage. Antwort: `{"code","expires_at"}`, nur dieses eine Mal |
 | `DELETE /admin/api/players/{id}`                 |                                           |
 | `GET`, `POST /admin/api/lans`                    | `{"slug","name","timezone","join_code","starts_at","ends_at"}` |
 | `PUT /admin/api/lans/{id}/rules`                 | Alle Felder aus `rules.json`              |
@@ -384,6 +402,8 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind","name"}` |
+| `POST /admin/api/lans/{id}/areas/{area}/code`    | `{"player_id"}`, optional, bindet den Code ans Konto |
+| `GET /admin/api/lans/{id}/seat-codes`            | Antwort: Codes mit `used_at`, `player_id`, `name` und `is_seated`, ob das Konto dort sitzt |
 | `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height","kind","name"}` bei `PUT` |
 | `PUT /admin/api/lans/{id}/players/{player}/area` | `{"area_id"}` von `seats`, `stage`, `lounge` oder `visitors`, `null` entfernt ihn |
 

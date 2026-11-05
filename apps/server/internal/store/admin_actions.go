@@ -18,6 +18,7 @@ const (
 	AdminActionJoinCode    = "lan.join_code"
 	AdminActionEventCode   = "event_code.create"
 	AdminActionSeatCode    = "seat.code"
+	AdminActionRecovery    = "player.recovery_code"
 
 	maxAdminActionRows = 200
 )

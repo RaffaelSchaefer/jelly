@@ -208,8 +208,14 @@ func listSeatErrors() []knownError {
 			http.StatusConflict, "code_redeemed",
 			"Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben.",
 		}},
-		{store.ErrAreaOccupied, problem{
-			http.StatusConflict, "area_occupied", "In diesem Bereich stehen mehrere Jellies.",
+		{store.ErrSeatCodeOtherAccount, problem{
+			http.StatusForbidden, "seat_code_other_account",
+			"Dieser Sitzplatz-Code gehört zu einem anderen Konto. Fehlt dein Konto auf diesem " +
+				"Gerät, gibt dir die Orga einen Wiederherstellungs-Code.",
+		}},
+		{store.ErrInvalidRecoveryCode, problem{
+			http.StatusForbidden, "invalid_recovery_code",
+			"Dieser Wiederherstellungs-Code stimmt nicht oder ist abgelaufen.",
 		}},
 	}
 }

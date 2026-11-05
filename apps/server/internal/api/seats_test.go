@@ -33,6 +33,11 @@ func (testFixture *fixture) issueCode(lanID int, areaID, body string) string {
 	return decodeBody[store.SeatCode](testFixture.t, response).Code
 }
 
+// redeemAnswer is the part of the answer of `POST /auth/redeem` about the seat.
+type redeemAnswer struct {
+	SeatAssigned bool `json:"seat_assigned"`
+}
+
 // redeem exchanges a code for a secret.
 func (testFixture *fixture) redeem(body map[string]string) apiResponse {
 	testFixture.t.Helper()
@@ -43,16 +48,43 @@ func (testFixture *fixture) redeem(body map[string]string) apiResponse {
 	return testFixture.callAPI("POST", "/v1/auth/redeem", "", string(encoded))
 }
 
-// seatPlayerInSecondLAN assigns an account to a seat of the second LAN and returns its new secret.
-func (testFixture *fixture) seatPlayerInSecondLAN(playerID int64) string {
+// redeemWith sends a code with the secret of an account.
+func (testFixture *fixture) redeemWith(token, code string) apiResponse {
+	testFixture.t.Helper()
+	return testFixture.callAPI("POST", "/v1/auth/redeem", token, `{"code":"`+code+`"}`)
+}
+
+// seatPlayerInSecondLAN assigns an account to a seat of the second LAN and returns its secret.
+func (testFixture *fixture) seatPlayerInSecondLAN(token string) string {
 	testFixture.t.Helper()
 	code := testFixture.issueCode(2, testFixture.createSeat(2),
-		`{"player_id":`+strconv.FormatInt(playerID, 10)+`}`)
-	response := testFixture.redeem(map[string]string{"code": code})
+		`{"player_id":`+strconv.FormatInt(testFixture.loadMe(token).ID, 10)+`}`)
+	response := testFixture.redeemWith(token, code)
 	if response.status != http.StatusOK {
 		testFixture.t.Fatalf("redeem: %d %s", response.status, response.body)
 	}
 	return decodeBody[registerResponse](testFixture.t, response).Token
+}
+
+// findStageArea returns the area of a jelly on the stage, or nil.
+func (testFixture *fixture) findStageArea(playerID int64) *int64 {
+	testFixture.t.Helper()
+	for _, player := range testFixture.loadStage().Players {
+		if player.ID == playerID {
+			return player.AreaID
+		}
+	}
+	testFixture.t.Fatalf("jelly %d is not on the stage", playerID)
+	return nil
+}
+
+// requireSeat checks which seat a jelly has.
+func (testFixture *fixture) requireSeat(playerID int64, seatID string) {
+	testFixture.t.Helper()
+	area := testFixture.findStageArea(playerID)
+	if area == nil || strconv.FormatInt(*area, 10) != seatID {
+		testFixture.t.Fatalf("jelly %d has area %v, want %s", playerID, area, seatID)
+	}
 }
 
 func TestSeatCodeCreatesAnAccountOnItsSeatOnce(t *testing.T) {
@@ -68,44 +100,237 @@ func TestSeatCodeCreatesAnAccountOnItsSeatOnce(t *testing.T) {
 	if response.status != http.StatusOK {
 		t.Fatalf("redeem: %d %s", response.status, response.body)
 	}
+	if !decodeBody[redeemAnswer](t, response).SeatAssigned {
+		t.Fatalf("the code should give the seat: %s", response.body)
+	}
 	secret := decodeBody[registerResponse](t, response).Token
 	state := testFixture.loadMe(secret)
 	if state.Name != "Sitzer" {
 		t.Fatalf("state: %+v", state)
 	}
-	for _, player := range testFixture.loadStage().Players {
-		if player.ID == state.ID && (player.AreaID == nil ||
-			strconv.FormatInt(*player.AreaID, 10) != seatID) {
-			t.Fatalf("the jelly is not on its seat: %+v", player)
-		}
-	}
+	testFixture.requireSeat(state.ID, seatID)
 	requireProblem(t, testFixture.redeem(map[string]string{
 		"code": code, "name": "Dieb", "color": "mint",
 	}), http.StatusConflict, "code_redeemed")
 }
 
-func TestNewSeatCodeBringsBackTheJellyAndEndsTheOldSecret(t *testing.T) {
+func TestSeatCodeWithASecretSeatsThatAccountAndKeepsItsSecret(t *testing.T) {
 	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Vorhanden")
+	testFixture.pokePlayer(token)
 	seatID := testFixture.createSeat(1)
-	response := testFixture.redeem(map[string]string{
-		"code": testFixture.issueCode(1, seatID, `{}`), "name": "Sitzer", "color": "mint",
-	})
-	oldSecret := decodeBody[registerResponse](t, response).Token
-	testFixture.pokePlayer(oldSecret)
 
-	response = testFixture.redeem(map[string]string{"code": testFixture.issueCode(1, seatID, `{}`)})
-	newSecret := decodeBody[registerResponse](t, response).Token
-	if state := testFixture.loadMe(newSecret); state.Name != "Sitzer" || state.XP != 3 {
+	response := testFixture.redeemWith(token, testFixture.issueCode(1, seatID, `{}`))
+	if response.status != http.StatusOK {
+		t.Fatalf("redeem: %d %s", response.status, response.body)
+	}
+	if secret := decodeBody[registerResponse](t, response).Token; secret != token {
+		t.Fatalf("secret changed to %q", secret)
+	}
+	state := testFixture.loadMe(token)
+	if state.Name != "Vorhanden" || state.XP == 0 {
 		t.Fatalf("state: %+v", state)
+	}
+	testFixture.requireSeat(state.ID, seatID)
+	codes := decodeBody[[]store.SeatCode](t,
+		testFixture.callAdmin("GET", "/admin/api/lans/1/seat-codes", ""))
+	if len(codes) != 1 || codes[0].UsedAt == nil || !codes[0].IsSeated ||
+		codes[0].Name == nil || *codes[0].Name != "Vorhanden" {
+		t.Fatalf("codes: %+v", codes)
+	}
+}
+
+func TestBoundSeatCodeOnlyWorksForItsAccountAndSurvivesOtherTries(t *testing.T) {
+	testFixture := newFixture(t)
+	owner := testFixture.registerPlayer("Besitzer")
+	stranger := testFixture.registerPlayer("Fremder")
+	seatID := testFixture.createSeat(1)
+	code := testFixture.issueCode(1, seatID,
+		`{"player_id":`+strconv.FormatInt(testFixture.loadMe(owner).ID, 10)+`}`)
+
+	requireProblem(t, testFixture.redeem(map[string]string{
+		"code": code, "name": "Neu", "color": "mint",
+	}), http.StatusForbidden, "seat_code_other_account")
+	requireProblem(t, testFixture.redeemWith(stranger, code),
+		http.StatusForbidden, "seat_code_other_account")
+
+	if got := testFixture.redeemWith(owner, code).status; got != http.StatusOK {
+		t.Fatalf("the owner redeems: %d", got)
+	}
+	testFixture.requireSeat(testFixture.loadMe(owner).ID, seatID)
+}
+
+func TestTakenSeatUsesUpTheCodeButStillJoinsTheLAN(t *testing.T) {
+	testFixture := newFixture(t)
+	first := testFixture.registerPlayer("Erster")
+	firstID := testFixture.loadMe(first).ID
+	seatID := testFixture.createSeat(1)
+	if got := testFixture.redeemWith(
+		first,
+		testFixture.issueCode(1, seatID, `{}`),
+	).status; got != 200 {
+		t.Fatalf("first seat: %d", got)
+	}
+
+	code := testFixture.issueCode(1, seatID, `{}`)
+	response := testFixture.redeem(map[string]string{
+		"code": code, "name": "Zweiter", "color": "mint",
+	})
+	if response.status != http.StatusOK || decodeBody[redeemAnswer](t, response).SeatAssigned {
+		t.Fatalf("the seat is taken: %d %s", response.status, response.body)
+	}
+	secondID := testFixture.loadMe(decodeBody[registerResponse](t, response).Token).ID
+	if area := testFixture.findStageArea(secondID); area != nil {
+		t.Fatalf("the second jelly must not get a seat: %v", *area)
+	}
+	testFixture.requireSeat(firstID, seatID)
+	requireProblem(t, testFixture.redeem(map[string]string{
+		"code": code, "name": "Dritter", "color": "mint",
+	}), http.StatusConflict, "code_redeemed")
+}
+
+func TestSeatCodeKeepsAnOtherSeatOfTheAccount(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Sitzer")
+	seatID := testFixture.createSeat(1)
+	testFixture.redeemWith(token, testFixture.issueCode(1, seatID, `{}`))
+
+	response := testFixture.redeemWith(
+		token,
+		testFixture.issueCode(1, testFixture.createSeat(1), `{}`),
+	)
+	if response.status != http.StatusOK || decodeBody[redeemAnswer](t, response).SeatAssigned {
+		t.Fatalf("a second seat is only for the orga: %d %s", response.status, response.body)
+	}
+	testFixture.requireSeat(testFixture.loadMe(token).ID, seatID)
+}
+
+func TestSeatCodeWorksBeforeTheLANButNotAfterIt(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.createFutureLAN()
+	token := testFixture.registerPlayer("Früh")
+	code := testFixture.issueCode(2, testFixture.createSeat(2), `{}`)
+
+	response := testFixture.redeemWith(token, code)
+	if response.status != http.StatusOK || !decodeBody[redeemAnswer](t, response).SeatAssigned {
+		t.Fatalf("redeem before the LAN: %d %s", response.status, response.body)
+	}
+	if state := testFixture.loadMe(token); state.LAN == nil || state.LAN.Slug == "next" {
+		t.Fatalf("the running LAN stays the current one: %+v", state.LAN)
+	}
+	if xp := testFixture.pokePlayer(token); xp == 0 {
+		t.Fatal("registering for the next LAN must not stop the running one")
+	}
+
+	late := testFixture.issueCode(1, testFixture.createSeat(1), `{}`)
+	testFixture.advanceClock(200 * time.Hour)
+	requireProblem(t, testFixture.redeemWith(token, late), http.StatusForbidden, "invalid_code")
+}
+
+func TestLANCodeWithASecretJoinsWithoutANewAccount(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.createFutureLAN()
+	token := testFixture.registerPlayer("Bleibt")
+	playerID := testFixture.loadMe(token).ID
+
+	response := testFixture.redeemWith(token, "next-code")
+	if response.status != http.StatusOK {
+		t.Fatalf("redeem: %d %s", response.status, response.body)
+	}
+	if secret := decodeBody[registerResponse](t, response).Token; secret != token {
+		t.Fatalf("secret changed to %q", secret)
+	}
+	testFixture.advanceClock(30*24*time.Hour + time.Hour)
+	if xp := testFixture.pokePlayer(token); xp == 0 {
+		t.Fatal("the account takes part in the next LAN")
+	}
+	if state := testFixture.loadMe(token); state.ID != playerID || state.LAN.Slug != "next" {
+		t.Fatalf("state: %+v", state)
+	}
+}
+
+func TestRedeemRefusesASecretThatIsWrong(t *testing.T) {
+	testFixture := newFixture(t)
+	requireProblem(t, testFixture.redeemWith("wrong", joinCode),
+		http.StatusUnauthorized, "unauthorized")
+}
+
+func TestIssueSeatCodeRefusesAnUnknownAccount(t *testing.T) {
+	testFixture := newFixture(t)
+	response := testFixture.callAdmin("POST",
+		"/admin/api/lans/1/areas/"+testFixture.createSeat(1)+"/code", `{"player_id":999}`)
+	requireProblem(t, response, http.StatusNotFound, "player_not_found")
+}
+
+// createRecoveryCode lets the admin create a recovery code for an account.
+func (testFixture *fixture) createRecoveryCode(playerID int64, body string) apiResponse {
+	testFixture.t.Helper()
+	return testFixture.callAdmin("POST",
+		"/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/recovery-code", body)
+}
+
+// recoverWith sends a recovery code.
+func (testFixture *fixture) recoverWith(code string) apiResponse {
+	testFixture.t.Helper()
+	return testFixture.callAPI("POST", "/v1/auth/recover", "", `{"code":"`+code+`"}`)
+}
+
+func TestRecoveryCodeReplacesTheSecretOnce(t *testing.T) {
+	testFixture := newFixture(t)
+	oldSecret := testFixture.registerPlayer("Vergesslich")
+	testFixture.pokePlayer(oldSecret)
+	state := testFixture.loadMe(oldSecret)
+
+	recovery := decodeBody[store.RecoveryCode](t, testFixture.createRecoveryCode(state.ID, `{}`))
+	if want := testFixture.clock.Load() + 24*60*60*1000; recovery.ExpiresAt != want {
+		t.Fatalf("expires at %d, want %d", recovery.ExpiresAt, want)
+	}
+	if got := testFixture.callAPI("GET", "/v1/players/me", oldSecret, "").status; got != 200 {
+		t.Fatalf("a new code alone must not lock anyone out: %d", got)
+	}
+
+	response := testFixture.recoverWith(recovery.Code)
+	if response.status != http.StatusOK {
+		t.Fatalf("recover: %d %s", response.status, response.body)
+	}
+	newState := testFixture.loadMe(decodeBody[registerResponse](t, response).Token)
+	if newState.ID != state.ID || newState.XP != state.XP {
+		t.Fatalf("state: %+v", newState)
 	}
 	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", oldSecret, ""),
 		http.StatusUnauthorized, "unauthorized")
+	requireProblem(t, testFixture.recoverWith(recovery.Code),
+		http.StatusForbidden, "invalid_recovery_code")
+}
 
-	codes := decodeBody[[]store.SeatCode](t,
-		testFixture.callAdmin("GET", "/admin/api/lans/1/seat-codes", ""))
-	if len(codes) != 1 || codes[0].UsedAt == nil || codes[0].Name == nil ||
-		*codes[0].Name != "Sitzer" {
-		t.Fatalf("codes: %+v", codes)
+func TestRecoveryCodeWorksWithoutALANAndEndsAtItsTime(t *testing.T) {
+	testFixture := newFixture(t)
+	playerID := testFixture.loadMe(testFixture.registerPlayer("Später")).ID
+	testFixture.advanceClock(200 * time.Hour)
+
+	short := decodeBody[store.RecoveryCode](t,
+		testFixture.createRecoveryCode(playerID, `{"valid_seconds":60}`))
+	testFixture.advanceClock(61 * time.Second)
+	requireProblem(t, testFixture.recoverWith(short.Code),
+		http.StatusForbidden, "invalid_recovery_code")
+
+	first := decodeBody[store.RecoveryCode](t, testFixture.createRecoveryCode(playerID, `{}`))
+	second := decodeBody[store.RecoveryCode](t, testFixture.createRecoveryCode(playerID, `{}`))
+	requireProblem(t, testFixture.recoverWith(first.Code),
+		http.StatusForbidden, "invalid_recovery_code")
+	if got := testFixture.recoverWith(second.Code).status; got != http.StatusOK {
+		t.Fatalf("the newest code recovers after the LAN: %d", got)
+	}
+}
+
+func TestRecoveryCodeNeedsAnAccountAndASensibleTime(t *testing.T) {
+	testFixture := newFixture(t)
+	requireProblem(t, testFixture.createRecoveryCode(999, `{}`),
+		http.StatusNotFound, "player_not_found")
+	playerID := testFixture.loadMe(testFixture.registerPlayer("Zeit")).ID
+	for _, body := range []string{`{"valid_seconds":0}`, `{"valid_seconds":99999999}`} {
+		requireProblem(t, testFixture.createRecoveryCode(playerID, body),
+			http.StatusBadRequest, "invalid_input")
 	}
 }
 
@@ -159,11 +384,11 @@ func TestProfilesNeedASecretAndHideHiddenPlayers(t *testing.T) {
 }
 
 // createFutureLAN adds a LAN that starts after the one of the fixture has ended.
-func (testFixture *fixture) createFutureLAN(code string) {
+func (testFixture *fixture) createFutureLAN() {
 	testFixture.t.Helper()
 	startsAt := time.UnixMilli(testFixture.clock.Load()).Add(30 * 24 * time.Hour)
 	err := testFixture.database.CreateLAN(testFixture.t.Context(), store.NewLAN{
-		Slug: "next", Name: "Next", Timezone: "Europe/Berlin", JoinCode: code,
+		Slug: "next", Name: "Next", Timezone: "Europe/Berlin", JoinCode: "next-code",
 		StartsAt: startsAt.UnixMilli(), EndsAt: startsAt.Add(24 * time.Hour).UnixMilli(),
 		Rules: rules.DefaultRules(),
 	})
@@ -181,7 +406,7 @@ func (testFixture *fixture) redeemLANCode(code, name string) apiResponse {
 
 func TestLANCodeRegistersBeforeTheLANWithoutAnyXP(t *testing.T) {
 	testFixture := newFixture(t)
-	testFixture.createFutureLAN("next-code")
+	testFixture.createFutureLAN()
 	response := testFixture.redeemLANCode("next-code", "Early")
 	if response.status != http.StatusOK {
 		t.Fatalf("redeem: %d %s", response.status, response.body)
@@ -205,7 +430,7 @@ func TestLANCodeRegistersBeforeTheLANWithoutAnyXP(t *testing.T) {
 
 func TestRegisteredAccountStaysOffTheStageUntilItActs(t *testing.T) {
 	testFixture := newFixture(t)
-	testFixture.createFutureLAN("next-code")
+	testFixture.createFutureLAN()
 	token := decodeBody[registerResponse](t, testFixture.redeemLANCode("next-code", "Early")).Token
 	testFixture.advanceClock(30*24*time.Hour + time.Hour)
 	if players := testFixture.loadStage().Players; len(players) != 0 {

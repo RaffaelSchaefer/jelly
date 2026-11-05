@@ -200,13 +200,13 @@ func TestNewLANRestartsXPAndKeepsHistory(t *testing.T) {
 	testFixture.createLAN("ucb-2027", nextLANStart)
 	testFixture.clock.Store(nextLANStart.Add(time.Hour).UnixMilli())
 
-	secret := testFixture.seatPlayerInSecondLAN(testFixture.loadMe(token).ID)
+	secret := testFixture.seatPlayerInSecondLAN(token)
+	if secret != token {
+		t.Fatalf("the account has to keep its secret, got %q", secret)
+	}
 	state := testFixture.loadMe(secret)
 	if state.XP != 0 || state.Level != 1 || state.TotalXP != 3 || len(state.Badges) != 2 {
 		t.Fatalf("state in the new LAN: %+v", state)
-	}
-	if got := testFixture.callAPI("GET", "/v1/players/me", token, "").status; got != 401 {
-		t.Fatalf("the old secret still works: %d", got)
 	}
 }
 
