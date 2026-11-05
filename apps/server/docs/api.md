@@ -27,7 +27,7 @@ Aktuelle Version: **1.14.0**
 
 | Version | Änderung |
 | ------- | -------- |
-| 1.14.0  | Einheitliche Namen: `ends_at`, `follow`, `stack_level`, `partner_id`. Weniger Fehlercodes, `unlock` im Katalog, `rules` in `GET /lans/current` samt `rules.changed`, `xp_per_level` je LAN. Alles, was endet, meldet sich per Ereignis |
+| 1.14.0  | Einheitliche Namen: `ends_at`, `follow`, `stack_level`, `partner_id`. Weniger Fehlercodes, `unlock` im Katalog, `rules` in `GET /lans/current` samt `rules.changed`, `xp_per_level` je LAN. Alles, was endet, meldet sich per Ereignis. `PATCH /admin/api/lans/{id}/rules` ändert einzelne Regeln, der Admin-Weg `rotate-token` entfällt |
 | 1.13.0  | `rotation` in `areas` und in der Kartendatei: Zonen stehen in jedem Winkel, Hindernisse und Plätze drehen sich mit |
 | 1.12.0  | `gathering` in `GET /stage`, Ereignis `gathering.changed`, Wege `food` und `ceremony`: Essens-Event und Siegerehrung. `highlight` nennt `cosmetic_key`, das Hervorheben wird eine kurze Aura. `glow-aura` und `highlight-aura` im Katalog |
 | 1.11.0  | Brechend: `desk`, `cable` und `snackbar` sind keine Zuweisungen mehr, sondern Props. Neu in `areas`: `blocks`, `prop`, `name`, Positionen dürfen Bruchteile haben. Neue Zuweisungen `queue`, `public`, `spectators`, `winner`. Kartenformat mit `PUT /admin/api/lans/{id}/map`. `POST /trips/goto` lehnt blockende Zonen ab, Jellies füllen die Fläche von `queue`-Zonen |
@@ -52,7 +52,7 @@ dem Client abgestimmt. Ab der ersten LAN bekommt jede brechende Änderung einen 
 | ------- | -------- | ---------- |
 | 1.14.0  | `trip.until` und `until` bei `highlight` heißen `ends_at`, `follow_player_id` und `follow_until` werden `follow {player_id, ends_at}`, `moves[].level` heißt `stack_level` | Ein Name je Sache, das Level eines Wegs war leicht mit dem XP-Level zu verwechseln |
 | 1.14.0  | `trip` und `last_seen_at` fehlen in `players` von `GET /stage` | Ziel und Art stehen im Weg, die letzte Aktivität war nur Zustand des Servers |
-| 1.14.0  | `invalid_request` und `invalid_input` werden `invalid_request`, `unknown_action` wird `unknown_report_kind`, `partner_self` wird `invalid_partner`, `invalid_event_code` antwortet 403 | Codes sollen sagen, was falsch ist, falsche Codes antworten einheitlich |
+| 1.14.0  | `invalid_body` und `invalid_input` werden `invalid_request`, `unknown_action` wird `unknown_report_kind`, `partner_self` wird `invalid_partner`, `invalid_event_code` antwortet 403 | Codes sollen sagen, was falsch ist, falsche Codes antworten einheitlich |
 | 1.14.0  | `partner_ids` wird `partner_id`, `next_cursor` fehlt bei `GET /partner-emotes` | Gruppen sind nicht geplant, die Liste ist immer vollständig |
 | 1.14.0  | Katalog: `unlock` statt `requires_event`, `secret` fehlt bei Achievements | Die Freischaltung musste man erraten, `secret` war dort immer `false` |
 | 1.11.0  | `kind` in `areas` nennt nur noch das Verhalten, siehe [Bühne](#bühne) | Was dort steht, kommt aus der Karte. Beides war doppelt und konnte sich widersprechen |
