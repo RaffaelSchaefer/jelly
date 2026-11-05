@@ -465,3 +465,21 @@ func TestWrongCodeIsRefusedWithoutARunningLAN(t *testing.T) {
 		"invalid_code",
 	)
 }
+
+func TestSeatCodeDoesNotSeatAnyoneInAZoneThatIsNoSeatAnymore(t *testing.T) {
+	testFixture := newFixture(t)
+	seatID := testFixture.createSeat(1)
+	code := testFixture.issueCode(1, seatID, "{}")
+	response := testFixture.callAdmin("PUT", "/admin/api/lans/1/areas/"+seatID,
+		`{"x":40,"y":40,"width":5,"height":5,"kind":"none"}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("change zone: %d %s", response.status, response.body)
+	}
+	answer := testFixture.redeem(map[string]string{"code": code, "name": "Spaet", "color": "mint"})
+	if answer.status != http.StatusOK {
+		t.Fatalf("redeem: %d %s", answer.status, answer.body)
+	}
+	if decodeBody[redeemAnswer](t, answer).SeatAssigned {
+		t.Fatal("the code seated someone in a zone that is no seat")
+	}
+}

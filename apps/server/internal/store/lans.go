@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
@@ -69,12 +70,11 @@ type querier interface {
 
 // CreateLAN creates a LAN. Periods must not overlap, so at most one LAN is active.
 func (store *Store) CreateLAN(ctx context.Context, lan NewLAN) error {
-	if lan.Slug == "" || lan.Name == "" || lan.JoinCode == "" || lan.StartsAt >= lan.EndsAt {
-		return ErrInvalidInput
-	}
-	// Achievements read the time zone during the LAN, so an unknown one must not get that far.
-	_, err := time.LoadLocation(lan.Timezone)
-	if err != nil {
+	lan.Slug = strings.TrimSpace(lan.Slug)
+	lan.Name = strings.TrimSpace(lan.Name)
+	lan.JoinCode = strings.TrimSpace(lan.JoinCode)
+	if lan.Slug == "" || lan.Name == "" || lan.JoinCode == "" ||
+		!rules.IsLANPeriodValid(lan.StartsAt, lan.EndsAt) || !isTimeZoneUsable(lan.Timezone) {
 		return ErrInvalidInput
 	}
 	rulesJSON, err := json.Marshal(lan.Rules)
@@ -152,10 +152,22 @@ func (store *Store) UpdateLANRules(
 	})
 }
 
+// isTimeZoneUsable reports whether achievements can read this time zone during the LAN. An empty
+// one
+// and "Local" load fine, but mean UTC or whatever zone the server runs in.
+func isTimeZoneUsable(timezone string) bool {
+	if timezone == "" || timezone == time.Local.String() {
+		return false
+	}
+	_, err := time.LoadLocation(timezone)
+	return err == nil
+}
+
 // UpdateJoinCode replaces the code of a LAN, for example after it reached the wrong people.
 func (store *Store) UpdateJoinCode(
 	ctx context.Context, lanID int64, joinCode string, now int64,
 ) error {
+	joinCode = strings.TrimSpace(joinCode)
 	if joinCode == "" {
 		return ErrInvalidInput
 	}
@@ -275,7 +287,7 @@ func requireStableLevels(
 		return err
 	}
 	if startsAt <= now && stored.XPPerLevel != gameRules.XPPerLevel {
-		return rules.ErrInvalidRules
+		return ErrLevelsLocked
 	}
 	return nil
 }
@@ -315,6 +327,9 @@ func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON s
 	_, err = transaction.ExecContext(ctx, insertLANSQL,
 		lan.Slug, lan.Name, lan.StartsAt, lan.EndsAt, lan.Timezone,
 		hashSecret(lan.JoinCode), rulesJSON)
+	if err != nil && strings.Contains(err.Error(), "lans.slug") {
+		return ErrLANSlugTaken
+	}
 	if err != nil {
 		return fmt.Errorf("insert LAN: %w", err)
 	}

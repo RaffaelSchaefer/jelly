@@ -45,7 +45,8 @@ type redeemableCode struct {
 func (store *Store) CreateEventCode(ctx context.Context, code NewEventCode, now int64) error {
 	code.Title = strings.TrimSpace(code.Title)
 	code.Code = strings.TrimSpace(code.Code)
-	if code.Title == "" || code.Code == "" || code.XP < 0 || code.ValidFrom >= code.ValidUntil {
+	if code.Title == "" || code.Code == "" ||
+		!rules.IsEventCodeValid(code.XP, code.ValidFrom, code.ValidUntil) {
 		return ErrInvalidInput
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
