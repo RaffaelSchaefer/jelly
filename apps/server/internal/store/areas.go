@@ -67,11 +67,14 @@ func (store *Store) UpdateArea(ctx context.Context, lanID int64, area AdminArea,
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		const updateAreaSQL = `UPDATE lan_areas
-			SET x = ?, y = ?, width = ?, height = ?, kind = ?, name = ?, blocks = ?, prop = ?
+			SET x = ?, y = ?, width = ?, height = ?, rotation = ?, kind = ?, name = ?, blocks = ?,
+				prop = ?
 			WHERE id = ? AND lan_id = ?`
-		result, err := transaction.ExecContext(ctx, updateAreaSQL,
-			area.X, area.Y, area.Width, area.Height, area.Kind, area.Name, area.Blocks, area.Prop,
-			area.ID, lanID)
+		result, err := transaction.ExecContext(
+			ctx,
+			updateAreaSQL,
+			area.X, area.Y, area.Width, area.Height, area.Rotation, area.Kind, area.Name,
+			area.Blocks, area.Prop, area.ID, lanID)
 		if err != nil {
 			return fmt.Errorf("update area: %w", err)
 		}
@@ -119,7 +122,7 @@ func (store *Store) DeleteArea(ctx context.Context, lanID, areaID, now int64) er
 func (store *Store) ListAreas(ctx context.Context, lanID int64) ([]AdminArea, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	const selectAdminAreasSQL = `SELECT id, x, y, width, height, kind, blocks, prop, name,
+	const selectAdminAreasSQL = `SELECT id, x, y, width, height, rotation, kind, blocks, prop, name,
 			COALESCE(map_id, '')
 		FROM lan_areas WHERE lan_id = ? ORDER BY id`
 	rows, err := store.readDB.QueryContext(queryCtx, selectAdminAreasSQL, lanID)
@@ -136,6 +139,7 @@ func (store *Store) ListAreas(ctx context.Context, lanID int64) ([]AdminArea, er
 			&area.Y,
 			&area.Width,
 			&area.Height,
+			&area.Rotation,
 			&area.Kind,
 			&area.Blocks,
 			&area.Prop,
@@ -218,8 +222,8 @@ func insertArea(
 	ctx context.Context, transaction *sql.Tx, lanID int64, area AdminArea,
 ) (int64, error) {
 	const insertAreaSQL = `INSERT INTO lan_areas
-		(lan_id, x, y, width, height, kind, blocks, prop, name, map_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''))`
+		(lan_id, x, y, width, height, rotation, kind, blocks, prop, name, map_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''))`
 	result, err := transaction.ExecContext(
 		ctx,
 		insertAreaSQL,
@@ -228,6 +232,7 @@ func insertArea(
 		area.Y,
 		area.Width,
 		area.Height,
+		area.Rotation,
 		area.Kind,
 		area.Blocks,
 		area.Prop,
@@ -249,7 +254,7 @@ func insertArea(
 
 // loadAreas reads the room map of a LAN.
 func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea, error) {
-	const selectAreasSQL = `SELECT id, x, y, width, height, kind, blocks, prop, name
+	const selectAreasSQL = `SELECT id, x, y, width, height, rotation, kind, blocks, prop, name
 		FROM lan_areas WHERE lan_id = ? ORDER BY id`
 	rows, err := database.QueryContext(ctx, selectAreasSQL, lanID)
 	if err != nil {
@@ -260,8 +265,8 @@ func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea,
 	for rows.Next() {
 		var area StageArea
 		var name string
-		err := rows.Scan(&area.ID, &area.X, &area.Y, &area.Width, &area.Height, &area.Kind,
-			&area.Blocks, &area.Prop, &name)
+		err := rows.Scan(&area.ID, &area.X, &area.Y, &area.Width, &area.Height, &area.Rotation,
+			&area.Kind, &area.Blocks, &area.Prop, &name)
 		if err != nil {
 			return nil, fmt.Errorf("read area: %w", err)
 		}

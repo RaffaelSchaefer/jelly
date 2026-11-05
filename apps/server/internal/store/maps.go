@@ -66,7 +66,8 @@ func (store *Store) ImportMap(
 func loadImportedZones(
 	ctx context.Context, transaction *sql.Tx, lanID int64,
 ) (map[string]importedZone, error) {
-	const selectImportedZonesSQL = `SELECT id, map_id, name, x, y, width, height, blocks, prop
+	const selectImportedZonesSQL = `SELECT id, map_id, name, x, y, width, height, rotation, blocks,
+			prop
 		FROM lan_areas WHERE lan_id = ? AND map_id IS NOT NULL`
 	rows, err := transaction.QueryContext(ctx, selectImportedZonesSQL, lanID)
 	if err != nil {
@@ -77,7 +78,8 @@ func loadImportedZones(
 	for rows.Next() {
 		var item importedZone
 		err = rows.Scan(&item.id, &item.zone.ID, &item.zone.Name, &item.zone.X, &item.zone.Y,
-			&item.zone.Width, &item.zone.Height, &item.zone.Blocks, &item.zone.Prop)
+			&item.zone.Width, &item.zone.Height, &item.zone.Rotation, &item.zone.Blocks,
+			&item.zone.Prop)
 		if err != nil {
 			return nil, fmt.Errorf("read imported zone: %w", err)
 		}
@@ -148,9 +150,10 @@ func updateMapZone(
 	ctx context.Context, transaction *sql.Tx, areaID int64, zone rules.MapZone,
 ) error {
 	const updateMapZoneSQL = `UPDATE lan_areas
-		SET name = ?, x = ?, y = ?, width = ?, height = ?, blocks = ?, prop = ? WHERE id = ?`
+		SET name = ?, x = ?, y = ?, width = ?, height = ?, rotation = ?, blocks = ?, prop = ?
+		WHERE id = ?`
 	_, err := transaction.ExecContext(ctx, updateMapZoneSQL, zone.Name, zone.X, zone.Y, zone.Width,
-		zone.Height, zone.Blocks, zone.Prop, areaID)
+		zone.Height, zone.Rotation, zone.Blocks, zone.Prop, areaID)
 	if err != nil {
 		return fmt.Errorf("update map zone: %w", err)
 	}

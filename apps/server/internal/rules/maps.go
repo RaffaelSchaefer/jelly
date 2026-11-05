@@ -23,15 +23,17 @@ type MapZone struct {
 	Y      float64 `json:"y"`
 	Width  float64 `json:"width"`
 	Height float64 `json:"height"`
-	Blocks bool    `json:"blocks"`
-	Prop   string  `json:"prop"`
+	// Rotation is in degrees, clockwise around the middle of the zone. Without one it points north.
+	Rotation float64 `json:"rotation"`
+	Blocks   bool    `json:"blocks"`
+	Prop     string  `json:"prop"`
 }
 
 // ToArea returns the zone as an area without an assignment.
 func (zone MapZone) ToArea() Area {
 	return Area{
-		X: zone.X, Y: zone.Y, Width: zone.Width, Height: zone.Height, Kind: AreaKindNone,
-		Blocks: zone.Blocks, Prop: zone.Prop,
+		X: zone.X, Y: zone.Y, Width: zone.Width, Height: zone.Height, Rotation: zone.Rotation,
+		Kind: AreaKindNone, Blocks: zone.Blocks, Prop: zone.Prop,
 	}
 }
 

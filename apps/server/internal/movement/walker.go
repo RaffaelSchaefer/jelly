@@ -221,10 +221,10 @@ func (planner *Planner) drawVisitorSpot(walker *walker) floorPoint {
 	if visitorZones := planner.zones[rules.AreaKindVisitors]; len(visitorZones) > 0 {
 		zone = visitorZones[planner.random.IntN(len(visitorZones))]
 	}
-	return floorPoint{
+	return fromRectFrame(floorPoint{
 		X: zone.MinX + (zone.MaxX-zone.MinX)*planner.random.Float64(),
 		Z: zone.MinZ + (zone.MaxZ-zone.MinZ)*planner.random.Float64(),
-	}
+	}, zone)
 }
 
 // drawWanderSpot returns a random spot around the place of a jelly, inside its area.
@@ -234,10 +234,11 @@ func (planner *Planner) drawWanderSpot(walker *walker) floorPoint {
 	}
 	reachX := max(wanderReach, (walker.bounds.MaxX-walker.bounds.MinX)*wanderAreaShare)
 	reachZ := max(wanderReach, (walker.bounds.MaxZ-walker.bounds.MinZ)*wanderAreaShare)
-	spot := floorPoint{
-		X: walker.anchor.X + reachX*(planner.random.Float64()+planner.random.Float64()-fullShare),
-		Z: walker.anchor.Z + reachZ*(planner.random.Float64()+planner.random.Float64()-fullShare),
-	}
+	offset := walker.bounds.Turn.Apply(rules.FloorOffset{
+		X: reachX * (planner.random.Float64() + planner.random.Float64() - fullShare),
+		Z: reachZ * (planner.random.Float64() + planner.random.Float64() - fullShare),
+	})
+	spot := floorPoint{X: walker.anchor.X + offset.X, Z: walker.anchor.Z + offset.Z}
 	return clampIntoRect(spot, walker.bounds)
 }
 
@@ -317,10 +318,10 @@ func listZonePlaces(zone floorRect) []floorPoint {
 	places := make([]floorPoint, 0, columns*rows)
 	for row := range rows {
 		for column := range columns {
-			places = append(places, floorPoint{
+			places = append(places, fromRectFrame(floorPoint{
 				X: zone.MinX + (zone.MaxX-zone.MinX)*(float64(column)+half)/float64(columns),
 				Z: zone.MinZ + (zone.MaxZ-zone.MinZ)*(float64(row)+half)/float64(rows),
-			})
+			}, zone))
 		}
 	}
 	return places

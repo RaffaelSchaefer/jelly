@@ -435,3 +435,37 @@ func TestVisitorsWanderThroughAllVisitorZones(t *testing.T) {
 		t.Fatalf("left %v, right %v", visitedLeft, visitedRight)
 	}
 }
+
+func TestQueueInATurnedZoneKeepsItsPlacesInsideTheZone(t *testing.T) {
+	planner := movement.NewPlanner()
+	roster := makeRoster(1, 2, 3, 4, 5, 6)
+	queue := rules.Area{
+		X:        30,
+		Y:        60,
+		Width:    40,
+		Height:   12,
+		Rotation: 30,
+		Kind:     rules.AreaKindQueue,
+	}
+	roster.Areas = append(roster.Areas, queue)
+	planner.Advance(start, roster)
+	for index := range roster.Players {
+		roster.Players[index].SnackUntil = start + 60_000
+	}
+	planner.Advance(start+1000, roster)
+	// A blocking copy of the zone is how the rules look at a point. The API rounds to two decimals.
+	wall := queue
+	wall.Blocks = true
+	wall.X, wall.Y, wall.Width, wall.Height = 29.9, 59.9, 40.2, 12.2
+	ends := map[movement.Point]bool{}
+	for _, move := range planner.ListCurrentMoves() {
+		end := endOf(move)
+		ends[end] = true
+		if rules.IsOnFreeFloor(rules.StagePoint{X: end.X, Y: end.Y}, []rules.Area{wall}) {
+			t.Fatalf("outside the turned zone: %+v", end)
+		}
+	}
+	if len(ends) != 6 {
+		t.Fatalf("jellies share spots: %v", ends)
+	}
+}

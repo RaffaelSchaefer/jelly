@@ -27,6 +27,7 @@ Aktuelle Version: **1.8.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.13.0  | `rotation` in `areas` und in der Kartendatei: Zonen stehen in jedem Winkel, Hindernisse und Plätze drehen sich mit |
 | 1.12.0  | `gathering` in `GET /stage`, Ereignis `gathering.changed`, Wege `food` und `ceremony`: Essens-Event und Siegerehrung. `highlight` nennt `cosmetic_key`, das Hervorheben wird eine kurze Aura. `glow-aura` und `highlight-aura` im Katalog |
 | 1.11.0  | Brechend: `desk`, `cable` und `snackbar` sind keine Zuweisungen mehr, sondern Props. Neu in `areas`: `blocks`, `prop`, `name`, Positionen dürfen Bruchteile haben. Neue Zuweisungen `queue`, `public`, `spectators`, `winner`. Kartenformat mit `PUT /admin/api/lans/{id}/map`. `POST /trips/goto` lehnt blockende Zonen ab, Jellies füllen die Fläche von `queue`-Zonen |
 | 1.10.0  | Brechend: `POST /auth/redeem` nimmt das Secret an, das Konto tritt bei und behält es, Sitzplatz-Codes holen kein Konto mehr zurück und können an ein Konto gebunden sein, `seat_assigned` in der Antwort. Neu: `POST /auth/recover` und `POST /admin/api/players/{id}/recovery-code`. `area_occupied` entfällt |
@@ -309,6 +310,9 @@ das Lesen und ist die einzige Ausnahme. Spieler-Secrets gehören immer in den He
   eine Siegerehrung) und `none` (noch nichts zugewiesen). Unbekannte Werte sind wie `none` zu behandeln.
 - `prop` nennt das Modell, das dort steht, leer heißt blanker Boden. `blocks` sagt, ob Jellies außen herum laufen müssen.
   Beides kommt aus der Karte. Ein unbekanntes `prop` zeigt die Bühne als blanken Boden.
+- `rotation` dreht eine Zone in Grad im Uhrzeigersinn um ihre Mitte, `0` zeigt nach Norden (Richtung `y` = 0). `x`, `y`,
+  `width` und `height` sagen, wo sie ohne Drehung stünde. Die Größe auf dem Boden bleibt gleich. Weil Prozent auf beiden
+  Achsen verschieden lang sind, muss ein Renderer in Bodeneinheiten drehen, nicht in Prozent.
 - `name` hat nur eine Zone der Art `public`, bei allen anderen ist es `null`.
 - Der Admin vergibt die Zuweisung. Der Code schaut nur auf `kind`, `blocks` und `prop`, nie auf den Namen.
 - Jellies ohne eigenen Bereich sind Besucher (`is_visitor`). Sie wandern durch alle Zonen der Art `visitors`, ohne solche
@@ -428,13 +432,13 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`, der Schlüssel muss im Katalog stehen |
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
-| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind","name","blocks","prop"}` |
+| `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","rotation","kind","name","blocks","prop"}` |
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
 | `DELETE /admin/api/lans/{id}/gathering`          | Beendet es vorzeitig                      |
 | `PUT /admin/api/lans/{id}/map`                   | Kartendatei, siehe unten. Antwort: `{"created","updated","removed","unknown_props","unassigned_players"}` |
 | `POST /admin/api/lans/{id}/areas/{area}/code`    | `{"player_id"}`, optional, bindet den Code ans Konto |
 | `GET /admin/api/lans/{id}/seat-codes`            | Antwort: Codes mit `used_at`, `player_id`, `name` und `is_seated`, ob das Konto dort sitzt |
-| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height","kind","name","blocks","prop"}` bei `PUT` |
+| `PUT`, `DELETE /admin/api/lans/{id}/areas/{area}` | `{"x","y","width","height","rotation","kind","name","blocks","prop"}` bei `PUT` |
 | `PUT /admin/api/lans/{id}/players/{player}/area` | `{"area_id"}` von `seats`, `stage`, `lounge` oder `visitors`, `null` entfernt ihn |
 
 Beim Bearbeiten eines Bereichs bleiben seine Jellies zugeordnet, solange dort Jellies stehen können.
@@ -449,7 +453,7 @@ Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der 
 {
   "version": 1,
   "zones": [
-    { "id": "sofa-1", "name": "Sofa Lounge", "x": 50.5, "y": 10.25, "width": 10, "height": 5, "blocks": true, "prop": "couch" }
+    { "id": "sofa-1", "name": "Sofa Lounge", "x": 50.5, "y": 10.25, "width": 10, "height": 5, "rotation": 37.5, "blocks": true, "prop": "couch" }
   ]
 }
 ```
@@ -457,6 +461,8 @@ Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der 
 - `id` ist ein freier Text, höchstens 64 Zeichen, und erkennt die Zone beim nächsten Import wieder. Bekannte Zonen behalten
   Zuweisung und Sitzplatz-Code. Neue beginnen mit `none`. Fehlt eine, wird sie entfernt, und ihre Jellies verlieren den Platz.
   Von Hand angelegte Zonen bleiben unberührt.
+- `rotation` ist optional, von 0 bis unter 360 Grad, Nachkommastellen sind erlaubt. Fehlt sie, zeigt die Zone nach Norden.
+  Alle vier Ecken müssen nach dem Drehen im Raum liegen. Hindernis und Plätze der Zone drehen sich mit.
 - Der Import läuft auch während einer LAN und sendet `stage.changed`.
 - Ist eine Zone ungültig, ändert sich nichts, und es folgt `400 invalid_map`. Unbekannte Props hindern den Import nicht,
   stehen aber in `unknown_props`. Die bekannten Props stehen in `ListProps` in `internal/rules/maps.go`.

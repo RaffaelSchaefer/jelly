@@ -411,13 +411,14 @@
       }
     },
     "StageArea": {
-      "description": "One zone of the room, in percent of the stage. Zones can overlap.",
+      "description": "One zone of the room, in percent of the stage. Zones can overlap. `x`, `y`, `width` and `height` say where it would stand without `rotation`.",
       "fields": {
         "id": "Number of the zone.",
-        "x": "Left edge.",
-        "y": "Top edge.",
-        "width": "Width.",
-        "height": "Height.",
+        "x": "Left edge before the rotation.",
+        "y": "Top edge before the rotation.",
+        "width": "Width before the rotation.",
+        "height": "Height before the rotation.",
+        "rotation": "Degrees clockwise seen from above, from 0 up to below 360. The zone turns around its middle and keeps its size on the floor. Percent has a different length on each axis, so turn it on the floor and not in percent. 0 means the model faces north, toward `y` = 0.",
         "kind": "How jellies use the zone. They belong to `seats`, `stage`, `lounge` and `visitors`, line up in `queue`, and `public` is a named place to go to. `spectators` and `winner` are for a ceremony, `none` is not assigned yet. Treat new values like `none`.",
         "blocks": "Whether jellies walk around this zone. `POST /v1/trips/goto` refuses points in it.",
         "prop": "The model that stands here, or empty for bare floor. Unknown props show bare floor.",

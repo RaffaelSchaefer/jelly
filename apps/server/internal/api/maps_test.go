@@ -196,3 +196,43 @@ func TestTripsGoEverywhereExceptIntoBlockingZones(t *testing.T) {
 		t.Fatalf("a seat of someone else is a valid goal: %d", got)
 	}
 }
+
+func TestImportTakesARotationAndNoticesWhenItChanges(t *testing.T) {
+	testFixture := newFixture(t)
+	const table = `{"id":"table","name":"","x":30,"y":45,"width":40,"height":5,"blocks":true,` +
+		`"prop":"desk"`
+	testFixture.importMap(table + `}`)
+	if got := testFixture.findMapArea("table").Rotation; got != 0 {
+		t.Fatalf("a zone without rotation points north: %v", got)
+	}
+	report := testFixture.importMap(table + `,"rotation":37.5}`)
+	if len(report.Updated) != 1 || testFixture.findMapArea("table").Rotation != 37.5 {
+		t.Fatalf("report: %+v", report)
+	}
+	if got := testFixture.loadStage().Areas[0].Rotation; got != 37.5 {
+		t.Fatalf("the stage shows rotation %v", got)
+	}
+	requireProblem(t, testFixture.callAdmin("PUT", mapPath,
+		`{"version":1,"zones":[`+table+`,"rotation":360}]}`), http.StatusBadRequest, "invalid_map")
+	if got := testFixture.findMapArea("table").Rotation; got != 37.5 {
+		t.Fatalf("a refused map changed the rotation to %v", got)
+	}
+}
+
+func TestTripsAreRefusedByTheRotatedShapeOfAZone(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Reisend")
+	testFixture.importMap(`{"id":"table","name":"","x":30,"y":45,"width":40,"height":5,` +
+		`"rotation":90,"blocks":true,"prop":"desk"}`)
+
+	requireProblem(t, testFixture.callAPI("POST", "/v1/trips/goto", token, `{"x":50,"y":57}`),
+		http.StatusBadRequest, "invalid_trip")
+	response := testFixture.callAPI("POST", "/v1/trips/goto", token, `{"x":65,"y":47.5}`)
+	if response.status != http.StatusOK {
+		t.Fatalf(
+			"where the table would stand unturned is free: %d %s",
+			response.status,
+			response.body,
+		)
+	}
+}

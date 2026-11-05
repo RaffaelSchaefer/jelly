@@ -39,13 +39,16 @@ const maxZoneTextLength = 64
 // ErrInvalidArea reports an area outside the stage, without a size or of an unknown kind.
 var ErrInvalidArea = errors.New("invalid area")
 
-// Area is a rectangle on the stage, in percent of its width and height.
+// Area is a rectangle on the stage, in percent of its width and height. X, Y, width and height say
+// where it would stand without rotation.
 type Area struct {
 	X      float64 `json:"x"`
 	Y      float64 `json:"y"`
 	Width  float64 `json:"width"`
 	Height float64 `json:"height"`
-	Kind   string  `json:"kind"`
+	// Rotation is in degrees, clockwise around the middle of the area. 0 points north.
+	Rotation float64 `json:"rotation"`
+	Kind     string  `json:"kind"`
 	// Blocks keeps jellies out, they walk around this zone.
 	Blocks bool `json:"blocks"`
 	// Prop names the model that stands here, empty for bare floor.
@@ -83,9 +86,8 @@ func IsOnStage(point StagePoint) bool {
 
 // ValidateArea checks one area. Areas may touch or overlap, the layout is only a rough map.
 func ValidateArea(area Area) error {
-	isInside := area.X >= 0 && area.Y >= 0 &&
-		area.X+area.Width <= stageSize && area.Y+area.Height <= stageSize
-	if !isInside || area.Width <= 0 || area.Height <= 0 {
+	hasSize := area.Width > 0 && area.Height > 0
+	if !hasSize || !isRotationValid(area.Rotation) || !area.fitsOnStage() {
 		return ErrInvalidArea
 	}
 	if !slices.Contains(listAreaKinds(), area.Kind) || len(area.Prop) > maxZoneTextLength {
@@ -111,22 +113,24 @@ func IsStandingKind(kind string) bool {
 // WholeStage returns the area of a jelly that has no area assigned.
 func WholeStage() Area {
 	return Area{
-		X:      0,
-		Y:      0,
-		Width:  stageSize,
-		Height: stageSize,
-		Kind:   AreaKindSeats,
-		Blocks: false,
-		Prop:   "",
+		X:        0,
+		Y:        0,
+		Width:    stageSize,
+		Height:   stageSize,
+		Rotation: 0,
+		Kind:     AreaKindSeats,
+		Blocks:   false,
+		Prop:     "",
 	}
 }
 
 // CalculateHomeSpot returns the spot of the jelly with this place in its area, counted from 0.
 func CalculateHomeSpot(area Area, place int) HomeSpot {
-	return HomeSpot{
+	spot := area.turnPoint(StagePoint{
 		X: placeInSpan(area.X, area.Width, calculateSpreadShare(place, spreadStepX)),
 		Y: placeInSpan(area.Y, area.Height, calculateSpreadShare(place, spreadStepY)),
-	}
+	})
+	return HomeSpot(spot)
 }
 
 // calculateSpreadShare returns a share from 0 to below 1. Consecutive places land far apart.
@@ -149,7 +153,6 @@ func IsOnFreeFloor(point StagePoint, areas []Area) bool {
 		return false
 	}
 	return !slices.ContainsFunc(areas, func(area Area) bool {
-		return area.Blocks && point.X >= area.X && point.X <= area.X+area.Width &&
-			point.Y >= area.Y && point.Y <= area.Y+area.Height
+		return area.Blocks && area.containsPoint(point)
 	})
 }
