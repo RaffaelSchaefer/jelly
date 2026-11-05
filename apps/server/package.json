@@ -7,17 +7,16 @@
     "demo": "scripts/demo.sh",
     "dev": "go generate ./internal/web && go run ./cmd/jelly-server",
     "build": "go generate ./internal/web && go build -o dist/jelly-server ./cmd/jelly-server",
-    "test": "go test ./... && pnpm run test:web",
-    "test:web": "node --test --disable-warning=ExperimentalWarning 'web/**/*.test.ts'",
+    "test": "go test ./...",
     "check-types": "tsc --noEmit",
     "openapi": "go run ./cmd/jelly-server openapi > docs/openapi.json",
     "bench": "go test -run=^$ -bench=. -benchmem ./internal/store/",
     "bench:load": "benchmarks/load.sh",
-    "lint": "golangci-lint run && oxlint --deny-warnings web",
-    "format": "golangci-lint fmt && golangci-lint run --fix && oxfmt web"
+    "lint": "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run && oxlint --deny-warnings web",
+    "format": "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 fmt && go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run --fix && oxfmt web"
   },
   "dependencies": {
-    "@jelly/scene": "workspace:*",
+    "@jelly/stage": "workspace:*",
     "three": "0.186.1"
   },
   "devDependencies": {

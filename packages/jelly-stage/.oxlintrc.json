@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["unicorn", "oxc", "import", "typescript"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "eqeqeq": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-empty": "error",
+    "no-unused-vars": "error",
+    "import/no-cycle": "error",
+    "max-lines": ["warn", { "max": 350, "skipBlankLines": true, "skipComments": true }],
+    "max-lines-per-function": ["warn", { "max": 60, "skipBlankLines": true, "skipComments": true }],
+    "complexity": ["warn", { "max": 12 }],
+    "max-depth": ["warn", { "max": 3 }],
+    "max-params": ["warn", { "max": 4 }]
+  }
+}

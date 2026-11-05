@@ -1,0 +1,140 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import type { EventPayload, StageCatalog, StageEvent } from "./types.ts";
+
+import {
+  calculateMotionPose,
+  createEffects,
+  findMotionPose,
+  findEmote,
+  isFreshEvent,
+  isPulseEvent,
+  updateEffects,
+} from "./effects.ts";
+
+const catalog: StageCatalog = {
+  signs: [],
+  achievements: [{ key: "hatched", title: "Frisch geschlüpft" }],
+};
+
+function makeEvent(type: string, payload: EventPayload, playerId: number | null = 1): StageEvent {
+  return { id: 1, type, player_id: playerId, payload, created_at: 1000 };
+}
+
+test("each emote shows its bubble and plays a shared gesture", () => {
+  const wave = createEffects(makeEvent("emote", { key: "wave" }), catalog, 0);
+  assert.deepEqual(
+    wave.map((effect) => effect.kind),
+    ["bubble", "emote"],
+  );
+  const cheer = createEffects(makeEvent("emote", { key: "cheer" }), catalog, 0);
+  assert.deepEqual(
+    cheer.map((effect) => effect.kind),
+    ["bubble", "emote"],
+  );
+});
+
+test("an unknown emote from a newer server does nothing", () => {
+  assert.deepEqual(createEffects(makeEvent("emote", { key: "new" }), catalog, 0), []);
+});
+
+test("a partner emote moves both partners together", () => {
+  const effects = createEffects(
+    makeEvent("partner.emote", { key: "hop", partner_id: 2 }),
+    catalog,
+    50,
+  );
+  assert.deepEqual(
+    effects.map((effect) => effect.playerId),
+    [1, 2],
+  );
+  assert.equal(effects[0]?.startedAt, effects[1]?.startedAt);
+});
+
+test("a secret achievement does not reveal itself", () => {
+  const known = createEffects(makeEvent("achievement.earned", { key: "hatched" }), catalog, 0);
+  const secret = createEffects(makeEvent("achievement.earned", { key: "hidden" }), catalog, 0);
+  assert.ok(known[0]?.kind === "toast" && known[0].text === "Frisch geschlüpft");
+  assert.ok(secret[0]?.kind === "toast" && secret[0].text === "Geheimes Achievement");
+});
+
+test("lasting changes and events without a player trigger nothing", () => {
+  assert.deepEqual(createEffects(makeEvent("sign.changed", { key: "cs2" }), catalog, 0), []);
+  assert.deepEqual(createEffects(makeEvent("stage.changed", {}, null), catalog, 0), []);
+});
+
+test("old replayed events are not animated", () => {
+  const event = makeEvent("emote", { key: "wave" });
+  assert.ok(isFreshEvent(event, 5000));
+  assert.ok(!isFreshEvent(event, 60_000));
+});
+
+test("finished effects disappear and the list stays bounded", () => {
+  const added = createEffects(makeEvent("emote", { key: "wave" }), catalog, 0);
+  assert.equal(updateEffects([], added, 1000).length, 2);
+  assert.equal(updateEffects(added, [], 60_000).length, 0);
+  const flood = Array.from({ length: 500 }, () => added[0]!);
+  assert.equal(updateEffects([], flood, 1000).length, 200);
+});
+
+test("every motion starts and ends at rest", () => {
+  for (const motion of ["hop", "wiggle"] as const) {
+    for (const progress of [0, 1]) {
+      const pose = calculateMotionPose(motion, progress);
+      const isResting = [pose.lift, pose.turn, pose.tilt].every((value) => Math.abs(value) < 1e-9);
+      assert.ok(isResting, `${motion} ${progress}`);
+    }
+  }
+  assert.ok(Math.abs(calculateMotionPose("spin", 1).turn - 2 * Math.PI) < 1e-9);
+});
+
+test("a spin turns the jelly around, a wiggle tilts it, others rest", () => {
+  const effects = createEffects(
+    {
+      id: 1,
+      type: "partner.emote",
+      player_id: 4,
+      payload: { key: "spin", partner_id: 9 },
+      created_at: 0,
+    },
+    { signs: [], achievements: [] },
+    1000,
+  );
+  assert.ok(findMotionPose(effects, 9, 1600).turn > 0);
+  assert.deepEqual(findMotionPose(effects, 5, 1600), { lift: 0, turn: 0, tilt: 0 });
+});
+
+test("rewards make a jelly bounce, emotes do not", () => {
+  const event = { id: 1, player_id: 4, payload: {}, created_at: 0 };
+  assert.equal(isPulseEvent({ ...event, type: "xp.gained" }), true);
+  assert.equal(isPulseEvent({ ...event, type: "level.up" }), true);
+  assert.equal(isPulseEvent({ ...event, type: "emote" }), false);
+});
+
+test("a highlight lights up the named jelly, not the one who asked", () => {
+  const catalog = { signs: [], achievements: [] };
+  const event = {
+    id: 1,
+    type: "highlight",
+    player_id: 4,
+    payload: { target_id: 9, until: 10_500 },
+    created_at: 500,
+  };
+  assert.deepEqual(createEffects(event, catalog, 1000), [
+    { playerId: 9, startedAt: 1000, endsAt: 11_000, kind: "spotlight" },
+  ]);
+  assert.deepEqual(createEffects({ ...event, payload: {} }, catalog, 1000), []);
+});
+
+test("the newest emote replaces its predecessor and expires after three seconds", () => {
+  const effects = [
+    ...createEffects(makeEvent("emote", { key: "love" }), catalog, 0),
+    ...createEffects(makeEvent("emote", { key: "wave" }), catalog, 1000),
+  ];
+  assert.deepEqual(findEmote(effects, 1, 1500), { key: "wave", elapsed: 0.5 });
+  assert.equal(findEmote(effects, 2, 1500), undefined);
+  assert.equal(findEmote(effects, 1, 4000), undefined);
+  assert.equal(findEmote(effects, 1, -1), undefined);
+  assert.deepEqual(findMotionPose(effects, 1, 1500), { lift: 0, turn: 0, tilt: 0 });
+});
