@@ -103,7 +103,7 @@ func loadState(ctx context.Context, database querier, playerID, now int64) (Play
 	}
 	state.ServerTime = now
 	state.LastEventID = latestID
-	state.Level = rules.CalculateLevel(0)
+	state.Level = rules.FirstLevel
 	err = loadProgress(ctx, database, &state, now)
 	if err != nil {
 		return PlayerState{}, err
@@ -173,7 +173,11 @@ func loadProgress(ctx context.Context, database querier, state *PlayerState, now
 	row.info.Active = row.startsAt <= now && now < row.endsAt
 	state.LAN = &row.info
 	state.XP = row.xp
-	state.Level = rules.CalculateLevel(row.xp)
+	gameRules, err := parseRules(row.rulesJSON)
+	if err != nil {
+		return err
+	}
+	state.Level = rules.CalculateLevel(gameRules, row.xp)
 	if !row.info.Active {
 		return nil
 	}
@@ -212,17 +216,18 @@ func loadActiveTimers(
 func loadUnlockedCosmetics(
 	ctx context.Context, database querier, playerID int64,
 ) ([]string, error) {
-	var currentXP, bestXP, currentEvents, totalEvents int
+	levels, err := loadLevels(ctx, database, playerID)
+	if err != nil {
+		return nil, err
+	}
+	var currentEvents, totalEvents int
 	const selectUnlockFactsSQL = `SELECT
-		COALESCE((SELECT e.xp FROM lan_entries e JOIN lans l ON l.id = e.lan_id
-			WHERE e.player_id = ?1 ORDER BY l.starts_at DESC LIMIT 1), 0),
-		COALESCE((SELECT MAX(xp) FROM lan_entries WHERE player_id = ?1), 0),
 		(SELECT COUNT(*) FROM xp_log WHERE player_id = ?1 AND action = ?2 AND lan_id = (
 			SELECT e.lan_id FROM lan_entries e JOIN lans l ON l.id = e.lan_id
 			WHERE e.player_id = ?1 ORDER BY l.starts_at DESC LIMIT 1)),
 		(SELECT COUNT(*) FROM xp_log WHERE player_id = ?1 AND action = ?2)`
-	err := database.QueryRowContext(ctx, selectUnlockFactsSQL,
-		playerID, actionEvent).Scan(&currentXP, &bestXP, &currentEvents, &totalEvents)
+	err = database.QueryRowContext(ctx, selectUnlockFactsSQL,
+		playerID, actionEvent).Scan(&currentEvents, &totalEvents)
 	if err != nil {
 		return nil, fmt.Errorf("load unlock facts: %w", err)
 	}
@@ -237,12 +242,53 @@ func loadUnlockedCosmetics(
 		}
 	}
 	return rules.ListUnlockedCosmetics(rules.UnlockFacts{
-		CurrentLevel:   rules.CalculateLevel(currentXP),
-		BestLevel:      rules.CalculateLevel(bestXP),
+		CurrentLevel:   levels.current,
+		BestLevel:      levels.best,
 		CurrentEvents:  currentEvents,
 		TotalEvents:    totalEvents,
 		AwardCosmetics: awardCosmetics,
 	}), nil
+}
+
+// playerLevels are the level in the newest LAN of a player and the best one in any LAN.
+type playerLevels struct {
+	current int
+	best    int
+}
+
+// loadLevels reads the levels of a player. Every LAN counts by its own rules, so XP of two LANs
+// cannot be compared without them.
+func loadLevels(ctx context.Context, database querier, playerID int64) (playerLevels, error) {
+	levels := playerLevels{current: rules.FirstLevel, best: rules.FirstLevel}
+	const selectEntriesSQL = `SELECT e.xp, l.rules FROM lan_entries e JOIN lans l ON l.id = e.lan_id
+		WHERE e.player_id = ? ORDER BY l.starts_at DESC`
+	rows, err := database.QueryContext(ctx, selectEntriesSQL, playerID)
+	if err != nil {
+		return levels, fmt.Errorf("load levels: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	isNewest := true
+	for rows.Next() {
+		var lanXP int
+		var rulesJSON string
+		err = rows.Scan(&lanXP, &rulesJSON)
+		if err != nil {
+			return levels, fmt.Errorf("read level: %w", err)
+		}
+		gameRules, err := parseRules(rulesJSON)
+		if err != nil {
+			return levels, err
+		}
+		level := rules.CalculateLevel(gameRules, lanXP)
+		levels.best = max(levels.best, level)
+		if isNewest {
+			levels.current, isNewest = level, false
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return levels, fmt.Errorf("load levels: %w", err)
+	}
+	return levels, nil
 }
 
 // loadBadges returns all attended LANs, newest first.
@@ -390,10 +436,13 @@ func (store *Store) ListPublicPlayers(
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
 	list := PlayerList{Items: []PublicPlayer{}, NextCursor: nil}
-	const selectPublicPlayersSQL = `SELECT p.id, p.name, p.color, COALESCE((
-			SELECT e.xp FROM lan_entries e WHERE e.player_id = p.id
-			ORDER BY e.lan_id DESC LIMIT 1), 0)
-		FROM players p WHERE p.id > ? AND p.hidden_at IS NULL ORDER BY p.id LIMIT ?`
+	const selectPublicPlayersSQL = `SELECT p.id, p.name, p.color, COALESCE(e.xp, 0),
+			COALESCE(l.rules, '{}')
+		FROM players p
+		LEFT JOIN lan_entries e ON e.player_id = p.id AND e.lan_id = (
+			SELECT MAX(lan_id) FROM lan_entries WHERE player_id = p.id)
+		LEFT JOIN lans l ON l.id = e.lan_id
+		WHERE p.id > ? AND p.hidden_at IS NULL ORDER BY p.id LIMIT ?`
 	rows, err := store.readDB.QueryContext(queryCtx, selectPublicPlayersSQL, afterID, limit+1)
 	if err != nil {
 		return list, fmt.Errorf("list players: %w", err)
@@ -402,11 +451,16 @@ func (store *Store) ListPublicPlayers(
 	for rows.Next() {
 		var player PublicPlayer
 		var lanXP int
-		err = rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP)
+		var rulesJSON string
+		err = rows.Scan(&player.ID, &player.Name, &player.Color, &lanXP, &rulesJSON)
 		if err != nil {
 			return list, fmt.Errorf("read player: %w", err)
 		}
-		player.Level = rules.CalculateLevel(lanXP)
+		gameRules, err := parseRules(rulesJSON)
+		if err != nil {
+			return list, err
+		}
+		player.Level = rules.CalculateLevel(gameRules, lanXP)
 		list.Items = append(list.Items, player)
 	}
 	if err := rows.Err(); err != nil {

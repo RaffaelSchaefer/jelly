@@ -233,7 +233,7 @@ func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePla
 	if err != nil {
 		return StagePlayer{}, fmt.Errorf("read stage player: %w", err)
 	}
-	player.Level = rules.CalculateLevel(lanXP)
+	player.Level = rules.CalculateLevel(gameRules, lanXP)
 	player.SnackUntil = rules.CalculateSnackRunEnd(gameRules, lastSnackAt)
 	player.Trip = trip.findRunningTrip(now)
 	if spotX.Valid && spotY.Valid {

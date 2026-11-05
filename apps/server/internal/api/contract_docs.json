@@ -201,6 +201,7 @@
         "server_time": "The time of the server when it answered.",
         "current": "The running LAN, or null.",
         "next": "The next LAN, or null.",
+        "rules": "The rules of the running LAN, otherwise of the next one, otherwise the defaults. Read them again after `rules.changed`.",
         "joined": "With a secret, whether this player takes part in the running LAN. Otherwise null."
       }
     },
@@ -407,6 +408,34 @@
         "moves": "The current walk of each jelly. New ones arrive in the stream as `move`."
       }
     },
+    "PublicRules": {
+      "description": "The values a client needs to show what the server will decide. The server still checks every action. Times are seconds.",
+      "fields": {
+        "xp_per_level": "XP that one level takes, the same for every level. Fixed once a LAN has started.",
+        "poke_interval": "Minimum time between two XP pokes.",
+        "poke_xp": "XP per interval.",
+        "poke_max_ticks": "How many intervals one poke collects at most.",
+        "food_xp": "XP for a food report.",
+        "drink_xp": "XP for a drink report.",
+        "report_cooldown": "Time between two reports of the same kind.",
+        "report_window": "The rolling window for `reports_per_window`.",
+        "reports_per_window": "How many food and drink reports count in the window, together.",
+        "presence_window": "How long a jelly stays on the stage after its last action.",
+        "emote_cooldown": "Time between two emotes of one player.",
+        "partner_invite_seconds": "How long a partner emote can be answered.",
+        "partner_xp": "XP for both players for a partner emote with someone new in this LAN.",
+        "full_house_percent": "The share of the players of a LAN that must redeem one event code together.",
+        "snack_run_seconds": "How long a jelly stays in a queue zone after a report.",
+        "trip_seconds": "How long a jelly stays at the point of a trip.",
+        "follow_seconds": "How long a jelly follows another one.",
+        "near_distance": "How far apart two jellies count as next to each other, in jelly units and not in percent. A jelly is about 1.7 wide, the hall 21 wide and 40 deep.",
+        "walk_speed": "How fast jellies walk, in jelly units per second.",
+        "stack_seconds": "How long a stack stands.",
+        "stack_max_members": "How many jellies fit on one stack, 0 means no limit.",
+        "highlight_seconds": "How long a highlighted jelly lights up.",
+        "highlight_cooldown": "Time between two highlights of one player."
+      }
+    },
     "Follow": {
       "description": "Whom a jelly follows.",
       "fields": {
@@ -494,6 +523,7 @@
     { "type": "stack.changed", "meaning": "A stack was started or changed.", "player": "the player", "payload": "The stack, only `{\"id\"}` after climbing down" },
     { "type": "highlight", "meaning": "A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`.", "player": "who asked", "payload": "`{\"target_id\",\"ends_at\",\"cosmetic_key\"}`" },
     { "type": "stage.changed", "meaning": "The room changed, so read `GET /v1/stage` again.", "player": "null", "payload": "`{}`" },
+    { "type": "rules.changed", "meaning": "The orga changed the rules of a LAN, so read `GET /lans/current` again.", "player": "null", "payload": "`{}`" },
     { "type": "gathering.changed", "meaning": "A gathering started or was ended early. A normal end sends nothing, so use `ends_at`.", "player": "null", "payload": "The `Gathering`, null after an early end" },
     { "type": "move", "meaning": "A jelly starts a walk. This message has no ID and is not part of the event log.", "player": "`player_id` of the move", "payload": "The data is a whole `Move`, not an `Event`" },
     { "type": "reset", "meaning": "The stream dropped events for this client, so read the state again.", "player": "none", "payload": "None" }

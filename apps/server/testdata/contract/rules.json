@@ -1,5 +1,6 @@
 {
   "rules": {
+    "xp_per_level": 100,
     "poke_interval": 900,
     "poke_xp": 3,
     "poke_max_ticks": 4,

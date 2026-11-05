@@ -28,6 +28,7 @@ const (
 	EventHighlight        = "highlight"
 	EventStageChanged     = "stage.changed"
 	EventGatheringChanged = "gathering.changed"
+	EventRulesChanged     = "rules.changed"
 	EventPartnerEmote     = "partner.emote"
 	EventPartnerInvite    = "partner_emote.updated"
 	maxEventsPerQueryRows = 200

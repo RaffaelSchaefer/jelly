@@ -126,7 +126,8 @@ func (server *apiServer) handleUpdateRules(writer http.ResponseWriter, request *
 	if !valid {
 		return
 	}
-	var body rules.Rules
+	// What a body leaves out keeps its default, so new rules do not break old scripts.
+	body := rules.DefaultRules()
 	if !server.readJSON(writer, request, &body) {
 		return
 	}

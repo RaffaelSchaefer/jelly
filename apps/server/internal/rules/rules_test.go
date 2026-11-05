@@ -81,7 +81,7 @@ func TestCalculateNextPokeTime(t *testing.T) {
 
 func TestCalculateLevel(t *testing.T) {
 	for _, testCase := range loadContractCases(t).Level {
-		if got := rules.CalculateLevel(testCase.XP); got != testCase.Level {
+		if got := rules.CalculateLevel(rules.DefaultRules(), testCase.XP); got != testCase.Level {
 			t.Errorf("CalculateLevel(%d) = %d, want %d", testCase.XP, got, testCase.Level)
 		}
 	}
