@@ -7,6 +7,7 @@
  */
 
 import type { StageEffect } from "./effects.ts";
+import type { FrameLimit } from "./framePacing.ts";
 import type { JellyCast, JellySpot } from "./jellies.ts";
 import type { LabelAnchor } from "./labels.ts";
 import type { ScreenPoint } from "./lens.ts";
@@ -76,6 +77,8 @@ export interface StageViewOptions {
   supersampling?: number;
   /** How long events gather before the state is read again. */
   reloadDelayMs?: number;
+  /** Frames per second, null for every screen refresh. Without a value it stays at 30. */
+  frameLimit?: FrameLimit;
 }
 
 /** What the page can do with a running view. */
@@ -92,6 +95,8 @@ export interface StageView {
   /** Returns the stage position on the floor at a point in CSS pixels, null off the stage. */
   floorAt: (point: ScreenPoint) => StagePoint | null;
   setReducedMotion: (reduced: boolean) => void;
+  /** Changes the frames per second, null for every screen refresh. */
+  setFrameLimit: (limit: FrameLimit) => void;
 }
 
 /** What changes while the view runs. */
@@ -382,9 +387,10 @@ export function createStageView(options: StageViewOptions): StageView {
     throw new Error("the canvas has no 2d context");
   }
   const memory = createMemory(options);
-  const { renderScale = 1, supersampling } = options;
-  startFrameLoop(options.canvas, {
+  const { renderScale = 1, supersampling, frameLimit } = options;
+  const setFrameLimit = startFrameLoop(options.canvas, {
     supersampling,
+    frameLimit,
     onResize: (size, density) =>
       resizeStageScene(memory.stage, size, density * renderScale, memory.lens.strength),
     onFrame: (seconds, density) => paintFrame(memory, context, seconds, density),
@@ -408,5 +414,6 @@ export function createStageView(options: StageViewOptions): StageView {
     setReducedMotion: (reduced) => {
       memory.reducedMotion = reduced;
     },
+    setFrameLimit,
   };
 }

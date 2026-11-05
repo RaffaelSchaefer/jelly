@@ -5,6 +5,7 @@
  * @module
  */
 
+export type { FrameLimit } from "./framePacing.ts";
 export { LENS_RANGE, type ScreenPoint } from "./lens.ts";
 export type { StageHighlight } from "./moves.ts";
 export { ANIMATION_EVENTS, STATE_EVENTS, type StageSource, type StreamListener } from "./source.ts";
