@@ -49,7 +49,7 @@ ausschließlich über das native Rust-Backend** und sind im Browser deaktiviert.
 
 ## Server
 
-Die App braucht einen laufenden Jelly-Server. Rust spricht mit ihm über HTTP und hält das Token,
+Die App braucht einen laufenden Jelly-Server. Rust spricht mit ihm über HTTP und hält das Secret,
 die Oberfläche bekommt nur den fertigen Stand. Die Adresse steht beim Bauen fest:
 
 ```sh
@@ -65,7 +65,8 @@ JELLY_JOIN_CODE=1234 go run ./cmd/jelly-server create-lan -slug test -name Test-
 go run ./cmd/jelly-server
 ```
 
-Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`. Beim Start prüft sie
+Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem gemeinsamen Code `1234`. Sitzplatz-Codes
+vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 `GET /version` und bittet um ein Update, wenn der Server eine neuere App verlangt.
 
 ## Im Prototyp enthalten
@@ -79,12 +80,15 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
   Kamera fährt zur Region, das Namensschild unter den Füßen ist das Eingabefeld. Jede Wahl gilt
   sofort.
-- Konto anlegen oder einer neuen LAN beitreten, jeweils mit dem Code der Orga.
+- Ein Code der Orga bringt ein neues Konto, holt ein vorhandenes zurück oder setzt es auf einen Platz
+  der laufenden LAN (`POST /v1/auth/redeem`). Danach zählt nur das Secret, ein älteres gilt nicht mehr.
+- Cosmetics liegen auf Plätzen, je Platz eines (`PUT /v1/cosmetics/equipped`). Die App zeigt die Plätze
+  Kopf, Gesicht und Aura. Einfärbbare Cosmetics bekommen vorerst die erste Farbe der Palette.
 - XP, Level, Cosmetics und Erfolge kommen vom Server. Mit seinen Standardregeln: Stupser +3 XP alle
   15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level.
   Die App fragt nur beim Server, wenn ein Stupser wieder etwas bringt.
 - Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen
-  und Herz auswählen. Nach Bestätigung durch `POST /v1/emote` spielt das Jelly die Geste für drei
+  und Herz auswählen. Nach Bestätigung durch `POST /v1/emotes` spielt das Jelly die Geste für drei
   Sekunden. Die Bühne nutzt dieselben Gesten aus `@jelly/scene`; reduzierte Bewegung zeigt eine
   ruhige Pose. In der Browser-Vorschau funktionieren die Gesten ohne Server und ohne Fortschritt.
   Escape und ein Klick außerhalb schließen die Auswahl, ohne das Jelly anzustupsen.
@@ -93,17 +97,19 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
   der Stand neu geladen: Der Server könnte das Emote bereits angenommen haben.
 - Der Schild-Tropfen links unten am Jelly öffnet eine Säule aus flüssigen Glas-Kapseln mit den
   Schildern des Servers. Beim Überfahren zeigt das Jelly das Schild zur Probe auf seiner Tafel, nur
-  lokal. Die Wahl geht per `PUT /v1/sign` raus: Das Jelly hält die Tafel quer vor dem Bauch, und auf
+  lokal. Die Wahl geht per `PUT /v1/signs/current` raus: Das Jelly hält die Tafel quer vor dem Bauch, und auf
   der Bühne erscheint das Schild über seinem Kopf. Ein Klick auf das gewählte Schild senkt es
-  (`DELETE /v1/sign`). Im Studio legt das Jelly die Tafel kurz weg. Schilder gibt es nur während einer
+  (`DELETE /v1/signs/current`). Im Studio legt das Jelly die Tafel kurz weg. Schilder gibt es nur während einer
   LAN, in der Browser-Vorschau auch ohne Server.
 - Der Dock-Knopf „Dabei“ öffnet zwei Reiter. „Dazustellen“ listet die anderen anwesenden Jellies (`GET /v1/stage`). Ein Klick
-  stellt das eigene Jelly auf der Bühne neben das gewählte (`PUT /v1/follow`), ein zweiter Klick oder
-  „Weggehen“ beendet das (`DELETE /v1/follow`). Die Lupe öffnet ein Suchfeld, das die Liste nach Namen
-  filtert. `follow.changed` lädt den Stand neu, denn der Server darf das Dazustellen von sich aus
-  beenden. Die Browser-Vorschau zeigt zwei Beispiel-Jellies.
+  lässt das eigene Jelly auf der Bühne zum gewählten laufen (`POST /v1/trips/follow`), ein zweiter Klick
+  oder „Weggehen“ beendet das (`DELETE /v1/trips/current`). Die Lupe öffnet ein Suchfeld, das die Liste
+  nach Namen filtert. `follow.changed` lädt den Stand neu. Nach `follow_until` endet das Dazustellen von
+  selbst, ohne Ereignis: Dann liest die App ihren Stand von sich aus neu. Die Browser-Vorschau zeigt zwei
+  Beispiel-Jellies.
 - Der Karten-Tropfen rechts unten am Jelly öffnet die Halle mit allen Jellies in einem eigenen Fenster,
-  dieselbe 3D-Bühne wie auf dem Beamer (`@jelly/stage`, Daten aus `GET /v1/stage`). Das eigene Jelly trägt seine
+  dieselbe 3D-Bühne wie auf dem Beamer (`@jelly/stage`, Daten aus `GET /v1/stage`). Wo die Jellies laufen,
+  plant der Server, die Karte spielt seine Wege nur ab (`moves`, Nachricht `move` im Stream). Das eigene Jelly trägt seine
   Farbe im Namen und eine Markierung über dem Kopf, sein Ziel eine weiße. Unter dem Zeiger zeigt jedes
   Jelly seinen Namen, auch im Gedränge. Ein Klick stellt das eigene Jelly dazu, ein zweiter Klick auf
   das Ziel oder „Weggehen“ beendet das. Das Pet reagiert darauf wie bei der Liste, auch wenn der Server
@@ -112,20 +118,18 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
   versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
   Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. Die Browser-Vorschau zeigt
   die Halle der Server-Demo.
-- Der Reiter „Partner-Emote“ im selben Panel startet ein Partner-Emote (`POST /v1/partner-emote`): Der
-  vierstellige Code steht in einer Stoppuhr, deren Ring leer läuft und im letzten Viertel drängt. Man
-  sagt ihn dem Partner, der ihn in vier Ziffernfelder tippt. Die letzte Ziffer schickt ihn ab
-  (`POST /v1/partner-emote/join`). Ein eingefügter Code
-  füllt alle Felder, nach einem Fehlschlag sind sie wieder leer. Sobald die Geste startet, schließt
-  sich das Panel, denn es verdeckt Jelly und Sprechblase. Der Startende erfährt davon aus dem Stream
-  (`partner.emote` mit seiner ID als `partner_id`), die XP kommen als `xp.gained` hinterher.
-  Auf beiden Bildschirmen hüpft dann das Jelly des anderen von links herein, beide teilen sich den
-  Platz, machen die Geste abwechselnd und singen dazu, das eigene Jelly oben, der Partner tiefer, und es
-  hüpft wieder hinaus. Farbe und Cosmetic kommen aus
-  `GET /v1/stage`. Ohne sie tanzt das eigene Jelly allein. Die Tropfen am Jelly sind solange weg, sie
-  kreisten sonst mit. Die Browser-Vorschau vergibt immer den Code
-  4242, jeder eingegebene Code holt Glibber dazu. Sein Rest durch drei wählt die Geste, 0000 hüpft, 0001
-  dreht, 0002 wackelt.
+- Der Reiter „Partner-Emote“ im selben Panel fordert ein anderes Jelly auf (`POST /v1/partner-emotes`):
+  Erst die Geste wählen, dann das Jelly aus der Liste der Bühne. Wer zu weit weg steht, erfährt es vom
+  Server (`409 too_far`). Die Aufforderung steht in einer Stoppuhr, deren Ring leer läuft und im letzten
+  Viertel drängt, „Abbrechen“ zieht sie zurück. Das andere Jelly bekommt über dem Dock ein Pop-up
+  (`partner_emote.updated`) und nimmt an oder lehnt ab (`PATCH /v1/partner-emotes`). Sobald die Geste
+  startet, schließt sich das Panel, denn es verdeckt Jelly und Sprechblase. Der Auffordernde erfährt
+  davon aus dem Stream (`partner.emote` mit seiner ID als `partner_id`), die XP kommen als `xp.gained`
+  hinterher. Auf beiden Bildschirmen hüpft dann das Jelly des anderen von links herein, beide teilen
+  sich den Platz, machen die Geste abwechselnd und singen dazu, das eigene Jelly oben, der Partner
+  tiefer, und es hüpft wieder hinaus. Farbe und Cosmetics kommen aus `GET /v1/stage`. Ohne sie tanzt das
+  eigene Jelly allein. Die Tropfen am Jelly sind solange weg, sie kreisten sonst mit. In der
+  Browser-Vorschau nimmt Wabbel nach zwei Sekunden an, Glibber fragt zurück, so ist das Pop-up zu sehen.
 - Die Sprechblase ist flüssiges Glas wie die Tropfen. Neuer Text federt auf und erscheint Silbe für
   Silbe, in Panels und im Studio ist sie weg.
 - Das Jelly hat eine eigene Synth-Stimme aus WebAudio, ohne Samples. Es singt die Vokale seiner Sätze
@@ -135,9 +139,9 @@ Danach `pnpm run tauri dev`: Die App fragt nach Name, Farbe und dem Code `1234`.
   leiser stellen, der Mund bewegt sich dann weiter. Bei reduzierter Bewegung lächelt das Jelly nur.
 - Ereignisse vom Server (neue XP, Erfolge, Auszeichnungen) kommen per Stream und lösen eine
   Sprechblase aus. Alle 5 Minuten meldet die App, dass sie noch läuft.
-- Lokal in `jelly.json` im App-Datenverzeichnis für `de.ucb.jelly` liegen nur Token, Größe,
+- Lokal in `jelly.json` im App-Datenverzeichnis für `de.ucb.jelly` liegen nur Secret, Größe,
   „Weniger Bewegung“, „Geräusche“ und Lautstärke. Rust ersetzt die Datei erst nach einem vollständigen Schreibvorgang. Defekte
-  oder unbekannte Dateiformate werden nicht still zurückgesetzt, und das Token wird nie wegen eines
+  oder unbekannte Dateiformate werden nicht still zurückgesetzt, und das Secret wird nie wegen eines
   Netzfehlers gelöscht.
 - Eine zweite gestartete Instanz aktiviert das vorhandene Pet, damit nicht zwei unabhängige Prozesse
   denselben Spielstand überschreiben.
@@ -164,7 +168,7 @@ src/
   useGame.ts          Hooks: Stand halten, Aufrufe, Server-Ereignisse, Lebenszeichen
   useSigns.ts         Hook: Schild heben und senken
   useFollow.ts        Hook: zu einem anderen Jelly stellen, Liste der Bühne
-  usePartnerEmote.ts  Hook: Partner-Emote starten (Code) oder mit Code beitreten
+  usePartnerEmote.ts  Hook: Jelly zum Partner-Emote auffordern und auf Aufforderungen antworten
   useStagePopover.ts  Hook: Auswahlen am Jelly schließen, Fokus halten
   useJellyVoice.ts    Hook: was das Jelly gerade sagt und welcher Laut erklingt
   voice.ts            Synthesizer der Stimme (WebAudio)
@@ -203,7 +207,7 @@ scripts/              Hilfsskripte (Rust-Pfad, Design-System-Bundle, Blender-Exp
 ```
 
 Die Oberfläche übermittelt nur die Aktion oder die Anpassung an Rust, Rust nur die Absicht an den
-Server. Niemand außer dem Server setzt XP. Das Token verlässt Rust nie, deshalb bleibt die Content
+Server. Niemand außer dem Server setzt XP. Das Secret verlässt Rust nie, deshalb bleibt die Content
 Security Policy der Oberfläche auf `ipc:` beschränkt.
 
 ## Dokumentation und Konventionen
@@ -268,9 +272,21 @@ mit dem Tauri-Mock beziehungsweise ohne Backend, rendern die Stimme und melden n
    Belohnungen passend zur LAN festlegen. Die aktuellen XP-Werte sind Prototypwerte. Noch keine
    Hunger-/Durstsimulation.
 5. **Glüh-Aura im Katalog:** `glow-aura` steht in der App (`src/pet/cosmetics.ts`), aber nicht im
-   Server-Katalog (`ListCosmetics` in `apps/server/internal/rules/cosmetics.go`). Die Orga kann sie
-   vergeben, muss den Schlüssel aber genau kennen, denn `POST /admin/api/awards` prüft ihn nicht. In
-   den Katalog aufnehmen und unbekannte Schlüssel beim Vergeben ablehnen.
+   Server-Katalog (`ListCosmetics` in `apps/server/internal/rules/cosmetics.go`). `POST /admin/api/awards`
+   prüft den Schlüssel inzwischen, die Orga kann sie also nicht mehr vergeben. In den Katalog aufnehmen.
+6. **Rest der API 1.8:** Der Server kann mehr, als die App schon nutzt. Offen sind:
+   - `GET /v1/players` und `GET /v1/players/{id}`: Liste und Profil anderer Jellies.
+   - `POST /v1/trips/goto`: ein Ausflug, etwa per Klick auf die Karte. Das Pet zeigt `trip.changed` und
+     `trip` im Stand noch nicht.
+   - `POST /v1/stacks`, `POST /v1/stacks/members`, `DELETE /v1/stacks/current`: Stapel. Die Bühne zeigt sie
+     schon, im Pet fehlen Knöpfe und `stack.changed`.
+   - `POST /v1/highlights`: ein Jelly aufleuchten lassen. Die Bühne zeigt den Lichtkegel schon.
+   - `GET /v1/partner-emotes`: offene Aufforderungen nach einem Neustart wiederherstellen. Bis dahin gehen
+     sie mit der App verloren und laufen beim Server aus.
+   - Partner-Liste: nur Jellies in der Nähe zeigen (`near_distance`), bisher antwortet erst der Server.
+   - Farbwahl für `colorable` Cosmetics aus `cosmetic_colors`, dazu das Einfärben der Modelle.
+   - Modelle für die Plätze `hands` (etwa `golden-cup`) und `body`.
+   - `follow_until` als Restzeit im Panel anzeigen.
 
 WebGL ist vorerst die Rendering-Basis, damit WebGPU keine Startvoraussetzung ist. Ein späterer
 WebGPU-Renderer benötigt auch eine passende Portierung der GLSL-Shader. CSS-Glas ist umgesetzt;
