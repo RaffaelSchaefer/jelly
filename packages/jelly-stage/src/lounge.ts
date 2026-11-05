@@ -6,18 +6,19 @@
  */
 
 import {
+  BoxGeometry,
   CatmullRomCurve3,
   Color,
   CylinderGeometry,
   Group,
   LatheGeometry,
+  Mesh,
   PlaneGeometry,
   ShaderMaterial,
   TorusGeometry,
   TubeGeometry,
   Vector2,
   Vector3,
-  BoxGeometry,
 } from "three";
 
 import type { FloorPoint, FloorRect, ScenePoint } from "./world.ts";
@@ -171,7 +172,7 @@ function createRugMaterial(width: number, depth: number): ShaderMaterial {
 }
 
 /** Builds the rug with its tassels at both ends. */
-function createRug(rug: FloorRect): Group {
+export function createRug(rug: FloorRect): Group {
   const width = rug.maxX - rug.minX;
   const depth = rug.maxZ - rug.minZ;
   const middle = findMiddle(rug);
@@ -211,9 +212,36 @@ function listGarlandPoints(from: ScenePoint, to: ScenePoint): ScenePoint[] {
   });
 }
 
+/** Builds a post of the sign wall or the string lights. */
+function createPost(x: number, z: number): Mesh {
+  const post = new CylinderGeometry(POST.radius, POST.radius, POST.height, SEGMENTS.post);
+  return placeMesh(post, POST_MATERIAL, { x, y: POST.height / 2, z });
+}
+
+/** Builds the fairy lights from post top to post top, sagging in between. */
+function createGarland(tops: ScenePoint[]): Group {
+  const garland = new Group();
+  const points = tops.slice(1).flatMap((top, index) => listGarlandPoints(tops[index] ?? top, top));
+  const wire = new TubeGeometry(
+    new CatmullRomCurve3(points.map((point) => new Vector3(point.x, point.y, point.z))),
+    GARLAND.segments,
+    GARLAND.wire,
+    GARLAND.wireSides,
+  );
+  garland.add(placeMesh(wire, WIRE_MATERIAL, { x: 0, y: 0, z: 0 }));
+  const look: BulbLook = {
+    radius: GARLAND.bulb,
+    colors: [...GLOW_COLORS, "#fff4d6"],
+    pattern: "twinkle",
+  };
+  garland.add(createBulbs(points, look));
+  return garland;
+}
+
 /** Builds the neon sign on two posts and the fairy lights from the back corners to its posts. */
-function createSignWall(rug: FloorRect, middle: FloorPoint): Group {
+export function createSignWall(rug: FloorRect): Group {
   const wall = new Group();
+  const middle = findMiddle(rug);
   const z = rug.minZ + POST.inset;
   const posts = [
     rug.minX + POST.inset,
@@ -221,10 +249,7 @@ function createSignWall(rug: FloorRect, middle: FloorPoint): Group {
     middle.x + SIGN.width / 2 + POST.radius,
     rug.maxX - POST.inset,
   ];
-  for (const x of posts) {
-    const post = new CylinderGeometry(POST.radius, POST.radius, POST.height, SEGMENTS.post);
-    wall.add(placeMesh(post, POST_MATERIAL, { x, y: POST.height / 2, z }));
-  }
+  for (const x of posts) wall.add(createPost(x, z));
   const board = {
     width: SIGN.width + 2 * SIGN.border,
     height: SIGN.height + 2 * SIGN.border,
@@ -236,27 +261,22 @@ function createSignWall(rug: FloorRect, middle: FloorPoint): Group {
     y: SIGN.bottom + SIGN.height / 2,
     z: z + SIGN.depth / 2 + FACE_LIFT,
   });
-  wall.add(face);
-  const tops = posts.map((x) => ({ x, y: POST.height, z }));
-  const points = tops.slice(1).flatMap((top, index) => listGarlandPoints(tops[index] ?? top, top));
-  const wire = new TubeGeometry(
-    new CatmullRomCurve3(points.map((point) => new Vector3(point.x, point.y, point.z))),
-    GARLAND.segments,
-    GARLAND.wire,
-    GARLAND.wireSides,
-  );
-  wall.add(placeMesh(wire, WIRE_MATERIAL, { x: 0, y: 0, z: 0 }));
-  const look: BulbLook = {
-    radius: GARLAND.bulb,
-    colors: [...GLOW_COLORS, "#fff4d6"],
-    pattern: "twinkle",
-  };
-  wall.add(createBulbs(points, look));
+  wall.add(face, createGarland(posts.map((x) => ({ x, y: POST.height, z }))));
   return wall;
 }
 
+/** Builds string lights alone: a post at each end of the rectangle and the fairy lights between. */
+export function createStringLights(rect: FloorRect): Group {
+  const lights = new Group();
+  const { z } = findMiddle(rect);
+  const posts = [rect.minX + POST.inset, rect.maxX - POST.inset];
+  for (const x of posts) lights.add(createPost(x, z));
+  lights.add(createGarland(posts.map((x) => ({ x, y: POST.height, z }))));
+  return lights;
+}
+
 /** Builds a side table with a lava lamp on it. */
-function createLavaLamp(spot: FloorPoint): Group {
+export function createLavaLamp(spot: FloorPoint): Group {
   const lamp = new Group();
   const table = { width: SIDE_TABLE.size, height: SIDE_TABLE.height, depth: SIDE_TABLE.size };
   lamp.add(createBox(table, TABLE_MATERIAL, spot, 0));
@@ -282,7 +302,7 @@ function createLavaLamp(spot: FloorPoint): Group {
 }
 
 /** Builds a beanbag with a dent where someone sat and a seam around it. */
-function createBeanbag(spot: FloorPoint, size: number, color: number): Group {
+export function createBeanbag(spot: FloorPoint, size: number, color: number): Group {
   const beanbag = new Group();
   const outline = BEANBAG_PROFILE.map(([radius, height]) => new Vector2(radius, height));
   const index = color % BEANBAG_MATERIALS.length;
@@ -326,7 +346,7 @@ export function createLounge(rect: FloorRect): Group {
   lounge.add(
     createRug(rug),
     createCouch(couchSpot, couchWidth),
-    createSignWall(rug, middle),
+    createSignWall(rug),
     createLavaLamp(tableSpot),
     createSnakePlant({ x: rug.minX + PLANT.snakeSide, z: rug.minZ + PLANT.back }),
     createBush({ x: rug.maxX - PLANT.bushSide, z: rug.minZ + PLANT.back }),

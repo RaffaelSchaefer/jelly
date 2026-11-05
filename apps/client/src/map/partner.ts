@@ -12,7 +12,7 @@ import type { ScreenPoint, StageEvent, StageHighlight } from "@jelly/stage";
 
 import type { MapSource } from "./source";
 
-import { classifyInvite, NEAR_DISTANCE, type CatalogEntry, type PartnerInvite } from "../pet";
+import { classifyInvite, type CatalogEntry, type PartnerInvite } from "../pet";
 
 /** Abstand des Fensters zum Klick und zum Rand. */
 const MENU_OFFSET = 24;
@@ -54,10 +54,13 @@ export interface PartnerFlow {
   clock: ReturnType<typeof setInterval> | undefined;
 }
 
-/** Was im Schritt leuchtet: erst alle anderen, nach der Wahl der Geste nur noch die in der Nähe. */
-function highlightOf(step: PartnerStep): StageHighlight | null {
+/**
+ * Was im Schritt leuchtet: erst alle anderen, nach der Wahl der Geste nur noch die in der Nähe, so
+ * weit die Regel `near_distance` reicht. Entscheiden tut der Server und antwortet sonst `too_far`.
+ */
+function highlightOf(step: PartnerStep, reach: number): StageHighlight | null {
   if (step.kind === "gesture") return { kind: "others" };
-  return step.kind === "target" ? { kind: "near", reach: NEAR_DISTANCE } : null;
+  return step.kind === "target" ? { kind: "near", reach } : null;
 }
 
 /** Sekunden bis zum Ablauf, nie unter 0. */
@@ -83,7 +86,7 @@ function show(flow: PartnerFlow, step: PartnerStep) {
   flow.step = step;
   flow.menu.hidden = step.kind !== "gesture";
   flow.bar.hidden = step.kind !== "target" && step.kind !== "waiting";
-  flow.context.setHighlight(highlightOf(step));
+  flow.context.setHighlight(highlightOf(step, flow.context.source.readOwn().nearDistance));
   if (step.kind === "target") {
     flow.note.textContent = `${step.entry.label}: Wer leuchtet, steht nah genug.`;
   }

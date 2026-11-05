@@ -17,11 +17,9 @@ function anchorAt(id: number, x: number, y: number, headX = x): LabelAnchor {
     equipped: {},
     level: 1,
     sign: null,
-    follow_player_id: null,
-    follow_until: null,
+    follow: null,
     area_id: null,
     is_visitor: false,
-    trip: null,
     home_x: 0,
     home_y: 0,
   };

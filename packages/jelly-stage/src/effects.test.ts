@@ -120,7 +120,7 @@ test("a highlight lights up the named jelly, not the one who asked", () => {
     id: 1,
     type: "highlight",
     player_id: 4,
-    payload: { target_id: 9, until: 10_500 },
+    payload: { target_id: 9, ends_at: 10_500 },
     created_at: 500,
   };
   assert.deepEqual(createEffects(event, catalog, 1000), [

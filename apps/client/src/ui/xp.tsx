@@ -38,8 +38,19 @@ export function ActionButton({ icon, title, detail, xp, ...rest }: ActionButtonP
 }
 
 /** Levelbalken. `next` nennt die nächste Belohnung („Bei Level 5: Pixel-Brille“). */
-export function XpProgress({ name, xp, next }: { name: string; xp: number; next?: string }) {
-  const progress = levelProgress(xp);
+export function XpProgress({
+  name,
+  xp,
+  xpPerLevel,
+  next,
+}: {
+  name: string;
+  xp: number;
+  /** Die Regel `xp_per_level` der LAN. */
+  xpPerLevel: number;
+  next?: string;
+}) {
+  const progress = levelProgress(xp, xpPerLevel);
   return (
     <div className="level-summary">
       <div className="xp-row">
@@ -49,11 +60,13 @@ export function XpProgress({ name, xp, next }: { name: string; xp: number; next?
             {name} · Level {progress.level}
           </strong>
         </span>
-        <span>{progress.current} / 100 XP</span>
+        <span>
+          {progress.current} / {xpPerLevel} XP
+        </span>
       </div>
       <progress
         value={progress.current}
-        max={100}
+        max={xpPerLevel}
         aria-label={`Fortschritt zu Level ${progress.level + 1}`}
       />
       <div className="xp-row xp-next">

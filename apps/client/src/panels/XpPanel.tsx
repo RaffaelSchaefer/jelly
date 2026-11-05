@@ -4,7 +4,7 @@
  * @module
  */
 
-import type { Catalog, Me, Report } from "../pet";
+import type { Catalog, Me, Report, Rules } from "../pet";
 
 import { desktop } from "../backend";
 import { Tabs } from "../ui";
@@ -26,6 +26,7 @@ export const XP_TABS: { id: XpTab; label: string; title: string }[] = [
 export default function XpPanel({
   me,
   catalog,
+  rules,
   offset,
   tab,
   disabled,
@@ -35,6 +36,7 @@ export default function XpPanel({
 }: {
   me: Me;
   catalog: Catalog;
+  rules: Rules;
   offset: number;
   tab: XpTab;
   disabled: boolean;
@@ -46,7 +48,10 @@ export default function XpPanel({
     <>
       <Tabs label="Bereiche" tabs={XP_TABS} value={tab} onChange={onTab} />
       {tab === "overview" ? (
-        <OverviewTab {...{ me, catalog, offset, onReport }} disabled={!desktop || disabled} />
+        <OverviewTab
+          {...{ me, catalog, rules, offset, onReport }}
+          disabled={!desktop || disabled}
+        />
       ) : null}
       {tab === "achievements" ? <AchievementsTab me={me} catalog={catalog} /> : null}
       {tab === "redeem" ? <RedeemTab me={me} disabled={disabled} onRedeem={onRedeem} /> : null}

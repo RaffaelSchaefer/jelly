@@ -13,6 +13,7 @@ import {
   type Catalog,
   type Cosmetic,
   type Me,
+  type Rules,
 } from "../pet";
 import { Icon, PrimaryButton, XpProgress } from "../ui";
 
@@ -40,12 +41,14 @@ function Unlocked({ item, name, slot }: { item: Cosmetic; name: string; slot: st
 export default function LevelUpPanel({
   me,
   catalog,
+  rules,
   disabled,
   onEquip,
   onClose,
 }: {
   me: Me;
   catalog: Catalog;
+  rules: Rules;
   disabled: boolean;
   onEquip: (item: Cosmetic) => void;
   onClose: () => void;
@@ -60,7 +63,7 @@ export default function LevelUpPanel({
         <Icon name="spark" />
         Level {level - 1} → Level {level}
       </span>
-      <XpProgress name={me.name} xp={me.xp} />
+      <XpProgress name={me.name} xp={me.xp} xpPerLevel={rules.xp_per_level} />
       {unlocked ? (
         <Unlocked item={unlocked} name={me.name} slot={slotLabel(unlocked.slot, catalog)} />
       ) : null}

@@ -70,7 +70,7 @@ const MARQUEE_MATERIAL = createSignMaterial({
 });
 
 /** Builds the counter: a dark core, wooden slats in front, a light top and an LED edge. */
-function createCounter(rect: FloorRect): Group {
+export function createCounter(rect: FloorRect): Group {
   const counter = new Group();
   const width = rect.maxX - rect.minX;
   const depth = rect.maxZ - rect.minZ;
@@ -113,8 +113,8 @@ function createCounter(rect: FloorRect): Group {
   return counter;
 }
 
-/** Builds the marquee sign on the front of the counter, framed by running lights. */
-function createMarquee(rect: FloorRect): Group {
+/** Builds the marquee sign on the front of the rectangle, framed by running lights. */
+export function createMarquee(rect: FloorRect): Group {
   const marquee = new Group();
   const middle = findMiddle(rect);
   const scale = Math.min(1, ((rect.maxX - rect.minX) * MARQUEE.share) / MARQUEE.width);
@@ -175,7 +175,7 @@ function listFramePoints(corners: { left: number; right: number; bottom: number;
 }
 
 /** Builds the drinks fridge: a white cabinet with a lit window full of bottles. */
-function createFridge(rect: FloorRect): Group {
+export function createFridge(rect: FloorRect): Group {
   const fridge = new Group();
   const width = rect.maxX - rect.minX;
   const depth = rect.maxZ - rect.minZ;

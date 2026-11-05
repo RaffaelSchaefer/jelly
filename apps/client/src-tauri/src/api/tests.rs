@@ -46,8 +46,8 @@ fn player_state_from_the_docs_parses_and_ignores_new_fields() {
       "lan": { "slug": "ucb-2026", "name": "UCB LAN 2026", "active": true },
       "xp": 3, "level": 1, "total_xp": 3, "next_poke_at": 1795000900000,
       "reports": { "food_ready_at": 0, "drink_ready_at": 0, "reports_left": 8 },
-      "sign": null, "follow_player_id": 2, "follow_until": 1795000900000,
-      "trip": { "x": 12.5, "y": 40, "until": 1795000300000 }, "lans_attended": 1,
+      "sign": null, "follow": { "player_id": 2, "ends_at": 1795000900000 },
+      "trip": { "x": 12.5, "y": 40, "ends_at": 1795000300000 }, "lans_attended": 1,
       "badges": [{ "slug": "ucb-2026", "name": "UCB LAN 2026" }], "cosmetics": [],
       "achievements": [{ "key": "hatched", "title": "Frisch geschlüpft", "lan_slug": null,
         "earned_at": 1795000000000 }],
@@ -59,8 +59,8 @@ fn player_state_from_the_docs_parses_and_ignores_new_fields() {
     assert_eq!(me.achievements[0].best, None);
     assert_eq!(me.equipped["head"].key, "beanie");
     assert_eq!(me.equipped["head"].color.as_deref(), Some("#4cc9f0"));
-    assert_eq!(me.follow_until, Some(1_795_000_900_000));
-    assert_eq!(me.trip.unwrap().x, 12.5);
+    assert_eq!(me.follow.unwrap().ends_at, 1_795_000_900_000);
+    assert_eq!(me.trip.unwrap().ends_at, 1_795_000_300_000);
 }
 
 #[test]
@@ -101,19 +101,19 @@ fn an_empty_slot_sends_no_key() {
 #[test]
 fn a_partner_invite_from_the_docs_parses() {
     let body = r#"{
-      "partner_emote": { "id": 3, "key": "hop", "from_id": 1, "partner_ids": [2],
+      "partner_emote": { "id": 3, "key": "hop", "from_id": 1, "partner_id": 2,
         "state": "accepted", "expires_at": 1795000120000 },
       "xp_gained": 5,
       "me": {
         "server_time": 1, "last_event_id": 2, "id": 2, "name": "Blubb", "color": "peach",
         "equipped": {}, "hidden": false, "lan": null, "xp": 0, "level": 1, "total_xp": 0,
-        "next_poke_at": null, "reports": null, "sign": null, "follow_player_id": null,
-        "follow_until": null, "trip": null, "lans_attended": 0, "badges": [], "cosmetics": [],
+        "next_poke_at": null, "reports": null, "sign": null, "follow": null,
+        "trip": null, "lans_attended": 0, "badges": [], "cosmetics": [],
         "achievements": [], "awards": []
       }
     }"#;
     let result: PartnerInviteResult = serde_json::from_str(body).unwrap();
-    assert_eq!(result.partner_emote.partner_ids, [2]);
+    assert_eq!(result.partner_emote.partner_id, 2);
     assert_eq!(result.xp_gained, 5);
     assert_eq!(result.me.id, 2);
 }
@@ -153,22 +153,39 @@ fn the_stage_from_the_docs_parses_with_its_room_map() {
     let body = r#"{
       "last_event_id": 42, "server_time": 1795000000000,
       "room": { "width": 100, "height": 100, "unit": "percent" },
-      "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "kind": "seats" }],
+      "areas": [{
+        "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "rotation": 12.5, "kind": "seats",
+        "blocks": false, "prop": "", "name": null
+      }],
       "players": [{
         "id": 1, "name": "Glibber", "color": "mint", "equipped": {}, "level": 1,
-        "sign": null, "follow_player_id": 2, "follow_until": null,
-        "last_seen_at": 1795000000000, "area_id": 1, "is_visitor": false, "trip": null,
-        "home_x": 24.2, "home_y": 61.8
+        "sign": null, "follow": { "player_id": 2, "ends_at": 1795001800000 }, "area_id": 1,
+        "is_visitor": false, "home_x": 24.2, "home_y": 61.8
       }],
       "moves": [{
-        "player_id": 1, "kind": "wander", "start_at": 1795000001000, "level": 0,
+        "player_id": 1, "kind": "wander", "start_at": 1795000001000, "stack_level": 0,
         "points": [{ "x": 24.2, "y": 61.8, "t": 0 }, { "x": 27.4, "y": 58, "t": 2400 }]
       }],
-      "stacks": [{ "id": 4, "x": 10, "y": 20, "ends_at": 1795000120000, "member_ids": [1, 2] }]
+      "stacks": [{ "id": 4, "x": 10, "y": 20, "ends_at": 1795000120000, "member_ids": [1, 2] }],
+      "gathering": { "kind": "ceremony", "winner_id": 1, "ends_at": 1795000500000 }
     }"#;
     let stage: Stage = serde_json::from_str(body).unwrap();
     assert_eq!(stage.players[0].name, "Glibber");
-    assert_eq!(stage.players[0].follow_player_id, Some(2));
+    assert_eq!(
+        stage.players[0]
+            .follow
+            .as_ref()
+            .map(|follow| follow.player_id),
+        Some(2)
+    );
+    assert_eq!(stage.areas[0].rotation, 12.5);
+    assert_eq!(
+        stage
+            .gathering
+            .as_ref()
+            .map(|gathering| gathering.winner_id),
+        Some(Some(1))
+    );
     assert_eq!(stage.players[0].area_id, Some(1));
     assert_eq!(stage.players[0].home_x, 24.2);
     assert_eq!(stage.last_event_id, 42);

@@ -5,27 +5,41 @@
  */
 
 /**
- * What an area is assigned to: where jellies stand (seats, stage, lounge, visitors), what they walk
- * around (desk, snackbar) and what they walk over (cable). `none` means nothing yet.
+ * How jellies use an area: where they stand (seats, stage, lounge, visitors), where they line up
+ * (queue), a named place to go to (public), the two zones of a ceremony (spectators, winner) and
+ * `none` for nothing yet. What stands there is `prop`. Unknown values count as `none`.
  */
 export type AreaKind =
   | "seats"
-  | "desk"
-  | "cable"
   | "stage"
   | "lounge"
-  | "snackbar"
   | "visitors"
+  | "queue"
+  | "public"
+  | "spectators"
+  | "winner"
   | "none";
 
-/** A rectangle on the stage in percent. Areas have no names on purpose. */
+/**
+ * A zone of the room in percent of the stage. `x`, `y`, `width` and `height` say where it would
+ * stand without `rotation`.
+ */
 export interface StageArea {
   id: number;
   x: number;
   y: number;
   width: number;
   height: number;
-  kind: AreaKind;
+  /** Degrees clockwise seen from above, from 0 up to below 360, around the middle of the zone. */
+  rotation: number;
+  /** Text and not {@link AreaKind}: a newer server may add kinds. */
+  kind: string;
+  /** Whether jellies walk around the zone. */
+  blocks: boolean;
+  /** The model that stands here, empty for bare floor. Unknown props show bare floor. */
+  prop: string;
+  /** Only a `public` zone has a name. */
+  name: string | null;
 }
 
 /** What a jelly wears in one slot. */
@@ -38,7 +52,23 @@ export interface EquippedCosmetic {
 export interface StageTrip {
   x: number;
   y: number;
-  until: number;
+  ends_at: number;
+}
+
+/** Whom a jelly follows and when that ends by itself, in server time. */
+export interface StageFollow {
+  player_id: number;
+  ends_at: number;
+}
+
+/**
+ * What all jellies do right now: `food` sends them to the queues, `ceremony` to the spectators and
+ * the winner to the winner zone. Unknown kinds show nothing special.
+ */
+export interface StageGathering {
+  kind: string;
+  winner_id: number | null;
+  ends_at: number;
 }
 
 /** A jelly as the server reports it. */
@@ -50,13 +80,10 @@ export interface StagePlayer {
   equipped: Record<string, EquippedCosmetic>;
   level: number;
   sign: string | null;
-  follow_player_id: number | null;
-  /** When following ends by itself, in server time. */
-  follow_until: number | null;
+  follow: StageFollow | null;
   area_id: number | null;
   /** A jelly without its own area wanders as a visitor. */
   is_visitor: boolean;
-  trip: StageTrip | null;
   home_x: number;
   home_y: number;
 }
@@ -76,8 +103,8 @@ export interface StageMove {
   kind: string;
   start_at: number;
   points: MovePoint[];
-  /** How many jellies stand below this one, once it has arrived on a stack. */
-  level: number;
+  /** How many jellies stand below this one, once it has arrived on a stack. Not the XP level. */
+  stack_level: number;
 }
 
 /** A running stack. `member_ids` goes from bottom to top. */
@@ -105,6 +132,7 @@ export interface StageState {
   players: StagePlayer[];
   moves: StageMove[];
   stacks: StageStack[];
+  gathering: StageGathering | null;
 }
 
 /** One entry of `GET /v1/stage/events`. The payload depends on the event type. */
@@ -125,9 +153,10 @@ export interface EventPayload {
   title?: string;
   /** What the XP of `xp.gained` was for, such as `poke`, `food` or `drink`. */
   source?: string;
-  /** Whom `highlight` lights up, and when it goes out. */
+  /** Whom `highlight` lights up, when it goes out and the aura it wears meanwhile. */
   target_id?: number;
-  until?: number;
+  ends_at?: number;
+  cosmetic_key?: string;
 }
 
 /** The fixed lists of `GET /v1/catalog` the stage needs for its texts. */

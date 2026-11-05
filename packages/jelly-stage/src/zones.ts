@@ -1,7 +1,7 @@
 /**
- * The special zones of the hall: the stage with its beamers, the chillout lounge and the snack bar.
- * Says what stands on a stage and where the floor is raised. `apps/server/internal/movement/obstacles.go`
- * keeps jellies away from the same props, so a change here belongs there too.
+ * Where the zones of the hall stand: a zone turns around its middle, so everything built for it is
+ * built around the origin and then placed. Says where the floor is raised, because jellies and
+ * lights stand higher on a stage platform. Knows no three.js.
  *
  * @module
  */
@@ -9,9 +9,10 @@
 import type { StageArea } from "./types.ts";
 import type { FloorPoint, FloorRect } from "./world.ts";
 
-import { toFloorRect } from "./world.ts";
+import { isPlatformProp } from "./propNames.ts";
+import { toFloorPoint, toFloorRect } from "./world.ts";
 
-/** Height of the stage platform and of the snack bar counter, in jelly units. */
+/** Height of the stage platform, in jelly units. */
 export const STAGE_HEIGHT = 0.35;
 /** Height of the snack bar counter, see {@link STAGE_HEIGHT}. */
 export const COUNTER_HEIGHT = 1.1;
@@ -25,6 +26,67 @@ const SCREEN_INSET = 0.3;
 const SPEAKER = { width: 1, depth: 0.8, sideInset: 0.6, backInset: 0.2 };
 /** The tournament trophy stands on a pedestal in the middle, between the two screens. */
 const PEDESTAL = { size: 0.7, backInset: 0.25 };
+const HALF_TURN_DEGREES = 180;
+
+/**
+ * A zone on the floor: its middle, its size before the turn and the turn itself. The server counts
+ * degrees clockwise seen from above, three.js counts the other way, so `turn` is already negated:
+ * it goes straight into `rotation.y`.
+ */
+export interface Placement {
+  middle: FloorPoint;
+  width: number;
+  depth: number;
+  /** Rotation around the vertical axis in radians, as three.js wants it. */
+  turn: number;
+}
+
+/** Returns where a zone stands. The turn happens on the floor: percent is longer on one axis. */
+export function placeArea(area: StageArea): Placement {
+  const rect = toFloorRect(area);
+  const middle = toFloorPoint({ x: area.x + area.width / 2, y: area.y + area.height / 2 });
+  return {
+    middle,
+    width: rect.maxX - rect.minX,
+    depth: rect.maxZ - rect.minZ,
+    turn: (-area.rotation * Math.PI) / HALF_TURN_DEGREES,
+  };
+}
+
+/** Returns the rectangle a zone covers before it is placed: around the origin, front toward +z. */
+export function toLocalRect(placement: Placement): FloorRect {
+  return {
+    minX: -placement.width / 2,
+    maxX: placement.width / 2,
+    minZ: -placement.depth / 2,
+    maxZ: placement.depth / 2,
+  };
+}
+
+/** Moves a point of the room into the coordinates of a placed zone, undoing its turn. */
+export function toLocalPoint(point: FloorPoint, placement: Placement): FloorPoint {
+  const deltaX = point.x - placement.middle.x;
+  const deltaZ = point.z - placement.middle.z;
+  const sine = Math.sin(placement.turn);
+  const cosine = Math.cos(placement.turn);
+  return { x: deltaX * cosine - deltaZ * sine, z: deltaX * sine + deltaZ * cosine };
+}
+
+/** Moves a point from the coordinates of a placed zone into the room, applying its turn. */
+export function toRoomPoint(point: FloorPoint, placement: Placement): FloorPoint {
+  const sine = Math.sin(placement.turn);
+  const cosine = Math.cos(placement.turn);
+  return {
+    x: placement.middle.x + point.x * cosine + point.z * sine,
+    z: placement.middle.z - point.x * sine + point.z * cosine,
+  };
+}
+
+/** Reports whether a point of the room lies in a placed zone, edges included. */
+export function containsPoint(placement: Placement, point: FloorPoint): boolean {
+  const local = toLocalPoint(point, placement);
+  return Math.abs(local.x) <= placement.width / 2 && Math.abs(local.z) <= placement.depth / 2;
+}
 
 /** Returns the two beamer screens along the back edge of a stage. */
 export function listScreenRects(stage: FloorRect): FloorRect[] {
@@ -64,24 +126,12 @@ export function findPedestalRect(stage: FloorRect): FloorRect {
   };
 }
 
-/** Returns what stands on a stage and blocks the way: screens, speakers and the trophy. */
-export function listStagePropRects(stage: FloorRect): FloorRect[] {
-  return [...listScreenRects(stage), ...listSpeakerRects(stage), findPedestalRect(stage)];
+/** Returns the placements of all stage platforms, the zones with a raised floor. */
+export function listPlatforms(areas: StageArea[]): Placement[] {
+  return areas.filter((area) => isPlatformProp(area.prop)).map(placeArea);
 }
 
-/** Returns the rectangles of all stages. */
-export function listStageRects(areas: StageArea[]): FloorRect[] {
-  return areas.filter((area) => area.kind === "stage").map(toFloorRect);
-}
-
-/** Returns how high the floor is at a point: on a stage it is raised. */
-export function findFloorHeight(point: FloorPoint, stages: FloorRect[]): number {
-  const isOnStage = stages.some(
-    (stage) =>
-      point.x >= stage.minX &&
-      point.x <= stage.maxX &&
-      point.z >= stage.minZ &&
-      point.z <= stage.maxZ,
-  );
-  return isOnStage ? STAGE_HEIGHT : 0;
+/** Returns how high the floor is at a point: on a stage platform it is raised. */
+export function findFloorHeight(point: FloorPoint, platforms: Placement[]): number {
+  return platforms.some((platform) => containsPoint(platform, point)) ? STAGE_HEIGHT : 0;
 }

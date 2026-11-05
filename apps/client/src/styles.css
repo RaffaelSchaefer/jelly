@@ -100,6 +100,8 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: -4px -3px 3px 0; }
 .panel-heading h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
 .panel-hint { margin: 0 0 14px; color: var(--text-muted); font-size: 10px; line-height: 1.6; }
+.text-button { display: block; margin: 10px auto 0; padding: 4px; border: 0; background: none; color: var(--text-muted); font-size: 10px; text-decoration: underline; cursor: pointer; }
+.text-button:hover { color: var(--accent); }
 .action-list { display: flex; flex-direction: column; gap: 7px; }
 .action-button { display: flex; align-items: center; width: 100%; gap: 10px; text-align: left; border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 11px; padding: 11px 9px; }
 .action-button:hover:enabled { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); }

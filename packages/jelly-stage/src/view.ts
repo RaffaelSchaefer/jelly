@@ -14,7 +14,7 @@ import type { ScreenPoint } from "./lens.ts";
 import type { StageScene } from "./scene.ts";
 import type { StageSource } from "./source.ts";
 import type { StageCatalog, StageEvent, StageMove, StagePoint, StageState } from "./types.ts";
-import type { FloorRect, ScenePoint } from "./world.ts";
+import type { ScenePoint } from "./world.ts";
 
 import { createBeams, updateBeams, type StageBeams } from "./beams.ts";
 import { createChoiceRings, updateChoiceRings, type ChoiceRings } from "./choiceRings.ts";
@@ -29,6 +29,7 @@ import { applyLens, createLensPass, type LensPass } from "./lensPass.ts";
 import {
   findLevels,
   findPositions,
+  findWinner,
   listHighlighted,
   pruneMoves,
   type StageHighlight,
@@ -40,7 +41,7 @@ import { createStageScene, findViewer, projectToScreen, resizeStageScene } from 
 import { ANIMATION_EVENTS, STATE_EVENTS } from "./source.ts";
 import { createVenue, updateVenue } from "./venue.ts";
 import { findSnackRunners, keepNewerMove } from "./walking.ts";
-import { listStageRects } from "./zones.ts";
+import { listPlatforms, type Placement } from "./zones.ts";
 
 /** Many events in a row cause only one reload. */
 const RELOAD_DELAY_MS = 500;
@@ -117,7 +118,8 @@ interface StageMemory {
   streamOpened: boolean;
   /** The room as last built, to notice when the areas change. */
   roomKey: string;
-  stages: FloorRect[];
+  /** The stage platforms, where the floor is raised. */
+  platforms: Placement[];
   stage: StageScene;
   lens: LensPass;
   cast: JellyCast;
@@ -149,7 +151,7 @@ function rebuildRoom(memory: StageMemory, state: StageState): void {
   disposeProps(memory.venue);
   memory.venue = createVenue(state.areas);
   memory.stage.scene.add(memory.furniture, memory.venue);
-  memory.stages = listStageRects(state.areas);
+  memory.platforms = listPlatforms(state.areas);
 }
 
 /** Takes over a new state. */
@@ -245,7 +247,8 @@ function moveJellies(memory: StageMemory, seconds: number, now: number): JellySp
     camera: memory.stage.camera.position,
     effects: memory.effects,
     visitors: findSnackRunners(memory.moves),
-    stages: memory.stages,
+    platforms: memory.platforms,
+    winnerId: findWinner(memory.state?.gathering ?? null, serverTime),
     seconds,
     time,
     now,
@@ -260,14 +263,14 @@ function moveJellies(memory: StageMemory, seconds: number, now: number): JellySp
 /** Moves the light on highlighted jellies, the rings of choice and the pointer at the own goal. */
 function updateRoomMarks(memory: StageMemory, spots: JellySpot[], seconds: number, now: number) {
   const { reducedMotion } = memory;
-  updateBeams(memory.beams, { spots, effects: memory.effects, stages: memory.stages, now });
+  updateBeams(memory.beams, { spots, effects: memory.effects, platforms: memory.platforms, now });
   updateChoiceRings(memory.choiceRings, { spots, lit: memory.highlighted, seconds, reducedMotion });
   const own = spots.find((spot) => spot.player.id === memory.marks.ownId)?.player;
   updatePointer(memory.goalPointer, {
     destination: own ? (memory.marks.destination ?? null) : null,
     move: own && memory.moves.get(own.id),
     color: own?.color ?? "",
-    stages: memory.stages,
+    platforms: memory.platforms,
     serverTime: now + memory.clockOffset,
     seconds,
     reducedMotion,
@@ -359,7 +362,7 @@ function createMemory(options: StageViewOptions): StageMemory {
     reloadAgain: false,
     streamOpened: false,
     roomKey: "",
-    stages: [],
+    platforms: [],
     stage,
     lens: createLensPass(options.lensStrength ?? LENS_RANGE.usual),
     cast,

@@ -47,6 +47,16 @@ pub struct RedeemResult {
     game: Game,
 }
 
+/// Ergebnis von [`redeem_access`].
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccessResult {
+    /// Ob das Konto den Sitz des Codes bekommen hat. Sonst weist die Orga den Platz von Hand zu.
+    seat_assigned: bool,
+    /// Neuer Stand.
+    game: Game,
+}
+
 /// Lädt Stand und LAN neu. Auch für „Erneut versuchen“ und nach einem Fehler.
 #[tauri::command]
 pub async fn get_game(app: AppHandle, state: State<'_, GameState>) -> Result<Game> {
@@ -62,12 +72,14 @@ pub async fn get_catalog() -> Result<Value> {
     Api::new(None).catalog().await
 }
 
-/// Tauscht einen Code gegen ein Secret und merkt es sich. Legt ein Konto an oder holt das vorhandene
-/// zurück, ein älteres Secret gilt danach nicht mehr.
+/// Bringt das Konto mit einem LAN- oder Sitzplatz-Code in die LAN. Ein gespeichertes Secret geht
+/// mit, dann bleibt das Konto. Ohne Secret, oder wenn der Server es zuletzt abgelehnt hat, legt der
+/// Code ein neues Konto an.
 ///
 /// # Fehler
 ///
-/// Sitzungs-, Netzwerk- oder Serverfehler, etwa `code_redeemed`, dazu [`crate::error::Error::Save`].
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa `code_redeemed` oder `seat_code_other_account`,
+/// dazu [`crate::error::Error::Save`].
 #[tauri::command]
 pub async fn redeem_access(
     app: AppHandle,
@@ -75,7 +87,7 @@ pub async fn redeem_access(
     code: String,
     name: Option<String>,
     color: Option<Color>,
-) -> Result<Game> {
+) -> Result<AccessResult> {
     let mut slot = state.0.lock().await;
     let session = session(&app, &mut slot).await?;
     let name = name
@@ -87,15 +99,39 @@ pub async fn redeem_access(
         name,
         color,
     };
-    let access = session.api.redeem_access(&body).await?;
-    // Erst im Speicher übernehmen: Scheitert das Speichern, läuft wenigstens diese Sitzung weiter.
-    session.api.set_secret(access.secret.clone());
-    session.secret_rejected = false;
-    session.set_me(access.me);
-    session.stream.stop();
-    session.store.set_secret(access.secret)?;
-    session.lan = session.api.current_lan().await?;
-    session.follow_events(&app);
+    // Ein abgelehntes Secret darf nie wieder mitgehen, der Server antwortete sonst `401`.
+    let api = if session.secret_rejected {
+        session.api.anonymous()
+    } else {
+        session.api.clone()
+    };
+    let access = api.redeem_access(&body).await?;
+    let seat_assigned = access.seat_assigned;
+    session.adopt_secret(&app, access.secret, access.me).await?;
+    Ok(AccessResult {
+        seat_assigned,
+        game: session.game(),
+    })
+}
+
+/// Holt ein Konto mit dem Wiederherstellungs-Code der Orga zurück und merkt sich das neue Secret.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa `invalid_recovery_code`, dazu
+/// [`crate::error::Error::Save`].
+#[tauri::command]
+pub async fn recover_access(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    code: String,
+) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    let recovered = session.api.recover_account(code.trim()).await?;
+    session
+        .adopt_secret(&app, recovered.secret, recovered.me)
+        .await?;
     Ok(session.game())
 }
 
