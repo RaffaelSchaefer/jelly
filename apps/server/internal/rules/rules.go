@@ -5,10 +5,11 @@ package rules
 
 import (
 	"errors"
-	"slices"
 )
 
 const (
+	// maxPercent is all of something.
+	maxPercent = 100
 	// FirstLevel is the level of a player without XP.
 	FirstLevel = 1
 	// NoPokeYet marks that a player has not earned poke XP in this LAN.
@@ -43,7 +44,6 @@ const (
 	defaultStackSeconds          = 120
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
-	maxPercent                   = 100
 )
 
 const (
@@ -166,51 +166,6 @@ func IsLANPeriodValid(startsAt, endsAt int64) bool {
 func IsEventCodeValid(xp int, validFrom, validUntil int64) bool {
 	return xp >= 0 && xp <= maxEventCodeXP && validFrom < validUntil &&
 		validUntil-validFrom <= maxLANMillis
-}
-
-// ValidateRules rejects values that would break the game, such as a zero interval.
-func ValidateRules(gameRules Rules) error {
-	isValid := areDurationsValid(gameRules) && areAmountsValid(gameRules) &&
-		areLimitsValid(gameRules) && gameRules.StackMaxMembers >= NoStackLimit &&
-		gameRules.NearDistance > 0 && gameRules.WalkSpeed > 0 &&
-		gameRules.FullHousePercent >= 1 && gameRules.FullHousePercent <= maxPercent
-	if !isValid {
-		return ErrInvalidRules
-	}
-	return nil
-}
-
-// areDurationsValid checks all times: most must pass, but a cooldown can be switched off.
-func areDurationsValid(gameRules Rules) bool {
-	durations := []int64{
-		gameRules.PokeIntervalSeconds, gameRules.PokeMaxTicks, gameRules.ReportCooldownSeconds,
-		gameRules.ReportWindowSeconds, gameRules.PresenceWindowSeconds,
-		gameRules.PartnerInviteSeconds, gameRules.SnackRunSeconds, gameRules.TripSeconds,
-		gameRules.StackSeconds, gameRules.HighlightSeconds, gameRules.FollowSeconds,
-	}
-	cooldowns := []int64{
-		gameRules.EmoteCooldownSeconds, gameRules.HighlightCooldownSeconds,
-	}
-	return !slices.ContainsFunc(durations, func(value int64) bool { return value <= 0 }) &&
-		!slices.ContainsFunc(cooldowns, func(value int64) bool { return value < 0 })
-}
-
-// areAmountsValid checks all XP values, where 0 is allowed.
-func areAmountsValid(gameRules Rules) bool {
-	return !slices.ContainsFunc([]int{
-		gameRules.PokeXP, gameRules.FoodXP, gameRules.DrinkXP, gameRules.ReportsPerWindow,
-		gameRules.PartnerXP,
-	}, func(value int) bool { return value < 0 })
-}
-
-// areLimitsValid checks all limits, which need room for at least one.
-func areLimitsValid(gameRules Rules) bool {
-	return !slices.ContainsFunc([]int{
-		gameRules.MaxPlayers,
-		gameRules.MaxStreams,
-		gameRules.MaxPlayerStreams,
-		gameRules.XPPerLevel,
-	}, func(value int) bool { return value < 1 })
 }
 
 // CalculateLevel returns the level for the XP of a LAN, starting at [FirstLevel].

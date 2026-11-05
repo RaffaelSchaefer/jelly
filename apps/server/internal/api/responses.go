@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
@@ -16,8 +19,9 @@ const maxBodyBytes = 4 << 10
 
 const (
 	// maxMapBytes is the limit for map files, far above a hall with two thousand zones.
-	maxMapBytes    = 1 << 20
-	codeInvalidMap = "invalid_map"
+	maxMapBytes      = 1 << 20
+	codeInvalidMap   = "invalid_map"
+	codeInvalidRules = "invalid_rules"
 )
 
 // Field names shared by several responses.
@@ -128,8 +132,12 @@ func listPlayerErrors() []knownError {
 			http.StatusBadRequest, "invalid_area",
 			"Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art.",
 		}},
+		{store.ErrLevelsLocked, problem{
+			http.StatusBadRequest, codeInvalidRules,
+			"xp_per_level lässt sich nach dem Start der LAN nicht mehr ändern.",
+		}},
 		{rules.ErrInvalidRules, problem{
-			http.StatusBadRequest, "invalid_rules", "Diese Regeln sind ungültig.",
+			http.StatusBadRequest, codeInvalidRules, "Diese Regeln sind ungültig.",
 		}},
 		{rules.ErrInvalidName, problem{
 			http.StatusBadRequest, "invalid_name",
@@ -293,6 +301,20 @@ func problemInvalidPartner() problem {
 	}
 }
 
+// problemInvalidRule names the rule and what is allowed, so that an organizer can correct it.
+func problemInvalidRule(limit rules.RuleLimit) problem {
+	return problem{
+		http.StatusBadRequest, codeInvalidRules,
+		fmt.Sprintf("%s muss zwischen %s und %s liegen.",
+			limit.Name, formatRuleValue(limit.Lowest), formatRuleValue(limit.Highest)),
+	}
+}
+
+// formatRuleValue writes a value as German text, without an exponent for large numbers.
+func formatRuleValue(value float64) string {
+	return strings.ReplaceAll(strconv.FormatFloat(value, 'f', -1, 64), ".", ",")
+}
+
 // problemInvalidRequest is the response to a request with a broken body, parameter or value.
 func problemInvalidRequest() problem {
 	return problem{http.StatusBadRequest, "invalid_request", "Die Anfrage ist ungültig."}
@@ -349,6 +371,9 @@ func (server *apiServer) writeError(
 
 // translateError finds the answer to an error. Unknown errors go to the log, not to the client.
 func (server *apiServer) translateError(ctx context.Context, route string, err error) problem {
+	if invalidRule, ok := errors.AsType[rules.InvalidRuleError](err); ok {
+		return problemInvalidRule(invalidRule.Limit)
+	}
 	for _, known := range listKnownErrors() {
 		if errors.Is(err, known.target) {
 			return known.answer

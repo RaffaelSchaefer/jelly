@@ -287,7 +287,7 @@ func requireStableLevels(
 		return err
 	}
 	if startsAt <= now && stored.XPPerLevel != gameRules.XPPerLevel {
-		return rules.ErrInvalidRules
+		return ErrLevelsLocked
 	}
 	return nil
 }

@@ -22,6 +22,8 @@ var (
 	ErrInvalidRecoveryCode = errors.New("invalid recovery code")
 	// ErrUnauthorized reports an unknown token.
 	ErrUnauthorized = errors.New("unknown token")
+	// ErrLevelsLocked reports a new XP per level after the start of a LAN.
+	ErrLevelsLocked = errors.New("XP per level is locked")
 	// ErrLANSlugTaken reports a short name that another LAN already has.
 	ErrLANSlugTaken = errors.New("short name of the LAN is taken")
 	// ErrLANOverlap reports a LAN whose period overlaps another one.
