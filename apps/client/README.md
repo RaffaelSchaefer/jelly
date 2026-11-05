@@ -74,7 +74,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Transparentes, rahmenloses, verschiebbares Fenster, stets im Vordergrund.
 - Animiertes Jelly-Pet mit Raymarching-Shader; drei Farben und ein eigener Name.
 - Cosmetics zum Freischalten über Level, Erfolge und Events. Die 3D-Modelle kommen aus der
-  Blender-Pipeline in `blender/`, bisher gibt es zwei Headsets.
+  Blender-Pipeline in `blender/`, bisher gibt es zwei Headsets. Karte und Beamer zeigen sie mit.
 - Kleine Glas-Leiste mit LAN-Aktionen, Studio und Einstellungen.
 - Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Händen, Körper, Aura und Farbe öffnen flüssige Popovers für
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
@@ -200,10 +200,9 @@ src/
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
   panels/             Inhalte der Glas-Panels (Beitritt, XP mit Reitern, Level, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
-                      Jelly und Animation aus packages/jelly-scene
-    shaders/          GLSL der Cosmetics (Toon, Outline) und des Studio-Glases, per `?raw` importiert
+                      Jelly, Animation und Modelle aus packages/jelly-scene
+    shaders/          GLSL des Studio-Glases, per `?raw` importiert
   ui/                 Design-System-Bausteine (siehe `pnpm ds:bundle`)
-  cosmetics/          3D-Modelle (.glb) aus Blender, nach Cosmetic-ID benannt
   styles.css          Transparenz, Leiste, Panels und Browser-Vorschau
   studio.css          Knöpfe und Vorlagen des Studios
   signs.css           Schild-Tropfen und Kapsel-Säule
@@ -303,7 +302,7 @@ beide Körper-Shader wirklich, schaltet im laufenden Betrieb zwischen den Modi u
      sie mit der App verloren und laufen beim Server aus.
    - Farbwahl für `colorable` Cosmetics aus `cosmetic_colors`, dazu das Einfärben der Modelle.
    - Modell für `golden-cup`: Das Studio bietet den Pokal an, gezeichnet wird er erst mit
-     `src/cosmetics/golden-cup.glb`. Für `body` und `aura` führt der Server noch kein Cosmetic.
+     `packages/jelly-scene/src/cosmetics/golden-cup.glb`. Für `body` und `aura` führt der Server noch kein Cosmetic.
      Das Studio zeigt die Plätze trotzdem, die App kann sie schon tragen.
    - `follow.ends_at` als Restzeit im Panel anzeigen.
 
