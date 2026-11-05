@@ -21,6 +21,7 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"GET /admin/api/lans":                            server.handleListLANs,
 		"POST /admin/api/lans":                           server.handleCreateLAN,
 		"PUT /admin/api/lans/{id}/rules":                 server.handleUpdateRules,
+		"PATCH /admin/api/lans/{id}/rules":               server.handlePatchRules,
 		"PUT /admin/api/lans/{id}/join-code":             server.handleUpdateJoinCode,
 		"GET /admin/api/lans/{id}/event-codes":           server.handleListEventCodes,
 		"POST /admin/api/event-codes":                    server.handleCreateEventCode,
@@ -120,13 +121,31 @@ func (server *apiServer) handleCreateLAN(writer http.ResponseWriter, request *ht
 	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
 }
 
-// handleUpdateRules replaces the rules of a LAN, also while it is running.
+// handlePatchRules changes only the rules that the body names, also while the LAN is running.
+func (server *apiServer) handlePatchRules(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	body, err := server.Store.LoadLANRules(request.Context(), lanID)
+	if err != nil {
+		server.writeError(writer, request, err)
+		return
+	}
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	err = server.Store.UpdateLANRules(request.Context(), lanID, body, server.currentMillis())
+	server.writeOutcome(writer, request, body, err)
+}
+
+// handleUpdateRules replaces all rules of a LAN, also while it is running.
 func (server *apiServer) handleUpdateRules(writer http.ResponseWriter, request *http.Request) {
 	lanID, valid := server.readPathID(writer, request)
 	if !valid {
 		return
 	}
-	// What a body leaves out keeps its default, so new rules do not break old scripts.
+	// What a body leaves out goes back to its default. Use PATCH to change single rules.
 	body := rules.DefaultRules()
 	if !server.readJSON(writer, request, &body) {
 		return

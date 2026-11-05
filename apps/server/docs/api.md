@@ -455,7 +455,8 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/recovery-code`     | `{"valid_seconds"}`, ohne Angabe 24 Stunden, höchstens 30 Tage. Antwort: `{"code","expires_at"}`, nur dieses eine Mal |
 | `DELETE /admin/api/players/{id}`                 |                                           |
 | `GET`, `POST /admin/api/lans`                    | `{"slug","name","timezone","join_code","starts_at","ends_at"}` |
-| `PUT /admin/api/lans/{id}/rules`                 | Alle Felder aus `rules.json`              |
+| `PATCH /admin/api/lans/{id}/rules`               | Ändert nur die genannten Regeln, siehe unten |
+| `PUT /admin/api/lans/{id}/rules`                 | **Ersetzt alle Regeln**, siehe unten      |
 | `PUT /admin/api/lans/{id}/join-code`             | `{"join_code"}`                           |
 | `GET /admin/api/lans/{id}/event-codes`           |                                           |
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |
@@ -474,6 +475,14 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 Beim Bearbeiten eines Bereichs bleiben seine Jellies zugeordnet, solange dort Jellies stehen können.
 Wird er gelöscht oder zu einer Art, in der niemand zugehörig ist, verlieren sie ihn und stehen in der Lounge,
 bis ein Admin sie neu zuweist.
+
+### Regeln ändern
+
+- **`PATCH` für einzelne Regeln:** `{"trip_seconds":60}` ändert nur diesen Wert, alles andere bleibt. Das ist der Normalfall.
+- **`PUT` ersetzt alle Regeln:** Jedes Feld, das im Körper fehlt, fällt auf seinen Standardwert zurück, auch wenn es vorher
+  anders eingestellt war. `PUT` mit `{"trip_seconds":60}` setzt also alle anderen Regeln zurück.
+- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. `xp_per_level` lässt sich nach dem Start der
+  LAN mit keinem von beiden ändern.
 
 ### Kartendatei
 

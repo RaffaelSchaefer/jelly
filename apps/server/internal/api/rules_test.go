@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
@@ -78,4 +79,47 @@ func TestXPPerLevelIsFixedOnceTheLANRuns(t *testing.T) {
 	if len(listing.Items) != 1 || listing.Items[0].Level != 2 {
 		t.Fatalf("players: %+v", listing.Items)
 	}
+}
+
+func TestPatchChangesOnlyTheRulesItNames(t *testing.T) {
+	testFixture := newFixture(t)
+	const path = "/admin/api/lans/1/rules"
+	token := testFixture.registerPlayer("Liest")
+	response := testFixture.callAdmin("PATCH", path, `{"near_distance":9}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("patch: %d %s", response.status, response.body)
+	}
+	response = testFixture.callAdmin("PATCH", path, `{"trip_seconds":77}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("patch: %d %s", response.status, response.body)
+	}
+	got := testFixture.loadLANStatus(token).Rules
+	if got.NearDistance != 9 || got.TripSeconds != 77 {
+		t.Fatalf("rules: %+v", got)
+	}
+	response = testFixture.callAdmin("PUT", path, `{"trip_seconds":88}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("put: %d %s", response.status, response.body)
+	}
+	got = testFixture.loadLANStatus(token).Rules
+	if got.NearDistance != rules.DefaultRules().NearDistance || got.TripSeconds != 88 {
+		t.Fatalf("put replaces everything: %+v", got)
+	}
+}
+
+func TestPatchIsCheckedLikeEveryOtherChangeOfTheRules(t *testing.T) {
+	testFixture := newFixture(t)
+	const path = "/admin/api/lans/1/rules"
+	requireProblem(t, testFixture.callAdmin("PATCH", path, `{"poke_interval":0}`),
+		http.StatusBadRequest, "invalid_rules")
+	requireProblem(t, testFixture.callAdmin("PATCH", path, `{"xp_per_level":50}`),
+		http.StatusBadRequest, "invalid_rules")
+	requireProblem(t, testFixture.callAdmin("PATCH", path, `{"walk_fast":true}`),
+		http.StatusBadRequest, "invalid_request")
+	requireProblem(
+		t,
+		testFixture.callAdmin("PATCH", "/admin/api/lans/99/rules", `{"trip_seconds":9}`),
+		http.StatusNotFound,
+		"lan_not_found",
+	)
 }

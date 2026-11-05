@@ -213,6 +213,22 @@ func (store *Store) LoadLANStatus(ctx context.Context, playerID, now int64) (LAN
 	return status, nil
 }
 
+// LoadLANRules returns all rules of a LAN.
+func (store *Store) LoadLANRules(ctx context.Context, lanID int64) (rules.Rules, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	var rulesJSON string
+	const selectStoredRulesSQL = `SELECT rules FROM lans WHERE id = ?`
+	err := store.readDB.QueryRowContext(queryCtx, selectStoredRulesSQL, lanID).Scan(&rulesJSON)
+	if errors.Is(err, sql.ErrNoRows) {
+		return rules.Rules{}, ErrLANNotFound
+	}
+	if err != nil {
+		return rules.Rules{}, fmt.Errorf("load LAN rules: %w", err)
+	}
+	return parseRules(rulesJSON)
+}
+
 // loadPublicRules returns the rules of a LAN, or the defaults if there is no such LAN.
 func loadPublicRules(
 	ctx context.Context, database querier, lanID int64,
