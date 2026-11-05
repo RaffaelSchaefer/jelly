@@ -62,7 +62,10 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
 - `src/pet/rendering.ts`, `src/optimized.css`: der optimierte Modus (`Settings.optimizedRendering`). Das Profil
   sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Messung und Shader-Prüfung:
-  `scripts/render-check.html`, Ergebnisse in `apps/client/docs/optimized-rendering.md`.
+  `scripts/render-check.html` (`render-report.mjs` wertet aus), Ergebnisse in `apps/client/docs/optimized-rendering.md`.
+- `src/pet/frameRate.ts`: der Regler der Bildrate (`Settings.frameLimit`, `null` heißt unbegrenzt).
+  `packages/jelly-stage/src/framePacing.ts` entscheidet für Jelly, Karte und Karten-Glas, welche
+  Bildschirmaktualisierung ein Bild wird.
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
   Cosmetics, ihre Shader), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
@@ -111,6 +114,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `data-liquid`-Element bekommt in `src/optimized.css` einen eigenen Hintergrund, reine Vorlagen werden dort
   ausgeblendet. Jede Schwebe-Animation wird dort abgeschaltet. Die Karte lässt ihr Glas (`src/map/glass.ts`) im
   optimierten Modus ebenfalls weg, ihre `.glass-pill`-Knöpfe bleiben dann einfarbig (`src/map/map.css`).
+- **Takt des Jellys:** `AnimationClock` in `src/scene/PetScene.tsx` zeichnet mit `advance`. Ein `invalidate` aus einem
+  `requestAnimationFrame` käme erst im nächsten Bild an und halbierte die Bildrate am Bildschirmtakt.
 - **Identifier** `de.ucb.jelly` nicht ändern, sonst findet die App vorhandene Spielstände nicht mehr.
 - **Kein TypeDoc**, solange es TypeScript 7 nicht unterstützt (Begründung in der README).
 - **App-Icon** kommt aus `apps/client/public/pet.svg`. Neu erzeugen mit
