@@ -106,7 +106,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 404    | `gathering_not_found`                     | Gerade läuft kein Essens-Event und keine Siegerehrung |
 | 404    | `stack_not_found`, `partner_emote_not_found` | Stapel oder Aufforderung gibt es nicht mehr |
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
-| 409    | `name_taken`, `lan_overlap`               | Steht im Konflikt mit Vorhandenem         |
+| 409    | `name_taken`, `slug_taken`, `lan_overlap` | Steht im Konflikt mit Vorhandenem         |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
 | 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |

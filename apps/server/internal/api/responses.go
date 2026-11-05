@@ -115,6 +115,9 @@ func listPlayerErrors() []knownError {
 			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
 		}},
 		{store.ErrInvalidInput, problemInvalidRequest()},
+		{store.ErrLANSlugTaken, problem{
+			http.StatusConflict, "slug_taken", "Dieser Kurzname ist schon vergeben.",
+		}},
 		{store.ErrAreaNotFound, problem{
 			http.StatusNotFound, "area_not_found", "Diesen Bereich gibt es nicht.",
 		}},

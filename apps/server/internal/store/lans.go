@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
@@ -315,6 +316,9 @@ func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON s
 	_, err = transaction.ExecContext(ctx, insertLANSQL,
 		lan.Slug, lan.Name, lan.StartsAt, lan.EndsAt, lan.Timezone,
 		hashSecret(lan.JoinCode), rulesJSON)
+	if err != nil && strings.Contains(err.Error(), "lans.slug") {
+		return ErrLANSlugTaken
+	}
 	if err != nil {
 		return fmt.Errorf("insert LAN: %w", err)
 	}
