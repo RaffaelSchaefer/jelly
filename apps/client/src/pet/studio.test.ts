@@ -23,13 +23,13 @@ const items = (id: string, me = PREVIEW_ME) => regionItems(region(id), me, PREVI
 
 describe("studio regions", () => {
   it("offers every cosmetic in exactly one region", () => {
-    const offered = ["kopf", "gesicht", "effekte"].flatMap((id) =>
+    const offered = ["kopf", "gesicht", "haende"].flatMap((id) =>
       items(id).flatMap((item) => (item.id ? [item.id] : [])),
     );
     expect(offered.sort()).toEqual(COSMETICS.map((item) => item.id).sort());
     expect(items("kopf")).toHaveLength(6);
     expect(items("gesicht")).toHaveLength(2);
-    expect(items("effekte")).toHaveLength(2);
+    expect(items("haende")).toHaveLength(2);
   });
   it("marks what is free, locked and worn", () => {
     const head = items("kopf");
@@ -61,19 +61,39 @@ describe("studio regions", () => {
       hands: { key: "golden-cup", color: null },
     };
     const me = { ...PREVIEW_ME, equipped };
-    expect(wornRegions(me)).toEqual(["kopf", "gesicht"]);
+    expect(wornRegions(me)).toEqual(["kopf", "gesicht", "haende"]);
     expect(items("gesicht", me).find((item) => item.id === "pixel-glasses")?.state).toBe(
       "equipped",
     );
   });
   it("offers the body colours", () => {
-    const colors = items("koerper");
+    const colors = items("farbe");
     expect(colors).toHaveLength(3);
     expect(colors[0]).toMatchObject({
       id: "mint",
       state: "equipped",
       swatch: PET_COLORS.mint,
     });
+  });
+});
+
+describe("studio slots", () => {
+  it("shows every slot of the server, also those without a cosmetic", () => {
+    const slots = REGIONS.flatMap((item) => item.slot ?? []);
+    expect(slots.sort()).toEqual(PREVIEW_CATALOG.cosmetic_slots.map((slot) => slot.key).sort());
+    for (const id of ["koerper", "aura"]) {
+      expect(items(id)).toEqual([
+        { id: null, name: "Noch nichts da", icon: "close", state: "equipped", note: "" },
+      ]);
+    }
+  });
+  it("offers the cup in the hands, only the orga hands it out", () => {
+    expect(items("haende").find((item) => item.id === "golden-cup")).toMatchObject({
+      state: "locked",
+      note: "Von der Orga",
+    });
+    const me = { ...PREVIEW_ME, cosmetics: ["golden-cup"] };
+    expect(items("haende", me).find((item) => item.id === "golden-cup")?.state).toBe("unlocked");
   });
 });
 

@@ -14,10 +14,10 @@ import { PET_COLORS } from "./colors";
 import { COSMETICS, isUnlocked, unlockLabel, wornCosmetics, type Cosmetic } from "./cosmetics";
 
 /** Eine anklickbare Region. */
-export type StudioRegionId = "kopf" | "gesicht" | "koerper" | "effekte";
+export type StudioRegionId = "kopf" | "gesicht" | "haende" | "koerper" | "aura" | "farbe";
 
 /** Worauf die Kamera fährt, wenn eine Region offen ist. */
-export type StudioFocus = "head" | "face" | "body" | "effects";
+export type StudioFocus = "head" | "face" | "body" | "hands" | "aura";
 
 /** Eine Region des Jellys mit ihrem Blob. */
 export interface StudioRegion {
@@ -31,7 +31,10 @@ export interface StudioRegion {
   opens: "up" | "down" | "left" | "right";
 }
 
-/** Alle Regionen. Die erste bekommt beim Öffnen den Fokus. */
+/**
+ * Alle Regionen, eine je Platz des Servers und eine für die Farbe. Die erste bekommt beim Öffnen
+ * den Fokus. Auch ein Platz ohne Cosmetic bleibt sichtbar, so sieht man, was es noch geben kann.
+ */
 export const REGIONS: StudioRegion[] = [
   { id: "kopf", label: "Kopf", icon: "beanie", slot: "head", focus: "head", opens: "up" },
   {
@@ -42,15 +45,10 @@ export const REGIONS: StudioRegion[] = [
     focus: "face",
     opens: "right",
   },
-  {
-    id: "effekte",
-    label: "Effekte",
-    icon: "spark",
-    slot: "aura",
-    focus: "effects",
-    opens: "down",
-  },
-  { id: "koerper", label: "Körper", icon: "droplet", focus: "body", opens: "left" },
+  { id: "haende", label: "Hände", icon: "trophy", slot: "hands", focus: "hands", opens: "up" },
+  { id: "koerper", label: "Körper", icon: "shirt", slot: "body", focus: "body", opens: "right" },
+  { id: "aura", label: "Aura", icon: "aura", slot: "aura", focus: "aura", opens: "up" },
+  { id: "farbe", label: "Farbe", icon: "droplet", focus: "body", opens: "left" },
 ];
 
 /** Ein Eintrag im Popover einer Region. */
@@ -76,8 +74,9 @@ function cosmeticState(item: Cosmetic, me: Me): StudioItem["state"] {
 function cosmeticRows(slot: Cosmetic["slot"], me: Me, catalog: Catalog): StudioItem[] {
   const parts = COSMETICS.filter((item) => item.slot === slot);
   const worn = parts.some((item) => item.id === me.equipped[slot]?.key);
+  const name = parts.length > 0 ? "Nichts" : "Noch nichts da";
   return [
-    { id: null, name: "Nichts", icon: "close", state: worn ? "unlocked" : "equipped", note: "" },
+    { id: null, name, icon: "close", state: worn ? "unlocked" : "equipped", note: "" },
     ...parts.map((item) => {
       const state = cosmeticState(item, me);
       const note = state === "locked" ? unlockLabel(item.id, catalog) : "";

@@ -45,7 +45,7 @@ describe("unlocks", () => {
     expect(isUnlocked("pixel-glasses", PREVIEW_ME)).toBe(false);
     expect(unlockLabel("pixel-glasses", PREVIEW_CATALOG)).toBe("Level 5");
     expect(unlockLabel("party-hat", PREVIEW_CATALOG)).toBe("Bei einem Event");
-    expect(unlockLabel("glow-aura", PREVIEW_CATALOG)).toBe("Von der Orga");
+    expect(unlockLabel("golden-cup", PREVIEW_CATALOG)).toBe("Von der Orga");
   });
   it("finds level rewards in level order", () => {
     expect(levelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("beanie");
@@ -61,13 +61,14 @@ describe("slots", () => {
     expect(equipColor("headset", PREVIEW_CATALOG)).toBeUndefined();
     expect(equipColor(null, PREVIEW_CATALOG)).toBeUndefined();
   });
-  it("wears what it can draw, head before face", () => {
+  it("wears what it can draw, head before face before hands", () => {
     const worn = wornCosmetics({
+      hands: { key: "golden-cup", color: null },
       face: { key: "pixel-glasses", color: null },
       head: { key: "hood", color: null },
-      hands: { key: "golden-cup", color: null },
+      aura: { key: "unknown", color: null },
     });
-    expect(worn.map((item) => item.id)).toEqual(["hood", "pixel-glasses"]);
+    expect(worn.map((item) => item.id)).toEqual(["hood", "pixel-glasses", "golden-cup"]);
     expect(wornCosmetics({ head: { key: "pixel-glasses", color: null } })).toEqual([]);
   });
   it("names a slot from the catalog", () => {

@@ -23,7 +23,7 @@ COSMETICS = [
     ("pixel-glasses", "Gesicht"),
     ("hood", "Kopf"),
     ("crown", "Kopf"),
-    ("glow-aura", "Effekte"),
+    ("golden-cup", "Hände"),
 ]
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"

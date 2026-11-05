@@ -6,7 +6,7 @@
  * @module
  */
 
-import { BODY_BOTTOM, HEAD, type Jelly } from "@jelly/scene";
+import { BODY_BOTTOM, HAND, HEAD, type Jelly } from "@jelly/scene";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, type RefObject } from "react";
 import { Vector3 } from "three";
@@ -24,8 +24,10 @@ const ANCHORS: Record<StudioRegionId | "name" | "emote", Anchor> = {
   emote: { of: "root", at: [1.4, 0.4, 0.3] },
   kopf: { of: "head", at: [0, HEAD.radius + 0.1, 0] },
   gesicht: { of: "head", at: [0.5, -0.22, 0.35] },
-  effekte: { of: "root", at: [1.2, -0.25, 0.3] },
-  koerper: { of: "root", at: [-0.62, -0.62, 0.7] },
+  haende: { of: "root", at: [HAND.x + 0.1, HAND.y + 0.15, 0.3] },
+  koerper: { of: "root", at: [0.62, -0.62, 0.7] },
+  aura: { of: "root", at: [-HAND.x - 0.1, 0.35, 0.3] },
+  farbe: { of: "root", at: [-0.62, -0.62, 0.7] },
   name: { of: "root", at: [0, BODY_BOTTOM - 0.12, 0] },
 };
 
