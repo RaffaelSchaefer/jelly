@@ -10,17 +10,19 @@ import type { StageEvent, StageMove, StagePoint, StageSource, StreamListener } f
 import type { CatalogEntry, PartnerInvite } from "../pet";
 
 import * as backend from "../backend";
-import { FRAME_RATE } from "../pet";
+import { FRAME_RATE, PREVIEW_RULES } from "../pet";
 
-/** Das eigene Jelly und die Einstellungen, die die Karte betreffen. */
+/** Das eigene Jelly, die Einstellungen und die Regeln, die die Karte betreffen. */
 type MapOwn = Omit<backend.MapState, "ownId" | "stage"> & { id: number | null };
 
-/** Bis zum ersten Lesen: noch kein Jelly, die Einstellungen stehen auf ihrem Standard. */
+/** Bis zum ersten Lesen: noch kein Jelly, Einstellungen und Regeln stehen auf ihrem Standard. */
 const UNREAD_OWN: MapOwn = {
   id: null,
   reducedMotion: false,
   optimizedRendering: false,
   frameLimit: FRAME_RATE.default,
+  nearDistance: PREVIEW_RULES.near_distance,
+  trip: null,
 };
 
 /** Was die Karte zusätzlich zur Bühne braucht. */
@@ -83,7 +85,7 @@ export async function createDesktopSource(): Promise<MapSource> {
     readOwn: () => own,
     setFollow: async (playerId) => {
       const game = await backend.setFollow(playerId);
-      return game.me?.follow_player_id ?? null;
+      return game.me?.follow?.player_id ?? null;
     },
     goTo: async ({ x, y }) => {
       await backend.goTo(x, y);

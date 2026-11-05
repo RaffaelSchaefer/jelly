@@ -7,7 +7,10 @@
  */
 
 import { FRAME_RATE } from "./frameRate";
-import { PET_SIZE, VOLUME, type Catalog, type Game, type Me } from "./types";
+import { PET_SIZE, VOLUME, type Catalog, type Game, type Me, type Rules } from "./types";
+
+/** Die Standardregeln des Servers, soweit die App sie kennt. */
+export const PREVIEW_RULES: Rules = { near_distance: 6, xp_per_level: 100 };
 
 /** Auszug aus dem Server-Katalog. */
 export const PREVIEW_CATALOG: Catalog = {
@@ -46,6 +49,7 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "head",
       colorable: false,
+      unlock: "level",
       level: 2,
     },
     {
@@ -54,16 +58,25 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "head",
       colorable: false,
+      unlock: "level",
       level: 2,
     },
-    { key: "beanie", name: "Mütze", scope: "permanent", slot: "head", colorable: true, level: 3 },
+    {
+      key: "beanie",
+      name: "Mütze",
+      scope: "permanent",
+      slot: "head",
+      colorable: true,
+      unlock: "level",
+      level: 3,
+    },
     {
       key: "party-hat",
       name: "Party-Hut",
       scope: "permanent",
       slot: "head",
       colorable: false,
-      requires_event: true,
+      unlock: "event",
     },
     {
       key: "pixel-glasses",
@@ -71,16 +84,34 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "face",
       colorable: false,
+      unlock: "level",
       level: 5,
     },
-    { key: "hood", name: "Kapuze", scope: "permanent", slot: "head", colorable: true, level: 6 },
-    { key: "crown", name: "Krone", scope: "lan", slot: "head", colorable: false, level: 10 },
+    {
+      key: "hood",
+      name: "Kapuze",
+      scope: "permanent",
+      slot: "head",
+      colorable: true,
+      unlock: "level",
+      level: 6,
+    },
+    {
+      key: "crown",
+      name: "Krone",
+      scope: "lan",
+      slot: "head",
+      colorable: false,
+      unlock: "level",
+      level: 10,
+    },
     {
       key: "golden-cup",
       name: "Goldener Pokal",
       scope: "permanent",
       slot: "hands",
       colorable: false,
+      unlock: "award",
     },
   ],
   cosmetic_slots: [
@@ -144,8 +175,7 @@ export const PREVIEW_ME: Me = {
   next_poke_at: 0,
   reports: { food_ready_at: 0, drink_ready_at: 0, reports_left: 8 },
   sign: null,
-  follow_player_id: null,
-  follow_until: null,
+  follow: null,
   trip: null,
   lans_attended: 1,
   badges: [],
@@ -169,6 +199,7 @@ export const PREVIEW_GAME: Game = {
     server_time: 0,
     current: { slug: "vorschau", name: "Vorschau-LAN", starts_at: 0, ends_at: 0 },
     next: null,
+    rules: PREVIEW_RULES,
     joined: true,
   },
   serverUrl: "",

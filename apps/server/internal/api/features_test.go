@@ -136,7 +136,7 @@ func TestEventCodes(t *testing.T) {
 
 	response := testFixture.callAPI("POST", "/v1/event-codes/redemptions",
 		token, `{"code":"falsch"}`)
-	requireProblem(t, response, http.StatusBadRequest, "invalid_event_code")
+	requireProblem(t, response, http.StatusForbidden, "invalid_event_code")
 	response = testFixture.callAPI("POST", "/v1/event-codes/redemptions",
 		token, `{"code":" TURNIER "}`)
 	redeemed := decodeBody[store.RedeemedCode](t, response)
@@ -157,7 +157,7 @@ func TestEventCodes(t *testing.T) {
 	other := testFixture.registerPlayer("B")
 	response = testFixture.callAPI("POST", "/v1/event-codes/redemptions",
 		other, `{"code":"TURNIER"}`)
-	requireProblem(t, response, http.StatusBadRequest, "invalid_event_code")
+	requireProblem(t, response, http.StatusForbidden, "invalid_event_code")
 }
 
 func TestCosmeticsRequireUnlock(t *testing.T) {
@@ -200,13 +200,13 @@ func TestNewLANRestartsXPAndKeepsHistory(t *testing.T) {
 	testFixture.createLAN("ucb-2027", nextLANStart)
 	testFixture.clock.Store(nextLANStart.Add(time.Hour).UnixMilli())
 
-	secret := testFixture.seatPlayerInSecondLAN(testFixture.loadMe(token).ID)
+	secret := testFixture.seatPlayerInSecondLAN(token)
+	if secret != token {
+		t.Fatalf("the account has to keep its secret, got %q", secret)
+	}
 	state := testFixture.loadMe(secret)
 	if state.XP != 0 || state.Level != 1 || state.TotalXP != 3 || len(state.Badges) != 2 {
 		t.Fatalf("state in the new LAN: %+v", state)
-	}
-	if got := testFixture.callAPI("GET", "/v1/players/me", token, "").status; got != 401 {
-		t.Fatalf("the old secret still works: %d", got)
 	}
 }
 
@@ -233,7 +233,7 @@ func TestStageShowsSignsFollowsAndPresence(t *testing.T) {
 	if len(stage.Players) != 2 || stage.Players[0].Sign == nil || *stage.Players[0].Sign != "cs2" {
 		t.Fatalf("stage: %+v", stage)
 	}
-	if stage.Players[0].FollowPlayerID == nil || *stage.Players[0].FollowPlayerID != secondID {
+	if stage.Players[0].Follow == nil || stage.Players[0].Follow.PlayerID != secondID {
 		t.Fatalf("follow: %+v", stage.Players[0])
 	}
 
@@ -378,14 +378,8 @@ func TestModeration(t *testing.T) {
 		t.Fatalf("name = %q", got)
 	}
 
-	response := testFixture.callAdmin("POST", base+"/rotate-token", "")
-	rotated := decodeBody[registerResponse](t, response)
-	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", token, ""),
-		http.StatusUnauthorized, "unauthorized")
-	testFixture.loadMe(rotated.Token)
-
 	testFixture.callAdmin("DELETE", base, "")
-	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", rotated.Token, ""),
+	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", token, ""),
 		http.StatusUnauthorized, "unauthorized")
 	requireProblem(t, testFixture.callAdmin("DELETE", base, ""),
 		http.StatusNotFound, "player_not_found")

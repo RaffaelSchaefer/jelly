@@ -84,16 +84,30 @@ func TestPointsSurviveTheWayToTheFloorAndBack(t *testing.T) {
 	}
 }
 
-func TestObstaclesAreDesksCountersAndStageProps(t *testing.T) {
+func TestObstaclesAreOnlyWhatBlocks(t *testing.T) {
 	obstacles := listObstacles([]rules.Area{
-		{X: 10, Y: 10, Width: 10, Height: 2, Kind: rules.AreaKindDesk},
-		{X: 30, Y: 10, Width: 10, Height: 2, Kind: rules.AreaKindSnackbar},
-		{X: 5, Y: 1, Width: 90, Height: 8, Kind: rules.AreaKindStage},
-		{X: 50, Y: 10, Width: 10, Height: 2, Kind: rules.AreaKindCable},
-		{X: 50, Y: 20, Width: 10, Height: 2, Kind: rules.AreaKindSeats},
-		{X: 50, Y: 30, Width: 10, Height: 2, Kind: rules.AreaKindLounge},
+		{X: 10, Y: 10, Width: 10, Height: 2, Kind: rules.AreaKindNone, Blocks: true, Prop: "desk"},
+		{
+			X:      22.5,
+			Y:      1.75,
+			Width:  20,
+			Height: 0.5,
+			Kind:   rules.AreaKindStage,
+			Blocks: true,
+			Prop:   "",
+		},
+		{X: 5, Y: 1, Width: 90, Height: 8, Kind: rules.AreaKindStage, Blocks: false, Prop: ""},
+		{
+			X:      50,
+			Y:      10,
+			Width:  10,
+			Height: 2,
+			Kind:   rules.AreaKindNone,
+			Blocks: false,
+			Prop:   "cable",
+		},
 	})
-	if len(obstacles) != 7 {
+	if len(obstacles) != 2 {
 		t.Fatalf("got %d obstacles", len(obstacles))
 	}
 }

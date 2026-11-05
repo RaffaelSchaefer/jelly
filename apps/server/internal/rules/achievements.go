@@ -62,10 +62,11 @@ type Achievement struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Scope       Scope  `json:"scope"`
-	Secret      bool   `json:"secret"`
-	Metric      Metric `json:"-"`
-	Goal        int    `json:"goal"`
-	RecordUnit  string `json:"record_unit,omitempty"`
+	// Secret keeps it out of the catalog until a player earned it.
+	Secret     bool   `json:"-"`
+	Metric     Metric `json:"-"`
+	Goal       int    `json:"goal"`
+	RecordUnit string `json:"record_unit,omitempty"`
 }
 
 // FindNewAchievements returns the achievements reached by `stats` and not yet in `earnedKeys`.

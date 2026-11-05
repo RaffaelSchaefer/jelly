@@ -64,11 +64,11 @@ func TestStageReportsWhereTheJellyStands(t *testing.T) {
 	}
 }
 
-func TestFoodReportSendsTheJellyToTheSnackBar(t *testing.T) {
+func TestFoodReportSendsTheJellyToTheQueue(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 	response := testFixture.callAdmin("POST", "/admin/api/lans/1/areas",
-		`{"x":60,"y":60,"width":20,"height":3,"kind":"snackbar"}`)
+		`{"x":60,"y":60,"width":20,"height":3,"kind":"queue"}`)
 	if response.status != http.StatusOK {
 		t.Fatalf("area: %d %s", response.status, response.body)
 	}

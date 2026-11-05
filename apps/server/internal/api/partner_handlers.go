@@ -46,10 +46,10 @@ func (limiters *playerLimiters) allowAttempt(playerID int64) bool {
 	return limiter.Allow()
 }
 
-// InviteBody asks other jellies for a partner emote.
+// InviteBody asks another jelly for a partner emote.
 type InviteBody struct {
-	Key        string  `json:"key"`
-	PartnerIDs []int64 `json:"partner_ids"`
+	Key       string `json:"key"`
+	PartnerID int64  `json:"partner_id"`
 }
 
 // InviteAnswerBody accepts, declines or cancels an invite.
@@ -64,7 +64,7 @@ func (server *apiServer) addPartnerRoutes(contract huma.API) {
 		OperationID: "createPartnerEmote", Method: http.MethodPost, Path: pathPartnerEmotes,
 		Summary: "Ask another jelly for a partner emote",
 		Description: "The other client learns about it from `partner_emote.updated` and answers " +
-			"with PATCH. `partner_ids` holds exactly one jelly for now. Jellies further apart " +
+			"with PATCH. Jellies further apart " +
 			"than `near_distance` get `409 too_far`.",
 		Middlewares: huma.Middlewares{server.limitCodeAttempts},
 	}, server.handleCreatePartnerInvite)
@@ -88,7 +88,7 @@ func (server *apiServer) handleCreatePartnerInvite(
 	now := server.currentMillis()
 	server.refreshMovement(ctx, now)
 	return answerWith(server.Store.CreatePartnerInvite(ctx, store.NewPartnerInvite{
-		PlayerID: playerID, EmoteKey: input.Body.Key, PartnerIDs: input.Body.PartnerIDs, Now: now,
+		PlayerID: playerID, EmoteKey: input.Body.Key, PartnerID: input.Body.PartnerID, Now: now,
 		IsNear: server.buildNearCheck(playerID, now),
 	}))
 }

@@ -9,23 +9,21 @@
 
 import type { Report, Reports } from "./types";
 
-/** XP pro Level, wie beim Server. */
-const XP_PER_LEVEL = 100;
-
 /** Millisekunden pro Minute. */
 const MINUTE_MS = 60_000;
 
 /**
  * Level und Fortschritt zum nächsten Level, wie `CalculateLevel` beim Server.
  *
+ * @param xpPerLevel - Die Regel `xp_per_level` der LAN.
  * @returns `level` (ab 1), `current` (XP im laufenden Level) und `remaining` (XP bis zum nächsten).
  */
-export function levelProgress(xp: number) {
-  const current = xp % XP_PER_LEVEL;
+export function levelProgress(xp: number, xpPerLevel: number) {
+  const current = xp % xpPerLevel;
   return {
-    level: Math.floor(xp / XP_PER_LEVEL) + 1,
+    level: Math.floor(xp / xpPerLevel) + 1,
     current,
-    remaining: XP_PER_LEVEL - current,
+    remaining: xpPerLevel - current,
   };
 }
 

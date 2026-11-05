@@ -18,7 +18,7 @@ import { toFloorPoint } from "./world.ts";
 const move: StageMove = {
   player_id: 5,
   kind: "wander",
-  level: 0,
+  stack_level: 0,
   start_at: 1000,
   points: [
     { x: 10, y: 10, t: 0 },
@@ -80,7 +80,7 @@ test("a walking jelly looks where it goes and hops, a standing one looks at the 
 });
 
 test("a jelly climbs its stack only after it has arrived", () => {
-  const climbing = { ...move, kind: "stack", level: 2 };
+  const climbing = { ...move, kind: "stack", stack_level: 2 };
   assert.equal(findStackLevel(climbing, 2000), 0);
   assert.equal(findStackLevel(climbing, 4000), 2);
 });

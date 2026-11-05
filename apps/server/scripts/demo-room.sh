@@ -23,11 +23,20 @@ row_depth=2
 seat_depth=5
 spine_top=22
 spine_bottom=90
-# The front of the hall as x y width height kind: stage, lounge and the snack bar counter.
+# The front of the hall as x y width height kind blocks prop [rotation]: the stage platform with what
+# stands on it as its own obstacles, the lounge, the snack bar counter with its queue, and a desk
+# turned by 30 degrees next to the lounge, to compare the model with the obstacle.
 front_zones=(
-  "5 1 90 8 stage"
-  "5 12 40 10 lounge"
-  "65 14 20 3 snackbar"
+  "5 1 90 8 stage false stage-platform"
+  "22 1.75 20 0.5 none true screen"
+  "58 1.75 20 0.5 none true screen"
+  "7.86 1.5 4.76 2 none true speaker"
+  "87.38 1.5 4.76 2 none true speaker"
+  "48.33 1.63 3.33 1.75 none true pedestal"
+  "5 12 40 10 lounge false lounge-set"
+  "65 14 20 3 none true snack-bar-set"
+  "50 17 45 5 queue false"
+  "48 12.5 10 2 none true desk 30"
 )
 
 # Rows from the back of the hall to the front: top edge, left half, right half, and the side the
@@ -55,10 +64,11 @@ admin_call() {
   curl -sf -b "$cookie" -H 'Content-Type: application/json' "$@"
 }
 
-# create_area x y width height kind
+# create_area x y width height kind [blocks] [prop] [rotation]
 create_area() {
   admin_call -X POST "$base_url/admin/api/lans/$lan_id/areas" \
-    -d "{\"x\":$1,\"y\":$2,\"width\":$3,\"height\":$4,\"kind\":\"$5\"}" >/dev/null || exit 2
+    -d "{\"x\":$1,\"y\":$2,\"width\":$3,\"height\":$4,\"kind\":\"$5\",\"blocks\":${6:-false},\"prop\":\"${7:-}\",\"rotation\":${8:-0}}" \
+    >/dev/null || exit 2
 }
 
 # list_runs <pattern> <letter> prints "start length" for every run of the letter in the pattern.
@@ -92,7 +102,7 @@ create_half_seats() {
 create_half_desks() {
   local top="$1" half_x="$2" pattern="$3" place
   for ((place = 0; place < ${#pattern}; place++)); do
-    create_area "$((half_x + place * place_width))" "$top" "$place_width" "$row_depth" desk
+    create_area "$((half_x + place * place_width))" "$top" "$place_width" "$row_depth" none true desk
   done
 }
 
@@ -110,11 +120,11 @@ create_areas() {
   done
   # The spine is a stack of the same desks, from the back to the front.
   for ((top = spine_top; top < spine_bottom; top += row_depth)); do
-    create_area "$spine_x" "$top" "$place_width" "$row_depth" desk
+    create_area "$spine_x" "$top" "$place_width" "$row_depth" none true desk
   done
   local zone
   for zone in "${front_zones[@]}"; do
-    # shellcheck disable=SC2086 # The zone is split into its five fields on purpose.
+    # shellcheck disable=SC2086 # The zone is split into its fields on purpose.
     create_area $zone
   done
 }

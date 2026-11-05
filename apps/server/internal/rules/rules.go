@@ -5,17 +5,20 @@ package rules
 
 import (
 	"errors"
-	"slices"
 )
 
 const (
+	// maxPercent is all of something.
+	maxPercent = 100
+	// FirstLevel is the level of a player without XP.
+	FirstLevel = 1
 	// NoPokeYet marks that a player has not earned poke XP in this LAN.
 	NoPokeYet int64 = 0
 	// NoStackLimit lets stacks grow as high as the players can build them.
 	NoStackLimit = 0
 
-	xpPerLevel      = 100
-	millisPerSecond = 1000
+	defaultXPPerLevel = 100
+	millisPerSecond   = 1000
 
 	defaultPokeIntervalSeconds   = 900
 	defaultPokeXP                = 3
@@ -41,7 +44,16 @@ const (
 	defaultStackSeconds          = 120
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
-	maxPercent                   = 100
+)
+
+const (
+	// earliestLANStart is the start of the year 2000 in milliseconds. Older LANs can be added
+	// later,
+	// but none is older than this.
+	earliestLANStart = 946_684_800_000
+	maxLANMillis     = 60 * 24 * 60 * 60 * 1000
+	// maxEventCodeXP is plenty for one event, and small enough that a typo cannot end the game.
+	maxEventCodeXP = 10_000
 )
 
 // ErrInvalidRules reports rules with a value that would break the game.
@@ -49,6 +61,21 @@ var ErrInvalidRules = errors.New("invalid rules")
 
 // Rules are the game values of a LAN, stored as JSON in `lans.rules`.
 type Rules struct {
+	PublicRules
+
+	// MaxPlayers limits how many accounts can take part in a LAN.
+	MaxPlayers int `json:"max_players"`
+	// MaxStreams limits the open event streams of all players together.
+	MaxStreams int `json:"max_streams"`
+	// MaxPlayerStreams limits the open event streams of one player.
+	MaxPlayerStreams int `json:"max_player_streams"`
+}
+
+// PublicRules are the rules that clients read, so they show the same as the server decides. The
+// server still checks every action itself.
+type PublicRules struct {
+	// XPPerLevel is how much XP a level takes, the same for every level.
+	XPPerLevel int `json:"xp_per_level"`
 	// PokeIntervalSeconds is the minimum time between two XP pokes.
 	PokeIntervalSeconds int64 `json:"poke_interval"`
 	// PokeXP is the XP per interval.
@@ -75,12 +102,6 @@ type Rules struct {
 	PartnerXP int `json:"partner_xp"`
 	// FullHousePercent is the share of the LAN's players that must redeem one event code together.
 	FullHousePercent int `json:"full_house_percent"`
-	// MaxPlayers limits how many accounts can take part in a LAN.
-	MaxPlayers int `json:"max_players"`
-	// MaxStreams limits the open event streams of all players together.
-	MaxStreams int `json:"max_streams"`
-	// MaxPlayerStreams limits the open event streams of one player.
-	MaxPlayerStreams int `json:"max_player_streams"`
 	// SnackRunSeconds is how long a jelly stays at the snack bar after a food or drink report.
 	SnackRunSeconds int64 `json:"snack_run_seconds"`
 	// TripSeconds is how long a jelly stays at the point of a trip before it walks back.
@@ -106,6 +127,7 @@ type Rules struct {
 // DefaultRules returns the starting values of a new LAN.
 func DefaultRules() Rules {
 	return Rules{
+		XPPerLevel:               defaultXPPerLevel,
 		PokeIntervalSeconds:      defaultPokeIntervalSeconds,
 		PokeXP:                   defaultPokeXP,
 		PokeMaxTicks:             defaultPokeMaxTicks,
@@ -119,9 +141,6 @@ func DefaultRules() Rules {
 		PartnerInviteSeconds:     defaultPartnerInviteSeconds,
 		PartnerXP:                defaultPartnerXP,
 		FullHousePercent:         defaultFullHousePercent,
-		MaxPlayers:               defaultMaxPlayers,
-		MaxStreams:               defaultMaxStreams,
-		MaxPlayerStreams:         defaultMaxPlayerStreams,
 		SnackRunSeconds:          defaultSnackRunSeconds,
 		TripSeconds:              defaultTripSeconds,
 		FollowSeconds:            defaultFollowSeconds,
@@ -131,54 +150,27 @@ func DefaultRules() Rules {
 		StackMaxMembers:          NoStackLimit,
 		HighlightSeconds:         defaultHighlightSeconds,
 		HighlightCooldownSeconds: defaultHighlightCooldown,
+		MaxPlayers:               defaultMaxPlayers,
+		MaxStreams:               defaultMaxStreams,
+		MaxPlayerStreams:         defaultMaxPlayerStreams,
 	}
 }
 
-// ValidateRules rejects values that would break the game, such as a zero interval.
-func ValidateRules(gameRules Rules) error {
-	isValid := areDurationsValid(gameRules) && areAmountsValid(gameRules) &&
-		areLimitsValid(gameRules) && gameRules.StackMaxMembers >= NoStackLimit &&
-		gameRules.NearDistance > 0 && gameRules.WalkSpeed > 0 &&
-		gameRules.FullHousePercent >= 1 && gameRules.FullHousePercent <= maxPercent
-	if !isValid {
-		return ErrInvalidRules
-	}
-	return nil
+// IsLANPeriodValid reports whether a period can be a LAN. Times in seconds instead of milliseconds
+// end up in 1970, and a LAN that never ends would block every later one, which overlaps it.
+func IsLANPeriodValid(startsAt, endsAt int64) bool {
+	return startsAt >= earliestLANStart && startsAt < endsAt && endsAt-startsAt <= maxLANMillis
 }
 
-// areDurationsValid checks all times: most must pass, but a cooldown can be switched off.
-func areDurationsValid(gameRules Rules) bool {
-	durations := []int64{
-		gameRules.PokeIntervalSeconds, gameRules.PokeMaxTicks, gameRules.ReportCooldownSeconds,
-		gameRules.ReportWindowSeconds, gameRules.PresenceWindowSeconds,
-		gameRules.PartnerInviteSeconds, gameRules.SnackRunSeconds, gameRules.TripSeconds,
-		gameRules.StackSeconds, gameRules.HighlightSeconds, gameRules.FollowSeconds,
-	}
-	cooldowns := []int64{
-		gameRules.EmoteCooldownSeconds, gameRules.HighlightCooldownSeconds,
-	}
-	return !slices.ContainsFunc(durations, func(value int64) bool { return value <= 0 }) &&
-		!slices.ContainsFunc(cooldowns, func(value int64) bool { return value < 0 })
+// IsEventCodeValid reports whether a code gives a sensible amount of XP for a time that fits a LAN.
+func IsEventCodeValid(xp int, validFrom, validUntil int64) bool {
+	return xp >= 0 && xp <= maxEventCodeXP && validFrom < validUntil &&
+		validUntil-validFrom <= maxLANMillis
 }
 
-// areAmountsValid checks all XP values, where 0 is allowed.
-func areAmountsValid(gameRules Rules) bool {
-	return !slices.ContainsFunc([]int{
-		gameRules.PokeXP, gameRules.FoodXP, gameRules.DrinkXP, gameRules.ReportsPerWindow,
-		gameRules.PartnerXP,
-	}, func(value int) bool { return value < 0 })
-}
-
-// areLimitsValid checks all limits, which need room for at least one.
-func areLimitsValid(gameRules Rules) bool {
-	return !slices.ContainsFunc([]int{
-		gameRules.MaxPlayers, gameRules.MaxStreams, gameRules.MaxPlayerStreams,
-	}, func(value int) bool { return value < 1 })
-}
-
-// CalculateLevel returns the level for the XP of a LAN, starting at 1.
-func CalculateLevel(xp int) int {
-	return xp/xpPerLevel + 1
+// CalculateLevel returns the level for the XP of a LAN, starting at [FirstLevel].
+func CalculateLevel(gameRules Rules, xp int) int {
+	return xp/gameRules.XPPerLevel + FirstLevel
 }
 
 // CalculatePokeXP returns the XP for a poke. A poke that comes too early earns 0.

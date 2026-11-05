@@ -110,29 +110,6 @@ func (store *Store) ResetPlayerName(ctx context.Context, playerID, now int64) er
 	})
 }
 
-// RotatePlayerToken replaces the token of a lost account and returns the new one once.
-func (store *Store) RotatePlayerToken(
-	ctx context.Context, playerID, now int64,
-) (string, error) {
-	token := generateToken()
-	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		const updateTokenHashSQL = `UPDATE players SET token_hash = ? WHERE id = ?`
-		result, err := transaction.ExecContext(ctx, updateTokenHashSQL, hashSecret(token), playerID)
-		if err != nil {
-			return fmt.Errorf("rotate token: %w", err)
-		}
-		err = requireAffectedRow(result, ErrPlayerNotFound)
-		if err != nil {
-			return err
-		}
-		return recordAdminAction(ctx, transaction, AdminActionRotateToken, playerID, now)
-	})
-	if err != nil {
-		return "", err
-	}
-	return token, nil
-}
-
 // DeletePlayer removes an account with all its data and tells the stage.
 func (store *Store) DeletePlayer(ctx context.Context, playerID, now int64) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {

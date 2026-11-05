@@ -46,6 +46,11 @@ describe("unlocks", () => {
     expect(unlockLabel("pixel-glasses", PREVIEW_CATALOG)).toBe("Level 5");
     expect(unlockLabel("party-hat", PREVIEW_CATALOG)).toBe("Bei einem Event");
     expect(unlockLabel("golden-cup", PREVIEW_CATALOG)).toBe("Von der Orga");
+    const sealed = {
+      ...PREVIEW_CATALOG,
+      cosmetics: [{ ...PREVIEW_CATALOG.cosmetics[0], unlock: "none" }],
+    };
+    expect(unlockLabel("headset", sealed)).toBe("Nicht freischaltbar");
   });
   it("finds level rewards in level order", () => {
     // Level 2 schaltet beide Headsets frei, das Level-up zeigt das erste.
@@ -96,12 +101,15 @@ describe("achievements", () => {
 
 describe("level progress", () => {
   it("starts at level one with the full next level ahead", () => {
-    expect(levelProgress(0)).toEqual({ level: 1, current: 0, remaining: 100 });
+    expect(levelProgress(0, 100)).toEqual({ level: 1, current: 0, remaining: 100 });
   });
   it("carries excess XP across level boundaries", () => {
-    expect(levelProgress(99)).toEqual({ level: 1, current: 99, remaining: 1 });
-    expect(levelProgress(100)).toEqual({ level: 2, current: 0, remaining: 100 });
-    expect(levelProgress(235)).toEqual({ level: 3, current: 35, remaining: 65 });
+    expect(levelProgress(99, 100)).toEqual({ level: 1, current: 99, remaining: 1 });
+    expect(levelProgress(100, 100)).toEqual({ level: 2, current: 0, remaining: 100 });
+    expect(levelProgress(235, 100)).toEqual({ level: 3, current: 35, remaining: 65 });
+  });
+  it("follows the rule of the LAN", () => {
+    expect(levelProgress(235, 50)).toEqual({ level: 5, current: 35, remaining: 15 });
   });
 });
 

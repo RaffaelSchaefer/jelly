@@ -1,7 +1,9 @@
 /**
- * Desks and cable ducts built from the areas of the room. Seats stay invisible: the jellies
- * standing there show where a group is. All desk tops share one mesh, all legs another and the
- * shadows one per desk size, so a hall full of desks costs a handful of draw calls.
+ * Desks and cable ducts built from the zones with the props `desk` and `cable`. Seats stay
+ * invisible: the jellies standing there show where a group is. All desk tops share one mesh, all
+ * legs another and the shadows one per desk size, so a hall full of desks costs a handful of draw
+ * calls. A turned desk turns before it merges: every part gets its place in the room and the turn
+ * of its zone.
  *
  * @module
  */
@@ -10,7 +12,7 @@ import { BoxGeometry, Group, Mesh, type BufferGeometry, type Material } from "th
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 import type { StageArea } from "./types.ts";
-import type { FloorRect } from "./world.ts";
+import type { FloorPoint } from "./world.ts";
 
 import { createMatte, FLAT_ORDER, mergeParts, type PropPart } from "./props.ts";
 import {
@@ -20,7 +22,7 @@ import {
   SHADOW_ORDER,
   type ShadowShape,
 } from "./shadow.ts";
-import { toFloorRect } from "./world.ts";
+import { findFloorHeight, listPlatforms, placeArea, toRoomPoint, type Placement } from "./zones.ts";
 
 /** Desk sizes in jelly units. A jelly is about 2.3 units tall. */
 const DESK_HEIGHT = 0.95;
@@ -43,18 +45,35 @@ const TOP_MATERIAL = createMatte("#fbf6ec");
 const LEG_MATERIAL = createMatte("#b8c3d0");
 const CABLE_MATERIAL = createMatte("#9aa6b5");
 
-/** Creates a box mesh whose bottom sits at `bottom`. */
-function createBlock(
-  geometry: BufferGeometry,
-  material: Material,
-  center: { x: number; z: number },
-  bottom: number,
-): Mesh {
+/** Where a desk stands: its zone and the floor under it. */
+interface DeskSpot {
+  placement: Placement;
+  floor: number;
+}
+
+/** Creates a box mesh whose bottom sits on the floor of its spot, turned with its zone. */
+function createBlock(geometry: BufferGeometry, material: Material, spot: DeskSpot): Mesh {
   geometry.computeBoundingBox();
   const height = geometry.boundingBox ? geometry.boundingBox.max.y : 0;
   const block = new Mesh(geometry, material);
-  block.position.set(center.x, bottom + height, center.z);
+  const { middle, turn } = spot.placement;
+  block.position.set(middle.x, spot.floor + height, middle.z);
+  block.rotation.y = turn;
   return block;
+}
+
+/** Where a part sits in its desk: beside the middle, at a height, and laid flat by `lay` or not. */
+interface PartOffset {
+  local: FloorPoint;
+  y: number;
+  lay?: number;
+}
+
+/** Returns a part of a desk: built around the desk's middle, moved and turned into the room. */
+function placePart(geometry: BufferGeometry, offset: PartOffset, spot: DeskSpot): PropPart {
+  const { x, z } = toRoomPoint(offset.local, spot.placement);
+  const turn = { x: offset.lay ?? 0, y: spot.placement.turn, z: 0 };
+  return { geometry, at: { x, y: spot.floor + offset.y, z }, turn };
 }
 
 /** Returns the positions of the leg panels along the longer side of a desk. */
@@ -73,39 +92,33 @@ interface DeskParts {
 }
 
 /** Adds the top and the legs of one desk to the parts. */
-function addDeskBlocks(parts: DeskParts, rect: FloorRect): void {
-  const width = rect.maxX - rect.minX;
-  const depth = rect.maxZ - rect.minZ;
-  const center = { x: (rect.minX + rect.maxX) / 2, z: (rect.minZ + rect.maxZ) / 2 };
-  parts.tops.push({
-    geometry: new RoundedBoxGeometry(
-      width - DESK_SEAM,
-      DESK_TOP_THICKNESS,
-      depth - DESK_SEAM,
-      ROUND_SEGMENTS,
-      DESK_CORNER,
-    ),
-    at: { x: center.x, y: DESK_HEIGHT - DESK_TOP_THICKNESS / 2, z: center.z },
-  });
+function addDeskBlocks(parts: DeskParts, spot: DeskSpot): void {
+  const { width, depth } = spot.placement;
+  const top = new RoundedBoxGeometry(
+    width - DESK_SEAM,
+    DESK_TOP_THICKNESS,
+    depth - DESK_SEAM,
+    ROUND_SEGMENTS,
+    DESK_CORNER,
+  );
+  const topOffset = { local: { x: 0, z: 0 }, y: DESK_HEIGHT - DESK_TOP_THICKNESS / 2 };
+  parts.tops.push(placePart(top, topOffset, spot));
   const isWide = width >= depth;
   const legHeight = DESK_HEIGHT - DESK_TOP_THICKNESS;
   for (const offset of listLegOffsets(isWide ? width : depth)) {
-    parts.legs.push({
-      geometry: isWide
-        ? new BoxGeometry(LEG_THICKNESS, legHeight, depth * LEG_DEPTH_SHARE)
-        : new BoxGeometry(width * LEG_DEPTH_SHARE, legHeight, LEG_THICKNESS),
-      at: isWide
-        ? { x: center.x + offset, y: legHeight / 2, z: center.z }
-        : { x: center.x, y: legHeight / 2, z: center.z + offset },
-    });
+    const leg = isWide
+      ? new BoxGeometry(LEG_THICKNESS, legHeight, depth * LEG_DEPTH_SHARE)
+      : new BoxGeometry(width * LEG_DEPTH_SHARE, legHeight, LEG_THICKNESS);
+    const local = isWide ? { x: offset, z: 0 } : { x: 0, z: offset };
+    parts.legs.push(placePart(leg, { local, y: legHeight / 2 }, spot));
   }
 }
 
 /** Adds the shadow of one desk to the shadows of its size. */
-function addDeskShadow(parts: DeskParts, rect: FloorRect): void {
+function addDeskShadow(parts: DeskParts, spot: DeskSpot): void {
   const shape: ShadowShape = {
-    halfWidth: (rect.maxX - rect.minX) / 2 + DESK_SHADOW.margin,
-    halfDepth: (rect.maxZ - rect.minZ) / 2 + DESK_SHADOW.margin,
+    halfWidth: spot.placement.width / 2 + DESK_SHADOW.margin,
+    halfDepth: spot.placement.depth / 2 + DESK_SHADOW.margin,
     radius: DESK_SHADOW.radius,
     softness: DESK_SHADOW.softness,
     strength: DESK_SHADOW.strength,
@@ -113,35 +126,39 @@ function addDeskShadow(parts: DeskParts, rect: FloorRect): void {
   const key = `${shape.halfWidth}x${shape.halfDepth}`;
   const shadows = parts.shadows.get(key) ?? { shape, planes: [] };
   parts.shadows.set(key, shadows);
-  shadows.planes.push({
-    geometry: createShadowGeometry(shape),
-    at: { x: (rect.minX + rect.maxX) / 2, y: SHADOW_HEIGHT, z: (rect.minZ + rect.maxZ) / 2 },
-    turn: FLAT_TURN,
-  });
+  const plane = createShadowGeometry(shape);
+  const offset = { local: { x: 0, z: 0 }, y: SHADOW_HEIGHT, lay: FLAT_TURN.x };
+  shadows.planes.push(placePart(plane, offset, spot));
 }
 
 /** Builds a flat cable duct. */
-function createCable(rect: FloorRect): Mesh {
-  const width = rect.maxX - rect.minX;
-  const depth = rect.maxZ - rect.minZ;
+function createCable(spot: DeskSpot): Mesh {
+  const { width, depth } = spot.placement;
   const corner = Math.min(width, depth, CABLE_HEIGHT) / 2;
   const geometry = new RoundedBoxGeometry(width, CABLE_HEIGHT, depth, ROUND_SEGMENTS, corner);
-  const center = { x: (rect.minX + rect.maxX) / 2, z: (rect.minZ + rect.maxZ) / 2 };
-  const cable = createBlock(geometry, CABLE_MATERIAL, center, 0);
+  const cable = createBlock(geometry, CABLE_MATERIAL, spot);
   cable.renderOrder = FLAT_ORDER;
   return cable;
 }
 
-/** Builds all furniture of the room. */
+/** Returns where the furniture of a zone stands, on the platform there if any. */
+function findSpot(area: StageArea, platforms: Placement[]): DeskSpot {
+  const placement = placeArea(area);
+  return { placement, floor: findFloorHeight(placement.middle, platforms) };
+}
+
+/** Builds all desks and cables of the room. */
 export function createFurniture(areas: StageArea[]): Group {
   const furniture = new Group();
   const parts: DeskParts = { tops: [], legs: [], shadows: new Map() };
+  const platforms = listPlatforms(areas);
   for (const area of areas) {
-    if (area.kind === "desk") {
-      addDeskBlocks(parts, toFloorRect(area));
-      addDeskShadow(parts, toFloorRect(area));
+    if (area.prop === "desk") {
+      const spot = findSpot(area, platforms);
+      addDeskBlocks(parts, spot);
+      addDeskShadow(parts, spot);
     }
-    if (area.kind === "cable") furniture.add(createCable(toFloorRect(area)));
+    if (area.prop === "cable") furniture.add(createCable(findSpot(area, platforms)));
   }
   if (parts.tops.length > 0) {
     furniture.add(mergeParts(parts.tops, TOP_MATERIAL), mergeParts(parts.legs, LEG_MATERIAL));

@@ -1,7 +1,8 @@
 /**
  * The stage at the back of the hall: a board floor with wandering spotlights, an LED strip and
  * steps at the front, two beamer screens, speaker stacks with lights in the back corners and the
- * tournament trophy between the screens.
+ * tournament trophy between the screens. Every part stands on the floor of its own group, so a map
+ * can place it alone or let the whole set put it on the platform.
  *
  * @module
  */
@@ -194,8 +195,8 @@ function createPlatform(rect: FloorRect): Group {
   return platform;
 }
 
-/** Builds a beamer screen in its frame, standing on the stage. */
-function createScreen(rect: FloorRect, seed: number): Group {
+/** Builds a beamer screen in its frame, standing in the middle of its rectangle. */
+export function createScreen(rect: FloorRect, seed: number): Group {
   const screen = new Group();
   const middle = findMiddle(rect);
   const frame = {
@@ -204,16 +205,16 @@ function createScreen(rect: FloorRect, seed: number): Group {
     depth: FRAME_DEPTH,
     rounding: FRAME_DEPTH / 2,
   };
-  screen.add(createBox(frame, FRAME_MATERIAL, middle, STAGE_HEIGHT + SCREEN_BOTTOM - FRAME_BORDER));
+  screen.add(createBox(frame, FRAME_MATERIAL, middle, SCREEN_BOTTOM - FRAME_BORDER));
   const legHeight = SCREEN_BOTTOM - FRAME_BORDER;
   for (const side of [-1, 1]) {
     const leg = new CylinderGeometry(LEG.radius, LEG.radius, legHeight, SEGMENTS.leg);
     const x = middle.x + side * (SCREEN_WIDTH / 2 - LEG.inset);
-    screen.add(placeMesh(leg, FRAME_MATERIAL, { x, y: STAGE_HEIGHT + legHeight / 2, z: middle.z }));
+    screen.add(placeMesh(leg, FRAME_MATERIAL, { x, y: legHeight / 2, z: middle.z }));
   }
   const picture = placeMesh(new PlaneGeometry(SCREEN_WIDTH, SCREEN_HEIGHT), SCREEN_MATERIAL, {
     x: middle.x,
-    y: STAGE_HEIGHT + SCREEN_BOTTOM + SCREEN_HEIGHT / 2,
+    y: SCREEN_BOTTOM + SCREEN_HEIGHT / 2,
     z: middle.z + FRAME_DEPTH / 2 + FACE_LIFT,
   });
   // One material for both screens: each sets its own seed right before it is drawn.
@@ -231,8 +232,13 @@ function createCone(radius: number, point: { x: number; y: number; z: number }):
   return placeMesh(new CircleGeometry(radius, SEGMENTS.cone), CONE_MATERIAL, point);
 }
 
-/** Builds a PAR light on a speaker stack, aimed at the middle of the stage and the hall. */
-function createParLight(spot: FloorPoint, bottom: number, side: number, color: number): Group {
+/** Builds a PAR light, aimed up and at the hall, turned by `side` toward the middle of the stage. */
+export function createParLight(
+  spot: FloorPoint,
+  bottom: number,
+  side: number,
+  color: number,
+): Group {
   const light = new Group();
   const can = new CylinderGeometry(PAR.radius, PAR.radius * PAR.back, PAR.length, SEGMENTS.can);
   light.add(placeMesh(can, PAR_MATERIAL, { x: 0, y: 0, z: 0 }));
@@ -250,7 +256,7 @@ function createParLight(spot: FloorPoint, bottom: number, side: number, color: n
 }
 
 /** Builds a speaker stack: a bass box with a smaller box on top and two lights. */
-function createSpeakerStack(rect: FloorRect, side: number): Group {
+export function createSpeakerStack(rect: FloorRect, side: number): Group {
   const stack = new Group();
   const width = rect.maxX - rect.minX;
   const depth = rect.maxZ - rect.minZ;
@@ -260,13 +266,13 @@ function createSpeakerStack(rect: FloorRect, side: number): Group {
     height: TOP_BOX.height,
     depth: depth * TOP_BOX.share,
   };
-  const topBottom = STAGE_HEIGHT + SUB_HEIGHT;
+  const topBottom = SUB_HEIGHT;
   stack.add(
-    createBox({ width, height: SUB_HEIGHT, depth }, SPEAKER_MATERIAL, middle, STAGE_HEIGHT),
+    createBox({ width, height: SUB_HEIGHT, depth }, SPEAKER_MATERIAL, middle, 0),
     createBox(top, SPEAKER_MATERIAL, middle, topBottom),
     createCone(CONES.bass, {
       x: middle.x,
-      y: STAGE_HEIGHT + SUB_HEIGHT / 2,
+      y: SUB_HEIGHT / 2,
       z: rect.maxZ + CONE_LIFT,
     }),
   );
@@ -287,24 +293,29 @@ function createSpeakerStack(rect: FloorRect, side: number): Group {
     const spot = { x: middle.x + offset * width, z: middle.z };
     stack.add(createParLight(spot, topBottom + top.height, side, index + (side > 0 ? 1 : 0)));
   }
-  stack.add(createZoneShadow(rect, STAGE_HEIGHT));
+  stack.add(createZoneShadow(rect));
   return stack;
 }
 
-/** Builds the trophy of the tournament on its pedestal, with a few glints around the cup. */
-function createTrophy(rect: FloorRect): Group {
-  const trophy = new Group();
+/** Builds the pedestal of the tournament with the trophy on it. */
+export function createPedestal(rect: FloorRect): Group {
+  const pedestal = new Group();
   const middle = findMiddle(rect);
-  const size = rect.maxX - rect.minX;
-  const pedestal = { width: size, height: PEDESTAL_HEIGHT, depth: size };
+  const size = Math.min(rect.maxX - rect.minX, rect.maxZ - rect.minZ);
+  const block = { width: size, height: PEDESTAL_HEIGHT, depth: size };
   const plateSize = size + TROPHY_PLATE.overhang;
   const plate = { width: plateSize, height: TROPHY_PLATE.height, depth: plateSize };
-  const plateBottom = STAGE_HEIGHT + PEDESTAL_HEIGHT - TROPHY_PLATE.below;
-  trophy.add(
-    createBox(pedestal, PEDESTAL_MATERIAL, middle, STAGE_HEIGHT),
-    createBox(plate, GOLD_MATERIAL, middle, plateBottom),
+  pedestal.add(
+    createBox(block, PEDESTAL_MATERIAL, middle, 0),
+    createBox(plate, GOLD_MATERIAL, middle, PEDESTAL_HEIGHT - TROPHY_PLATE.below),
+    createTrophy(middle, PEDESTAL_HEIGHT),
   );
-  const base = STAGE_HEIGHT + PEDESTAL_HEIGHT;
+  return pedestal;
+}
+
+/** Builds the trophy of the tournament standing on `base`, with a few glints around the cup. */
+export function createTrophy(middle: FloorPoint, base: number): Group {
+  const trophy = new Group();
   const outline = CUP_PROFILE.map(([radius, height]) => new Vector2(radius, height));
   trophy.add(
     placeMesh(new LatheGeometry(outline, SEGMENTS.cup), GOLD_MATERIAL, { ...middle, y: base }),
@@ -334,12 +345,12 @@ function createTrophy(rect: FloorRect): Group {
   return trophy;
 }
 
-/** Builds the 32A sockets in the back corners and their cables to the speakers. */
-function createSockets(rect: FloorRect, speakers: FloorRect[]): Mesh[] {
+/** Builds the 32A sockets in the back corners and, with speakers, their cables to the speakers. */
+export function createSockets(rect: FloorRect, speakers: FloorRect[]): Mesh[] {
   const corners = [rect.minX + SOCKET.inset, rect.maxX - SOCKET.inset];
   return corners.flatMap((x, index) => {
     const spot = { x, z: rect.minZ + SOCKET.inset };
-    const socket = createBox(SOCKET, SOCKET_MATERIAL, spot, STAGE_HEIGHT);
+    const socket = createBox(SOCKET, SOCKET_MATERIAL, spot, 0);
     const speaker = speakers[index];
     if (!speaker) return [socket];
     const end = { x: index === 0 ? speaker.minX : speaker.maxX, z: speaker.maxZ - CABLE.endInset };
@@ -347,9 +358,9 @@ function createSockets(rect: FloorRect, speakers: FloorRect[]): Mesh[] {
   });
 }
 
-/** Builds a cable lying on the stage between two points. */
+/** Builds a cable lying on the floor between two points. */
 function createCable(from: FloorPoint, to: FloorPoint): Mesh {
-  const height = STAGE_HEIGHT + CABLE.radius;
+  const height = CABLE.radius;
   const bend = { x: (from.x + to.x) / 2, z: Math.max(from.z, to.z) + CABLE.swing };
   const curve = new CatmullRomCurve3(
     [from, bend, to].map((point) => new Vector3(point.x, height, point.z)),
@@ -358,13 +369,22 @@ function createCable(from: FloorPoint, to: FloorPoint): Mesh {
   return placeMesh(tube, CABLE_MATERIAL, { x: 0, y: 0, z: 0 });
 }
 
-/** Builds a whole stage. */
+/** Builds the platform alone, with its shadow on the floor. */
+export function createStagePlatform(rect: FloorRect): Group {
+  const platform = createPlatform(rect);
+  platform.add(createZoneShadow(rect));
+  return platform;
+}
+
+/** Builds a whole stage: the platform and everything on it, standing on its raised floor. */
 export function createStage(rect: FloorRect): Group {
-  const stage = new Group();
+  const stage = createStagePlatform(rect);
+  const top = new Group();
+  top.position.y = STAGE_HEIGHT;
   const speakers = listSpeakerRects(rect);
-  stage.add(createPlatform(rect), createZoneShadow(rect));
-  listScreenRects(rect).forEach((screenRect, index) => stage.add(createScreen(screenRect, index)));
-  speakers.forEach((speaker, index) => stage.add(createSpeakerStack(speaker, index * 2 - 1)));
-  stage.add(createTrophy(findPedestalRect(rect)), ...createSockets(rect, speakers));
+  listScreenRects(rect).forEach((screenRect, index) => top.add(createScreen(screenRect, index)));
+  speakers.forEach((speaker, index) => top.add(createSpeakerStack(speaker, index * 2 - 1)));
+  top.add(createPedestal(findPedestalRect(rect)), ...createSockets(rect, speakers));
+  stage.add(top);
   return stage;
 }

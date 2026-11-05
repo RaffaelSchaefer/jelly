@@ -31,6 +31,15 @@ pub struct LanPeriod {
     pub ends_at: i64,
 }
 
+/// Die Regeln der LAN, soweit die App sie anzeigt (`PublicRules`). Entscheiden tut der Server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Rules {
+    /// Bis zu diesem Abstand in Jelly-Einheiten stehen zwei Jellies nebeneinander.
+    pub near_distance: f64,
+    /// XP je Level, linear.
+    pub xp_per_level: i64,
+}
+
 /// Antwort von `GET /v1/lans/current`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanStatus {
@@ -40,6 +49,9 @@ pub struct LanStatus {
     pub current: Option<LanPeriod>,
     /// Die nächste LAN.
     pub next: Option<LanPeriod>,
+    /// Regeln der laufenden LAN, sonst der nächsten, sonst die Standardwerte. Nach `rules.changed`
+    /// neu lesen.
+    pub rules: Rules,
     /// Ob dieses Konto an der laufenden LAN teilnimmt. `None` ohne Token oder ohne LAN.
     pub joined: Option<bool>,
 }
@@ -115,7 +127,16 @@ pub struct Trip {
     /// Ziel von hinten, in Prozent der Bühne.
     pub y: f64,
     /// Wann das Jelly zurückläuft, als Server-Zeit.
-    pub until: i64,
+    pub ends_at: i64,
+}
+
+/// Wem ein Jelly nachläuft und wann das von selbst endet.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Follow {
+    /// Das Jelly, dem es nachläuft.
+    pub player_id: i64,
+    /// Wann das Folgen von selbst endet, als Server-Zeit. `follow.changed` meldet auch das.
+    pub ends_at: i64,
 }
 
 /// Stand eines Spielers (`PlayerState`), wie `GET /v1/players/me` und die meisten Aktionen ihn
@@ -151,10 +172,8 @@ pub struct Me {
     /// Hochgehaltenes Schild.
     pub sign: Option<String>,
     /// Wem das Jelly gerade nachläuft.
-    pub follow_player_id: Option<i64>,
-    /// Wann das Folgen von selbst endet, als Server-Zeit. Dazu kommt kein Ereignis.
     #[serde(default)]
-    pub follow_until: Option<i64>,
+    pub follow: Option<Follow>,
     /// Laufender Ausflug.
     #[serde(default)]
     pub trip: Option<Trip>,
@@ -199,8 +218,8 @@ pub struct PartnerInvite {
     pub key: String,
     /// Wer auffordert.
     pub from_id: i64,
-    /// Wer aufgefordert wird, vorerst genau ein Jelly.
-    pub partner_ids: Vec<i64>,
+    /// Wer aufgefordert wird.
+    pub partner_id: i64,
     /// `pending`, `accepted`, `declined` oder `cancelled`.
     pub state: String,
     /// Ablauf als Server-Zeit. Dazu kommt kein Ereignis.
@@ -246,7 +265,19 @@ pub struct Version {
 /// Antwort von `POST /v1/auth/redeem`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Access {
-    /// Secret, das es nur dieses eine Mal gibt. Ein älteres gilt danach nicht mehr.
+    /// Secret des Kontos: neu für ein neues Konto, sonst das mitgeschickte.
+    pub secret: String,
+    /// Ob das Konto den Sitz des Codes bekommen hat. `false` beim LAN-Code, bei einem belegten Sitz
+    /// oder wenn das Konto schon einen hat: Dann weist die Orga den Platz von Hand zu.
+    pub seat_assigned: bool,
+    /// Stand des Kontos.
+    pub me: Me,
+}
+
+/// Antwort von `POST /v1/auth/recover`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Recovered {
+    /// Neues Secret des Kontos, das alte gilt ab jetzt nicht mehr.
     pub secret: String,
     /// Stand des Kontos.
     pub me: Me,

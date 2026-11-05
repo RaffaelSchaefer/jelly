@@ -92,14 +92,16 @@ func TestAreaKindsDecideWhoStandsThere(t *testing.T) {
 		`{"x":0,"y":0,"width":10,"height":10,"kind":"plant"}`)
 	requireProblem(t, response, http.StatusBadRequest, "invalid_area")
 
-	deskID := testFixture.createArea(`{"x":0,"y":0,"width":40,"height":2,"kind":"desk"}`)
+	deskID := testFixture.createArea(
+		`{"x":0,"y":0,"width":40,"height":2,"kind":"none","blocks":true,"prop":"desk"}`,
+	)
 	response = testFixture.callAdmin("PUT", assignPath, `{"area_id":`+deskID+`}`)
 	requireProblem(t, response, http.StatusConflict, "area_not_assignable")
 
 	seatsID := testFixture.createArea(`{"x":0,"y":5,"width":40,"height":20,"kind":"seats"}`)
 	testFixture.callAdmin("PUT", assignPath, `{"area_id":`+seatsID+`}`)
 	response = testFixture.callAdmin("PUT", areasPath+"/"+seatsID,
-		`{"x":0,"y":5,"width":40,"height":20,"kind":"cable"}`)
+		`{"x":0,"y":5,"width":40,"height":20,"kind":"queue"}`)
 	if response.status != http.StatusOK {
 		t.Fatalf("update area: %d %s", response.status, response.body)
 	}
@@ -108,18 +110,19 @@ func TestAreaKindsDecideWhoStandsThere(t *testing.T) {
 	if stage.Players[0].AreaID != nil {
 		t.Fatalf("an area without seats must send its jellies away: %+v", stage.Players[0])
 	}
-	if len(stage.Areas) != 2 || stage.Areas[0].Kind != "desk" || stage.Areas[1].Kind != "cable" {
-		t.Fatalf("the stage must know the kinds: %+v", stage.Areas)
+	if len(stage.Areas) != 2 || !stage.Areas[0].Blocks || stage.Areas[0].Prop != "desk" ||
+		stage.Areas[1].Kind != "queue" {
+		t.Fatalf("the stage must know kinds, props and what blocks: %+v", stage.Areas)
 	}
 }
 
-func TestStageAndLoungeHoldJelliesTheSnackBarDoesNot(t *testing.T) {
+func TestStageAndLoungeHoldJelliesTheQueueDoesNot(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 	playerID := strconv.FormatInt(testFixture.loadMe(token).ID, 10)
 	assignPath := "/admin/api/lans/1/players/" + playerID + "/area"
 
-	barID := testFixture.createArea(`{"x":65,"y":14,"width":20,"height":3,"kind":"snackbar"}`)
+	barID := testFixture.createArea(`{"x":65,"y":14,"width":20,"height":3,"kind":"queue"}`)
 	response := testFixture.callAdmin("PUT", assignPath, `{"area_id":`+barID+`}`)
 	requireProblem(t, response, http.StatusConflict, "area_not_assignable")
 
@@ -205,5 +208,46 @@ func TestZoneWithoutAssignmentTakesNoJelly(t *testing.T) {
 		`{"area_id":`+zoneID+`}`)
 	if response.status == http.StatusOK {
 		t.Fatalf("assign: %s", response.body)
+	}
+}
+
+func TestEditingAnImportedZoneKeepsItsMapID(t *testing.T) {
+	testFixture := newFixture(t)
+	zone := `{"version":1,"zones":[{"id":"t1","x":10,"y":10,"width":5,"height":5}]}`
+	if response := testFixture.callAdmin(
+		"PUT",
+		"/admin/api/lans/1/map",
+		zone,
+	); response.status != http.StatusOK {
+		t.Fatalf("import: %d %s", response.status, response.body)
+	}
+	var listed struct {
+		Areas []store.AdminArea `json:"areas"`
+	}
+	areas := testFixture.callAdmin("GET", "/admin/api/lans/1/areas", "")
+	if err := json.Unmarshal(areas.body, &listed); err != nil || len(listed.Areas) != 1 {
+		t.Fatalf("areas: %v %s", err, areas.body)
+	}
+	path := "/admin/api/lans/1/areas/" + strconv.FormatInt(listed.Areas[0].ID, 10)
+
+	response := testFixture.callAdmin(
+		"PUT",
+		path,
+		`{"x":20,"y":10,"width":5,"height":5,"kind":"none"}`,
+	)
+	if response.status != http.StatusOK ||
+		decodeBody[store.AdminArea](t, response).MapID != "t1" {
+		t.Errorf("edit: %d %s", response.status, response.body)
+	}
+	long := strings.Repeat("x", 65)
+	response = testFixture.callAdmin("PUT", path,
+		`{"x":20,"y":10,"width":5,"height":5,"kind":"none","name":"`+long+`"}`)
+	if response.status != http.StatusBadRequest {
+		t.Errorf("long name: %d %s", response.status, response.body)
+	}
+	response = testFixture.callAdmin("POST", "/admin/api/lans/1/areas",
+		`{"x":30,"y":10,"width":5,"height":5,"kind":"none","name":"`+long+`"}`)
+	if response.status != http.StatusBadRequest {
+		t.Errorf("long name of a new zone: %d %s", response.status, response.body)
 	}
 }

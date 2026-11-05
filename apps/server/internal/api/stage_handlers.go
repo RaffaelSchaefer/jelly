@@ -41,7 +41,7 @@ func (server *apiServer) addStageRoutes(contract huma.API) {
 		Middlewares: huma.Middlewares{server.authenticateViewer},
 	}, server.handleState)
 	contract.OpenAPI().AddOperation(&huma.Operation{
-		OperationID: "streamEvents", Method: http.MethodGet, Path: pathStream,
+		OperationID: operationStream, Method: http.MethodGet, Path: pathStream,
 		Summary: "Receive events as server-sent events",
 		Description: "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. " +
 			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events, " +

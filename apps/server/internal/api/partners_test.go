@@ -15,7 +15,7 @@ func (testFixture *fixture) invitePartner(token, partner string) string {
 	testFixture.t.Helper()
 	partnerID := strconv.FormatInt(testFixture.loadMe(partner).ID, 10)
 	response := testFixture.callAPI("POST", "/v1/partner-emotes", token,
-		`{"key":"hop","partner_ids":[`+partnerID+`]}`)
+		`{"key":"hop","partner_id":`+partnerID+`}`)
 	if response.status != http.StatusOK {
 		testFixture.t.Fatalf("invite: %d %s", response.status, response.body)
 	}
@@ -38,15 +38,15 @@ func TestPartnerEmoteFlow(t *testing.T) {
 	firstID := strconv.FormatInt(testFixture.loadMe(first).ID, 10)
 
 	response := testFixture.callAPI("POST", "/v1/partner-emotes", first,
-		`{"key":"wave","partner_ids":[`+secondID+`]}`)
+		`{"key":"wave","partner_id":`+secondID+`}`)
 	requireProblem(t, response, http.StatusBadRequest, "unknown_partner_emote")
 	response = testFixture.callAPI("POST", "/v1/partner-emotes", first,
-		`{"key":"hop","partner_ids":[`+firstID+`]}`)
-	requireProblem(t, response, http.StatusBadRequest, "partner_self")
+		`{"key":"hop","partner_id":`+firstID+`}`)
+	requireProblem(t, response, http.StatusBadRequest, "invalid_partner")
 
 	inviteID := testFixture.invitePartner(first, second)
 	response = testFixture.callAPI("POST", "/v1/partner-emotes", first,
-		`{"key":"hop","partner_ids":[`+secondID+`]}`)
+		`{"key":"hop","partner_id":`+secondID+`}`)
 	requireProblem(t, response, http.StatusConflict, "partner_emote_open")
 
 	list := decodeBody[store.PartnerInviteList](t,
@@ -118,7 +118,7 @@ func TestInvitesAreLimitedPerPlayer(t *testing.T) {
 	var last apiResponse
 	for range 6 {
 		last = testFixture.callAPI("POST", "/v1/partner-emotes", asker,
-			`{"key":"hop","partner_ids":[999]}`)
+			`{"key":"hop","partner_id":999}`)
 	}
 	requireProblem(t, last, http.StatusTooManyRequests, "rate_limited")
 }

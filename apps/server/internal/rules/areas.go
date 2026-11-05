@@ -16,31 +16,44 @@ const (
 	spreadStepY = 0.5698402909980532
 )
 
-// What a zone is assigned to. Jellies stand on seats, on the stage, in the lounge and in visitor
-// zones, walk over cables and around desks and the snack bar. The code only looks at this, never at
-// the name of a zone. A zone without an assignment means nothing yet.
+// What a zone is assigned to, which only says how jellies use it. What stands there is its prop,
+// and `Blocks` says whether they can walk through. The code never looks at the name of a zone.
 const (
-	AreaKindVisitors = "visitors"
-	AreaKindNone     = "none"
-
 	AreaKindSeats    = "seats"
-	AreaKindDesk     = "desk"
-	AreaKindCable    = "cable"
 	AreaKindStage    = "stage"
 	AreaKindLounge   = "lounge"
-	AreaKindSnackbar = "snackbar"
+	AreaKindVisitors = "visitors"
+	// Jellies line up in these zones after a report and during a food event.
+	AreaKindQueue = "queue"
+	// Only these zones show their name, so players can be sent there on purpose.
+	AreaKindPublic = "public"
+	// Where the audience and the winner stand during a ceremony.
+	AreaKindSpectators = "spectators"
+	AreaKindWinner     = "winner"
+	AreaKindNone       = "none"
 )
+
+// maxZoneTextLength limits every text of a zone, so a map stays a small file.
+const maxZoneTextLength = 64
 
 // ErrInvalidArea reports an area outside the stage, without a size or of an unknown kind.
 var ErrInvalidArea = errors.New("invalid area")
 
-// Area is a rectangle on the stage, in percent of its width and height.
+// Area is a rectangle on the stage, in percent of its width and height. X, Y, width and height say
+// where it would stand without rotation.
 type Area struct {
-	X      int    `json:"x"`
-	Y      int    `json:"y"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-	Kind   string `json:"kind"`
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+	// Rotation is in degrees, clockwise around the middle of the area. At 0, a model
+	// faces the camera.
+	Rotation float64 `json:"rotation"`
+	Kind     string  `json:"kind"`
+	// Blocks keeps jellies out, they walk around this zone.
+	Blocks bool `json:"blocks"`
+	// Prop names the model that stands here, empty for bare floor.
+	Prop string `json:"prop"`
 }
 
 // Room says what the coordinates of the stage mean, so they can become meters without a new API.
@@ -74,12 +87,11 @@ func IsOnStage(point StagePoint) bool {
 
 // ValidateArea checks one area. Areas may touch or overlap, the layout is only a rough map.
 func ValidateArea(area Area) error {
-	isInside := area.X >= 0 && area.Y >= 0 &&
-		area.X+area.Width <= stageSize && area.Y+area.Height <= stageSize
-	if !isInside || area.Width <= 0 || area.Height <= 0 {
+	hasSize := area.Width > 0 && area.Height > 0
+	if !hasSize || !isRotationValid(area.Rotation) || !area.fitsOnStage() {
 		return ErrInvalidArea
 	}
-	if !slices.Contains(listAreaKinds(), area.Kind) {
+	if !slices.Contains(listAreaKinds(), area.Kind) || len(area.Prop) > maxZoneTextLength {
 		return ErrInvalidArea
 	}
 	return nil
@@ -88,8 +100,8 @@ func ValidateArea(area Area) error {
 // listAreaKinds returns every kind an area can have.
 func listAreaKinds() []string {
 	return []string{
-		AreaKindSeats, AreaKindDesk, AreaKindCable, AreaKindStage, AreaKindLounge, AreaKindSnackbar,
-		AreaKindVisitors, AreaKindNone,
+		AreaKindSeats, AreaKindStage, AreaKindLounge, AreaKindVisitors, AreaKindQueue,
+		AreaKindPublic, AreaKindSpectators, AreaKindWinner, AreaKindNone,
 	}
 }
 
@@ -101,15 +113,25 @@ func IsStandingKind(kind string) bool {
 
 // WholeStage returns the area of a jelly that has no area assigned.
 func WholeStage() Area {
-	return Area{X: 0, Y: 0, Width: stageSize, Height: stageSize, Kind: AreaKindSeats}
+	return Area{
+		X:        0,
+		Y:        0,
+		Width:    stageSize,
+		Height:   stageSize,
+		Rotation: 0,
+		Kind:     AreaKindSeats,
+		Blocks:   false,
+		Prop:     "",
+	}
 }
 
 // CalculateHomeSpot returns the spot of the jelly with this place in its area, counted from 0.
 func CalculateHomeSpot(area Area, place int) HomeSpot {
-	return HomeSpot{
+	spot := area.turnPoint(StagePoint{
 		X: placeInSpan(area.X, area.Width, calculateSpreadShare(place, spreadStepX)),
 		Y: placeInSpan(area.Y, area.Height, calculateSpreadShare(place, spreadStepY)),
-	}
+	})
+	return HomeSpot(spot)
 }
 
 // calculateSpreadShare returns a share from 0 to below 1. Consecutive places land far apart.
@@ -119,8 +141,19 @@ func calculateSpreadShare(place int, step float64) float64 {
 }
 
 // placeInSpan maps a share to a position inside a span, without its margins.
-func placeInSpan(start, length int, share float64) float64 {
-	margin := float64(length) * homeMarginPercent / stageSize
-	usable := float64(length) - margin - margin
-	return float64(start) + margin + usable*share
+func placeInSpan(start, length, share float64) float64 {
+	margin := length * homeMarginPercent / stageSize
+	usable := length - margin - margin
+	return start + margin + usable*share
+}
+
+// IsOnFreeFloor reports whether a jelly can stand on a point: on the stage and outside of every
+// zone that blocks.
+func IsOnFreeFloor(point StagePoint, areas []Area) bool {
+	if !IsOnStage(point) {
+		return false
+	}
+	return !slices.ContainsFunc(areas, func(area Area) bool {
+		return area.Blocks && area.containsPoint(point)
+	})
 }

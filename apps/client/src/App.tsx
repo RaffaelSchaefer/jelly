@@ -121,6 +121,7 @@ function PanelContent(props: PanelContentProps) {
     return (
       <XpPanel
         {...{ me, catalog, disabled }}
+        rules={game.game.lan.rules}
         offset={game.offset}
         tab={xpTab}
         onTab={onXpTab}
@@ -134,7 +135,13 @@ function PanelContent(props: PanelContentProps) {
       void game.equip(item.slot, item.id);
       onClose();
     };
-    return <LevelUpPanel {...{ me, catalog, disabled, onClose }} onEquip={equipAndClose} />;
+    return (
+      <LevelUpPanel
+        {...{ me, catalog, disabled, onClose }}
+        rules={game.game.lan.rules}
+        onEquip={equipAndClose}
+      />
+    );
   }
   const { settings } = game.game;
   return (
@@ -210,6 +217,7 @@ function JoinControls({ game }: { game: PetGame }) {
         game={game.game}
         disabled={game.busy}
         onRedeem={(code, name, color) => void game.redeemAccess(code, name, color)}
+        onRecover={(code) => void game.recoverAccess(code)}
       />
     </Panel>
   );

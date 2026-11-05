@@ -233,8 +233,9 @@ func announceXP(ctx context.Context, action actionContext, previousXP int, entry
 	if err != nil {
 		return err
 	}
-	level := rules.CalculateLevel(previousXP + entry.amount)
-	if level == rules.CalculateLevel(previousXP) {
+	gameRules := action.lan.gameRules
+	level := rules.CalculateLevel(gameRules, previousXP+entry.amount)
+	if level == rules.CalculateLevel(gameRules, previousXP) {
 		return nil
 	}
 	return appendVisibleEvent(ctx, action, EventLevelUp, map[string]int{"level": level})

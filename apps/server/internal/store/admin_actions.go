@@ -8,16 +8,18 @@ import (
 
 // Actions the admin log records. Targets are IDs, so the log holds no names or secrets.
 const (
-	AdminActionHide        = "player.hide"
-	AdminActionShow        = "player.show"
-	AdminActionResetName   = "player.reset_name"
-	AdminActionRotateToken = "player.rotate_token"
-	AdminActionDelete      = "player.delete"
-	AdminActionAward       = "award.give"
-	AdminActionRules       = "lan.rules"
-	AdminActionJoinCode    = "lan.join_code"
-	AdminActionEventCode   = "event_code.create"
-	AdminActionSeatCode    = "seat.code"
+	AdminActionHide      = "player.hide"
+	AdminActionShow      = "player.show"
+	AdminActionResetName = "player.reset_name"
+	AdminActionDelete    = "player.delete"
+	AdminActionAward     = "award.give"
+	AdminActionRules     = "lan.rules"
+	AdminActionJoinCode  = "lan.join_code"
+	AdminActionEventCode = "event_code.create"
+	AdminActionSeatCode  = "seat.code"
+	AdminActionRecovery  = "player.recovery_code"
+	AdminActionMapImport = "lan.map_import"
+	AdminActionGathering = "lan.gathering"
 
 	maxAdminActionRows = 200
 )

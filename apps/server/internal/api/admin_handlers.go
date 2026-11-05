@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
@@ -15,11 +16,12 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/players/{id}/hide":              server.handleHidePlayer,
 		"POST /admin/api/players/{id}/show":              server.handleShowPlayer,
 		"POST /admin/api/players/{id}/reset-name":        server.handleResetName,
-		"POST /admin/api/players/{id}/rotate-token":      server.handleRotateToken,
+		"POST /admin/api/players/{id}/recovery-code":     server.handleCreateRecoveryCode,
 		"DELETE /admin/api/players/{id}":                 server.handleDeletePlayer,
 		"GET /admin/api/lans":                            server.handleListLANs,
 		"POST /admin/api/lans":                           server.handleCreateLAN,
 		"PUT /admin/api/lans/{id}/rules":                 server.handleUpdateRules,
+		"PATCH /admin/api/lans/{id}/rules":               server.handlePatchRules,
 		"PUT /admin/api/lans/{id}/join-code":             server.handleUpdateJoinCode,
 		"GET /admin/api/lans/{id}/event-codes":           server.handleListEventCodes,
 		"POST /admin/api/event-codes":                    server.handleCreateEventCode,
@@ -32,6 +34,9 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/lans/{id}/areas/{area}/code":    server.handleIssueSeatCode,
 		"GET /admin/api/lans/{id}/seat-codes":            server.handleListSeatCodes,
 		"PUT /admin/api/lans/{id}/players/{player}/area": server.handleAssignArea,
+		"PUT /admin/api/lans/{id}/map":                   server.handleImportMap,
+		"POST /admin/api/lans/{id}/gathering":            server.handleStartGathering,
+		"DELETE /admin/api/lans/{id}/gathering":          server.handleEndGathering,
 	}
 	for pattern, handler := range routes {
 		mux.HandleFunc(pattern, server.requireAdmin(handler))
@@ -90,17 +95,6 @@ func (server *apiServer) handleResetName(writer http.ResponseWriter, request *ht
 	}
 }
 
-// handleRotateToken creates a new token for a lost account and returns it once.
-func (server *apiServer) handleRotateToken(writer http.ResponseWriter, request *http.Request) {
-	playerID, valid := server.readPathID(writer, request)
-	if valid {
-		token, err := server.Store.RotatePlayerToken(
-			request.Context(), playerID, server.currentMillis(),
-		)
-		server.writeOutcome(writer, request, map[string]string{fieldSecret: token}, err)
-	}
-}
-
 // handleDeletePlayer removes an account and all its data.
 func (server *apiServer) handleDeletePlayer(writer http.ResponseWriter, request *http.Request) {
 	playerID, valid := server.readPathID(writer, request)
@@ -127,13 +121,32 @@ func (server *apiServer) handleCreateLAN(writer http.ResponseWriter, request *ht
 	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
 }
 
-// handleUpdateRules replaces the rules of a LAN, also while it is running.
+// handlePatchRules changes only the rules that the body names, also while the LAN is running.
+func (server *apiServer) handlePatchRules(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	body, err := server.Store.LoadLANRules(request.Context(), lanID)
+	if err != nil {
+		server.writeError(writer, request, err)
+		return
+	}
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	err = server.Store.UpdateLANRules(request.Context(), lanID, body, server.currentMillis())
+	server.writeOutcome(writer, request, body, err)
+}
+
+// handleUpdateRules replaces all rules of a LAN, also while it is running.
 func (server *apiServer) handleUpdateRules(writer http.ResponseWriter, request *http.Request) {
 	lanID, valid := server.readPathID(writer, request)
 	if !valid {
 		return
 	}
-	var body rules.Rules
+	// What a body leaves out goes back to its default. Use PATCH to change single rules.
+	body := rules.DefaultRules()
 	if !server.readJSON(writer, request, &body) {
 		return
 	}
@@ -160,7 +173,31 @@ func (server *apiServer) handleCreateEventCode(writer http.ResponseWriter, reque
 	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
 }
 
-// handleIssueSeatCode gives a seat a new code, optionally for an existing account.
+// handleCreateRecoveryCode gives an account a code that replaces a lost secret.
+func (server *apiServer) handleCreateRecoveryCode(
+	writer http.ResponseWriter, request *http.Request,
+) {
+	playerID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var body struct {
+		ValidSeconds *int64 `json:"valid_seconds"`
+	}
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	validSeconds := store.DefaultRecoverySeconds
+	if body.ValidSeconds != nil {
+		validSeconds = *body.ValidSeconds
+	}
+	recovery, err := server.Store.CreateRecoveryCode(
+		request.Context(), playerID, validSeconds, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, recovery, err)
+}
+
+// handleIssueSeatCode gives a seat a new code, optionally bound to an existing account.
 func (server *apiServer) handleIssueSeatCode(writer http.ResponseWriter, request *http.Request) {
 	lanID, valid := server.readPathID(writer, request)
 	if !valid {
@@ -218,6 +255,7 @@ func (server *apiServer) handleCreateArea(writer http.ResponseWriter, request *h
 	if !server.readJSON(writer, request, &body) {
 		return
 	}
+	body.MapID = ""
 	area, err := server.Store.CreateArea(request.Context(), lanID, body, server.currentMillis())
 	server.writeOutcome(writer, request, area, err)
 }
@@ -238,8 +276,67 @@ func (server *apiServer) handleUpdateArea(writer http.ResponseWriter, request *h
 		return
 	}
 	body.ID = areaID
-	err := server.Store.UpdateArea(request.Context(), lanID, body, server.currentMillis())
-	server.writeOutcome(writer, request, body, err)
+	updated, err := server.Store.UpdateArea(request.Context(), lanID, body, server.currentMillis())
+	server.writeOutcome(writer, request, updated, err)
+}
+
+// handleImportMap brings the zones of a LAN in line with a map file and reports what changed.
+func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var roomMap rules.RoomMap
+	if !server.readLimitedJSON(writer, request, &roomMap, maxMapBytes) {
+		return
+	}
+	if !rules.IsMapSizeValid(roomMap) || roomMap.Zones == nil {
+		server.writeProblem(writer, problem{
+			http.StatusBadRequest,
+			codeInvalidMap,
+			"Dieses Kartenformat kennt der Server nicht, `zones` fehlt, " +
+				"oder die Karte ist zu groß.",
+		})
+		return
+	}
+	invalid := rules.ListInvalidMapZones(roomMap.Zones)
+	if len(invalid) > 0 {
+		server.writeProblem(writer, problem{
+			http.StatusBadRequest, codeInvalidMap,
+			"Diese Zonen sind ungültig: " + strings.Join(invalid, ", "),
+		})
+		return
+	}
+	report, err := server.Store.ImportMap(
+		request.Context(), lanID, roomMap, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, report, err)
+}
+
+// handleStartGathering sends all jellies of a LAN somewhere for a while.
+func (server *apiServer) handleStartGathering(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var body store.NewGathering
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	gathering, err := server.Store.StartGathering(
+		request.Context(), lanID, body, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, gathering, err)
+}
+
+// handleEndGathering ends a running gathering early.
+func (server *apiServer) handleEndGathering(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	err := server.Store.EndGathering(request.Context(), lanID, server.currentMillis())
+	server.writeOutcome(writer, request, map[string]bool{fieldEnded: true}, err)
 }
 
 // handleDeleteArea removes an area and the assignments to it.

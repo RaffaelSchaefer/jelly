@@ -7,7 +7,7 @@ describe("Aufforderungen", () => {
     id: 3,
     key: "hop",
     from_id: 1,
-    partner_ids: [2],
+    partner_id: 2,
     state: "pending",
     expires_at: 120_000,
   };

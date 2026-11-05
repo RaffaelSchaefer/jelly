@@ -23,6 +23,10 @@ var (
 	ErrInvalidCosmeticColor = errors.New("invalid cosmetic color")
 )
 
+// CosmeticHighlightAura is what a jelly shows for a moment while it is highlighted. Nobody unlocks
+// it.
+const CosmeticHighlightAura = "highlight-aura"
+
 // Scope says how long something earned stays. Changing one catalog value changes the behavior.
 type Scope string
 
@@ -48,10 +52,19 @@ type Cosmetic struct {
 	Scope Scope  `json:"scope"`
 	Slot  string `json:"slot"`
 	// Colorable cosmetics take a color from the palette, the others always look the same.
-	Colorable     bool `json:"colorable"`
-	Level         int  `json:"level,omitempty"`
-	RequiresEvent bool `json:"requires_event,omitempty"`
+	Colorable bool `json:"colorable"`
+	// Unlock says how a player gets it. Level is only set when that is by level.
+	Unlock string `json:"unlock"`
+	Level  int    `json:"level,omitempty"`
 }
+
+// How a player gets a cosmetic. Awards come from an admin, who can give away any cosmetic.
+const (
+	UnlockLevel = "level"
+	UnlockEvent = "event"
+	UnlockAward = "award"
+	UnlockNone  = "none"
+)
 
 // UnlockFacts are the facts about a player that decide their cosmetics.
 type UnlockFacts struct {
@@ -66,37 +79,54 @@ type UnlockFacts struct {
 func ListCosmetics() []Cosmetic {
 	return []Cosmetic{
 		{
-			Key:   "headset",
-			Name:  "Headset",
-			Scope: ScopePermanent,
-			Slot:  SlotHead,
-			Level: levelHeadset,
+			Key:    "headset",
+			Name:   "Headset",
+			Scope:  ScopePermanent,
+			Slot:   SlotHead,
+			Unlock: UnlockLevel,
+			Level:  levelHeadset,
 		},
 		{
-			Key:   "headset-neutral",
-			Name:  "Headset schlicht",
-			Scope: ScopePermanent,
-			Slot:  SlotHead,
-			Level: levelHeadset,
+			Key:    "headset-neutral",
+			Name:   "Headset schlicht",
+			Scope:  ScopePermanent,
+			Slot:   SlotHead,
+			Unlock: UnlockLevel,
+			Level:  levelHeadset,
 		},
 		{
 			Key: "beanie", Name: "Mütze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
-			Level: levelBeanie,
+			Unlock: UnlockLevel, Level: levelBeanie,
 		},
 		{
 			Key: "party-hat", Name: "Party-Hut", Scope: ScopePermanent, Slot: SlotHead,
-			RequiresEvent: true,
+			Unlock: UnlockEvent,
 		},
 		{
 			Key: "pixel-glasses", Name: "Pixel-Brille", Scope: ScopePermanent, Slot: SlotFace,
-			Level: levelPixelGlasses,
+			Unlock: UnlockLevel, Level: levelPixelGlasses,
 		},
 		{
 			Key: "hood", Name: "Kapuze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
-			Level: levelHood,
+			Unlock: UnlockLevel, Level: levelHood,
 		},
-		{Key: "crown", Name: "Krone", Scope: ScopeLAN, Slot: SlotHead, Level: levelCrown},
-		{Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands},
+		{
+			Key: "crown", Name: "Krone", Scope: ScopeLAN, Slot: SlotHead,
+			Unlock: UnlockLevel, Level: levelCrown,
+		},
+		{
+			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
+			Unlock: UnlockAward,
+		},
+		{
+			Key: "glow-aura", Name: "Glüh-Aura", Scope: ScopePermanent, Slot: SlotAura,
+			Unlock: UnlockAward,
+		},
+		// Highlighting shows it for a moment. An admin can still give it away as a prize for fun.
+		{
+			Key: CosmeticHighlightAura, Name: "Leuchtaura", Scope: ScopePermanent, Slot: SlotAura,
+			Unlock: UnlockNone,
+		},
 	}
 }
 
@@ -177,8 +207,12 @@ func isCosmeticUnlocked(cosmetic Cosmetic, facts UnlockFacts) bool {
 	if cosmetic.Scope == ScopeLAN {
 		level, events = facts.CurrentLevel, facts.CurrentEvents
 	}
-	if cosmetic.RequiresEvent {
+	switch cosmetic.Unlock {
+	case UnlockEvent:
 		return events > 0
+	case UnlockLevel:
+		return level >= cosmetic.Level
+	default:
+		return false
 	}
-	return cosmetic.Level > 0 && level >= cosmetic.Level
 }

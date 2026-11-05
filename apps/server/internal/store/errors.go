@@ -14,10 +14,18 @@ var (
 	ErrNotJoined = errors.New("player has not joined the current LAN")
 	// ErrCodeRedeemed reports a seat code that was already used.
 	ErrCodeRedeemed = errors.New("seat code was already redeemed")
-	// ErrAreaOccupied reports a seat code for an area with several jellies.
-	ErrAreaOccupied = errors.New("area has several jellies")
+	// ErrGatheringNotFound reports that no gathering is running.
+	ErrGatheringNotFound = errors.New("no gathering is running")
+	// ErrSeatCodeOtherAccount reports a seat code that belongs to a different account.
+	ErrSeatCodeOtherAccount = errors.New("seat code belongs to another account")
+	// ErrInvalidRecoveryCode reports a recovery code that is unknown, used up or too old.
+	ErrInvalidRecoveryCode = errors.New("invalid recovery code")
 	// ErrUnauthorized reports an unknown token.
 	ErrUnauthorized = errors.New("unknown token")
+	// ErrLevelsLocked reports a new XP per level after the start of a LAN.
+	ErrLevelsLocked = errors.New("XP per level is locked")
+	// ErrLANSlugTaken reports a short name that another LAN already has.
+	ErrLANSlugTaken = errors.New("short name of the LAN is taken")
 	// ErrLANOverlap reports a LAN whose period overlaps another one.
 	ErrLANOverlap = errors.New("period overlaps another LAN")
 	// ErrLANNotFound reports an unknown LAN.
@@ -36,8 +44,8 @@ var (
 	ErrEmoteCooldown = errors.New("emote is on cooldown")
 	// ErrInvalidFollow reports a jelly that cannot be followed.
 	ErrInvalidFollow = errors.New("cannot stand next to this jelly")
-	// ErrInvalidTrip reports a trip to a point outside the stage.
-	ErrInvalidTrip = errors.New("point is outside the stage")
+	// ErrInvalidTrip reports a trip to a point outside the stage or inside a zone that blocks.
+	ErrInvalidTrip = errors.New("no jelly can stand on this point")
 	// ErrTooFar reports two jellies that do not stand next to each other.
 	ErrTooFar = errors.New("jellies are too far apart")
 	// ErrStackNotFound reports a stack that does not exist or has fallen apart.

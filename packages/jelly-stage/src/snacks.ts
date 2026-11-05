@@ -38,8 +38,9 @@ import slushFragmentShader from "./shaders/slush.frag.glsl?raw";
 import { createSignMaterial } from "./signs.ts";
 import { FULL_CIRCLE, GOLDEN_ANGLE } from "./world.ts";
 
-/** A snack on the counter: how much of the counter it takes and how it is built. */
+/** A snack on the counter: its prop name, how much of the counter it takes and how it is built. */
 export interface Snack {
+  key: string;
   width: number;
   build: (spot: FloorPoint, bottom: number) => Object3D;
 }
@@ -380,10 +381,14 @@ function createCups(spot: FloorPoint, bottom: number): Group {
 /** Lists the snacks from left to right. The counter drops the last ones when it is short. */
 export function listSnacks(): Snack[] {
   return [
-    { width: SLUSH.width, build: createSlushMachine },
-    { width: POPCORN.width + ROOF.trimOverhang, build: createPopcornMachine },
-    { width: PIZZA.size + PIZZA.turnRoom, build: createPizzaStack },
-    { width: 2 * STAND.plate, build: createDonutStand },
-    { width: CUPS_WIDTH, build: createCups },
+    { key: "slush-machine", width: SLUSH.width, build: createSlushMachine },
+    {
+      key: "popcorn-machine",
+      width: POPCORN.width + ROOF.trimOverhang,
+      build: createPopcornMachine,
+    },
+    { key: "pizza-stack", width: PIZZA.size + PIZZA.turnRoom, build: createPizzaStack },
+    { key: "donut-stand", width: 2 * STAND.plate, build: createDonutStand },
+    { key: "cups", width: CUPS_WIDTH, build: createCups },
   ];
 }

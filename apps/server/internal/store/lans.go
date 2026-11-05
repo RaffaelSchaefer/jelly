@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -47,6 +49,8 @@ type LANStatus struct {
 	ServerTime int64      `json:"server_time"`
 	Current    *LANPeriod `json:"current"`
 	Next       *LANPeriod `json:"next"`
+	// Rules are those of the running LAN, otherwise of the next one, otherwise the defaults.
+	Rules rules.PublicRules `json:"rules"`
 	// Joined tells a logged-in player whether they take part in the running LAN.
 	Joined *bool `json:"joined"`
 }
@@ -66,7 +70,11 @@ type querier interface {
 
 // CreateLAN creates a LAN. Periods must not overlap, so at most one LAN is active.
 func (store *Store) CreateLAN(ctx context.Context, lan NewLAN) error {
-	if lan.Slug == "" || lan.Name == "" || lan.JoinCode == "" || lan.StartsAt >= lan.EndsAt {
+	lan.Slug = strings.TrimSpace(lan.Slug)
+	lan.Name = strings.TrimSpace(lan.Name)
+	lan.JoinCode = strings.TrimSpace(lan.JoinCode)
+	if lan.Slug == "" || lan.Name == "" || lan.JoinCode == "" ||
+		!rules.IsLANPeriodValid(lan.StartsAt, lan.EndsAt) || !isTimeZoneUsable(lan.Timezone) {
 		return ErrInvalidInput
 	}
 	rulesJSON, err := json.Marshal(lan.Rules)
@@ -124,23 +132,42 @@ func (store *Store) UpdateLANRules(
 		return fmt.Errorf("encode rules: %w", err)
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		const updateRulesSQL = `UPDATE lans SET rules = ? WHERE id = ?`
-		result, execErr := transaction.ExecContext(ctx, updateRulesSQL, string(rulesJSON), lanID)
-		if execErr != nil {
-			return fmt.Errorf("update rules: %w", execErr)
-		}
-		execErr = requireAffectedRow(result, ErrLANNotFound)
+		execErr := requireStableLevels(ctx, transaction, lanID, gameRules, now)
 		if execErr != nil {
 			return execErr
 		}
-		return recordAdminAction(ctx, transaction, AdminActionRules, lanID, now)
+		const updateRulesSQL = `UPDATE lans SET rules = ? WHERE id = ?`
+		_, execErr = transaction.ExecContext(ctx, updateRulesSQL, string(rulesJSON), lanID)
+		if execErr != nil {
+			return fmt.Errorf("update rules: %w", execErr)
+		}
+		execErr = recordAdminAction(ctx, transaction, AdminActionRules, lanID, now)
+		if execErr != nil {
+			return execErr
+		}
+		return appendEvent(ctx, transaction, eventRecord{
+			lanID: lanID, eventType: EventRulesChanged, scope: scopePublic,
+			playerID: 0, payload: struct{}{}, now: now,
+		})
 	})
+}
+
+// isTimeZoneUsable reports whether achievements can read this time zone during the LAN. An empty
+// one
+// and "Local" load fine, but mean UTC or whatever zone the server runs in.
+func isTimeZoneUsable(timezone string) bool {
+	if timezone == "" || timezone == time.Local.String() {
+		return false
+	}
+	_, err := time.LoadLocation(timezone)
+	return err == nil
 }
 
 // UpdateJoinCode replaces the code of a LAN, for example after it reached the wrong people.
 func (store *Store) UpdateJoinCode(
 	ctx context.Context, lanID int64, joinCode string, now int64,
 ) error {
+	joinCode = strings.TrimSpace(joinCode)
 	if joinCode == "" {
 		return ErrInvalidInput
 	}
@@ -163,7 +190,13 @@ func (store *Store) UpdateJoinCode(
 func (store *Store) LoadLANStatus(ctx context.Context, playerID, now int64) (LANStatus, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	status := LANStatus{ServerTime: now, Current: nil, Next: nil, Joined: nil}
+	status := LANStatus{
+		ServerTime: now,
+		Current:    nil,
+		Next:       nil,
+		Rules:      rules.DefaultRules().PublicRules,
+		Joined:     nil,
+	}
 	const selectCurrentLANSQL = `SELECT id, slug, name, starts_at, ends_at FROM lans
 		WHERE starts_at <= ?1 AND ends_at > ?1`
 	currentID, current, err := loadLANPeriod(queryCtx, store.readDB, selectCurrentLANSQL, now)
@@ -173,7 +206,16 @@ func (store *Store) LoadLANStatus(ctx context.Context, playerID, now int64) (LAN
 	status.Current = current
 	const selectNextLANSQL = `SELECT id, slug, name, starts_at, ends_at FROM lans
 		WHERE starts_at > ?1 ORDER BY starts_at LIMIT 1`
-	_, status.Next, err = loadLANPeriod(queryCtx, store.readDB, selectNextLANSQL, now)
+	nextID, next, err := loadLANPeriod(queryCtx, store.readDB, selectNextLANSQL, now)
+	if err != nil {
+		return LANStatus{}, err
+	}
+	status.Next = next
+	rulesLAN := currentID
+	if current == nil {
+		rulesLAN = nextID
+	}
+	status.Rules, err = loadPublicRules(queryCtx, store.readDB, rulesLAN)
 	if err != nil {
 		return LANStatus{}, err
 	}
@@ -187,6 +229,67 @@ func (store *Store) LoadLANStatus(ctx context.Context, playerID, now int64) (LAN
 	joined := err == nil
 	status.Joined = &joined
 	return status, nil
+}
+
+// LoadLANRules returns all rules of a LAN.
+func (store *Store) LoadLANRules(ctx context.Context, lanID int64) (rules.Rules, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	var rulesJSON string
+	const selectStoredRulesSQL = `SELECT rules FROM lans WHERE id = ?`
+	err := store.readDB.QueryRowContext(queryCtx, selectStoredRulesSQL, lanID).Scan(&rulesJSON)
+	if errors.Is(err, sql.ErrNoRows) {
+		return rules.Rules{}, ErrLANNotFound
+	}
+	if err != nil {
+		return rules.Rules{}, fmt.Errorf("load LAN rules: %w", err)
+	}
+	return parseRules(rulesJSON)
+}
+
+// loadPublicRules returns the rules of a LAN, or the defaults if there is no such LAN.
+func loadPublicRules(
+	ctx context.Context, database querier, lanID int64,
+) (rules.PublicRules, error) {
+	var rulesJSON string
+	const selectLANRulesSQL = `SELECT rules FROM lans WHERE id = ?`
+	err := database.QueryRowContext(ctx, selectLANRulesSQL, lanID).Scan(&rulesJSON)
+	if errors.Is(err, sql.ErrNoRows) {
+		return rules.DefaultRules().PublicRules, nil
+	}
+	if err != nil {
+		return rules.PublicRules{}, fmt.Errorf("load rules: %w", err)
+	}
+	gameRules, err := parseRules(rulesJSON)
+	if err != nil {
+		return rules.PublicRules{}, err
+	}
+	return gameRules.PublicRules, nil
+}
+
+// requireStableLevels refuses a new XP per level once a LAN has started, because levels would
+// jump for everyone and take cosmetics away.
+func requireStableLevels(
+	ctx context.Context, transaction *sql.Tx, lanID int64, gameRules rules.Rules, now int64,
+) error {
+	var rulesJSON string
+	var startsAt int64
+	const selectLANStartSQL = `SELECT rules, starts_at FROM lans WHERE id = ?`
+	err := transaction.QueryRowContext(ctx, selectLANStartSQL, lanID).Scan(&rulesJSON, &startsAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrLANNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("load LAN start: %w", err)
+	}
+	stored, err := parseRules(rulesJSON)
+	if err != nil {
+		return err
+	}
+	if startsAt <= now && stored.XPPerLevel != gameRules.XPPerLevel {
+		return ErrLevelsLocked
+	}
+	return nil
 }
 
 // loadLANPeriod runs a query for one LAN and returns nil if there is none.
@@ -224,6 +327,9 @@ func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON s
 	_, err = transaction.ExecContext(ctx, insertLANSQL,
 		lan.Slug, lan.Name, lan.StartsAt, lan.EndsAt, lan.Timezone,
 		hashSecret(lan.JoinCode), rulesJSON)
+	if err != nil && strings.Contains(err.Error(), "lans.slug") {
+		return ErrLANSlugTaken
+	}
 	if err != nil {
 		return fmt.Errorf("insert LAN: %w", err)
 	}

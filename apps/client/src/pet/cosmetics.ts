@@ -66,18 +66,19 @@ export function isUnlocked(id: string, me: Me) {
   return me.cosmetics.includes(id);
 }
 
-/** Wie man das Cosmetic freischaltet, in wenigen Worten (`"Level 5"`). */
+/** Wie man das Cosmetic freischaltet, in wenigen Worten (`"Level 5"`). Unbekanntes gilt wie `none`. */
 export function unlockLabel(id: string, catalog: Catalog) {
   const entry = catalog.cosmetics.find((item) => item.key === id);
-  if (entry?.level) return `Level ${entry.level}`;
-  if (entry?.requires_event) return "Bei einem Event";
-  return "Von der Orga";
+  if (entry?.unlock === "level" && entry.level) return `Level ${entry.level}`;
+  if (entry?.unlock === "event") return "Bei einem Event";
+  if (entry?.unlock === "award") return "Von der Orga";
+  return "Nicht freischaltbar";
 }
 
 /** Die Level-Cosmetics des Katalogs, aufsteigend nach Level, soweit die App sie darstellen kann. */
 function levelCosmetics(catalog: Catalog) {
   return catalog.cosmetics
-    .filter((item) => item.level)
+    .filter((item) => item.unlock === "level" && item.level)
     .sort((a, b) => a.level! - b.level!)
     .flatMap((item) => {
       const shown = COSMETICS.find((cosmetic) => cosmetic.id === item.key);
