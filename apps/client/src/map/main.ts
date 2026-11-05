@@ -150,14 +150,16 @@ function applyButtonLook(page: MapPage, optimized: boolean) {
 
 /** Übernimmt, was ein neuer Stand für die Seite bedeutet. */
 function applyState(page: MapPage, state: StageState) {
-  const { id, reducedMotion, optimizedRendering } = page.source.readOwn();
+  const { id, reducedMotion, optimizedRendering, frameLimit } = page.source.readOwn();
   const own = state.players.find((player) => player.id === id);
   page.players = state.players;
   page.clockOffset = state.server_time - Date.now();
   applyAway(page, own, state.server_time);
   const reduced = reducedMotion || OS_REDUCED_MOTION.matches;
   page.view?.setReducedMotion(reduced);
+  page.view?.setFrameLimit(frameLimit);
   applyButtonLook(page, optimizedRendering);
+  page.glass?.setFrameLimit(frameLimit);
   if (own) page.glass?.setLook(knownPetColor(own.color), reduced);
   page.note = state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "";
   page.readProblem = "";

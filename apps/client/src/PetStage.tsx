@@ -69,6 +69,8 @@ interface PetStageProps {
   reducedMotion: boolean;
   /** Wie aufwendig die Szene gezeichnet wird. */
   rendering: RenderProfile;
+  /** Bilder pro Sekunde, `null` heißt unbegrenzt. */
+  frameLimit: number | null;
   onToggle: (panel: PanelId) => void;
   onClose: () => void;
 }
@@ -98,6 +100,7 @@ function PetVisual({
   me,
   reducedMotion,
   rendering,
+  frameLimit,
   sign,
   voiced,
   focus,
@@ -107,6 +110,7 @@ function PetVisual({
   me: Me;
   reducedMotion: boolean;
   rendering: RenderProfile;
+  frameLimit: number | null;
   sign: string | null;
   voiced: RefObject<ActiveVoice | null>;
   focus?: StudioFocus;
@@ -127,7 +131,7 @@ function PetVisual({
             equipped={me.equipped}
             pulse={game.pulse}
             emote={game.activeEmote}
-            {...{ reducedMotion, rendering, sign, voiced, focus, anchors }}
+            {...{ reducedMotion, rendering, frameLimit, sign, voiced, focus, anchors }}
           />
         ) : (
           WAKING_UP
@@ -148,7 +152,7 @@ function StageDrops({
   onToggle,
   onClose,
   onPreview,
-}: Omit<PetStageProps, "joining" | "reducedMotion" | "rendering"> & {
+}: Omit<PetStageProps, "joining" | "reducedMotion" | "rendering" | "frameLimit"> & {
   onPreview: (key: string | null) => void;
 }) {
   return (
@@ -233,7 +237,8 @@ function useSignPreview(open: boolean) {
 
 /** Sprechblase, Jelly und das gerade zugängliche Overlay. */
 export default function PetStage(props: PetStageProps) {
-  const { game, me, panel, joining, reducedMotion, rendering, onToggle, onClose } = props;
+  const { game, me, panel, joining, reducedMotion, rendering, frameLimit, onToggle, onClose } =
+    props;
   const stage = useRef<HTMLDivElement>(null);
   const [region, setRegion] = useState<StudioRegionId | null>(null);
   const [preview, setPreview] = useSignPreview(panel === "signs");
@@ -244,7 +249,7 @@ export default function PetStage(props: PetStageProps) {
   return (
     <div className="pet-stage" ref={stage} data-duet={duetMode(game.activeEmote)}>
       <PetVisual
-        {...{ game, me, reducedMotion, rendering, voiced }}
+        {...{ game, me, reducedMotion, rendering, frameLimit, voiced }}
         sign={studio ? null : signLabel(preview ?? me.sign, game.catalog)}
         focus={REGIONS.find((item) => item.id === region)?.focus}
         anchors={studio || dropsVisible ? stage : undefined}

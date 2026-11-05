@@ -8,7 +8,8 @@
 
 import type { Jelly } from "@jelly/scene";
 
-import { Canvas, useThree } from "@react-three/fiber";
+import { createFramePacer } from "@jelly/stage/frame-pacing";
+import { advance, Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useState, type RefObject } from "react";
 import { MathUtils } from "three";
 
@@ -18,9 +19,6 @@ import Character, { type CharacterProps } from "./Character";
 import LiquidGlass from "./LiquidGlass";
 import RenderBoundary from "./RenderBoundary";
 import StudioAnchors from "./StudioAnchors";
-
-/** Bildrate der Animation. Mehr braucht ein Desktop-Begleiter nicht. */
-const FPS = 30;
 
 /** Öffnungswinkel, auf den die Bühnengeometrie in `pet/layout.ts` abgestimmt ist. */
 const STAGE_FOV = 34;
@@ -43,30 +41,37 @@ const OVERSCAN_STYLE = {
 } as const;
 
 /**
- * Taktet die Szene mit {@link FPS} Bildern pro Sekunde, solange das Fenster sichtbar ist. Die Canvas
- * läuft mit `frameloop="demand"` und zeichnet nur, wenn dieser Takt es anstößt.
+ * Taktet die Szene mit `frameLimit` Bildern pro Sekunde, solange das Fenster sichtbar ist. Sonst
+ * zeichnet die Canvas mit `frameloop="demand"` nur, wenn sich etwas ändert.
  *
- * Verborgen steht der Timer ganz. Ein Fokusverlust hält ihn nicht an: Das Jelly lebt beim Spielen
- * weiter.
+ * Zeichnet direkt mit `advance`: Ein `invalidate` aus diesem Takt käme erst im nächsten Bild an und
+ * ließe 60 FPS auf einem 60-Hz-Bildschirm auf 30 fallen. Verborgen steht der Takt ganz. Ein
+ * Fokusverlust hält ihn nicht an: Das Jelly lebt beim Spielen weiter.
  */
-function AnimationClock({ paused }: { paused: boolean }) {
+function AnimationClock({ paused, frameLimit }: { paused: boolean; frameLimit: number | null }) {
   const invalidate = useThree((state) => state.invalidate);
+  const readState = useThree((state) => state.get);
   useEffect(() => {
-    let timer: number | undefined;
+    const pacer = createFramePacer(frameLimit);
+    let frame = 0;
+    function tick(now: number) {
+      frame = requestAnimationFrame(tick);
+      if (pacer.isDue(now)) advance(now, true, readState());
+    }
     function sync() {
-      window.clearInterval(timer);
+      cancelAnimationFrame(frame);
       if (document.hidden) return;
       // Auch bei stehender Uhr: Beim Wiederanzeigen soll sofort ein aktuelles Bild dastehen.
       invalidate();
-      if (!paused) timer = window.setInterval(invalidate, 1000 / FPS);
+      if (!paused) frame = requestAnimationFrame(tick);
     }
     sync();
     document.addEventListener("visibilitychange", sync);
     return () => {
-      window.clearInterval(timer);
+      cancelAnimationFrame(frame);
       document.removeEventListener("visibilitychange", sync);
     };
-  }, [paused, invalidate]);
+  }, [paused, frameLimit, invalidate, readState]);
   return null;
 }
 
@@ -74,6 +79,8 @@ function AnimationClock({ paused }: { paused: boolean }) {
 export interface PetSceneProps extends Omit<CharacterProps, "quality"> {
   /** Wie aufwendig die Szene gezeichnet wird. */
   rendering: RenderProfile;
+  /** Bilder pro Sekunde, `null` heißt unbegrenzt. */
+  frameLimit: number | null;
   /** Worauf die Kamera fährt. Ohne Wert steht sie in der Grundansicht. */
   focus?: StudioFocus | null;
   /** Element für die Anker des Studios. Ohne Element wird nichts projiziert. */
@@ -83,6 +90,7 @@ export interface PetSceneProps extends Omit<CharacterProps, "quality"> {
 /** Das Pet auf transparentem Hintergrund. Ohne WebGL erscheint ein Hinweis statt eines Fehlers. */
 export default function PetScene({
   rendering,
+  frameLimit,
   focus = null,
   anchors,
   ...character
@@ -101,7 +109,7 @@ export default function PetScene({
         fallback={<p className="render-fallback">Dieser WebView unterstützt kein WebGL.</p>}
         onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
       >
-        <AnimationClock paused={character.reducedMotion} />
+        <AnimationClock paused={character.reducedMotion} frameLimit={frameLimit} />
         <CameraRig focus={focus} reducedMotion={character.reducedMotion} />
         <Character {...character} quality={rendering.quality} onJelly={setJelly} />
         {character.emote?.partner ? (

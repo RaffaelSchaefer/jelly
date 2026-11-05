@@ -5,9 +5,9 @@
  *
  * Die Seite kompiliert beide Körper-Shader wirklich, prüft den Wechsel der Modi im laufenden
  * Betrieb und misst danach je Variante und Szene die Zeit pro Bild. Parameter: `seconds` (60),
- * `runs` (3), `warmup` (5), `scenes` und `variants` als kommagetrennte Listen, `size` (100),
- * `measure=0` nur für die Prüfungen. CSS und Fensterkomposition sieht die Messung nicht: Die zeigen
- * sich nur in der Last der echten App.
+ * `runs` (3), `warmup` (5), `scenes` und `variants` als kommagetrennte Listen, `size` (100), `fps`
+ * (30, `max` für unbegrenzt), `measure=0` nur für die Prüfungen. CSS und Fensterkomposition sieht
+ * die Messung nicht: Die zeigen sich nur in der Last der echten App.
  *
  * @module
  */
@@ -22,12 +22,14 @@ import { FULL_RENDERING, OPTIMIZED_RENDERING, PREVIEW_ME } from "../src/pet/inde
 import PetStage from "../src/PetStage.tsx";
 import { usePet } from "../src/usePet.ts";
 import "../src/styles.css";
+import { percentile, report } from "./render-report.mjs";
 
 const PARAMS = new URLSearchParams(location.search);
 const SECONDS = Number(PARAMS.get("seconds") ?? 60);
 const RUNS = Number(PARAMS.get("runs") ?? 3);
 const WARMUP = Number(PARAMS.get("warmup") ?? 5);
 const SIZE = Number(PARAMS.get("size") ?? 100);
+const FRAME_LIMIT = PARAMS.get("fps") === "max" ? null : Number(PARAMS.get("fps") ?? 30);
 
 /** Die Hebel einzeln dazugeschaltet, damit der Beitrag jedes Hebels sichtbar wird. */
 const VARIANTS = {
@@ -95,7 +97,7 @@ function framesDrawn(probe, count = 3) {
 }
 
 /** Der echte Spielstand-Hook und die echte Bühne. */
-function Harness({ rendering, panel }) {
+function Harness({ rendering, panel, frameLimit }) {
   const game = usePet(noop);
   useEffect(() => {
     currentGame = game;
@@ -107,6 +109,7 @@ function Harness({ rendering, panel }) {
       game,
       panel,
       rendering,
+      frameLimit,
       me: game.game.me ?? PREVIEW_ME,
       joining: false,
       reducedMotion: false,
@@ -117,9 +120,9 @@ function Harness({ rendering, panel }) {
 }
 
 /** Zeigt die Bühne im gewünschten Zustand. */
-function show({ rendering, surfaces }, panel) {
+function show({ rendering, surfaces }, panel, frameLimit = FRAME_LIMIT) {
   document.documentElement.toggleAttribute("data-optimized-rendering", surfaces);
-  root.render(createElement(Harness, { rendering, panel }));
+  root.render(createElement(Harness, { rendering, panel, frameLimit }));
 }
 
 /** Wartet, bis die Canvas steht, und liefert den Zustand von Fiber. */
@@ -181,12 +184,6 @@ function instrument(renderer) {
     offAfter();
   };
   return probe;
-}
-
-/** Wert am Anteil `share` der sortierten Liste. */
-function percentile(values, share) {
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * share))] ?? NaN;
 }
 
 /** Wie viele Materialien die Szene gerade verwendet. */
@@ -363,32 +360,40 @@ async function checkHidden() {
   return true;
 }
 
-/** Mittelt die Läufe je Variante und Szene, dazu die Ersparnis gegenüber dem Ausgangszustand. */
-function report(rows) {
-  const lines = [];
-  const groups = Map.groupBy(rows, (row) => `${row.scene}/${row.variant}`);
-  const mean = (list, key) => list.reduce((sum, row) => sum + row[key], 0) / list.length;
-  for (const [name, list] of groups) {
-    const base = groups.get(`${list[0].scene}/ausgang`);
-    const gpu = mean(list, "gpuMedian");
-    const saved = base ? Math.round((1 - gpu / mean(base, "gpuMedian")) * 100) : NaN;
-    const { calls, textures, programs, materials } = list.at(-1);
-    lines.push(
-      `${name.padEnd(22)} GPU ${gpu.toFixed(2).padStart(7)} ms (p95 ${mean(list, "gpuP95").toFixed(2)}, ${saved} % gespart)` +
-        ` · CPU ${mean(list, "cpuMedian").toFixed(2)} ms · ${mean(list, "fps").toFixed(1)} FPS` +
-        ` · ${calls} Draws, ${textures} Texturen, ${materials} Materialien, ${programs} Programme`,
-    );
+/**
+ * Prüft die Bildrate nach mehreren Wechseln: Sie darf nie über dem Limit liegen, sonst liefen zwei
+ * Takte nebeneinander. Darunter kann sie auf schwachen Geräten liegen, dafür steht sie im
+ * Ergebnis.
+ */
+async function checkFrameLimits() {
+  show(VARIANTS.optimiert, null, 30);
+  const state = await fiberState();
+  const probe = instrument(state.gl);
+  probe.recording = true;
+  const rates = {};
+  for (const limit of [60, 5, 15, 45, 30, null]) {
+    show(VARIANTS.optimiert, null, limit);
+    await framesDrawn(probe, 2);
+    probe.stamps.length = 0;
+    await sleep(3000);
+    const rate = (probe.stamps.length - 1) / ((probe.stamps.at(-1) - probe.stamps[0]) / 1000);
+    rates[limit ?? "unbegrenzt"] = Math.round(rate);
+    check(limit === null || rate <= limit * 1.1, `${limit} FPS überschritten: ${rate}`);
   }
-  return lines.join("\n");
+  probe.stop();
+  show(VARIANTS.optimiert, null);
+  return rates;
 }
 
 /** Alle Prüfungen und danach die Messung. */
 async function run() {
   const hiddenChecked = await checkHidden();
   const resources = await checkSwitching();
+  const rates = await checkFrameLimits();
   const results = [
     hiddenChecked ? "Verbergen ok" : "Verbergen hier nicht prüfbar",
     `Umschalten ok: ${JSON.stringify(resources)}`,
+    `Bildraten ok: ${JSON.stringify(rates)}`,
   ];
   const rows = [];
   let hasTimer = false;

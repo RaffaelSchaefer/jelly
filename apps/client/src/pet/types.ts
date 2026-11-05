@@ -45,6 +45,8 @@ export interface Settings {
   volume: number;
   /** Einfachere Oberflächen und weniger Grafikeffekte, siehe {@link OPTIMIZED_RENDERING}. */
   optimizedRendering: boolean;
+  /** Bilder pro Sekunde, siehe {@link FRAME_RATE}. `null` heißt unbegrenzt. */
+  frameLimit: number | null;
 }
 
 /** Abklingzeiten und Kontingent der Selbstmeldungen. Zeiten in Unix-Millisekunden. */

@@ -1,11 +1,19 @@
 /**
- * Panel „Einstellungen“: Pet-Größe, reduzierte Bewegung, optimierter Modus, Geräusche und ihre
- * Lautstärke. Alles bleibt auf diesem Gerät.
+ * Panel „Einstellungen“: Pet-Größe, reduzierte Bewegung, optimierter Modus, Bildrate, Geräusche und
+ * ihre Lautstärke. Alles bleibt auf diesem Gerät.
  *
  * @module
  */
 
-import { PET_SIZE, VOLUME, type Settings } from "../pet";
+import {
+  FRAME_RATE,
+  frameRateText,
+  PET_SIZE,
+  stopToFrameLimit,
+  UNLIMITED_STOP,
+  VOLUME,
+  type Settings,
+} from "../pet";
 import { PercentSlider, ToggleRow } from "../ui";
 
 /** Eigenschaften von {@link SettingsPanel}. */
@@ -17,13 +25,27 @@ interface SettingsPanelProps {
   size: number;
   /** Angezeigte Lautstärke, ebenso. */
   volume: number;
+  /** Angezeigte Stellung des Bildraten-Reglers, ebenso. */
+  frameStop: number;
   ready: boolean;
   busy: boolean;
   onSize: (size: number) => void;
   onVolume: (volume: number) => void;
+  onFrameStop: (stop: number) => void;
   onReducedMotion: (reducedMotion: boolean) => void;
   onOptimizedRendering: (optimizedRendering: boolean) => void;
   onSound: (sound: boolean) => void;
+}
+
+/** Die große Anzeige der Bildrate. */
+function FrameRateValue({ limit }: { limit: number | null }) {
+  if (limit === null) return <span className="frame-rate-value frame-rate-unlimited">∞</span>;
+  return (
+    <span className="frame-rate-value">
+      {limit}
+      <small> FPS</small>
+    </span>
+  );
 }
 
 /** Schalter und Lautstärke. Abgeschaltet gibt es nichts leiser zu stellen. */
@@ -35,7 +57,10 @@ function SoundRows({
   busy,
   onVolume,
   onSound,
-}: Omit<SettingsPanelProps, "size" | "onSize" | "onReducedMotion" | "onOptimizedRendering">) {
+}: Pick<
+  SettingsPanelProps,
+  "name" | "settings" | "volume" | "ready" | "busy" | "onVolume" | "onSound"
+>) {
   return (
     <>
       <ToggleRow
@@ -61,8 +86,8 @@ function SoundRows({
 
 /** Die Einstellungen. Die Regler speichern, sobald sie ruhen (siehe `useSettingDraft`). */
 export default function SettingsPanel(props: SettingsPanelProps) {
-  const { name, settings, size, ready, busy, onSize, onReducedMotion, onOptimizedRendering } =
-    props;
+  const { name, settings, size, frameStop, ready, busy } = props;
+  const { onSize, onFrameStop, onReducedMotion, onOptimizedRendering } = props;
   return (
     <>
       <PercentSlider
@@ -76,6 +101,19 @@ export default function SettingsPanel(props: SettingsPanelProps) {
         ends={["Klein", "Groß"]}
         disabled={!ready}
         onChange={onSize}
+      />
+      <PercentSlider
+        id="pet-frame-rate"
+        label="Bildrate"
+        hint="Weniger Bilder sparen Grafikleistung. Mehr Bilder machen Bewegungen flüssiger."
+        value={frameStop}
+        valueText={frameRateText(stopToFrameLimit(frameStop))}
+        display={<FrameRateValue limit={stopToFrameLimit(frameStop)} />}
+        min={FRAME_RATE.min}
+        max={UNLIMITED_STOP}
+        step={1}
+        disabled={!ready}
+        onChange={onFrameStop}
       />
       <ToggleRow
         label="Weniger Bewegung"

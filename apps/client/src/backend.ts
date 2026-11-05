@@ -90,6 +90,7 @@ export interface MapState {
   ownId: number;
   reducedMotion: boolean;
   optimizedRendering: boolean;
+  frameLimit: number | null;
   stage: Stage;
 }
 

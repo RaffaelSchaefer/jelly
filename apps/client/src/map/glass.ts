@@ -9,6 +9,7 @@
  * @module
  */
 
+import { createFramePacer, type FrameLimit } from "@jelly/stage/frame-pacing";
 import {
   ACESFilmicToneMapping,
   Camera,
@@ -33,8 +34,7 @@ import { createGlass, FULLSCREEN, readShapes } from "../scene/glassMaterial";
  * Gesten, fehlt zuerst der Suche das Glas.
  */
 const LAYOUT = { maxShapes: 11, soloShapes: 3, shadow: 0.1, body: 0.62 };
-/** Dieselbe Bildrate wie am Jelly, bei reduzierter Bewegung nur noch für Hover. */
-const FRAME_MS = 1000 / 30;
+/** Bei reduzierter Bewegung gilt die Bildrate nicht, die Bilder sind dann nur noch für Hover. */
 const STILL_FRAME_MS = 100;
 const MAX_PIXEL_RATIO = 2;
 const INITIAL_COLOR: PetColor = "mint";
@@ -43,6 +43,8 @@ const INITIAL_COLOR: PetColor = "mint";
 export interface GlassLayer {
   /** Das Glas trägt die Farbe des eigenen Jellys. */
   setLook: (color: PetColor, reducedMotion: boolean) => void;
+  /** Dieselbe Bildrate wie der Rest der Karte. */
+  setFrameLimit: (limit: FrameLimit) => void;
   /** Hält das Glas an und gibt seinen Grafikspeicher frei. */
   stop: () => void;
 }
@@ -107,6 +109,7 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
   let lastFrame = performance.now();
   let wasEmpty = false;
   let frame = 0;
+  const pacer = createFramePacer();
 
   /** Liest die Knöpfe und lässt ihre Tropfen wachsen oder schrumpfen. */
   function placeShapes(seconds: number) {
@@ -125,7 +128,7 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
   /** Zeichnet ein Bild, wenn es so weit ist. Ein verborgenes Fenster bekommt keine. */
   function tick(now: number) {
     frame = requestAnimationFrame(tick);
-    if (now - lastFrame < (reducedMotion ? STILL_FRAME_MS : FRAME_MS)) return;
+    if (reducedMotion ? now - lastFrame < STILL_FRAME_MS : !pacer.isDue(now)) return;
     const seconds = (now - lastFrame) / 1000;
     lastFrame = now;
     fitRenderer(renderer, canvas, size);
@@ -148,6 +151,7 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
       uniforms.uInk.value.set(palette.outline);
       reducedMotion = reduced;
     },
+    setFrameLimit: pacer.setLimit,
     stop: () => {
       cancelAnimationFrame(frame);
       releaseCanvas(renderer, canvas);

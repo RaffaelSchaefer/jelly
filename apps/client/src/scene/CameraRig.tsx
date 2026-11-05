@@ -43,8 +43,8 @@ const goal = new Vector3();
 /** Wie schnell die Kamera nachzieht, pro Sekunde. */
 const EASE_SPEED = 3;
 
-/** Längster Zeitschritt, damit die Kamera nach einer Pause nicht springt. */
-const MAX_DELTA = 0.1;
+/** Längster Zeitschritt, damit die Kamera nach einer Pause nicht springt. Reicht für 5 FPS. */
+const MAX_DELTA = 0.25;
 
 /**
  * Bewegt die Szenenkamera. Muss in `<Canvas>` vor dem Pet stehen, damit die Anker im selben Bild
