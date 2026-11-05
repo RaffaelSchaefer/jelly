@@ -16,7 +16,7 @@ This writes `blender/cosmetics.blend` with:
   frame **Sichtbereich**, which shows what the app's camera sees. None of it can be selected or is
   exported.
 - **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `beanie`, `party-hat`,
-  `pixel-glasses`, `hood`, `crown`, `glow-aura`). The collection name is the id.
+  `pixel-glasses`, `hood`, `crown`, `golden-cup`). The collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -32,8 +32,10 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
 4. Use **Shade Smooth**. The outline is the mesh pushed out along its normals, so hard edges crack open.
 5. Cosmetics are drawn on top of the head like a sticker. Parts that would be hidden behind the head
    (the back of a hood, the far ear cup) still show, so model only what is seen from the front.
-6. Head and face cosmetics (slot `Kopf`, `Gesicht`) bob with the head; `Effekte` move with the body.
-   The slot comes from `src/pet.ts`; the `slot` property on the collection is only a reminder.
+6. Head and face cosmetics (slot `Kopf`, `Gesicht`) bob with the head. Cosmetics for the hands (slot
+   `Hände`) sit between `hand_left` and `hand_right` of the reference pet, and `src/scene/HandHeld.tsx`
+   moves them with the hands. The slot comes from `src/pet.ts`; the `slot` property on the collection
+   is only a reminder.
 7. Modifiers are fine (Mirror, Subdivision, Solidify): the export applies them.
 
 ## Export

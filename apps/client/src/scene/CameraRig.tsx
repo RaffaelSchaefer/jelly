@@ -4,7 +4,7 @@
  * @module
  */
 
-import { HEAD } from "@jelly/scene";
+import { HAND, HEAD } from "@jelly/scene";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { Vector3, type Camera } from "three";
@@ -22,7 +22,8 @@ const SHOTS: Record<StudioFocus, Shot> = {
   head: { position: new Vector3(0.35, 0.9, 3.6), look: new Vector3(0, HEAD.y, HEAD.z) },
   face: { position: new Vector3(0.3, 0.7, 3.2), look: new Vector3(0.15, HEAD.y - 0.05, HEAD.z) },
   body: { position: new Vector3(0, -0.2, 6.2), look: new Vector3(0, -0.3, 0) },
-  effects: { position: new Vector3(-0.5, 0.2, 6.3), look: new Vector3(0.2, -0.1, 0) },
+  hands: { position: new Vector3(-0.3, 0.2, 5.7), look: new Vector3(0.1, HAND.y + 0.2, HAND.z) },
+  aura: { position: new Vector3(-0.5, 0.2, 6.3), look: new Vector3(0.2, -0.1, 0) },
 };
 
 /** Breite der Canvas bei 100 %, auf die die Ansichten abgestimmt sind. */

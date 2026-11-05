@@ -187,3 +187,12 @@ fn a_refused_follow_keeps_the_server_message() {
     assert!(matches!(&error, Error::Server { code, .. } if code == "invalid_follow"));
     assert_eq!(serde_json::to_value(error).unwrap(), message);
 }
+
+#[test]
+fn a_highlight_too_soon_keeps_the_server_message() {
+    let message = "Warte kurz bis zum nächsten Hervorheben.";
+    let body = json!({ "error": { "code": "highlight_cooldown", "message": message } }).to_string();
+    let error = parse_error(StatusCode::CONFLICT, &body);
+    assert!(matches!(&error, Error::Server { code, .. } if code == "highlight_cooldown"));
+    assert_eq!(serde_json::to_value(error).unwrap(), message);
+}

@@ -65,6 +65,8 @@ pub fn run() {
             commands::set_follow,
             commands::stage::get_stage,
             commands::stage::get_map_state,
+            commands::stage::go_to,
+            commands::stage::highlight_player,
             commands::stage::open_map,
             commands::redeem_code,
             commands::partner::invite_partner,

@@ -23,6 +23,9 @@ const TURN_RATE = 8;
 const GAIT_RATE = 10;
 /** Why a jelly walks when it goes to the snack bar. It carries its snack with both hands. */
 const SNACK_KIND = "snack";
+const TRIP_KIND = "trip";
+/** The server looks for a free spot near the point of a trip, so a trip may end this far from it. */
+const TRIP_GOAL_REACH = 6;
 
 /** Where a jelly stands and how it moves, kept between frames. */
 export interface Walker {
@@ -93,6 +96,21 @@ export function findStackLevel(move: StageMove, serverTime: number): number {
 export function findSnackRunners(moves: Map<number, StageMove>): Set<number> {
   const runners = [...moves.values()].filter((move) => move.kind === SNACK_KIND);
   return new Set(runners.map((move) => move.player_id));
+}
+
+/**
+ * Reports whether a jelly is still heading to the goal of its trip. Right after the click its newest
+ * move is an older one, so only a finished trip that ended near the goal counts as arrival.
+ */
+export function isOnTheWay(
+  move: StageMove | undefined,
+  goal: FloorPoint,
+  serverTime: number,
+): boolean {
+  const end = move?.points.at(-1);
+  if (!move || !end || move.kind !== TRIP_KIND) return true;
+  const hasEnded = serverTime >= move.start_at + end.t;
+  return !hasEnded || measureDistance(toFloorPoint(end), goal) > TRIP_GOAL_REACH;
 }
 
 /** Returns the rotation toward a point, or `fallback` when it is right here. */

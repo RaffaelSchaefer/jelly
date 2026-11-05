@@ -14,6 +14,7 @@ use tauri::{AppHandle, State};
 use crate::{
     api::{AccessBody, Api, EquipBody, Profile},
     error::Result,
+    events,
     pet::{poke_due, Action, Color, Settings},
 };
 
@@ -175,7 +176,13 @@ pub async fn set_follow(
     session.registered()?;
     let me = match player_id {
         Some(player_id) => session.api.follow(player_id).await?,
-        None => session.api.end_trip().await?,
+        None => {
+            let me = session.api.end_trip().await?;
+            // Das Ende eines Ausflugs meldet der Server nicht, nur das Ende des Folgens. Das Pet
+            // liest neu, sobald dieser Befehl die Sitzung freigibt.
+            events::emit_to_ui(&app, events::STREAM_RESET_NAME, ());
+            me
+        }
     };
     session.set_me(me);
     Ok(session.game())

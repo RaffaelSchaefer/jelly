@@ -23,6 +23,11 @@ const MODELS = import.meta.glob<string>("../cosmetics/*.glb", {
   eager: true,
 });
 
+/** Ob es für das Cosmetic schon ein Modell gibt. */
+export function hasCosmeticModel(id: string) {
+  return `../cosmetics/${id}.glb` in MODELS;
+}
+
 /** Zeichenebene für Cosmetics: Render-Order 8–9, also über dem Gesicht (6–7). */
 const COSMETIC_LAYER = 4;
 

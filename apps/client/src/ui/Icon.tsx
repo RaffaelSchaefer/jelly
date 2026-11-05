@@ -30,6 +30,7 @@ export type IconName =
   | "hood"
   | "crown"
   | "aura"
+  | "shirt"
   | "ticket"
   | "send"
   | "sign"
@@ -72,6 +73,7 @@ const paths: Record<IconName, string> = {
   hood: "M5 20v-8a7 7 0 0 1 14 0v8M8 20v-7a4 4 0 0 1 8 0v7",
   crown: "M4 8l4 4 4-6 4 6 4-4-2 10H6L4 8Z",
   aura: "M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0-5v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4",
+  shirt: "M8 3 3 6l2 4 3-1v12h8V9l3 1 2-4-5-3a4 4 0 0 1-8 0Z",
   ticket:
     "M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a1.5 1.5 0 0 0 0 3V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.5a1.5 1.5 0 0 0 0-3V8Zm12-2v2m0 3v2m0 3v2",
   send: "M21 3 3 9.5l7.5 4 4 7.5L21 3Zm0 0L10.5 13.5",

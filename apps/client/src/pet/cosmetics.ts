@@ -8,7 +8,7 @@
  */
 
 import type { IconName } from "../ui/Icon";
-import type { Catalog, Equipped, Me } from "./types";
+import type { Catalog, CosmeticSlot, Equipped, Me } from "./types";
 
 /** Ein anlegbares Teil. */
 export interface Cosmetic {
@@ -17,15 +17,15 @@ export interface Cosmetic {
   /** Anzeigename. */
   name: string;
   /**
-   * Der Platz beim Server. `head` und `face` wippen mit dem Kopf, `aura` bleibt beim Körper. Für
-   * die Plätze `hands` und `body` gibt es noch keine Modelle.
+   * Der Platz beim Server. `head` und `face` wippen mit dem Kopf, `hands` folgt den Händen, `body`
+   * und `aura` bleiben beim Körper. Für diese beiden führt der Server noch kein Cosmetic.
    */
-  slot: "head" | "face" | "aura";
+  slot: CosmeticSlot;
   /** Symbol in der Auswahl. */
   icon: IconName;
 }
 
-/** Alle Cosmetics, die die App darstellen kann. `glow-aura` gibt es nur als Auszeichnung. */
+/** Alle Cosmetics, die die App darstellen kann. `golden-cup` gibt es nur als Auszeichnung. */
 export const COSMETICS: Cosmetic[] = [
   { id: "headset", name: "Headset", slot: "head", icon: "headset" },
   { id: "beanie", name: "Mütze", slot: "head", icon: "beanie" },
@@ -33,11 +33,11 @@ export const COSMETICS: Cosmetic[] = [
   { id: "pixel-glasses", name: "Pixel-Brille", slot: "face", icon: "glasses" },
   { id: "hood", name: "Kapuze", slot: "head", icon: "hood" },
   { id: "crown", name: "Krone", slot: "head", icon: "crown" },
-  { id: "glow-aura", name: "Glüh-Aura", slot: "aura", icon: "aura" },
+  { id: "golden-cup", name: "Goldener Pokal", slot: "hands", icon: "trophy" },
 ];
 
 /** In dieser Reihenfolge entstehen die Teile: Jedes liegt als Sticker auf dem davor. */
-const WORN_ORDER: Cosmetic["slot"][] = ["head", "face", "aura"];
+const WORN_ORDER: CosmeticSlot[] = ["head", "face", "hands", "body", "aura"];
 
 /** Was ein Jelly trägt, soweit die App es darstellen kann. */
 export function wornCosmetics(equipped: Equipped) {

@@ -31,7 +31,8 @@ pub const STAGE_EVENT_NAME: &str = "stage-event";
 pub const STAGE_MOVE_NAME: &str = "stage-move";
 
 /// Name des Tauri-Ereignisses, wenn der Server für diesen Stream Ereignisse verworfen hat. Pet und
-/// Karte lesen dann ihren Stand neu.
+/// Karte lesen dann ihren Stand neu. Dasselbe braucht das Ende eines Ausflugs, das der Server nicht
+/// meldet.
 pub const STREAM_RESET_NAME: &str = "stream-reset";
 
 /// Art der Nachricht, wenn ein Jelly losläuft. Sie hat keine ID und steht nicht im Ereignis-Log.
@@ -46,8 +47,9 @@ const RESET_MESSAGE: &str = "reset";
 /// `follow.changed` kommt durch: Der Server darf das Dazustellen von sich aus beenden.
 /// `partner.emote` trägt den Annehmenden als `player_id`, der Auffordernde steht in
 /// `payload.partner_id`. Nur er braucht es: Der Annehmende hat die Geste schon aus seiner Antwort.
-/// `trip.changed` und `stack.changed` bleiben draußen, das Pet zeigt beides noch nicht.
-const OWN_EVENTS: [&str; 7] = [
+/// `trip.changed` kommt durch: Die Karte startet den Ausflug, das Pet sagt etwas dazu.
+/// `stack.changed` bleibt draußen, das Pet zeigt Stapel noch nicht.
+const OWN_EVENTS: [&str; 8] = [
     "xp.gained",
     "level.up",
     "achievement.earned",
@@ -55,6 +57,7 @@ const OWN_EVENTS: [&str; 7] = [
     "player.updated",
     "player.hidden",
     "follow.changed",
+    "trip.changed",
 ];
 
 /// Ereignis, wenn ein Konto gelöscht wurde. Es trägt den Spieler in `payload`, nicht in `player_id`.
@@ -175,7 +178,7 @@ impl EventStream {
 }
 
 /// Gibt etwas an die Oberfläche weiter.
-fn emit_to_ui<T: Serialize + Clone>(app: &AppHandle, name: &str, payload: T) {
+pub(crate) fn emit_to_ui<T: Serialize + Clone>(app: &AppHandle, name: &str, payload: T) {
     if let Err(error) = app.emit(name, payload) {
         eprintln!("Ereignis konnte nicht weitergegeben werden: {error}");
     }

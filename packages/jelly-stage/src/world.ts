@@ -77,6 +77,19 @@ export function toFloorPoint(point: StagePoint): FloorPoint {
   };
 }
 
+/** Converts a point on the floor to a stage position in percent. Undoes {@link toFloorPoint}. */
+export function fromFloorPoint(point: FloorPoint): StagePoint {
+  return {
+    x: (point.x / ROOM_WIDTH + 0.5) * STAGE_SIZE,
+    y: (point.z / ROOM_DEPTH + 0.5) * STAGE_SIZE,
+  };
+}
+
+/** Reports whether a position lies on the stage. Anything else the server refuses. */
+export function isOnStage(point: StagePoint): boolean {
+  return point.x >= 0 && point.x <= STAGE_SIZE && point.y >= 0 && point.y <= STAGE_SIZE;
+}
+
 /** Converts an area to its rectangle on the floor. */
 export function toFloorRect(area: StageArea): FloorRect {
   const start = toFloorPoint({ x: area.x, y: area.y });

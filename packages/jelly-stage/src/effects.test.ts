@@ -4,7 +4,9 @@ import { test } from "node:test";
 import type { EventPayload, StageCatalog, StageEvent } from "./types.ts";
 
 import {
+  calculateHighlightHue,
   calculateMotionPose,
+  calculateSpotlightPresence,
   createEffects,
   findMotionPose,
   findEmote,
@@ -122,9 +124,39 @@ test("a highlight lights up the named jelly, not the one who asked", () => {
     created_at: 500,
   };
   assert.deepEqual(createEffects(event, catalog, 1000), [
-    { playerId: 9, startedAt: 1000, endsAt: 11_000, kind: "spotlight" },
+    {
+      playerId: 9,
+      startedAt: 1000,
+      endsAt: 11_000,
+      kind: "spotlight",
+      hue: calculateHighlightHue(4),
+    },
   ]);
   assert.deepEqual(createEffects({ ...event, payload: {} }, catalog, 1000), []);
+});
+
+test("every player has a hue of their own, and neighbors look different", () => {
+  assert.equal(calculateHighlightHue(7), calculateHighlightHue(7));
+  for (let id = 1; id < 100; id += 1) {
+    const hue = calculateHighlightHue(id);
+    assert.ok(hue >= 0 && hue < 1, String(id));
+    const apart = Math.abs(hue - calculateHighlightHue(id + 1));
+    assert.ok(Math.min(apart, 1 - apart) > 0.3, String(id));
+  }
+});
+
+test("a beam of light comes on quickly and goes out softly", () => {
+  const beam = {
+    playerId: 9,
+    startedAt: 1000,
+    endsAt: 11_000,
+    kind: "spotlight" as const,
+    hue: 0.5,
+  };
+  assert.equal(calculateSpotlightPresence(beam, 1000), 0);
+  assert.equal(calculateSpotlightPresence(beam, 5000), 1);
+  assert.equal(calculateSpotlightPresence(beam, 10_600), 0.5);
+  assert.equal(calculateSpotlightPresence(beam, 12_000), 0);
 });
 
 test("the newest emote replaces its predecessor and expires after three seconds", () => {

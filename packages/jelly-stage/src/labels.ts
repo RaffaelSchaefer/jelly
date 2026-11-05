@@ -28,20 +28,7 @@ const SIGN_RADIUS = 6;
 const BUBBLE_FONT_SHARE = 0.36;
 const TOAST_FONT_SHARE = 0.18;
 const TOAST_RISE_SHARE = 0.45;
-/** The beam on a highlighted jelly, narrow at the top of the stage and wide at its feet. */
-const SPOTLIGHT_WIDTH_SHARE = 0.75;
-const SPOTLIGHT_TOP_SHARE = 0.25;
-const SPOTLIGHT_TOP = "rgba(255, 244, 190, 0.05)";
-const SPOTLIGHT_BOTTOM = "rgba(255, 244, 190, 0.55)";
 const OUTLINE_PIXELS = 3;
-/** The ring around a jelly that can be chosen, flat like a circle on the floor. */
-const RING_WIDTH_SHARE = 0.62;
-const RING_FLATTEN = 0.36;
-const RING_COLOR = "rgba(255, 176, 32, 0.95)";
-const RING_GLOW = "rgba(255, 176, 32, 0.28)";
-const RING_LINE_SHARE = 0.05;
-const RING_GLOW_LINE_SHARE = 0.16;
-const MIN_RING_LINE_PIXELS = 1.5;
 /** A marked name is this much larger than the others. */
 const MARKED_NAME_SCALE = 1.15;
 const MARKED_NAME_WEIGHT = "800";
@@ -69,13 +56,11 @@ export interface LabelAnchor {
   height: number;
 }
 
-/** Jellies whose names show in any crowd. The big stage has none. */
+/** Jellies whose names show in any crowd, besides those in a beam of light. The big stage has none. */
 export interface LabelMarks {
   ownId: number | null;
   targetId: number | null;
   hoveredId: number | null;
-  /** Jellies with a glowing ring on the floor, because they can be chosen. */
-  highlightedIds: ReadonlySet<number>;
 }
 
 /** A rectangle on the screen a text has taken. */
@@ -103,7 +88,6 @@ export interface LabelScene {
  */
 export function drawLabels(context: CanvasRenderingContext2D, scene: LabelScene): void {
   const taken: TextBox[] = [];
-  drawHighlights(context, scene);
   const marked = listMarked(scene);
   for (const anchor of marked) {
     drawMarkedName(context, anchor, scene.marks.ownId === anchor.player.id, taken);
@@ -121,26 +105,13 @@ export function drawLabels(context: CanvasRenderingContext2D, scene: LabelScene)
   drawEffects(context, scene);
 }
 
-/** Paints a ring on the floor around every jelly that can be chosen, a wide faint one for the glow. */
-function drawHighlights(context: CanvasRenderingContext2D, scene: LabelScene): void {
-  for (const anchor of scene.anchors) {
-    if (!scene.marks.highlightedIds.has(anchor.player.id)) continue;
-    const radiusX = anchor.height * RING_WIDTH_SHARE;
-    context.beginPath();
-    context.ellipse(anchor.x, anchor.y, radiusX, radiusX * RING_FLATTEN, 0, 0, 2 * Math.PI);
-    context.strokeStyle = RING_GLOW;
-    context.lineWidth = anchor.height * RING_GLOW_LINE_SHARE;
-    context.stroke();
-    context.strokeStyle = RING_COLOR;
-    context.lineWidth = Math.max(MIN_RING_LINE_PIXELS, anchor.height * RING_LINE_SHARE);
-    context.stroke();
-  }
-}
-
 /** Returns the marked jellies in painting order. Names that collide stack up in this order. */
 function listMarked(scene: LabelScene): LabelAnchor[] {
   const { hoveredId, targetId, ownId } = scene.marks;
-  return [...new Set([hoveredId, targetId, ownId])].flatMap(
+  const lit = scene.effects.flatMap((effect) =>
+    effect.kind === "spotlight" ? [effect.playerId] : [],
+  );
+  return [...new Set([hoveredId, targetId, ownId, ...lit])].flatMap(
     (id) => scene.anchors.find((anchor) => anchor.player.id === id) ?? [],
   );
 }
@@ -291,31 +262,11 @@ function drawMarker(
   context.fill();
 }
 
-/** Paints a beam of light from the top of the stage down onto a jelly. */
-function drawSpotlight(context: CanvasRenderingContext2D, anchor: LabelAnchor): void {
-  const width = anchor.height * SPOTLIGHT_WIDTH_SHARE;
-  const beam = context.createLinearGradient(0, 0, 0, anchor.y);
-  beam.addColorStop(0, SPOTLIGHT_TOP);
-  beam.addColorStop(1, SPOTLIGHT_BOTTOM);
-  context.fillStyle = beam;
-  context.beginPath();
-  context.moveTo(anchor.x - width * SPOTLIGHT_TOP_SHARE, 0);
-  context.lineTo(anchor.x + width * SPOTLIGHT_TOP_SHARE, 0);
-  context.lineTo(anchor.x + width, anchor.y);
-  context.lineTo(anchor.x - width, anchor.y);
-  context.closePath();
-  context.fill();
-}
-
 /** Paints bubbles and rising texts over their jellies. */
 function drawEffects(context: CanvasRenderingContext2D, scene: LabelScene): void {
   const anchorById = new Map(scene.anchors.map((anchor) => [anchor.player.id, anchor]));
   for (const effect of scene.effects) {
     const anchor = anchorById.get(effect.playerId);
-    if (anchor && effect.kind === "spotlight") {
-      drawSpotlight(context, anchor);
-      continue;
-    }
     if (!anchor || (effect.kind !== "bubble" && effect.kind !== "toast")) {
       continue;
     }

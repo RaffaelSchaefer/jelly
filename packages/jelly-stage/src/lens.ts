@@ -37,3 +37,21 @@ export function bendToLens(point: ScreenPoint, size: ScreenSize, strength: numbe
   const scale = bentRadius / radius;
   return { x: size.width / 2 + offsetX * scale, y: size.height / 2 + offsetY * scale };
 }
+
+/** Moves a point the lens shows back to where it lies in the flat picture. Undoes {@link bendToLens}. */
+export function unbendFromLens(
+  point: ScreenPoint,
+  size: ScreenSize,
+  strength: number,
+): ScreenPoint {
+  const halfDiagonal = Math.hypot(size.width, size.height) / 2;
+  const offsetX = point.x - size.width / 2;
+  const offsetY = point.y - size.height / 2;
+  const bentRadius = Math.hypot(offsetX, offsetY) / halfDiagonal;
+  if (strength <= 0 || bentRadius === 0) {
+    return point;
+  }
+  const radius = Math.tan(bentRadius * strength) / Math.tan(strength);
+  const scale = radius / bentRadius;
+  return { x: size.width / 2 + offsetX * scale, y: size.height / 2 + offsetY * scale };
+}

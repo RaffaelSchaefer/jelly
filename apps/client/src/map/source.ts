@@ -5,7 +5,7 @@
  * @module
  */
 
-import type { StageEvent, StageMove, StageSource, StreamListener } from "@jelly/stage";
+import type { StageEvent, StageMove, StagePoint, StageSource, StreamListener } from "@jelly/stage";
 
 import type { CatalogEntry, PartnerInvite } from "../pet";
 
@@ -17,6 +17,10 @@ export interface MapSource extends StageSource {
   readOwn: () => { id: number | null; reducedMotion: boolean };
   /** Stellt das Jelly neben ein anderes oder mit `null` weg. Liefert das neue Ziel. */
   setFollow: (playerId: number | null) => Promise<number | null>;
+  /** Schickt das Jelly auf einen Ausflug zu einem Punkt der Bühne. */
+  goTo: (point: StagePoint) => Promise<void>;
+  /** Lässt ein Jelly aufleuchten. */
+  highlight: (playerId: number) => Promise<void>;
   /** Die Gesten, die zwei Jellies zusammen machen können. */
   readPartnerEmotes: () => Promise<CatalogEntry[]>;
   /** Fordert ein Jelly zu einem Partner-Emote auf. */
@@ -68,6 +72,12 @@ export async function createDesktopSource(): Promise<MapSource> {
     setFollow: async (playerId) => {
       const game = await backend.setFollow(playerId);
       return game.me?.follow_player_id ?? null;
+    },
+    goTo: async ({ x, y }) => {
+      await backend.goTo(x, y);
+    },
+    highlight: async (playerId) => {
+      await backend.highlightPlayer(playerId);
     },
     readPartnerEmotes: async () => (await backend.getCatalog()).partner_emotes,
     invitePartner: async (key, partnerId) => (await backend.invitePartner(key, partnerId)).invite,

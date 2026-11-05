@@ -15,12 +15,15 @@ import {
 
 import type { EventPayload, StageCatalog, StageEvent } from "./types.ts";
 
-import { FULL_CIRCLE } from "./world.ts";
+import { FULL_CIRCLE, GOLDEN_ANGLE } from "./world.ts";
 
 const BUBBLE_MS = EMOTE_SECONDS * 1000;
 const TOAST_MS = 5000;
 const XP_TOAST_MS = 1800;
 const MOTION_MS = 2400;
+/** How long a beam of light takes to come on and to go out. */
+const SPOTLIGHT_ON_MS = 350;
+const SPOTLIGHT_OFF_MS = 800;
 /** Events older than this are replays after a lost connection and not worth animating. */
 const FRESH_EVENT_MS = 10_000;
 /** A flood of events drops the oldest effects instead of slowing the stage down. */
@@ -53,7 +56,7 @@ export type StageEffect = { playerId: number; startedAt: number; endsAt: number 
   | { kind: "toast"; text: string }
   | { kind: "motion"; motion: MotionKey }
   | { kind: "emote"; key: EmoteKey }
-  | { kind: "spotlight" }
+  | { kind: "spotlight"; hue: number }
 );
 
 /** Reports whether an event rewards its jelly, which then bounces. */
@@ -86,7 +89,7 @@ export function createEffects(
     case "xp.gained":
       return createXPEffects(start, event.payload);
     case "highlight":
-      return createSpotlight(event, now);
+      return createSpotlight(event, playerId, now);
     default:
       return createRewardEffects(event, catalog, start);
   }
@@ -110,14 +113,33 @@ function createRewardEffects(
   return [{ ...start, endsAt: start.startedAt + TOAST_MS, kind: "toast", text }];
 }
 
-/** A beam of light shines on the highlighted jelly until the server says it goes out. */
-function createSpotlight(event: StageEvent, now: number): StageEffect[] {
+/**
+ * Returns the hue of the light of a player, from 0 to 1. It looks random, but every screen finds the
+ * same one, and the golden angle keeps players with neighboring IDs far apart.
+ */
+export function calculateHighlightHue(highlighterId: number): number {
+  return ((highlighterId * GOLDEN_ANGLE) / FULL_CIRCLE) % 1;
+}
+
+/**
+ * A beam of light shines on the highlighted jelly until the server says it goes out. Its color comes
+ * from the player who asked for it, so several beams at once can be told apart.
+ */
+function createSpotlight(event: StageEvent, highlighterId: number, now: number): StageEffect[] {
   const { target_id: playerId, until } = event.payload;
   if (playerId === undefined || until === undefined) {
     return [];
   }
   const endsAt = now + (until - event.created_at);
-  return [{ playerId, startedAt: now, endsAt, kind: "spotlight" }];
+  const hue = calculateHighlightHue(highlighterId);
+  return [{ playerId, startedAt: now, endsAt, kind: "spotlight", hue }];
+}
+
+/** Returns how bright a beam of light is at this moment, from 0 to 1. */
+export function calculateSpotlightPresence(effect: StageEffect, now: number): number {
+  const coming = (now - effect.startedAt) / SPOTLIGHT_ON_MS;
+  const going = (effect.endsAt - now) / SPOTLIGHT_OFF_MS;
+  return Math.max(0, Math.min(1, coming, going));
 }
 
 /** XP rises as a short text. */

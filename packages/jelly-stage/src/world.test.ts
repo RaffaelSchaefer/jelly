@@ -4,6 +4,8 @@ import { test } from "node:test";
 import {
   calculateCameraDistance,
   calculateCanvasDensity,
+  fromFloorPoint,
+  isOnStage,
   ROOM_DEPTH,
   ROOM_WIDTH,
   shrinkRect,
@@ -15,6 +17,22 @@ test("the stage corners become the room corners, the back is far from the camera
   assert.deepEqual(toFloorPoint({ x: 0, y: 0 }), { x: -ROOM_WIDTH / 2, z: -ROOM_DEPTH / 2 });
   assert.deepEqual(toFloorPoint({ x: 100, y: 100 }), { x: ROOM_WIDTH / 2, z: ROOM_DEPTH / 2 });
   assert.deepEqual(toFloorPoint({ x: 50, y: 50 }), { x: 0, z: 0 });
+});
+
+test("a floor point goes back to its stage position", () => {
+  for (const position of [
+    { x: 0, y: 0 },
+    { x: 100, y: 100 },
+    { x: 25, y: 75 },
+  ]) {
+    assert.deepEqual(fromFloorPoint(toFloorPoint(position)), position);
+  }
+});
+
+test("the stage ends at 0 and 100 percent", () => {
+  assert.ok(isOnStage({ x: 0, y: 100 }));
+  assert.ok(!isOnStage({ x: -0.1, y: 50 }));
+  assert.ok(!isOnStage({ x: 50, y: 100.1 }));
 });
 
 test("an area becomes a rectangle on the floor", () => {

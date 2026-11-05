@@ -27,8 +27,16 @@ import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { ActiveEmote } from "../useEmotes";
 import type { ActiveVoice } from "../useJellyVoice";
 
-import { mouthAt, PET_COLORS, wornCosmetics, type Equipped, type PetColor } from "../pet";
-import Cosmetic from "./Cosmetic";
+import {
+  mouthAt,
+  PET_COLORS,
+  wornCosmetics,
+  type CosmeticSlot,
+  type Equipped,
+  type PetColor,
+} from "../pet";
+import Cosmetic, { hasCosmeticModel } from "./Cosmetic";
+import HandHeld from "./HandHeld";
 import SignBoard from "./SignBoard";
 
 /** Ein Jelly ohne Angabe trägt nichts. */
@@ -72,6 +80,32 @@ function poseStand(
   stand.scale.setScalar(pose.scale);
 }
 
+/**
+ * Was das Jelly trägt. Muss in seiner Wurzel liegen: Kopf- und Gesichts-Cosmetics wippen mit dem
+ * Kopf, die für die Hände folgen ihnen, der Rest bleibt beim Körper.
+ */
+function WornCosmetics({
+  jelly,
+  worn,
+  color,
+}: {
+  jelly: Jelly;
+  worn: ReturnType<typeof wornCosmetics>;
+  color: PetColor;
+}) {
+  const draw = (slots: CosmeticSlot[]) =>
+    worn
+      .filter((item) => slots.includes(item.slot))
+      .map((item) => <Cosmetic key={item.id} id={item.id} color={color} />);
+  return (
+    <>
+      {createPortal(draw(["head", "face"]), jelly.faceAnchor)}
+      <HandHeld jelly={jelly}>{draw(["hands"])}</HandHeld>
+      {draw(["body", "aura"])}
+    </>
+  );
+}
+
 /** Eigenschaften des Pets in der Szene. */
 export interface CharacterProps {
   /** Farbvariante. */
@@ -107,15 +141,16 @@ export default function Character({
   role = "own",
 }: CharacterProps) {
   const worn = wornCosmetics(equipped);
-  const onHead = worn.filter((item) => item.slot !== "aura");
-  const onBody = worn.filter((item) => item.slot === "aura");
+  // Ohne Modell zeigt ein Cosmetic nichts, dann hielte das Jelly leere Hände hin.
+  const holdsModel = worn.some((item) => item.slot === "hands" && hasCosmeticModel(item.id));
+  const holding = Boolean(sign) || holdsModel;
   const jelly = useMemo(() => createJelly(PET_COLORS[color]), [color]);
   const motion = useRef(createMotion(pulse));
   const stand = useRef<Group>(null);
   const invalidate = useThree((state) => state.invalidate);
 
   // Beginn und Ende auch zeichnen, wenn reduzierte Bewegung die Animationsuhr anhält.
-  useEffect(() => invalidate(), [emote, sign, invalidate]);
+  useEffect(() => invalidate(), [emote, sign, holding, invalidate]);
 
   // Fiber gibt `<primitive>`-Objekte nie selbst frei.
   useEffect(() => () => disposeJelly(jelly), [jelly]);
@@ -133,7 +168,7 @@ export default function Character({
       rawDelta,
       pulse,
       reducedMotion,
-      holding: Boolean(sign),
+      holding,
       emote:
         emote && isEmoteKey(emote.key)
           ? { key: emote.key, elapsed: (performance.now() - emote.startedAt) / 1000 }
@@ -146,14 +181,7 @@ export default function Character({
   return (
     <group ref={stand}>
       <primitive object={jelly.root}>
-        {/* Kopf- und Gesichts-Cosmetics wippen mit dem Kopf, die Aura bleibt beim Körper. */}
-        {createPortal(
-          onHead.map((item) => <Cosmetic key={item.id} id={item.id} color={color} />),
-          jelly.faceAnchor,
-        )}
-        {onBody.map((item) => (
-          <Cosmetic key={item.id} id={item.id} color={color} />
-        ))}
+        <WornCosmetics jelly={jelly} worn={worn} color={color} />
         <SignBoard jelly={jelly} label={sign} color={color} reducedMotion={reducedMotion} />
       </primitive>
     </group>

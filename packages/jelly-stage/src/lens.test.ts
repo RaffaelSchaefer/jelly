@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { bendToLens, LENS_RANGE } from "./lens.ts";
+import { bendToLens, LENS_RANGE, unbendFromLens } from "./lens.ts";
 
 const size = { width: 1600, height: 900 };
 const strength = LENS_RANGE.usual;
@@ -29,6 +29,18 @@ test("everything in between moves outward, more so near the middle", () => {
 
 test("without strength the picture stays flat", () => {
   assert.deepEqual(bendToLens({ x: 123, y: 45 }, size, 0), { x: 123, y: 45 });
+});
+
+test("unbending undoes the bend, also in the middle and the corners", () => {
+  for (const point of [
+    { x: 300, y: 700 },
+    { x: 800, y: 450 },
+    { x: 1600, y: 0 },
+  ]) {
+    const back = unbendFromLens(bendToLens(point, size, strength), size, strength);
+    assert.ok(near(back.x, point.x) && near(back.y, point.y), JSON.stringify(point));
+  }
+  assert.deepEqual(unbendFromLens({ x: 123, y: 45 }, size, 0), { x: 123, y: 45 });
 });
 
 test("the shader formula undoes the bend, so texts sit on their jellies", () => {

@@ -38,6 +38,9 @@ const WALK_REACH = 3;
 /** So lange überlegt das andere Jelly und so lange gilt eine Aufforderung. */
 const ANSWER_MS = 2000;
 const INVITE_MS = 120_000;
+/** So lange dauert hier ein Ausflug und so lange leuchtet ein Jelly. */
+const TRIP_MS = 20_000;
+const HIGHLIGHT_MS = 10_000;
 
 /** Die Jellies auf den Plätzen der Halle, das erste ist das eigene. */
 function listPlayers(areas: StageArea[]): StagePlayer[] {
@@ -62,10 +65,15 @@ function listPlayers(areas: StageArea[]): StagePlayer[] {
 }
 
 /** Ein Weg von `from` nach `to`, der jetzt beginnt. */
-function createWalk(playerId: number, from: StagePoint, to: StagePoint): StageMove {
+function createWalk(
+  playerId: number,
+  from: StagePoint,
+  to: StagePoint,
+  kind = "wander",
+): StageMove {
   return {
     player_id: playerId,
-    kind: "wander",
+    kind,
     start_at: Date.now(),
     level: 0,
     points: [
@@ -77,7 +85,7 @@ function createWalk(playerId: number, from: StagePoint, to: StagePoint): StageMo
 
 /**
  * Lässt die Jellies abwechselnd um ihren Platz bummeln, wie sonst der Server. Das eigene läuft bei
- * einem Ziel dorthin und bummelt dann nicht mehr.
+ * einem Ziel oder Ausflug dorthin und bummelt dann nicht mehr.
  */
 function startWalks(players: StagePlayer[], listener: StreamListener) {
   let next = 0;
@@ -85,13 +93,57 @@ function startWalks(players: StagePlayer[], listener: StreamListener) {
   setInterval(() => {
     next = (next + 1) % players.length;
     const player = players[next];
-    if (next === 0 && player.follow_player_id !== null) return;
+    if (next === 0 && (player.follow_player_id !== null || player.trip !== null)) return;
     if (next === 0) isAway = !isAway;
     const home = { x: player.home_x, y: player.home_y };
     const away = { x: home.x + WALK_REACH, y: home.y };
     const [from, to] = isAway ? [home, away] : [away, home];
     listener.onMove(createWalk(player.id, from, to));
   }, WALK_EVERY_MS);
+}
+
+/** Ausflüge des eigenen Jellys, wie sonst beim Server: hin, warten und von selbst zurück. */
+function createTrips(own: StagePlayer, onMove: (move: StageMove) => void) {
+  const home = { x: own.home_x, y: own.home_y };
+  let back: ReturnType<typeof setTimeout> | undefined;
+  /** Beendet den Ausflug und liefert, wo das Jelly jetzt steht. */
+  const end = (): StagePoint => {
+    clearTimeout(back);
+    const here = own.trip ? { x: own.trip.x, y: own.trip.y } : home;
+    own.trip = null;
+    return here;
+  };
+  const go = (point: StagePoint) => {
+    onMove(createWalk(own.id, end(), point, "trip"));
+    own.follow_player_id = null;
+    own.trip = { ...point, until: Date.now() + TRIP_MS };
+    back = setTimeout(() => onMove(createWalk(own.id, end(), home)), TRIP_MS);
+  };
+  return { go, end };
+}
+
+/** Das Hervorheben eines Jellys, wie es sonst im Stream kommt. */
+function highlightEvent(playerId: number): StageEvent {
+  const now = Date.now();
+  return {
+    id: 0,
+    type: "highlight",
+    player_id: OWN_ID,
+    payload: { target_id: playerId, until: now + HIGHLIGHT_MS },
+    created_at: now,
+  };
+}
+
+/** Eine neue Aufforderung des eigenen Jellys. */
+function createInvite(key: string, partnerId: number): PartnerInvite {
+  return {
+    id: Date.now(),
+    key,
+    from_id: OWN_ID,
+    partner_ids: [partnerId],
+    state: "pending",
+    expires_at: Date.now() + INVITE_MS,
+  };
 }
 
 /** Die Änderung einer Aufforderung, wie sie sonst im Stream kommt. */
@@ -116,13 +168,14 @@ function answerInvite(invite: PartnerInvite, notify: (event: StageEvent) => void
   if (accepted) window.close();
 }
 
-/** Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier nur für Aufforderungen. */
+/** Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier nur für Aufforderungen und Licht. */
 export function createPreviewSource(): MapSource {
   const areas = createDemoRoom();
   const players = listPlayers(areas);
   let listener: StreamListener | null = null;
   let onInvite: ((event: StageEvent) => void) | null = null;
   let answer: ReturnType<typeof setTimeout> | undefined;
+  const trips = createTrips(players[0], (move) => listener?.onMove(move));
   return {
     readState: () =>
       Promise.resolve({
@@ -145,20 +198,20 @@ export function createPreviewSource(): MapSource {
       const own = players[0];
       own.follow_player_id = playerId;
       const target = players.find((player) => player.id === playerId) ?? own;
-      const home = { x: own.home_x, y: own.home_y };
-      listener?.onMove(createWalk(own.id, home, { x: target.home_x, y: target.home_y }));
+      listener?.onMove(createWalk(own.id, trips.end(), { x: target.home_x, y: target.home_y }));
       return Promise.resolve(playerId);
+    },
+    goTo: (point) => {
+      trips.go(point);
+      return Promise.resolve();
+    },
+    highlight: (playerId) => {
+      listener?.onEvent(highlightEvent(playerId));
+      return Promise.resolve();
     },
     readPartnerEmotes: () => Promise.resolve(PREVIEW_CATALOG.partner_emotes),
     invitePartner: (key, partnerId) => {
-      const invite: PartnerInvite = {
-        id: Date.now(),
-        key,
-        from_id: OWN_ID,
-        partner_ids: [partnerId],
-        state: "pending",
-        expires_at: Date.now() + INVITE_MS,
-      };
+      const invite = createInvite(key, partnerId);
       answer = setTimeout(() => answerInvite(invite, (event) => onInvite?.(event)), ANSWER_MS);
       return Promise.resolve(invite);
     },

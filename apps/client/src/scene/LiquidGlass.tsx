@@ -28,7 +28,7 @@ import { cameraAway } from "./CameraRig";
 import { createGlass, FULLSCREEN, readShapes, type GlassUniforms } from "./glassMaterial";
 
 /**
- * Plätze in der Reihenfolge des DOM. Im Studio: Namensschild, Fertig-Knopf, vier Blobs und ein
+ * Plätze in der Reihenfolge des DOM. Im Studio: Namensschild, Fertig-Knopf, sechs Blobs und ein
  * Popover. Am Jelly: Emote-Tropfen, Emote-Auswahl (geschlossen leer), Karten-Tropfen,
  * Schild-Tropfen, Füllung der Säule und ihre Kapseln, zuletzt die Sprechblase mit ihrem Schwanz.
  *

@@ -76,7 +76,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Cosmetics zum Freischalten über Level, Erfolge und Events. Die 3D-Modelle kommen aus der
   Blender-Pipeline in `blender/`; im Repository liegen noch keine.
 - Kleine Glas-Leiste mit LAN-Aktionen, Studio und Einstellungen.
-- Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Effekten und Körper öffnen flüssige Popovers für
+- Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Händen, Körper, Aura und Farbe öffnen flüssige Popovers für
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
   Kamera fährt zur Region, das Namensschild unter den Füßen ist das Eingabefeld. Jede Wahl gilt
   sofort.
@@ -105,17 +105,23 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   dieselbe 3D-Bühne wie auf dem Beamer (`@jelly/stage`, Daten aus `GET /v1/stage`). Wo die Jellies laufen,
   plant der Server, die Karte spielt seine Wege nur ab (`moves`, Nachricht `move` im Stream). Das eigene Jelly trägt seine
   Farbe im Namen und eine Markierung über dem Kopf, sein Ziel eine weiße. Unter dem Zeiger zeigt jedes
-  Jelly seinen Namen, auch im Gedränge. Ein Klick lässt das eigene Jelly zum gewählten laufen
-  (`POST /v1/trips/follow`), ein zweiter Klick auf das Ziel oder „Weggehen“ beendet das
-  (`DELETE /v1/trips/current`). Das Pet sagt etwas dazu, auch wenn der Server das Dazustellen beendet:
-  Nach `follow_until` endet es von selbst und ohne Ereignis, dann liest die App ihren Stand neu. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
+  Jelly seinen Namen, auch im Gedränge. Ein Klick auf ein fremdes Jelly öffnet daneben ein Fenster:
+  „Dazustellen“ lässt das eigene Jelly dorthin laufen (`POST /v1/trips/follow`), beim Ziel steht dort
+  „Weggehen“. „Hervorheben“ stellt das Jelly auf allen Bühnen in eine Säule aus Licht mit Halo und Lichtfleck am Boden
+  (`POST /v1/highlights`), ist es dafür zu früh, steht die Meldung des Servers in der Statuszeile. Der feste Knopf „Mich hervorheben“ oben rechts macht dasselbe mit dem eigenen Jelly, „Jelly suchen“ findet jedes andere per Namen, ohne dass man es erst in der Halle entdecken muss. Jeder Spieler leuchtet in seinem eigenen Farbton, berechnet aus seiner ID, so sieht man auch bei mehreren Lichtern, von wem welches kommt. Der Name des Jellys im Licht bleibt auch im Gedränge sichtbar. Ein Klick
+  auf den freien Boden schickt das eigene Jelly auf einen Ausflug dorthin (`POST /v1/trips/goto`), ein
+  Kristall mit Ring markiert das Ziel, bis es angekommen ist. Der
+  Knopf „Weggehen“ beendet Dazustellen und Ausflug (`DELETE /v1/trips/current`). Das Pet sagt zu beidem
+  etwas, auch wenn der Server sie beendet: Nach `follow_until` und `trip.until` enden sie von selbst und
+  ohne Ereignis, dann liest die App ihren Stand neu. Dasselbe gilt fürs Weggehen vom Ausflug, das meldet der
+  Server nicht. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
   die doppelte Auflösung des Beamers und schließt sich mit dem Pet. Solange sie offen ist, ist das Pet
   versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
   Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. „Weggehen“
   ist ein Tropfen aus demselben flüssigen Glas wie am Jelly, in dessen Farbe. Die Browser-Vorschau zeigt
   die Halle der Server-Demo.
 - Partner-Emotes startet man auf der Karte. Ein Klick aufs eigene Jelly öffnet daneben ein Fenster mit den
-  Gesten, alle anderen Jellies leuchten. Nach der Wahl leuchten nur noch die in der Nähe, ein Klick auf eines
+  Gesten, alle anderen Jellies stehen in einem schimmernden Ring aus Licht. Nach der Wahl leuchten nur noch die in der Nähe, ein Klick auf eines
   fordert es auf (`POST /v1/partner-emotes`). Oben steht dann „Warte auf …“ mit der Restzeit und „Abbrechen“.
   Ob ein Jelly nah genug steht, entscheidet am Ende der Server (`409 too_far`). Der Standardwert von
   `near_distance` steht als Kopie in `src/pet/partner.ts`, die Regel kommt in keiner Antwort an Spieler vor.
@@ -269,20 +275,16 @@ mit dem Tauri-Mock beziehungsweise ohne Backend, rendern die Stimme und melden n
 4. **Charakter und Fortschritt:** Den Platzhalter gemeinsam gestalten, dann Reaktionen und kleine
    Belohnungen passend zur LAN festlegen. Die aktuellen XP-Werte sind Prototypwerte. Noch keine
    Hunger-/Durstsimulation.
-5. **Glüh-Aura im Katalog:** `glow-aura` steht in der App (`src/pet/cosmetics.ts`), aber nicht im
-   Server-Katalog (`ListCosmetics` in `apps/server/internal/rules/cosmetics.go`). `POST /admin/api/awards`
-   prüft den Schlüssel inzwischen, die Orga kann sie also nicht mehr vergeben. In den Katalog aufnehmen.
-6. **Rest der API 1.8:** Der Server kann mehr, als die App schon nutzt. Offen sind:
+5. **Rest der API 1.8:** Der Server kann mehr, als die App schon nutzt. Offen sind:
    - `GET /v1/players` und `GET /v1/players/{id}`: Liste und Profil anderer Jellies.
-   - `POST /v1/trips/goto`: ein Ausflug, etwa per Klick auf die Karte. Das Pet zeigt `trip.changed` und
-     `trip` im Stand noch nicht.
    - `POST /v1/stacks`, `POST /v1/stacks/members`, `DELETE /v1/stacks/current`: Stapel. Die Bühne zeigt sie
      schon, im Pet fehlen Knöpfe und `stack.changed`.
-   - `POST /v1/highlights`: ein Jelly aufleuchten lassen. Die Bühne zeigt den Lichtkegel schon.
    - `GET /v1/partner-emotes`: offene Aufforderungen nach einem Neustart wiederherstellen. Bis dahin gehen
      sie mit der App verloren und laufen beim Server aus.
    - Farbwahl für `colorable` Cosmetics aus `cosmetic_colors`, dazu das Einfärben der Modelle.
-   - Modelle für die Plätze `hands` (etwa `golden-cup`) und `body`.
+   - Modell für `golden-cup`: Das Studio bietet den Pokal an, gezeichnet wird er erst mit
+     `src/cosmetics/golden-cup.glb`. Für `body` und `aura` führt der Server noch kein Cosmetic.
+     Das Studio zeigt die Plätze trotzdem, die App kann sie schon tragen.
    - `follow_until` als Restzeit im Panel anzeigen.
 
 WebGL ist vorerst die Rendering-Basis, damit WebGPU keine Startvoraussetzung ist. Ein späterer

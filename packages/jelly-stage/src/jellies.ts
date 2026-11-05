@@ -36,7 +36,7 @@ import {
 import { findFloorHeight } from "./zones.ts";
 
 /** From the feet to the top of the head, in jelly units. */
-const JELLY_HEIGHT = HEAD.y + HEAD.radius - BODY_BOTTOM;
+export const JELLY_HEIGHT = HEAD.y + HEAD.radius - BODY_BOTTOM;
 /** Every jelly has its own clock offset, so they do not bob and blink in step. */
 const SEED_ANIMATION = 98;
 const ANIMATION_OFFSET_SECONDS = 10;
@@ -53,7 +53,8 @@ const SHADOW_SHRINK = 0.3;
 const SHADOW_TURN = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0));
 /** Room for this many shadows at first. More jellies get a larger mesh. */
 const SHADOW_CAPACITY = 64;
-const FIRST_JELLY_ORDER = 1;
+/** The draw order of the farthest jelly. Every nearer one draws one step later. */
+export const FIRST_JELLY_ORDER = 1;
 /** How high one jelly on a stack stands over the one below: they squeeze together a bit. */
 const STACK_STEP = JELLY_HEIGHT * 0.7;
 /** How fast a jelly steps up onto the stage or down from it, per second. */

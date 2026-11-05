@@ -1,6 +1,6 @@
 /**
- * Das flüssige Glas der Karte: „Weggehen“ und die Kapseln der Partner-Emotes, dieselben Tropfen wie
- * am Jelly, auf einer eigenen Canvas.
+ * Das flüssige Glas der Karte: „Weggehen“ und die Kapseln der Fenster am Jelly, dieselben Tropfen
+ * wie am Jelly, auf einer eigenen Canvas.
  *
  * Eine eigene, weil die Canvas der Bühne zum Rand hin ausläuft und Tropfen in den Ecken mit ihr
  * verschwänden. Hinter dem Glas liegt hier nichts zum Brechen: Der helle Boden würde die Seifenhaut
@@ -24,14 +24,15 @@ import { PET_COLORS, shapeGrowth, stepPresence, type PetColor } from "../pet";
 import { createGlass, FULLSCREEN, readShapes } from "../scene/glassMaterial";
 
 /**
- * „Weggehen“ steht im DOM zuerst und bleibt für sich, die Kapseln fließen ineinander. Auf dem
- * hellen Boden fällt ein Schatten stärker auf als am Jelly, und mehr Farbe hält die Schrift lesbar,
- * wenn Namen und Jellies dahinter durchscheinen.
+ * Die drei festen Knöpfe stehen im DOM zuerst und bleiben für sich, die Kapseln fließen ineinander.
+ * Auf dem hellen Boden fällt ein Schatten stärker auf als am Jelly, und mehr Farbe hält die Schrift
+ * lesbar, wenn Namen und Jellies dahinter durchscheinen.
  *
- * Ponytail: Platz für Hinweis, Abbrechen und fünf Gesten. Der Server kennt drei, mehr Plätze kosten
- * jedes Pixel einen Blick mehr. Darüber fehlt der letzten Geste das Glas.
+ * Ponytail: Platz für Hinweis, Abbrechen, die zwei Knöpfe am fremden Jelly, drei Gesten und die
+ * Fläche der Suche. Mehr Plätze kosten jedes Pixel einen Blick mehr. Kennt der Server mehr als drei
+ * Gesten, fehlt zuerst der Suche das Glas.
  */
-const LAYOUT = { maxShapes: 8, soloShapes: 1, shadow: 0.1, body: 0.62 };
+const LAYOUT = { maxShapes: 11, soloShapes: 3, shadow: 0.1, body: 0.62 };
 /** Dieselbe Bildrate wie am Jelly, bei reduzierter Bewegung nur noch für Hover. */
 const FRAME_MS = 1000 / 30;
 const STILL_FRAME_MS = 100;
