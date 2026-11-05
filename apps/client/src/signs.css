@@ -1,0 +1,328 @@
+/*
+ * Schild-Tropfen und Kapsel-Säule. Das Glas zeichnet LiquidGlass aus der Lage dieser Elemente, hier
+ * liegt nur, was darauf steht, und wie die Flächen sich bewegen. Der Tropfen steht links unten am
+ * Jelly, die Säule immer am linken Fensterrand.
+ */
+.sign-controls {
+  --sign-left: calc(50% - 180px);
+  /* Mitte des Tropfens vor der Säule: Er folgt dem Körper, je größer das Jelly, desto weiter außen. */
+  --sign-drop-x: calc(-40px - 85px * var(--pet-scale, 1));
+  /* Höhe der Säule mit acht Kapseln samt Überschrift und Rand. */
+  --sign-column: calc(37px + 8 * var(--sign-step));
+  /* Unterkante der Säule, knapp unter den Füßen. Die Canvas ragt ein Viertel ihrer Höhe über ihren
+     Kasten hinaus. Bei einem kleinen Jelly beginnt sie so tief, dass die Säule weiter unten stehen muss. */
+  --sign-bottom: max(
+    calc(var(--feet, 299px) + 9px),
+    calc(var(--canvas-top, 43px) - var(--canvas-height, 315px) / 4 + var(--sign-column))
+  );
+  /* Wie weit Kapseln und Füllung beim Ein- und Ausfahren zum Tropfen hinüberrücken. */
+  --sign-to-drop: calc(142px - 85px * var(--pet-scale, 1));
+  /* Unter 80 % etwas flacher: Sonst schnitte die Canvas unten den Schatten des Tropfens ab. */
+  --sign-pill-height: clamp(26px, calc(12px + 20px * var(--pet-scale, 1)), 28px);
+  --sign-gap: 2px;
+  --sign-step: calc(var(--sign-pill-height) + var(--sign-gap));
+  --sign-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: var(--studio-ready, 0);
+}
+
+.sign-controls button {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  pointer-events: auto;
+}
+
+.sign-controls svg {
+  flex: none;
+  filter: drop-shadow(0 1px 2px #000c) drop-shadow(0 0 3px #0007);
+}
+
+.sign-controls button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.sign-trigger {
+  position: absolute;
+  left: calc(50% + var(--sign-drop-x) - 22px);
+  top: calc(var(--sign-bottom) + 6px);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  animation: sign-float 5s ease-in-out infinite alternate;
+  transition:
+    scale 300ms var(--sign-spring),
+    background 150ms;
+}
+
+.sign-trigger:hover {
+  scale: 1.08;
+  background: #ffffff1f;
+}
+
+.sign-trigger[aria-expanded="true"] {
+  scale: 0.9;
+}
+
+.sign-trigger svg {
+  width: 23px;
+  height: 23px;
+}
+
+/* Bei einem großen Jelly steht der Tropfen am Fensterrand: Mittig würde die Beschriftung abgeschnitten. */
+.sign-trigger[data-tip]::before {
+  left: 0;
+  translate: 0 0;
+}
+
+/* Der Karten-Tropfen steht spiegelbildlich zum Schild. Eigener Takt: Sonst wippten beide gleichzeitig. */
+.map-trigger {
+  left: calc(50% - var(--sign-drop-x) - 22px);
+  animation-delay: -2.5s;
+}
+
+.map-trigger[data-tip]::before {
+  right: 0;
+  left: auto;
+}
+
+/* Wie der Punkt auf den Studio-Blobs: Hier ist etwas angelegt. */
+.sign-trigger.raised::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  right: 18%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px #fff;
+}
+
+.sign-pop {
+  position: absolute;
+  left: var(--sign-left);
+  bottom: calc(100% - var(--sign-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sign-gap);
+  padding-bottom: 5px;
+}
+
+/* Liegt nur für den Shader hinter den Kapseln: Ohne sie hätte jede Kapsel ihren eigenen Grat. */
+.sign-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 114px;
+  transform-origin: calc(var(--sign-to-drop) + 10px) 100%;
+  animation: sign-fill-in 540ms cubic-bezier(0.3, 0.75, 0.35, 1.08) both;
+}
+
+.sign-caption {
+  margin: 12px 0 3px 18px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  letter-spacing: 0.2px;
+  text-shadow: var(--glass-ink-shadow);
+  animation: sign-ink-in 200ms ease-out 260ms both;
+}
+
+.sign-pill,
+.sign-note {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: var(--sign-pill-height);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  text-shadow: var(--glass-ink-shadow);
+}
+
+.sign-pill {
+  gap: 8px;
+  padding: 0 18px 0 16px;
+  border-radius: calc(var(--sign-pill-height) / 2);
+  transform-origin: 0 50%;
+  animation: sign-pill-in 420ms var(--sign-spring) calc(var(--rise) * 24ms) both;
+  transition:
+    scale 220ms var(--sign-spring),
+    background 150ms;
+}
+
+.sign-pill svg {
+  width: 15px;
+  height: 15px;
+}
+
+.sign-pill > * {
+  animation: sign-ink-in 180ms ease-out calc(var(--rise) * 24ms + 120ms) both;
+}
+
+.sign-pill[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.sign-pill:not([aria-disabled="true"]):hover,
+.sign-pill:focus-visible {
+  scale: 1.05;
+  background: #ffffff26;
+}
+
+/* Schließt die Lücken in der Säule: Der Zeiger fällt nie durch, die Tafel flackert nicht. */
+.sign-pill::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--sign-gap) / -2) 0;
+}
+
+/* Der Ring schillert wie die Haut der Tropfen, siehe `.pop button[aria-pressed='true']`. */
+@property --sign-film {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.sign-pill[aria-pressed="true"] {
+  background: #ffffff1f;
+}
+
+.sign-pill[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--sign-film), #8dffbf, #ff9bd8, #9fd4ff, #ffe79a, #8dffbf);
+  pointer-events: none;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  animation: sign-film 6s linear infinite;
+}
+
+.sign-lower {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-right: -8px;
+  border-radius: 50%;
+  background: #ffffffe0;
+  color: #1a2630;
+  text-shadow: none;
+}
+
+.sign-lower svg {
+  width: 9px;
+  height: 9px;
+  filter: none;
+}
+
+.sign-note {
+  margin: 0;
+  padding: 0 20px;
+  color: #fff;
+  pointer-events: auto;
+  animation: sign-pill-in 420ms var(--sign-spring) both;
+  --rise: 0;
+}
+
+/* Beim Schließen läuft alles in den Tropfen zurück, das Glas folgt und fließt dabei zusammen. */
+.sign-pop:not([data-open]) .sign-pill,
+.sign-pop:not([data-open]) .sign-note {
+  pointer-events: none;
+  animation: sign-pill-out 160ms ease-in calc(var(--sink, 0) * 8ms) both;
+}
+
+.sign-pop:not([data-open]) .sign-fill {
+  animation: sign-fill-out 200ms ease-in both;
+}
+
+.sign-pop:not([data-open]) .sign-caption,
+.sign-pop:not([data-open]) .sign-pill > * {
+  animation: sign-ink-out 90ms ease-out both;
+}
+
+/* Der Ring gehört zur Schrift, nicht zum Glas: Er verschwindet mit ihr. */
+.sign-pop:not([data-open]) .sign-pill {
+  background: transparent;
+}
+
+.sign-pop:not([data-open]) .sign-pill::before {
+  display: none;
+}
+
+@keyframes sign-float {
+  to {
+    translate: 0 -3px;
+  }
+}
+
+@keyframes sign-pill-in {
+  from {
+    translate: var(--sign-to-drop) calc((var(--rise) + 1) * var(--sign-step));
+    scale: 0.3;
+  }
+}
+
+@keyframes sign-pill-out {
+  to {
+    translate: var(--sign-to-drop) calc((var(--rise, 0) + 1) * var(--sign-step));
+    scale: 0.3;
+  }
+}
+
+@keyframes sign-fill-in {
+  from {
+    scale: 0.4 0.08;
+  }
+}
+
+@keyframes sign-fill-out {
+  to {
+    scale: 0.3 0.04;
+  }
+}
+
+@keyframes sign-ink-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sign-ink-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sign-film {
+  to {
+    --sign-film: 360deg;
+  }
+}
+
+html[data-reduced-motion] .sign-controls,
+html[data-reduced-motion] .sign-controls * {
+  animation: none;
+  transition: none;
+}
+
+html[data-reduced-motion] .sign-pop:not([data-open]) {
+  display: none;
+}

@@ -135,7 +135,7 @@ export function animateHands(hands: Object3D[], s: Motion, frame: Frame, holding
   const out = Math.max(0, s.hands);
   hands.forEach((hand, index) => {
     hand.visible = out > 0.02;
-    if (!hand.visible) return;
+    // Auch versteckte Hände zurücksetzen: Eine Emote-Geste kann sie gleich wieder hervorholen.
     const side = index === 0 ? -1 : 1;
     const float = Math.sin(frame.time * 2.2 + index * 1.7) * 0.045 * frame.motion;
     // Sie kommen seitlich aus dem Körper und fliegen beim Stupsen jubelnd nach oben.

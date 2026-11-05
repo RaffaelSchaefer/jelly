@@ -6,6 +6,8 @@ pnpm-/Turborepo-Monorepo für Jelly, den Desktop-Begleiter für die LAN am Umwel
 - `apps/server`: Server in Go mit der 3D-Bühne für die LAN, siehe
   [apps/server/README.md](apps/server/README.md)
 - `packages/jelly-scene`: das 3D-Jelly als reines three.js, genutzt von App und Bühne
+- `packages/jelly-stage`: die 3D-Bühne als reines three.js, genutzt von der Bühnen-Seite des Servers
+  und der Karte der App
 
 ```sh
 pnpm install                              # Abhängigkeiten für alle Apps

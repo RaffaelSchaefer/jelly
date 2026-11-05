@@ -7,6 +7,13 @@
 
 import { PET_SIZE } from "./types";
 
+/**
+ * So viel größer als die Maße hier ist die Canvas wirklich. Die Tropfen des Studios brauchen Platz
+ * über ihren Rand hinaus. Das Pet bleibt, wo es ist: Die Canvas ragt nach allen Seiten gleich weit
+ * über, und die Kamera sieht um denselben Faktor mehr (siehe `scene/PetScene.tsx`).
+ */
+export const CANVAS_OVERSCAN = 1.5;
+
 /** Maße der Bühne bei 100 % in CSS-Pixeln. Muss zu `.pet-stage` in `styles.css` passen. */
 const BASE = {
   stage: 330,
@@ -20,13 +27,20 @@ const BASE = {
   bubbleTop: 20,
 };
 
+/** Breite des Fensters. Feste Breite, denn Panels brauchen 340 px, und das Jelly bleibt so mittig. */
+const WINDOW_WIDTH = 384;
+
+/** Fensterhöhe ohne Bühne: oben 8, Knöpfe 30, Abstand 8, Dock 40, unten 14. Siehe `.pet-window`. */
+const WINDOW_CHROME = 100;
+
 /**
  * Wo alles auf der Bühne bei einer bestimmten Größe (in Prozent) hingehört.
  *
  * Beim Verkleinern bleiben die Füße am Boden. Die Bühne behält ihre Höhe, damit die Panels weiter
- * passen. Beim Vergrößern bleibt der Kopf, wo er war, und die Bühne wächst nach unten in den freien
- * Platz unter dem Dock. So muss das Fenster selbst nie seine Größe ändern. Die Sprechblase schwebt
- * immer im gleichen Abstand über dem Kopf, die Fensterknöpfe darüber wandern mit.
+ * passen. Beim Vergrößern bleibt der Kopf, wo er war, und die Bühne wächst nach unten. Das Fenster
+ * wächst mit, damit es nie größer ist als sein Inhalt: Durchsichtige Fensterfläche schluckt Klicks.
+ * Die Sprechblase schwebt immer im gleichen Abstand über dem Kopf, die Fensterknöpfe darüber
+ * wandern mit.
  */
 export function stageLayout(size: number) {
   const scale = Math.min(PET_SIZE.max, Math.max(PET_SIZE.min, size)) / 100;
@@ -48,5 +62,6 @@ export function stageLayout(size: number) {
     bubbleTop,
     toolsOffset: Math.max(0, bubbleTop - BASE.bubbleTop),
     stage,
+    window: { width: WINDOW_WIDTH, height: stage + WINDOW_CHROME },
   };
 }
