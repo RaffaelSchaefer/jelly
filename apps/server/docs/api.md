@@ -502,6 +502,7 @@ Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der 
   Von Hand angelegte Zonen bleiben unberührt.
 - `rotation` ist optional, von 0 bis unter 360 Grad, Nachkommastellen sind erlaubt. Fehlt sie, zeigt das Modell zur Kamera.
   Alle vier Ecken müssen nach dem Drehen im Raum liegen. Hindernis und Plätze der Zone drehen sich mit.
+- `zones` ist Pflicht, damit eine falsche Datei nicht alle Zonen entfernt. `"zones": []` entfernt sie mit Absicht.
 - Der Import läuft auch während einer LAN und sendet `stage.changed`.
 - Ist eine Zone ungültig, ändert sich nichts, und es folgt `400 invalid_map`. Unbekannte Props hindern den Import nicht,
   stehen aber in `unknown_props`. Die bekannten Props stehen in `ListProps` in `internal/rules/maps.go`.

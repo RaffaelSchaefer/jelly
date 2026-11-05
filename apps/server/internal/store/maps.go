@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -46,7 +47,11 @@ func (store *Store) ImportMap(
 	}
 	run := mapImportRun{lanID: lanID, zones: roomMap.Zones, report: &report}
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		workErr := writeMapZones(ctx, transaction, run)
+		workErr := requireLAN(ctx, transaction, lanID)
+		if workErr != nil {
+			return workErr
+		}
+		workErr = writeMapZones(ctx, transaction, run)
 		if workErr != nil {
 			return workErr
 		}
@@ -179,6 +184,20 @@ func removeMapZone(
 	_, err = transaction.ExecContext(ctx, deleteMapZoneSQL, areaID)
 	if err != nil {
 		return fmt.Errorf("delete map zone: %w", err)
+	}
+	return nil
+}
+
+// requireLAN answers for an unknown LAN, which an empty map would never run into otherwise.
+func requireLAN(ctx context.Context, transaction *sql.Tx, lanID int64) error {
+	var found int
+	const selectLANExistsSQL = `SELECT 1 FROM lans WHERE id = ?`
+	err := transaction.QueryRowContext(ctx, selectLANExistsSQL, lanID).Scan(&found)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrLANNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("find LAN: %w", err)
 	}
 	return nil
 }

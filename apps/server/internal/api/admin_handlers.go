@@ -290,10 +290,12 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 	if !server.readLimitedJSON(writer, request, &roomMap, maxMapBytes) {
 		return
 	}
-	if !rules.IsMapSizeValid(roomMap) {
+	if !rules.IsMapSizeValid(roomMap) || roomMap.Zones == nil {
 		server.writeProblem(writer, problem{
-			http.StatusBadRequest, codeInvalidMap,
-			"Dieses Kartenformat kennt der Server nicht, oder die Karte ist zu groß.",
+			http.StatusBadRequest,
+			codeInvalidMap,
+			"Dieses Kartenformat kennt der Server nicht, `zones` fehlt, " +
+				"oder die Karte ist zu groß.",
 		})
 		return
 	}

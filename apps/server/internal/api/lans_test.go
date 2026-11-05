@@ -98,3 +98,31 @@ func lanBody(slug, name, timezone string, startsAt, endsAt int64) string {
 		slug, name, timezone, startsAt, endsAt,
 	)
 }
+
+func TestMapImportNeedsZonesAndAKnownLAN(t *testing.T) {
+	testFixture := newFixture(t)
+	const path = "/admin/api/lans/1/map"
+	zone := `{"version":1,"zones":[{"id":"t1","x":10,"y":10,"width":5,"height":5}]}`
+	if response := testFixture.callAdmin("PUT", path, zone); response.status != http.StatusOK {
+		t.Fatalf("import: %d %s", response.status, response.body)
+	}
+	response := testFixture.callAdmin("PUT", path, `{"version":1}`)
+	if response.status != http.StatusBadRequest {
+		t.Errorf("without zones: %d %s", response.status, response.body)
+	}
+	areas := testFixture.callAdmin("GET", "/admin/api/lans/1/areas", "")
+	if !strings.Contains(string(areas.body), `"t1"`) {
+		t.Errorf("a file without zones removed the zone: %s", areas.body)
+	}
+	response = testFixture.callAdmin("PUT", "/admin/api/lans/99/map", `{"version":1,"zones":[]}`)
+	if response.status != http.StatusNotFound {
+		t.Errorf("unknown LAN: %d %s", response.status, response.body)
+	}
+	if response = testFixture.callAdmin(
+		"PUT",
+		path,
+		`{"version":1,"zones":[]}`,
+	); response.status != http.StatusOK {
+		t.Errorf("empty on purpose: %d %s", response.status, response.body)
+	}
+}
