@@ -19,7 +19,9 @@ button:focus-visible { outline: 2px solid #2059ed; outline-offset: 3px; }
 #drag { cursor: grab; }
 
 /* Right below the tools: The hall is deeper than wide and narrows towards the back, so this corner stays free. */
-#leave { position: absolute; top: 48px; right: 1rem; z-index: 3; }
+#find-open { position: absolute; top: 48px; right: 1rem; z-index: 3; }
+#highlight-own { position: absolute; top: 90px; right: 1rem; z-index: 3; }
+#leave { position: absolute; top: 132px; right: 1rem; z-index: 3; }
 #leave[hidden] { display: none; }
 
 /* Knöpfe und Hinweise der Karte. Ohne WebGL fehlt `data-glass`, dann bleiben sie einfarbig. */
@@ -34,12 +36,33 @@ html[data-glass] button.glass-pill:hover { background: transparent; scale: 1.06;
 html[data-glass] button.glass-pill:active { scale: 0.96; }
 @media (prefers-reduced-motion: reduce) { html[data-glass] .glass-pill { transition: none; } }
 
-/* Das Fenster mit den Gesten sitzt am eigenen Jelly, `partner.ts` setzt die Lage. Dicht genug, damit die Kapseln ineinanderfließen. */
-#partner-menu { position: absolute; z-index: 3; display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
-#partner-menu[hidden] { display: none; }
+/* Die Fenster mit Gesten und Aktionen sitzen am Jelly, `partner.ts` setzt die Lage. Dicht genug, damit die Kapseln ineinanderfließen. */
+#partner-menu, #jelly-menu { position: absolute; z-index: 3; display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+#partner-menu[hidden], #jelly-menu[hidden] { display: none; }
 /* Oben in der Mitte: Dort liegen weder Fensterknöpfe noch „Weggehen“. */
 #partner-bar { position: absolute; top: 12px; left: 50%; z-index: 3; display: flex; gap: 6px; translate: -50% 0; white-space: nowrap; }
 #partner-bar[hidden] { display: none; }
+
+/* Die Suche nimmt den Platz der festen Knöpfe ein: eine Glasfläche wie die Schilder am Jelly, oben das Feld, darunter die Treffer. Das Feld liegt unter dem Glanzstreifen der Fläche, damit er nicht durch den Text läuft. */
+#frame[data-finding] #find-open, #frame[data-finding] #highlight-own, #frame[data-finding] #leave { display: none; }
+#find-panel { position: absolute; top: 48px; right: 1rem; z-index: 3; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; width: 15rem; padding: 1.35rem 0.75rem 0.85rem; }
+#find-panel[hidden] { display: none; }
+#find-input { box-sizing: border-box; width: 100%; margin-bottom: 4px; padding: 0.4rem 1.9rem 0.5rem 0.55rem; border: 0; border-bottom: 1px solid #ffffff66; border-radius: 0; background: transparent; color: inherit; font: inherit; text-shadow: inherit; outline: 0; appearance: none; }
+#find-input::-webkit-search-cancel-button { display: none; }
+#find-input::placeholder { color: inherit; opacity: 0.85; }
+#find-input:focus { border-bottom-color: #ffffffd9; }
+#find-close { position: absolute; top: 1.25rem; right: 0.7rem; width: 26px; height: 26px; padding: 4px; color: #ffffff; filter: drop-shadow(0 1px 2px #0b1a2bb3); }
+#find-close:hover { background: #ffffff33; box-shadow: none; }
+#find-list { display: flex; flex-direction: column; gap: 2px; }
+#find-list button { display: flex; align-items: center; gap: 0.55rem; padding: 0.42rem 0.55rem; border: 0; border-radius: 999px; background: transparent; color: inherit; font: inherit; text-align: left; text-shadow: inherit; transition: background 120ms; }
+#find-list button:hover { background: #ffffff2e; }
+#find-list button:focus-visible { outline: 2px solid #ffffff; outline-offset: -2px; }
+/* Der Ring zeigt, wen Enter wählt, wie bei der gewählten Zeile der Schilder. */
+#find-input:not(:placeholder-shown) ~ #find-list button:first-child { box-shadow: inset 0 0 0 1.5px #ffffffd9; }
+#find-list p { margin: 0; padding: 0.35rem 0.55rem 0; font-size: 0.72rem; font-weight: 500; opacity: 0.9; text-align: center; }
+.find-dot { flex: none; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 1.5px #ffffffe6, 0 0 7px var(--dot-glow); }
+.find-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-level { flex: none; font-size: 0.72rem; font-weight: 500; opacity: 0.9; }
 
 #status { position: absolute; right: 1.5rem; bottom: 1.5rem; left: 1.5rem; z-index: 3; margin: 0; padding: 0.6rem 1rem; border-radius: 0.5rem; background: #171d25; color: #f4f7f8; font: 0.875rem system-ui, sans-serif; text-align: center; }
 #status[data-problem] { background: #4f1c0b; }

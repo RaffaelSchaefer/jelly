@@ -110,7 +110,7 @@ function fillMenu(flow: PartnerFlow, entries: CatalogEntry[]) {
 }
 
 /** Setzt das Fenster neben den Klick, ganz innerhalb der Karte. */
-function placeMenu(menu: HTMLElement, at: ScreenPoint) {
+export function placeMenu(menu: HTMLElement, at: ScreenPoint) {
   const area = menu.parentElement!;
   const maxLeft = area.clientWidth - menu.offsetWidth - MENU_MARGIN;
   const maxTop = area.clientHeight - menu.offsetHeight - MENU_MARGIN;

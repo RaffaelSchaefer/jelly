@@ -1,7 +1,8 @@
 /**
  * Die Karte im eigenen Fenster: die Bühne aus `@jelly/stage` über das ganze Fenster, dazu das
- * eigene Jelly, Klicks zum Dazustellen und „Weggehen“. Ein Klick aufs eigene Jelly startet ein
- * Partner-Emote (`partner.ts`).
+ * eigene Jelly und „Weggehen“. Ein Klick aufs eigene Jelly startet ein Partner-Emote
+ * (`partner.ts`), einer auf ein fremdes öffnet dessen Fenster (`actions.ts`), einer auf den Boden
+ * einen Ausflug. Oben rechts lässt sich ein Jelly per Namen suchen (`search.ts`).
  *
  * Reines TypeScript ohne React: Außer der Canvas gibt es hier nur ein paar Knöpfe und eine
  * Statuszeile.
@@ -14,12 +15,14 @@ import {
   type ScreenPoint,
   type StageHighlight,
   type StagePlayer,
+  type StagePoint,
   type StageState,
   type StageView,
 } from "@jelly/stage";
 
 import { desktop, windowAction } from "../backend";
 import { knownPetColor } from "../pet";
+import { createJellyMenu, type JellyMenu } from "./actions";
 import { startGlass, type GlassLayer } from "./glass";
 import {
   cancelFlow,
@@ -29,6 +32,7 @@ import {
   openGestures,
   type PartnerFlow,
 } from "./partner";
+import { createJellySearch, type JellySearch } from "./search";
 import { createDesktopSource, type MapSource } from "./source";
 import "./map.css";
 
@@ -39,9 +43,9 @@ import "./map.css";
 const RELOAD_DELAY_MS = 2000;
 /** Die Karte läuft neben Spielen, also ohne die doppelte Auflösung des Beamers. */
 const SUPERSAMPLING = 1;
-/** Etwas nach dem Ende des Folgens lesen, damit der Server es schon beendet hat. */
-const FOLLOW_END_GRACE_MS = 1000;
-/** So lange bleibt eine Fehlermeldung zum Dazustellen stehen. Das nächste Neuladen löscht sie nicht. */
+/** Etwas nach dem Ende von Folgen oder Ausflug lesen, damit der Server es schon beendet hat. */
+const AWAY_END_GRACE_MS = 1000;
+/** So lange bleibt eine Fehlermeldung zu einem Klick stehen. Das nächste Neuladen löscht sie nicht. */
 const ACTION_PROBLEM_MS = 6000;
 const TEXT_NO_LAN = "Gerade läuft keine LAN.";
 const TEXT_NO_WEBGL = "Dieses Gerät kann die 3D-Karte nicht zeichnen.";
@@ -58,17 +62,21 @@ interface MapPage {
   view: StageView | null;
   /** `null` ohne WebGL: Dann bleiben Knöpfe und Hinweise einfarbig. */
   glass: GlassLayer | null;
+  menu: JellyMenu;
+  search: JellySearch;
   targetId: number | null;
+  /** Wohin das Jelly auf seinem Ausflug will. */
+  destination: StagePoint | null;
   /** Wer gerade leuchtet, solange man einen Partner wählt. */
   highlight: StageHighlight | null;
   /** Die Jellies vom letzten Lesen, für den Namen eines Partners. */
   players: StagePlayer[];
   /** Abstand zur Uhr des Servers vom letzten Lesen. */
   clockOffset: number;
-  /** Ein Aufruf zum Dazustellen läuft. Sie laufen einzeln, damit keiner einen neueren überholt. */
-  following: boolean;
-  /** Liest neu, wenn das Folgen von selbst endet. Dazu kommt kein Ereignis. */
-  followEnd: ReturnType<typeof setTimeout> | undefined;
+  /** Ein Aufruf läuft. Sie laufen einzeln, damit keiner einen neueren überholt. */
+  acting: boolean;
+  /** Liest neu, wenn Folgen oder Ausflug von selbst enden. Dazu kommt kein Ereignis. */
+  awayEnd: ReturnType<typeof setTimeout> | undefined;
   /** Was die Statuszeile zeigt, das Wichtigste zuerst. */
   actionProblem: string;
   readProblem: string;
@@ -83,37 +91,45 @@ function renderStatus(page: MapPage) {
   page.status.toggleAttribute("data-problem", problem !== "");
 }
 
-/** Gibt Ziel und Leuchten an die Bühne. */
+/** Gibt Ziel, Leuchten und das Ziel des Ausflugs an die Bühne. */
 function applyMarks(page: MapPage) {
   page.view?.setMarks({
     ownId: page.source.readOwn().id,
     targetId: page.targetId,
     highlight: page.highlight,
+    destination: page.destination,
   });
 }
 
-/** Übernimmt das Ziel für Markierung und „Weggehen“. */
+/** Übernimmt das Ziel für Markierung und „Weggehen“, den es auch für einen Ausflug gibt. */
 function setTarget(page: MapPage, targetId: number | null) {
   page.targetId = targetId;
-  page.leave.hidden = targetId === null;
+  page.leave.hidden = targetId === null && page.destination === null;
   applyMarks(page);
 }
 
 /**
- * Übernimmt, was ein neuer Stand für die Seite bedeutet. Das Ziel kommt aus dem eigenen Eintrag:
- * Wird ein Ziel gelöscht, fällt es ohne Ereignis weg.
+ * Übernimmt Ziel und Ausflug aus dem eigenen Eintrag und liest neu, wenn eines davon von selbst
+ * endet. Wird ein Ziel gelöscht, fällt es ohne Ereignis weg.
  */
+function applyAway(page: MapPage, own: StagePlayer | undefined, serverTime: number) {
+  page.destination = own?.trip ?? null;
+  setTarget(page, own?.follow_player_id ?? null);
+  clearTimeout(page.awayEnd);
+  const endsAt = own?.follow_until ?? own?.trip?.until;
+  if (endsAt) {
+    const remaining = Math.max(0, endsAt - serverTime);
+    page.awayEnd = setTimeout(() => page.view?.reload(), remaining + AWAY_END_GRACE_MS);
+  }
+}
+
+/** Übernimmt, was ein neuer Stand für die Seite bedeutet. */
 function applyState(page: MapPage, state: StageState) {
   const { id, reducedMotion } = page.source.readOwn();
   const own = state.players.find((player) => player.id === id);
   page.players = state.players;
   page.clockOffset = state.server_time - Date.now();
-  setTarget(page, own?.follow_player_id ?? null);
-  clearTimeout(page.followEnd);
-  if (own?.follow_until) {
-    const remaining = Math.max(0, own.follow_until - state.server_time);
-    page.followEnd = setTimeout(() => page.view?.reload(), remaining + FOLLOW_END_GRACE_MS);
-  }
+  applyAway(page, own, state.server_time);
   const reduced = reducedMotion || OS_REDUCED_MOTION.matches;
   page.view?.setReducedMotion(reduced);
   if (own) page.glass?.setLook(knownPetColor(own.color), reduced);
@@ -122,7 +138,7 @@ function applyState(page: MapPage, state: StageState) {
   renderStatus(page);
 }
 
-/** Zeigt, warum das Dazustellen nicht geklappt hat, und räumt die Meldung später weg. */
+/** Zeigt, warum ein Klick nicht geklappt hat, und räumt die Meldung später weg. */
 function showActionProblem(page: MapPage, problem: string) {
   page.actionProblem = problem;
   setTimeout(() => {
@@ -132,22 +148,61 @@ function showActionProblem(page: MapPage, problem: string) {
   }, ACTION_PROBLEM_MS);
 }
 
-/**
- * Stellt das Jelly dazu oder weg. Das Ziel gilt sofort, damit schon der nächste Klick es kennt. Den
- * Weg dorthin plant der Server und schickt ihn im Stream.
- */
-async function follow(page: MapPage, playerId: number | null) {
-  if (page.following) return;
-  page.following = true;
+/** Schickt einen Aufruf ab und liest danach neu. Den Weg plant der Server und schickt ihn im Stream. */
+async function runAction(page: MapPage, action: () => Promise<void>) {
+  if (page.acting) return;
+  page.acting = true;
   page.actionProblem = "";
   try {
-    setTarget(page, await page.source.setFollow(playerId));
+    await action();
   } catch (cause) {
     showActionProblem(page, String(cause));
   }
-  page.following = false;
+  page.acting = false;
   renderStatus(page);
   page.view?.reload();
+}
+
+/**
+ * Stellt das Jelly dazu oder weg. Das beendet einen Ausflug. Das Ziel gilt sofort, damit schon der
+ * nächste Klick es kennt.
+ */
+function follow(page: MapPage, playerId: number | null) {
+  return runAction(page, async () => {
+    const target = await page.source.setFollow(playerId);
+    page.destination = null;
+    setTarget(page, target);
+  });
+}
+
+/**
+ * Schickt das Jelly auf einen Ausflug, der ein Dazustellen beendet. Der Zeiger steht sofort. Lehnt
+ * der Server ab, räumt ihn das Neuladen danach wieder weg.
+ */
+function goTo(page: MapPage, point: StagePoint) {
+  return runAction(page, () => {
+    page.destination = point;
+    setTarget(page, null);
+    return page.source.goTo(point);
+  });
+}
+
+/** Lässt ein Jelly aufleuchten. Den Lichtkegel zeichnet die Bühne, sobald das Ereignis ankommt. */
+function highlight(page: MapPage, playerId: number) {
+  return runAction(page, () => page.source.highlight(playerId));
+}
+
+/** Schließt, was gerade über der Karte offen ist. */
+function closeWindows(page: MapPage) {
+  page.menu.close();
+  page.search.close();
+}
+
+/** Lässt das eigene Jelly aufleuchten. Vor dem ersten Lesen ist es noch nicht bekannt. */
+function highlightOwn(page: MapPage) {
+  closeWindows(page);
+  const { id } = page.source.readOwn();
+  if (id !== null) void highlight(page, id);
 }
 
 /** Baut den Ablauf der Partner-Emotes aus den Elementen von `map.html`. */
@@ -184,28 +239,43 @@ function pointOf(event: MouseEvent): ScreenPoint {
 }
 
 /**
- * Hover, Klick auf ein Jelly und der Knopf „Weggehen“. Der laufende Partner-Ablauf hat Vorrang,
- * dann das eigene Jelly, sonst stellt ein Klick dazu.
+ * Ein Klick auf die Bühne. Der laufende Partner-Ablauf hat Vorrang, dann schließt er ein offenes
+ * Fenster. Sonst entscheidet, was unter dem Zeiger liegt: das eigene Jelly, ein fremdes oder der
+ * Boden.
  */
+function handleClick(page: MapPage, flow: PartnerFlow, point: ScreenPoint) {
+  if (handleStageClick(flow, point) || page.menu.close() || page.search.close()) return;
+  if (page.view?.isOwnAt(point)) {
+    void openGestures(flow, point);
+    return;
+  }
+  const picked = page.view?.pickAt(point) ?? null;
+  if (picked !== null) {
+    page.menu.open(picked, point, picked === page.targetId);
+    return;
+  }
+  const floor = page.view?.floorAt(point);
+  if (floor) void goTo(page, floor);
+}
+
+/** Hover, Klicks und die festen Knöpfe. „Jelly suchen“ verbindet sich selbst. */
 function listenToInput(page: MapPage, flow: PartnerFlow) {
   page.canvas.addEventListener("pointermove", (event) => page.view?.setPointer(pointOf(event)));
   page.canvas.addEventListener("pointerleave", () => page.view?.setPointer(null));
   page.canvas.addEventListener("click", (event) => {
-    // Ein Doppelklick zählt einmal, sonst ginge das Jelly gleich wieder weg.
-    if (event.detail > 1) return;
-    const point = pointOf(event);
-    if (handleStageClick(flow, point)) return;
-    if (page.view?.isOwnAt(point)) {
-      void openGestures(flow, point);
-      return;
-    }
-    const picked = page.view?.pickAt(point) ?? null;
-    if (picked !== null) void follow(page, picked === page.targetId ? null : picked);
+    // Ein Doppelklick zählt einmal, sonst schlösse sein zweiter Klick das Fenster gleich wieder.
+    if (event.detail <= 1) handleClick(page, flow, pointOf(event));
   });
-  page.leave.addEventListener("click", () => void follow(page, null));
+  page.leave.addEventListener("click", () => {
+    closeWindows(page);
+    void follow(page, null);
+  });
+  document.querySelector("#highlight-own")!.addEventListener("click", () => highlightOwn(page));
   document.querySelector("#partner-cancel")!.addEventListener("click", () => cancelFlow(flow));
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") handleEscape(flow);
+    if (event.key !== "Escape") return;
+    handleEscape(flow);
+    closeWindows(page);
   });
   page.source.onInviteEvent((event) => handleInviteEvent(flow, event, page.source.readOwn().id));
 }
@@ -268,12 +338,23 @@ async function startMap() {
     status: document.querySelector<HTMLElement>("#status")!,
     view: null,
     glass: null,
+    menu: createJellyMenu({
+      follow: (playerId) => void follow(page, playerId),
+      highlight: (playerId) => void highlight(page, playerId),
+    }),
+    search: createJellySearch({
+      readPlayers: () => page.players,
+      readOwnId: () => page.source.readOwn().id,
+      onOpen: () => page.menu.close(),
+      pick: (playerId) => void highlight(page, playerId),
+    }),
     targetId: null,
+    destination: null,
     highlight: null,
     players: [],
     clockOffset: 0,
-    following: false,
-    followEnd: undefined,
+    acting: false,
+    awayEnd: undefined,
     actionProblem: "",
     readProblem: "",
     note: "",
