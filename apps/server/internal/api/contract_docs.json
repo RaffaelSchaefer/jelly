@@ -169,7 +169,7 @@
       "description": "Asks for a partner emote.",
       "fields": {
         "key": "The emote, out of `partner_emotes` in the catalog.",
-        "partner_ids": "The invited jellies, exactly one for now."
+        "partner_id": "The invited jelly."
       }
     },
     "KeyBody": {
@@ -220,7 +220,7 @@
         "id": "Number of the invite, for answering it.",
         "key": "The emote, out of `partner_emotes` in the catalog.",
         "from_id": "The jelly that asked.",
-        "partner_ids": "The invited jellies.",
+        "partner_id": "The invited jelly.",
         "state": "`pending`, `accepted`, `declined` or `cancelled`.",
         "expires_at": "When it runs out unanswered."
       }
@@ -228,8 +228,7 @@
     "PartnerInviteList": {
       "description": "The open partner emotes of the player.",
       "fields": {
-        "items": "The invites.",
-        "next_cursor": "Always null for now, kept so this list can get pages later."
+        "items": "All open invites."
       }
     },
     "PartnerInviteResult": {
@@ -488,7 +487,7 @@
     { "type": "award.given", "meaning": "The orga gave a prize. `title` is free text.", "player": "the player", "payload": "`{\"title\"}`" },
     { "type": "emote", "meaning": "A jelly plays an emote.", "player": "the player", "payload": "`{\"key\"}`" },
     { "type": "partner.emote", "meaning": "Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden.", "player": "who accepted", "payload": "`{\"key\",\"partner_id\"}`, `partner_id` is who asked" },
-    { "type": "partner_emote.updated", "meaning": "A partner emote was created or changed. The app of an invited jelly finds itself in `partner_ids` and shows its popup.", "player": "who acted", "payload": "`{\"id\",\"key\",\"from_id\",\"partner_ids\",\"state\",\"expires_at\"}`" },
+    { "type": "partner_emote.updated", "meaning": "A partner emote was created or changed. The app of an invited jelly finds itself in `partner_id` and shows its popup.", "player": "who acted", "payload": "`{\"id\",\"key\",\"from_id\",\"partner_id\",\"state\",\"expires_at\"}`" },
     { "type": "sign.changed", "meaning": "A jelly raised or lowered a sign.", "player": "the player", "payload": "`{\"key\"}`, null when lowered" },
     { "type": "follow.changed", "meaning": "A jelly started following, or ended following or a trip.", "player": "the player", "payload": "`{\"target_id\"}`, null when it ended" },
     { "type": "trip.changed", "meaning": "A jelly started a trip.", "player": "the player", "payload": "`{\"x\",\"y\",\"ends_at\"}`" },

@@ -495,19 +495,15 @@
             "description": "The emote, out of `partner_emotes` in the catalog.",
             "type": "string"
           },
-          "partner_ids": {
-            "description": "The invited jellies, exactly one for now.",
-            "items": {
-              "format": "int64",
-              "type": "integer"
-            },
-            "nullable": true,
-            "type": "array"
+          "partner_id": {
+            "description": "The invited jelly.",
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
           "key",
-          "partner_ids"
+          "partner_id"
         ],
         "type": "object"
       },
@@ -686,13 +682,10 @@
             "description": "The emote, out of `partner_emotes` in the catalog.",
             "type": "string"
           },
-          "partner_ids": {
-            "description": "The invited jellies.",
-            "items": {
-              "format": "int64",
-              "type": "integer"
-            },
-            "type": "array"
+          "partner_id": {
+            "description": "The invited jelly.",
+            "format": "int64",
+            "type": "integer"
           },
           "state": {
             "description": "`pending`, `accepted`, `declined` or `cancelled`.",
@@ -703,7 +696,7 @@
           "id",
           "key",
           "from_id",
-          "partner_ids",
+          "partner_id",
           "state",
           "expires_at"
         ],
@@ -714,21 +707,15 @@
         "description": "The open partner emotes of the player.",
         "properties": {
           "items": {
-            "description": "The invites.",
+            "description": "All open invites.",
             "items": {
               "$ref": "#/components/schemas/PartnerInvite"
             },
             "type": "array"
-          },
-          "next_cursor": {
-            "description": "Always null for now, kept so this list can get pages later.",
-            "nullable": true,
-            "type": "string"
           }
         },
         "required": [
-          "items",
-          "next_cursor"
+          "items"
         ],
         "type": "object"
       },
@@ -2118,7 +2105,7 @@
         "summary": "Accept, decline or cancel a partner emote"
       },
       "post": {
-        "description": "The other client learns about it from `partner_emote.updated` and answers with PATCH. `partner_ids` holds exactly one jelly for now. Jellies further apart than `near_distance` get `409 too_far`.",
+        "description": "The other client learns about it from `partner_emote.updated` and answers with PATCH. Jellies further apart than `near_distance` get `409 too_far`.",
         "operationId": "createPartnerEmote",
         "requestBody": {
           "content": {
@@ -2680,7 +2667,7 @@
     },
     "/v1/stage/events": {
       "get": {
-        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events, further back they get `reset` and read their state again. `topics` is a comma-separated list of `events` and `moves`, without it both arrive. Messages of type `move` have no ID and carry a `Move`. Every new connection first gets the current move of each jelly. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.\n\n**Messages:** The SSE message type equals `type`.\n\n| Type | Meaning | `player_id` | `payload` |\n| --- | --- | --- | --- |\n| `player.active` | A jelly came to the stage. | the player | `{}` |\n| `player.updated` | A jelly changed. | the player | `{}`, or `{\"edited\":true}` if the player changed it |\n| `player.hidden` | The orga hid a jelly. | the player | `{}` |\n| `player.removed` | An account was deleted. | null | `{\"player_id\"}` |\n| `xp.gained` | A player earned XP. `source` is `poke`, `food`, `drink`, `event` or `partner`. | the player | `{\"amount\",\"source\"}` |\n| `level.up` | A player reached a new level. | the player | `{\"level\"}` |\n| `achievement.earned` | A player earned an achievement. | the player | `{\"key\"}` |\n| `award.given` | The orga gave a prize. `title` is free text. | the player | `{\"title\"}` |\n| `emote` | A jelly plays an emote. | the player | `{\"key\"}` |\n| `partner.emote` | Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden. | who accepted | `{\"key\",\"partner_id\"}`, `partner_id` is who asked |\n| `partner_emote.updated` | A partner emote was created or changed. The app of an invited jelly finds itself in `partner_ids` and shows its popup. | who acted | `{\"id\",\"key\",\"from_id\",\"partner_ids\",\"state\",\"expires_at\"}` |\n| `sign.changed` | A jelly raised or lowered a sign. | the player | `{\"key\"}`, null when lowered |\n| `follow.changed` | A jelly started following, or ended following or a trip. | the player | `{\"target_id\"}`, null when it ended |\n| `trip.changed` | A jelly started a trip. | the player | `{\"x\",\"y\",\"ends_at\"}` |\n| `stack.changed` | A stack was started or changed. | the player | The stack, only `{\"id\"}` after climbing down |\n| `highlight` | A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`. | who asked | `{\"target_id\",\"ends_at\",\"cosmetic_key\"}` |\n| `stage.changed` | The room changed, so read `GET /v1/stage` again. | null | `{}` |\n| `gathering.changed` | A gathering started or was ended early. A normal end sends nothing, so use `ends_at`. | null | The `Gathering`, null after an early end |\n| `move` | A jelly starts a walk. This message has no ID and is not part of the event log. | `player_id` of the move | The data is a whole `Move`, not an `Event` |\n| `reset` | The stream dropped events for this client, so read the state again. | none | None |\n",
+        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events, further back they get `reset` and read their state again. `topics` is a comma-separated list of `events` and `moves`, without it both arrive. Messages of type `move` have no ID and carry a `Move`. Every new connection first gets the current move of each jelly. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.\n\n**Messages:** The SSE message type equals `type`.\n\n| Type | Meaning | `player_id` | `payload` |\n| --- | --- | --- | --- |\n| `player.active` | A jelly came to the stage. | the player | `{}` |\n| `player.updated` | A jelly changed. | the player | `{}`, or `{\"edited\":true}` if the player changed it |\n| `player.hidden` | The orga hid a jelly. | the player | `{}` |\n| `player.removed` | An account was deleted. | null | `{\"player_id\"}` |\n| `xp.gained` | A player earned XP. `source` is `poke`, `food`, `drink`, `event` or `partner`. | the player | `{\"amount\",\"source\"}` |\n| `level.up` | A player reached a new level. | the player | `{\"level\"}` |\n| `achievement.earned` | A player earned an achievement. | the player | `{\"key\"}` |\n| `award.given` | The orga gave a prize. `title` is free text. | the player | `{\"title\"}` |\n| `emote` | A jelly plays an emote. | the player | `{\"key\"}` |\n| `partner.emote` | Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden. | who accepted | `{\"key\",\"partner_id\"}`, `partner_id` is who asked |\n| `partner_emote.updated` | A partner emote was created or changed. The app of an invited jelly finds itself in `partner_id` and shows its popup. | who acted | `{\"id\",\"key\",\"from_id\",\"partner_id\",\"state\",\"expires_at\"}` |\n| `sign.changed` | A jelly raised or lowered a sign. | the player | `{\"key\"}`, null when lowered |\n| `follow.changed` | A jelly started following, or ended following or a trip. | the player | `{\"target_id\"}`, null when it ended |\n| `trip.changed` | A jelly started a trip. | the player | `{\"x\",\"y\",\"ends_at\"}` |\n| `stack.changed` | A stack was started or changed. | the player | The stack, only `{\"id\"}` after climbing down |\n| `highlight` | A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`. | who asked | `{\"target_id\",\"ends_at\",\"cosmetic_key\"}` |\n| `stage.changed` | The room changed, so read `GET /v1/stage` again. | null | `{}` |\n| `gathering.changed` | A gathering started or was ended early. A normal end sends nothing, so use `ends_at`. | null | The `Gathering`, null after an early end |\n| `move` | A jelly starts a walk. This message has no ID and is not part of the event log. | `player_id` of the move | The data is a whole `Move`, not an `Event` |\n| `reset` | The stream dropped events for this client, so read the state again. | none | None |\n",
         "operationId": "streamEvents",
         "parameters": [
           {

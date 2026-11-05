@@ -390,8 +390,8 @@ func (move stageMove) measureTo(other stageMove) float64 {
 func (player *bot) doPartnerEmote(ctx context.Context) (int, error) {
 	var open struct {
 		Items []struct {
-			ID         int64   `json:"id"`
-			PartnerIDs []int64 `json:"partner_ids"`
+			ID        int64 `json:"id"`
+			PartnerID int64 `json:"partner_id"`
 		} `json:"items"`
 	}
 	status, err := player.get(ctx, pathInvites, &open)
@@ -399,7 +399,7 @@ func (player *bot) doPartnerEmote(ctx context.Context) (int, error) {
 		return status, err
 	}
 	for _, invite := range open.Items {
-		if slices.Contains(invite.PartnerIDs, player.playerID) {
+		if invite.PartnerID == player.playerID {
 			return player.patch(ctx, pathInvites, map[string]any{
 				"id": invite.ID, "state": inviteAccepted,
 			})
@@ -410,6 +410,6 @@ func (player *bot) doPartnerEmote(ctx context.Context) (int, error) {
 		return status, err
 	}
 	return player.post(ctx, pathInvites, map[string]any{
-		fieldKey: pickKey(listPartnerEmotes()), "partner_ids": []int64{target},
+		fieldKey: pickKey(listPartnerEmotes()), "partner_id": target,
 	})
 }

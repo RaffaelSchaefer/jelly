@@ -203,7 +203,7 @@ func TestPartnerEmoteNeedsToStandNearby(t *testing.T) {
 	second := testFixture.registerPlayer("B")
 	testFixture.readStage(first)
 	secondID := strconv.FormatInt(testFixture.loadMe(second).ID, 10)
-	invite := `{"key":"hop","partner_ids":[` + secondID + `]}`
+	invite := `{"key":"hop","partner_id":` + secondID + `}`
 	response := testFixture.callAPI("POST", "/v1/partner-emotes", first, invite)
 	requireProblem(t, response, http.StatusConflict, "too_far")
 
