@@ -140,7 +140,7 @@ function listGesturesRules(): RuleText[] {
     },
     {
       key: "partner_invite_seconds",
-      label: "Antwortzeit bei Partner-Emotes",
+      label: "Antwortzeit Partner-Emote",
       unit: "seconds",
     },
     { key: "highlight_seconds", label: "Dauer des Hervorhebens", unit: "seconds" },
@@ -157,8 +157,8 @@ function listGesturesRules(): RuleText[] {
 function listOperationRules(): RuleText[] {
   return [
     { key: "max_players", label: "Spieler pro LAN", unit: "count" },
-    { key: "max_streams", label: "Offene Verbindungen insgesamt", unit: "count" },
-    { key: "max_player_streams", label: "Offene Verbindungen pro Spieler", unit: "count" },
+    { key: "max_streams", label: "Verbindungen insgesamt", unit: "count" },
+    { key: "max_player_streams", label: "Verbindungen pro Spieler", unit: "count" },
   ];
 }
 

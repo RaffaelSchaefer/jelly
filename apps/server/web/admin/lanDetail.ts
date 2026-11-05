@@ -7,6 +7,7 @@
 import type { LANSummary } from "./api.ts";
 import { createElement } from "./dom.ts";
 import { findLANPhase, formatDateTime, nameLANPhase } from "./format.ts";
+import { createJoinCodeForm } from "./joinCodeForm.ts";
 import { createRulesForm, type FailureHandler } from "./rulesForm.ts";
 
 /** Creates a chip that says where a LAN stands in time. */
@@ -29,5 +30,11 @@ function createHead(lan: LANSummary): HTMLElement {
 
 /** Creates all panels of a LAN. */
 export function createLANDetail(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
-  return createElement("div", "detail", createHead(lan), createRulesForm(lan, onFailure));
+  return createElement(
+    "div",
+    "detail",
+    createHead(lan),
+    createJoinCodeForm(lan, onFailure),
+    createRulesForm(lan, onFailure),
+  );
 }
