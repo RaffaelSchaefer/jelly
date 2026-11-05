@@ -190,7 +190,8 @@ func joinLAN(
 func findLANByCode(ctx context.Context, transaction *sql.Tx, code string) (codeLAN, error) {
 	const selectLANByCodeSQL = `SELECT id, timezone, rules, starts_at, ends_at FROM lans
 		WHERE join_code_hash = ? ORDER BY starts_at DESC LIMIT 1`
-	row := transaction.QueryRowContext(ctx, selectLANByCodeSQL, hashSecret(code))
+	row := transaction.QueryRowContext(ctx, selectLANByCodeSQL,
+		hashSecret(strings.TrimSpace(code)))
 	return scanCodeLAN(row)
 }
 

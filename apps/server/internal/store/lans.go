@@ -70,6 +70,7 @@ type querier interface {
 
 // CreateLAN creates a LAN. Periods must not overlap, so at most one LAN is active.
 func (store *Store) CreateLAN(ctx context.Context, lan NewLAN) error {
+	lan.JoinCode = strings.TrimSpace(lan.JoinCode)
 	if lan.Slug == "" || lan.Name == "" || lan.JoinCode == "" || lan.StartsAt >= lan.EndsAt {
 		return ErrInvalidInput
 	}
@@ -157,6 +158,7 @@ func (store *Store) UpdateLANRules(
 func (store *Store) UpdateJoinCode(
 	ctx context.Context, lanID int64, joinCode string, now int64,
 ) error {
+	joinCode = strings.TrimSpace(joinCode)
 	if joinCode == "" {
 		return ErrInvalidInput
 	}

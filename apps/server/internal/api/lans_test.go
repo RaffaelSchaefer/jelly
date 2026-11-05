@@ -42,3 +42,25 @@ func TestCreateLANAnswersWhenTheShortNameIsTaken(t *testing.T) {
 		t.Fatalf("second LAN: %d %s", response.status, response.body)
 	}
 }
+
+func TestLANCodeIgnoresSpacesAroundIt(t *testing.T) {
+	testFixture := newFixture(t)
+	response := testFixture.callAdmin(
+		"PUT",
+		"/admin/api/lans/1/join-code",
+		`{"join_code":"  neu  "}`,
+	)
+	if response.status != http.StatusOK {
+		t.Fatalf("replace code: %d %s", response.status, response.body)
+	}
+	if answer := testFixture.redeemLANCode("neu", "Ohne"); answer.status != http.StatusOK {
+		t.Errorf("without spaces: %d %s", answer.status, answer.body)
+	}
+	if answer := testFixture.redeemLANCode(" neu ", "Mit"); answer.status != http.StatusOK {
+		t.Errorf("with spaces: %d %s", answer.status, answer.body)
+	}
+	response = testFixture.callAdmin("PUT", "/admin/api/lans/1/join-code", `{"join_code":"   "}`)
+	if response.status != http.StatusBadRequest {
+		t.Errorf("only spaces: %d %s", response.status, response.body)
+	}
+}
