@@ -105,3 +105,13 @@ export function listLANs(): Promise<LANSummary[]> {
 export function createLAN(lan: NewLAN): Promise<unknown> {
   return sendRequest("POST", "/lans", lan);
 }
+
+/** Changes single rules and returns all of them as they are now. */
+export function patchRules(lanID: number, changes: GameRules): Promise<GameRules> {
+  return sendRequest("PATCH", `/lans/${lanID}/rules`, changes);
+}
+
+/** Replaces the code that players join a LAN with. */
+export function updateJoinCode(lanID: number, joinCode: string): Promise<unknown> {
+  return sendRequest("PUT", `/lans/${lanID}/join-code`, { join_code: joinCode });
+}

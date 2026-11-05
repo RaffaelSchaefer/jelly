@@ -90,7 +90,7 @@ export async function createWorkArea(onSessionEnded: () => void): Promise<HTMLEl
             onCreated: (slug) => void reload(slug).catch(() => location.reload()),
             onFailure,
           })
-        : createLANDetail(selected),
+        : createLANDetail(selected, onFailure),
     );
   };
   const open = (target: Selection) => {

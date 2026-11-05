@@ -274,7 +274,36 @@ button:focus-visible {
   gap: 0.85rem;
 }
 
-.detail-head {
+.detail {
   display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.detail-head {
   gap: 0.25rem;
+}
+
+.rule-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  align-items: start;
+  gap: 0.85rem 1rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.85rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.rule-group legend {
+  padding: 0 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.is-changed input {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
