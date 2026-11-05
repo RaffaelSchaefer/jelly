@@ -3,7 +3,13 @@ import { test } from "node:test";
 
 import type { StageMove, StagePlayer } from "./types.ts";
 
-import { findLevels, findPositions, listHighlighted, pruneMoves } from "./moves.ts";
+import {
+  findLevels,
+  findPositions,
+  listHighlighted,
+  pruneMoves,
+  stepRingPresence,
+} from "./moves.ts";
 import { toFloorPoint } from "./world.ts";
 
 function makePlayer(id: number): StagePlayer {
@@ -65,6 +71,18 @@ test("all others light up, or only those near the own jelly, never the own", () 
   assert.deepEqual([...listHighlighted(positions, 1, { kind: "others" })], [2, 3]);
   assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 5 })], [2]);
   assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 1 })], []);
+});
+
+test("a ring grows in, fades out and is forgotten once it is gone", () => {
+  const shown = new Map<number, number>();
+  stepRingPresence(shown, new Set([2]), 0.5);
+  assert.deepEqual([...shown], [[2, 0.5]]);
+  stepRingPresence(shown, new Set([2]), 1);
+  assert.deepEqual([...shown], [[2, 1]]);
+  stepRingPresence(shown, new Set(), 0.5);
+  assert.deepEqual([...shown], [[2, 0.5]]);
+  stepRingPresence(shown, new Set(), 1);
+  assert.equal(shown.size, 0);
 });
 
 test("without the own jelly on the stage nobody counts as near", () => {

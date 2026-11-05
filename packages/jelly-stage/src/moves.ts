@@ -10,6 +10,9 @@ import type { FloorPoint } from "./world.ts";
 import { findMovePosition, findStackLevel } from "./walking.ts";
 import { measureDistance, toFloorPoint } from "./world.ts";
 
+/** Below this a ring that goes away counts as gone. */
+const RING_GONE = 0.01;
+
 /** Which jellies light up on a personal screen: all others, or those within `reach` of the own. */
 export type StageHighlight = { kind: "others" } | { kind: "near"; reach: number };
 
@@ -67,4 +70,24 @@ export function listHighlighted(
     if (highlight.kind === "others" || isNear) lit.add(playerId);
   }
   return lit;
+}
+
+/**
+ * Moves the ring of every jelly toward being there or gone, by `step` of the way. New rings start at
+ * 0, rings that are gone leave the map.
+ */
+export function stepRingPresence(
+  shown: Map<number, number>,
+  lit: ReadonlySet<number>,
+  step: number,
+): void {
+  for (const playerId of lit) {
+    if (!shown.has(playerId)) shown.set(playerId, 0);
+  }
+  for (const [playerId, presence] of shown) {
+    const isLit = lit.has(playerId);
+    const next = presence + ((isLit ? 1 : 0) - presence) * step;
+    if (isLit || next > RING_GONE) shown.set(playerId, next);
+    else shown.delete(playerId);
+  }
 }
