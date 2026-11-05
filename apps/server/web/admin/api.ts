@@ -70,3 +70,38 @@ export function logIn(secret: string): Promise<unknown> {
 export function logOut(): Promise<unknown> {
   return sendRequest("POST", "/logout");
 }
+
+/** The values of a LAN's rules by their name in the API. */
+export type GameRules = Record<string, number>;
+
+/** A LAN as the server lists it. */
+export interface LANSummary {
+  id: number;
+  slug: string;
+  name: string;
+  timezone: string;
+  starts_at: number;
+  ends_at: number;
+  active: boolean;
+  rules: GameRules;
+}
+
+/** What a new LAN needs. */
+export interface NewLAN {
+  slug: string;
+  name: string;
+  timezone: string;
+  join_code: string;
+  starts_at: number;
+  ends_at: number;
+}
+
+/** Lists all LANs. */
+export function listLANs(): Promise<LANSummary[]> {
+  return sendRequest("GET", "/lans");
+}
+
+/** Creates a LAN with the default rules. */
+export function createLAN(lan: NewLAN): Promise<unknown> {
+  return sendRequest("POST", "/lans", lan);
+}

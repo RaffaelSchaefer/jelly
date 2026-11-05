@@ -4,9 +4,10 @@
  * @module
  */
 
-import { AdminApiError, logOut, sendRequest } from "./api.ts";
+import { AdminApiError, logOut } from "./api.ts";
 import { createElement } from "./dom.ts";
 import { createLoginView, type LoginReason } from "./login.ts";
+import { createWorkArea } from "./workArea.ts";
 
 const view = document.querySelector<HTMLElement>("#view");
 const logoutButton = document.querySelector<HTMLButtonElement>("#logout");
@@ -27,11 +28,11 @@ function showLogin(reason: LoginReason): void {
 /** Asks the server whether a session exists, because scripts cannot read its cookie. */
 async function openWorkArea(): Promise<void> {
   try {
-    await sendRequest("GET", "/lans");
+    const workArea = await createWorkArea(() => showLogin("session-ended"));
     if (logoutButton !== null) {
       logoutButton.hidden = false;
     }
-    show(createElement("p", "", "Angemeldet."));
+    show(workArea);
   } catch (error) {
     handleFailure(error);
   }
