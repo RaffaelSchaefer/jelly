@@ -12,10 +12,14 @@ import type { LabelAnchor } from "./labels.ts";
 import type { ScreenPoint } from "./lens.ts";
 import type { StageScene } from "./scene.ts";
 import type { StageSource } from "./source.ts";
-import type { StageCatalog, StageEvent, StageMove, StageState } from "./types.ts";
+import type { StageCatalog, StageEvent, StageMove, StagePoint, StageState } from "./types.ts";
 import type { FloorRect, ScenePoint } from "./world.ts";
 
+import { createBeams, updateBeams, type StageBeams } from "./beams.ts";
+import { createChoiceRings, updateChoiceRings, type ChoiceRings } from "./choiceRings.ts";
 import { createEffects, isFreshEvent, isPulseEvent, updateEffects } from "./effects.ts";
+import { pickFloor } from "./floorPicking.ts";
+import { fitCanvas, startFrameLoop } from "./frameLoop.ts";
 import { createFurniture } from "./furniture.ts";
 import { createJellyCast, pulseJelly, syncJellies, updateJellies } from "./jellies.ts";
 import { drawLabels } from "./labels.ts";
@@ -29,24 +33,18 @@ import {
   type StageHighlight,
 } from "./moves.ts";
 import { pickJelly } from "./picking.ts";
+import { createPointer, updatePointer, type StagePointer } from "./pointer.ts";
 import { disposeProps } from "./props.ts";
 import { createStageScene, findViewer, projectToScreen, resizeStageScene } from "./scene.ts";
 import { ANIMATION_EVENTS, STATE_EVENTS } from "./source.ts";
 import { createVenue, updateVenue } from "./venue.ts";
 import { findSnackRunners, keepNewerMove } from "./walking.ts";
-import { calculateCanvasDensity } from "./world.ts";
 import { listStageRects } from "./zones.ts";
 
 /** Many events in a row cause only one reload. */
 const RELOAD_DELAY_MS = 500;
 /** Jellies leave without an event when they stop being active, so the state is reread regularly. */
 const RELOAD_INTERVAL_MS = 30_000;
-/** Enough for smooth jellies, and the raymarched bodies cost a lot per frame. */
-const FRAMES_PER_SECOND = 30;
-/** A frame may come this much early, because the screen refresh does not match the rate exactly. */
-const FRAME_TOLERANCE_MS = 4;
-/** After a hidden tab, the jellies continue instead of jumping. */
-const LONGEST_FRAME_SECONDS = 0.1;
 const STATE_EVENT_TYPES = new Set(STATE_EVENTS);
 const ANIMATION_EVENT_TYPES = new Set(ANIMATION_EVENTS);
 
@@ -56,6 +54,8 @@ export interface StageMarks {
   targetId: number | null;
   /** While set, only the jellies that light up can be hovered and picked. */
   highlight?: StageHighlight | null;
+  /** Where the own jelly is heading. A pointer stands there until it has arrived. */
+  destination?: StagePoint | null;
 }
 
 /** What a view is shown on, where its data comes from and how it looks. */
@@ -89,6 +89,8 @@ export interface StageView {
   pickAt: (point: ScreenPoint) => number | null;
   /** Reports whether the own jelly is the frontmost one at a point in CSS pixels. */
   isOwnAt: (point: ScreenPoint) => boolean;
+  /** Returns the stage position on the floor at a point in CSS pixels, null off the stage. */
+  floorAt: (point: ScreenPoint) => StagePoint | null;
   setReducedMotion: (reduced: boolean) => void;
 }
 
@@ -116,6 +118,9 @@ interface StageMemory {
   cast: JellyCast;
   furniture: ReturnType<typeof createFurniture>;
   venue: ReturnType<typeof createVenue>;
+  beams: StageBeams;
+  choiceRings: ChoiceRings;
+  goalPointer: StagePointer;
   marks: StageMarks;
   pointer: ScreenPoint | null;
   /** Where the jellies were in the last frame, from back to front. */
@@ -221,19 +226,6 @@ async function reload(memory: StageMemory): Promise<void> {
   }
 }
 
-/** Adjusts the visible canvas to the window and the pixel density. Returns the size in CSS pixels. */
-function fitCanvas(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, density: number) {
-  const { clientWidth: width, clientHeight: height } = canvas;
-  if (canvas.width !== Math.round(width * density)) {
-    canvas.width = Math.round(width * density);
-  }
-  if (canvas.height !== Math.round(height * density)) {
-    canvas.height = Math.round(height * density);
-  }
-  context.setTransform(density, 0, 0, density, 0, 0);
-  return { width, height };
-}
-
 /** Moves every jelly one frame on and returns where they stand now. */
 function moveJellies(memory: StageMemory, seconds: number, now: number): JellySpot[] {
   const time = performance.now() / 1000;
@@ -258,6 +250,23 @@ function moveJellies(memory: StageMemory, seconds: number, now: number): JellySp
     updateVenue(time);
   }
   return spots;
+}
+
+/** Moves the light on highlighted jellies, the rings of choice and the pointer at the own goal. */
+function updateRoomMarks(memory: StageMemory, spots: JellySpot[], seconds: number, now: number) {
+  const { reducedMotion } = memory;
+  updateBeams(memory.beams, { spots, effects: memory.effects, stages: memory.stages, now });
+  updateChoiceRings(memory.choiceRings, { spots, lit: memory.highlighted, seconds, reducedMotion });
+  const own = spots.find((spot) => spot.player.id === memory.marks.ownId)?.player;
+  updatePointer(memory.goalPointer, {
+    destination: own ? (memory.marks.destination ?? null) : null,
+    move: own && memory.moves.get(own.id),
+    color: own?.color ?? "",
+    stages: memory.stages,
+    serverTime: now + memory.clockOffset,
+    seconds,
+    reducedMotion,
+  });
 }
 
 /** Returns the player of the jelly at a point that can be picked right now. */
@@ -297,6 +306,7 @@ function paintFrame(
   const { stage } = memory;
   memory.effects = updateEffects(memory.effects, [], now);
   const spots = moveJellies(memory, seconds, now);
+  updateRoomMarks(memory, spots, seconds, now);
   const size = fitCanvas(context.canvas, context, density);
   stage.renderer.render(stage.scene, stage.camera);
   applyLens(memory.lens, stage.renderer);
@@ -317,32 +327,8 @@ function paintFrame(
     marks: {
       ...memory.marks,
       hoveredId: findHovered(memory, context.canvas),
-      highlightedIds: memory.highlighted,
     },
   });
-}
-
-/** Runs the frames at a steady rate and keeps the 3D picture as large as the canvas. */
-function startFrameLoop(memory: StageMemory, context: CanvasRenderingContext2D) {
-  const { renderScale = 1, supersampling } = memory.options;
-  let lastFrameAt = performance.now();
-  let lastSize = "";
-  const tick = (frameAt: number) => {
-    requestAnimationFrame(tick);
-    if (frameAt - lastFrameAt < 1000 / FRAMES_PER_SECOND - FRAME_TOLERANCE_MS) {
-      return;
-    }
-    const seconds = Math.min(LONGEST_FRAME_SECONDS, (frameAt - lastFrameAt) / 1000);
-    lastFrameAt = frameAt;
-    const size = { width: context.canvas.clientWidth, height: context.canvas.clientHeight };
-    const density = calculateCanvasDensity(size, window.devicePixelRatio, supersampling);
-    if (`${size.width}x${size.height}@${density}` !== lastSize) {
-      lastSize = `${size.width}x${size.height}@${density}`;
-      resizeStageScene(memory.stage, size, density * renderScale, memory.lens.strength);
-    }
-    paintFrame(memory, context, seconds, density);
-  };
-  requestAnimationFrame(tick);
 }
 
 /** Creates everything a view needs and puts the empty room into the scene. */
@@ -351,7 +337,10 @@ function createMemory(options: StageViewOptions): StageMemory {
   const cast = createJellyCast();
   const furniture = createFurniture([]);
   const venue = createVenue([]);
-  stage.scene.add(cast.root, furniture, venue);
+  const beams = createBeams();
+  const choiceRings = createChoiceRings();
+  const goalPointer = createPointer();
+  stage.scene.add(cast.root, furniture, venue, beams.root, choiceRings.root, goalPointer.root);
   return {
     options,
     state: null,
@@ -371,6 +360,9 @@ function createMemory(options: StageViewOptions): StageMemory {
     cast,
     furniture,
     venue,
+    beams,
+    choiceRings,
+    goalPointer,
     marks: { ownId: null, targetId: null },
     pointer: null,
     anchors: [],
@@ -390,7 +382,13 @@ export function createStageView(options: StageViewOptions): StageView {
     throw new Error("the canvas has no 2d context");
   }
   const memory = createMemory(options);
-  startFrameLoop(memory, context);
+  const { renderScale = 1, supersampling } = options;
+  startFrameLoop(options.canvas, {
+    supersampling,
+    onResize: (size, density) =>
+      resizeStageScene(memory.stage, size, density * renderScale, memory.lens.strength),
+    onFrame: (seconds, density) => paintFrame(memory, context, seconds, density),
+  });
   void reload(memory);
   setInterval(() => void reload(memory), RELOAD_INTERVAL_MS);
   return {
@@ -403,6 +401,10 @@ export function createStageView(options: StageViewOptions): StageView {
     },
     pickAt: (point) => pickAvailable(memory, point),
     isOwnAt: (point) => isOwnAt(memory, point),
+    floorAt: (point) => {
+      const size = { width: options.canvas.clientWidth, height: options.canvas.clientHeight };
+      return pickFloor(memory.stage.camera, point, size, memory.lens.strength);
+    },
     setReducedMotion: (reduced) => {
       memory.reducedMotion = reduced;
     },
