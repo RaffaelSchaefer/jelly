@@ -2,9 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Equipped, Trip};
+use super::{Equipped, Follow};
 
-/// Ein Bereich der Raumkarte aus `GET /v1/stage`, in Prozent der Bühne.
+/// Ein Bereich der Raumkarte aus `GET /v1/stage`, in Prozent der Bühne. `x`, `y`, `width` und
+/// `height` sagen, wo er ohne Drehung stünde.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StageArea {
     /// Bereichs-ID.
@@ -17,8 +18,31 @@ pub struct StageArea {
     pub width: f64,
     /// Tiefe.
     pub height: f64,
-    /// Was der Bereich ist, zum Beispiel `seats`. Ein neuerer Server darf Arten ergänzen.
+    /// Grad im Uhrzeigersinn von oben gesehen, um die Mitte des Bereichs.
+    #[serde(default)]
+    pub rotation: f64,
+    /// Wie Jellies den Bereich nutzen, zum Beispiel `seats`. Ein neuerer Server darf Arten ergänzen.
     pub kind: String,
+    /// Ob Jellies außen herum laufen.
+    #[serde(default)]
+    pub blocks: bool,
+    /// Das Modell, das dort steht, leer für blanken Boden.
+    #[serde(default)]
+    pub prop: String,
+    /// Nur ein Bereich der Art `public` hat einen Namen.
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+/// Was alle Jellies gerade tun: Essens-Event oder Siegerehrung.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Gathering {
+    /// `food` oder `ceremony`. Neue Werte zeigt die Bühne nicht besonders.
+    pub kind: String,
+    /// Der Sieger einer Siegerehrung.
+    pub winner_id: Option<i64>,
+    /// Wann es endet und die Jellies zurücklaufen.
+    pub ends_at: i64,
 }
 
 /// Ein Jelly aus `GET /v1/stage`.
@@ -37,20 +61,13 @@ pub struct StagePlayer {
     /// Hochgehaltenes Schild.
     pub sign: Option<String>,
     /// Wem das Jelly gerade nachläuft.
-    pub follow_player_id: Option<i64>,
-    /// Wann das Folgen von selbst endet, als Server-Zeit.
     #[serde(default)]
-    pub follow_until: Option<i64>,
-    /// Letztes Lebenszeichen.
-    pub last_seen_at: i64,
+    pub follow: Option<Follow>,
     /// Bereich des Jellys, `None` ohne eigenen Bereich und ohne Zone für Besucher.
     pub area_id: Option<i64>,
     /// Ein Jelly ohne eigenen Bereich wandert als Besucher.
     #[serde(default)]
     pub is_visitor: bool,
-    /// Laufender Ausflug.
-    #[serde(default)]
-    pub trip: Option<Trip>,
     /// Heimplatz von links, in Prozent der Bühne.
     pub home_x: f64,
     /// Heimplatz von hinten, in Prozent der Bühne.
@@ -90,9 +107,9 @@ pub struct Move {
     pub start_at: i64,
     /// Der Weg. Ein einzelner Punkt heißt: Das Jelly steht.
     pub points: Vec<Waypoint>,
-    /// Wie viele Jellies am Ende des Wegs darunter stehen.
+    /// Wie viele Jellies am Ende des Wegs darunter stehen. Nicht das XP-Level.
     #[serde(default)]
-    pub level: i64,
+    pub stack_level: i64,
 }
 
 /// Ein laufender Stapel.
@@ -127,4 +144,7 @@ pub struct Stage {
     pub moves: Vec<Move>,
     /// Laufende Stapel.
     pub stacks: Vec<Stack>,
+    /// Essens-Event oder Siegerehrung, sonst `None`.
+    #[serde(default)]
+    pub gathering: Option<Gathering>,
 }

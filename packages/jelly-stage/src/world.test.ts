@@ -36,7 +36,7 @@ test("the stage ends at 0 and 100 percent", () => {
 });
 
 test("an area becomes a rectangle on the floor", () => {
-  const rect = toFloorRect({ id: 1, x: 0, y: 50, width: 50, height: 50, kind: "desk" });
+  const rect = toFloorRect({ x: 0, y: 50, width: 50, height: 50 });
   assert.deepEqual(rect, { minX: -ROOM_WIDTH / 2, minZ: 0, maxX: 0, maxZ: ROOM_DEPTH / 2 });
 });
 

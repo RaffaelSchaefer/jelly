@@ -18,6 +18,7 @@ export const STATE_EVENTS = [
   "follow.changed",
   "stage.changed",
   "stack.changed",
+  "gathering.changed",
 ];
 
 /** Events that only trigger animations. */

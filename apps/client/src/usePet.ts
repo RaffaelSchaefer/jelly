@@ -22,6 +22,7 @@ import {
   type Catalog,
   type CosmeticSlot,
   type Equipped,
+  type Game,
   type Me,
   type PetColor,
   type ServerEvent,
@@ -41,6 +42,8 @@ import { useSigns } from "./useSigns";
 
 /** Mindestabstand zwischen zwei Stupsern in Millisekunden, damit Tastenhämmern nichts verstopft. */
 const POKE_INTERVAL_MS = 1000;
+/** Was das Pet sagt, wenn der Code keinen Sitz gebracht hat. Die Orga braucht dafür die Nummer. */
+const SEAT_HINT = "Einen Platz trägt mir die Orga noch ein, meine Nummer steht in der Übersicht.";
 
 /** Was das Pet nach einem Stupser sagt, je nachdem, ob es XP gab. */
 function pokeMessage(xpGained: number, after: Me | null) {
@@ -83,6 +86,46 @@ function eventMessage(event: ServerEvent, catalog: Catalog) {
   return null;
 }
 
+/** Der Weg in die LAN: Code einlösen oder ein Konto zurückholen. */
+function useAccess(
+  setGame: (game: Game) => void,
+  run: ReturnType<typeof useBackendCall>["run"],
+  setMessage: (text: string) => void,
+) {
+  /**
+   * Löst einen LAN- oder Sitzplatz-Code ein. Ohne Konto entsteht mit Name und Farbe ein neues,
+   * sonst nimmt das vorhandene teil.
+   */
+  const redeemAccess = useCallback(
+    async (code: string, name?: string, color?: PetColor) => {
+      const result = await run(() => backend.redeemAccess(code, name, color));
+      if (!result) return;
+      setGame(result.game);
+      const greeting = name ? `Hallo, ich bin ${result.game.me?.name ?? name}!` : "Ich bin dabei!";
+      setMessage(
+        result.seatAssigned ? `${greeting} Mein Platz steht.` : `${greeting} ${SEAT_HINT}`,
+      );
+    },
+    [run, setGame, setMessage],
+  );
+
+  /**
+   * Holt das Konto mit einem Wiederherstellungs-Code zurück. Das alte Secret gilt danach nicht
+   * mehr.
+   */
+  const recoverAccess = useCallback(
+    async (code: string) => {
+      const next = await run(() => backend.recoverAccess(code));
+      if (!next) return;
+      setGame(next);
+      setMessage(`Da bin ich wieder, ${next.me?.name ?? "du"}!`);
+    },
+    [run, setGame, setMessage],
+  );
+
+  return { redeemAccess, recoverAccess };
+}
+
 /** Laden, Code einlösen und die Ereignisse vom Server. */
 function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => void) {
   const { setGame, setCatalog, catalog, reload } = state;
@@ -107,18 +150,7 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
   }, [run, setGame, setCatalog]);
   useEffect(() => void load(), [load]);
 
-  /** Löst einen Code ein. Mit Name entsteht ein neues Konto, sonst kommt das vorhandene zurück. */
-  const redeemAccess = useCallback(
-    async (code: string, name?: string, color?: PetColor) => {
-      const next = await run(() => backend.redeemAccess(code, name, color));
-      if (!next) return;
-      setGame(next);
-      setMessage(
-        name ? `Hallo, ich bin ${next.me?.name ?? name}!` : "Schön, wieder dabei zu sein!",
-      );
-    },
-    [run, setGame, setMessage],
-  );
+  const access = useAccess(setGame, run, setMessage);
 
   const onEvent = useCallback(
     (event: ServerEvent) => {
@@ -141,7 +173,7 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
     messageId: said.id,
     setMessage,
     load,
-    redeemAccess,
+    ...access,
   };
 }
 

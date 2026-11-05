@@ -59,6 +59,7 @@ pub fn run() {
             commands::get_game,
             commands::get_catalog,
             commands::redeem_access,
+            commands::recover_access,
             commands::act,
             commands::emote,
             commands::set_sign,

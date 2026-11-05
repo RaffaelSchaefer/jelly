@@ -31,8 +31,7 @@ pub const STAGE_EVENT_NAME: &str = "stage-event";
 pub const STAGE_MOVE_NAME: &str = "stage-move";
 
 /// Name des Tauri-Ereignisses, wenn der Server für diesen Stream Ereignisse verworfen hat. Pet und
-/// Karte lesen dann ihren Stand neu. Dasselbe braucht das Ende eines Ausflugs, das der Server nicht
-/// meldet.
+/// Karte lesen dann ihren Stand neu.
 pub const STREAM_RESET_NAME: &str = "stream-reset";
 
 /// Art der Nachricht, wenn ein Jelly losläuft. Sie hat keine ID und steht nicht im Ereignis-Log.
@@ -47,7 +46,8 @@ const RESET_MESSAGE: &str = "reset";
 /// `follow.changed` kommt durch: Der Server darf das Dazustellen von sich aus beenden.
 /// `partner.emote` trägt den Annehmenden als `player_id`, der Auffordernde steht in
 /// `payload.partner_id`. Nur er braucht es: Der Annehmende hat die Geste schon aus seiner Antwort.
-/// `trip.changed` kommt durch: Die Karte startet den Ausflug, das Pet sagt etwas dazu.
+/// `trip.changed` kommt durch: Die Karte startet den Ausflug, das Pet sagt etwas dazu. Beide melden
+/// auch das Ende, wenn die Zeit abläuft, die App braucht dafür keine Uhr.
 /// `stack.changed` bleibt draußen, das Pet zeigt Stapel noch nicht.
 const OWN_EVENTS: [&str; 8] = [
     "xp.gained",
@@ -62,6 +62,9 @@ const OWN_EVENTS: [&str; 8] = [
 
 /// Ereignis, wenn ein Konto gelöscht wurde. Es trägt den Spieler in `payload`, nicht in `player_id`.
 const PLAYER_REMOVED: &str = "player.removed";
+
+/// Ereignis, wenn die Orga die Regeln ändert. Es gilt allen, die Oberfläche liest die LAN neu.
+const RULES_CHANGED: &str = "rules.changed";
 
 /// Ereignis, wenn jemand die eigene Aufforderung annimmt.
 const PARTNER_EMOTE: &str = "partner.emote";
@@ -96,10 +99,7 @@ fn parse_message(kind: &str, data: &str) -> StreamMessage {
 
 /// Ob die Aufforderung in `payload` an `player_id` geht.
 fn is_invited(payload: &Value, player_id: i64) -> bool {
-    payload
-        .get("partner_ids")
-        .and_then(Value::as_array)
-        .is_some_and(|ids| ids.iter().any(|id| id.as_i64() == Some(player_id)))
+    payload.get("partner_id").and_then(Value::as_i64) == Some(player_id)
 }
 
 /// Ob die Aufforderung in `payload` von `player_id` stammt oder an `player_id` geht.
@@ -123,6 +123,9 @@ fn closes_map(event: &ServerEvent, player_id: i64) -> bool {
 
 /// Ob `event` das Jelly von `player_id` betrifft und an die Oberfläche soll.
 fn is_own_event(event: &ServerEvent, player_id: i64) -> bool {
+    if event.kind == RULES_CHANGED {
+        return true;
+    }
     if event.kind == PLAYER_REMOVED {
         return event.payload.get("player_id").and_then(Value::as_i64) == Some(player_id);
     }

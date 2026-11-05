@@ -4,7 +4,7 @@
  * @module
  */
 
-import type { StageMove, StagePlayer } from "./types.ts";
+import type { StageGathering, StageMove, StagePlayer } from "./types.ts";
 import type { FloorPoint } from "./world.ts";
 
 import { findMovePosition, findStackLevel } from "./walking.ts";
@@ -12,6 +12,8 @@ import { measureDistance, toFloorPoint } from "./world.ts";
 
 /** Below this a ring that goes away counts as gone. */
 const RING_GONE = 0.01;
+/** The gathering whose winner grows on the stage. */
+const CEREMONY = "ceremony";
 
 /** Which jellies light up on a personal screen: all others, or those within `reach` of the own. */
 export type StageHighlight = { kind: "others" } | { kind: "near"; reach: number };
@@ -42,6 +44,12 @@ export function findLevels(moves: Map<number, StageMove>, serverTime: number): M
     levels.set(move.player_id, findStackLevel(move, serverTime));
   }
   return levels;
+}
+
+/** Returns the winner of a running ceremony, who grows on the stage. It ends without an event. */
+export function findWinner(gathering: StageGathering | null, serverTime: number): number | null {
+  if (gathering?.kind !== CEREMONY || serverTime >= gathering.ends_at) return null;
+  return gathering.winner_id;
 }
 
 /** Forgets the moves of jellies that left the stage. */

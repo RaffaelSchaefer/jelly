@@ -10,7 +10,7 @@
  * @module
  */
 
-import type { StageEvent, StageMove } from "@jelly/stage";
+import type { StageEvent, StageMove, StageTrip } from "@jelly/stage";
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { LogicalSize } from "@tauri-apps/api/dpi";
@@ -57,12 +57,23 @@ export const getGame = () => invoke<Game>("get_game");
 /** Feste Listen des Servers (`get_catalog`). */
 export const getCatalog = () => invoke<Catalog>("get_catalog");
 
+/** Ergebnis eines eingelösten LAN- oder Sitzplatz-Codes. */
+export interface AccessResult {
+  /** Ob das Konto den Sitz des Codes bekommen hat. Sonst weist die Orga den Platz von Hand zu. */
+  seatAssigned: boolean;
+  game: Game;
+}
+
 /**
- * Tauscht einen Code gegen einen Zugang (`redeem_access`). Name und Farbe zählen nur, wenn der Code
- * ein neues Konto anlegt. Ein vorhandenes Konto kommt damit zurück.
+ * Bringt das Konto mit einem LAN- oder Sitzplatz-Code in die LAN (`redeem_access`). Ein
+ * gespeichertes Secret geht mit, dann bleibt das Konto. Ohne Secret legt der Code ein neues an,
+ * dafür zählen Name und Farbe.
  */
 export const redeemAccess = (code: string, name?: string, color?: PetColor) =>
-  invoke<Game>("redeem_access", { code, name, color });
+  invoke<AccessResult>("redeem_access", { code, name, color });
+
+/** Holt ein Konto mit dem Wiederherstellungs-Code der Orga zurück (`recover_access`). */
+export const recoverAccess = (code: string) => invoke<Game>("recover_access", { code });
 
 /** Stupser oder Selbstmeldung (`act`). */
 export const act = (action: Action) => invoke<ActResult>("act", { action });
@@ -91,6 +102,10 @@ export interface MapState {
   reducedMotion: boolean;
   optimizedRendering: boolean;
   frameLimit: number | null;
+  /** Regel `near_distance` der LAN, in Jelly-Einheiten. */
+  nearDistance: number;
+  /** Der laufende Ausflug des eigenen Jellys. */
+  trip: StageTrip | null;
   stage: Stage;
 }
 

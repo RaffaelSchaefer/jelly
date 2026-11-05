@@ -159,18 +159,29 @@ impl Api {
         self.get("/v1/lans/current").await
     }
 
-    /// `POST /v1/auth/redeem`: tauscht einen Code gegen ein Secret. Legt ein Konto an oder holt
-    /// das vorhandene zurück. Schickt bewusst kein altes Secret mit.
+    /// `POST /v1/auth/redeem`: bringt das Konto mit einem Code in die LAN. Mit Secret nimmt das
+    /// vorhandene Konto teil und behält es, ohne Secret entsteht ein neues Konto.
     ///
     /// # Fehler
     ///
-    /// [`Error::Network`] oder [`Error::Server`], etwa bei `code_redeemed`, `name_taken` oder
-    /// `invalid_code`.
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa bei
+    /// `code_redeemed`, `seat_code_other_account`, `name_taken` oder `invalid_code`.
     pub async fn redeem_access(&self, body: &AccessBody<'_>) -> Result<Access> {
+        let request = self.request(reqwest::Method::POST, "/v1/auth/redeem");
+        Self::send(request.json(body)).await
+    }
+
+    /// `POST /v1/auth/recover`: tauscht einen Wiederherstellungs-Code der Orga gegen ein neues
+    /// Secret. Das alte gilt danach nicht mehr. Schickt bewusst kein Secret mit.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`] oder [`Error::Server`], etwa bei `invalid_recovery_code`.
+    pub async fn recover_account(&self, code: &str) -> Result<Recovered> {
         let request = self
             .http
-            .post(format!("{SERVER_URL}/v1/auth/redeem"))
-            .json(body);
+            .post(format!("{SERVER_URL}/v1/auth/recover"))
+            .json(&json!({ "code": code }));
         Self::send(request).await
     }
 
@@ -332,7 +343,7 @@ impl Api {
     /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa `too_far`,
     /// `partner_emote_open` oder `unknown_partner_emote`.
     pub async fn invite_partner(&self, key: &str, partner_id: i64) -> Result<PartnerInviteResult> {
-        let body = json!({ "key": key, "partner_ids": [partner_id] });
+        let body = json!({ "key": key, "partner_id": partner_id });
         self.post("/v1/partner-emotes", &body).await
     }
 

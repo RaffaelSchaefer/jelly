@@ -157,7 +157,10 @@ export function createBox(
   return placeMesh(geometry, material, { x: spot.x, y: bottom + size.height / 2, z: spot.z });
 }
 
-/** A small piece of a merged prop: its shape, where its middle sits and how it is turned. */
+/**
+ * A small piece of a merged prop: its shape, where its middle sits and how it is turned. The turn
+ * around y comes last, so a part laid flat with x still turns with its zone on the floor.
+ */
 export interface PropPart {
   geometry: BufferGeometry;
   at: ScenePoint;
@@ -167,7 +170,7 @@ export interface PropPart {
 /** Merges many small parts of one material into one mesh, so they cost a single draw call. */
 export function mergeParts(parts: PropPart[], material: Material): Mesh {
   const placed = parts.map(({ geometry, at, turn }) => {
-    const rotation = new Quaternion().setFromEuler(new Euler(turn?.x, turn?.y, turn?.z));
+    const rotation = new Quaternion().setFromEuler(new Euler(turn?.x, turn?.y, turn?.z, "YXZ"));
     const matrix = new Matrix4().compose(new Vector3(at.x, at.y, at.z), rotation, NO_SCALE);
     return geometry.applyMatrix4(matrix);
   });

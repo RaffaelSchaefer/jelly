@@ -24,7 +24,6 @@ import {
 
 import type { StageEffect } from "./effects.ts";
 import type { JellySpot } from "./jellies.ts";
-import type { FloorRect } from "./world.ts";
 
 import { calculateSpotlightPresence } from "./effects.ts";
 import { FIRST_JELLY_ORDER, JELLY_HEIGHT } from "./jellies.ts";
@@ -35,7 +34,7 @@ import dustShader from "./shaders/dust.glsl?raw";
 import poolFragmentShader from "./shaders/lightPool.frag.glsl?raw";
 import poolVertexShader from "./shaders/lightPool.vert.glsl?raw";
 import { FLOOR_BLENDING, SHADOW_HEIGHT } from "./shadow.ts";
-import { findFloorHeight } from "./zones.ts";
+import { findFloorHeight, type Placement } from "./zones.ts";
 
 /** Sizes of the beam in jelly units. Its top lies high above the jellies, where it has faded out. */
 const BEAM = { top: 0.8, bottom: 1.35, height: 13, around: 48, alpha: 1, softness: 0.85 };
@@ -87,7 +86,8 @@ export interface BeamFrame {
   /** Sorted from back to front, the order the jellies are drawn in. */
   spots: JellySpot[];
   effects: StageEffect[];
-  stages: FloorRect[];
+  /** The stage platforms, where the floor is raised. */
+  platforms: Placement[];
   /** Local time in milliseconds, as used by the effects. */
   now: number;
 }
@@ -179,7 +179,7 @@ function placeBeam(beam: Beam, frame: BeamFrame, rank: number): void {
   const spot = frame.spots[rank];
   if (!spot) return;
   const { x, y, z } = spot.feet;
-  const floor = findFloorHeight(spot.feet, frame.stages);
+  const floor = findFloorHeight(spot.feet, frame.platforms);
   beam.group.visible = true;
   beam.group.renderOrder = FIRST_JELLY_ORDER + rank - BEFORE_JELLY;
   beam.group.position.set(x, floor, z);

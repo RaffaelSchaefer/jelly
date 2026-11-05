@@ -18,12 +18,9 @@ const GLIBBER: StagePlayer = {
   equipped: { head: { key: "beanie", color: "#ffffff" } },
   level: 2,
   sign: null,
-  follow_player_id: null,
-  follow_until: null,
-  last_seen_at: 0,
+  follow: null,
   area_id: null,
   is_visitor: true,
-  trip: null,
   home_x: 0,
   home_y: 0,
 };

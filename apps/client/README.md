@@ -80,8 +80,12 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
   Kamera fährt zur Region, das Namensschild unter den Füßen ist das Eingabefeld. Jede Wahl gilt
   sofort.
-- Ein Code der Orga bringt ein neues Konto, holt ein vorhandenes zurück oder setzt es auf einen Platz
-  der laufenden LAN (`POST /v1/auth/redeem`). Danach zählt nur das Secret, ein älteres gilt nicht mehr.
+- Ein LAN- oder Sitzplatz-Code der Orga bringt das Konto in die LAN (`POST /v1/auth/redeem`). Das
+  gespeicherte Secret geht mit, dann bleibt das Konto. Ohne Secret legt der Code ein neues Konto an,
+  dafür fragt die App nach Name und Farbe. Ein verlorenes Konto holt nur der Wiederherstellungs-Code
+  der Orga zurück (`POST /v1/auth/recover`), das alte Secret gilt danach nicht mehr. Bringt ein
+  Sitzplatz-Code keinen Sitz (`seat_assigned: false`), sagt das Jelly es, und die Übersicht zeigt die
+  Nummer (`player_id`), mit der die Orga den Platz von Hand vergibt.
 - Cosmetics liegen auf Plätzen, je Platz eines (`PUT /v1/cosmetics/equipped`). Die App zeigt die Plätze
   Kopf, Gesicht und Aura. Einfärbbare Cosmetics bekommen vorerst die erste Farbe der Palette.
 - XP, Level, Cosmetics und Erfolge kommen vom Server. Mit seinen Standardregeln: Stupser +3 XP alle
@@ -112,9 +116,8 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   auf den freien Boden schickt das eigene Jelly auf einen Ausflug dorthin (`POST /v1/trips/goto`), ein
   Kristall mit Ring markiert das Ziel, bis es angekommen ist. Der
   Knopf „Weggehen“ beendet Dazustellen und Ausflug (`DELETE /v1/trips/current`). Das Pet sagt zu beidem
-  etwas, auch wenn der Server sie beendet: Nach `follow_until` und `trip.until` enden sie von selbst und
-  ohne Ereignis, dann liest die App ihren Stand neu. Dasselbe gilt fürs Weggehen vom Ausflug, das meldet der
-  Server nicht. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
+  etwas, auch wenn der Server sie beendet: `follow.changed` und `trip.changed` melden das Ende auch, wenn
+  `follow.ends_at` oder `trip.ends_at` abläuft, die App braucht dafür keine eigene Uhr. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
   die doppelte Auflösung des Beamers und schließt sich mit dem Pet. Solange sie offen ist, ist das Pet
   versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
   Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. „Weggehen“
@@ -292,7 +295,7 @@ beide Körper-Shader wirklich, schaltet im laufenden Betrieb zwischen den Modi u
 4. **Charakter und Fortschritt:** Den Platzhalter gemeinsam gestalten, dann Reaktionen und kleine
    Belohnungen passend zur LAN festlegen. Die aktuellen XP-Werte sind Prototypwerte. Noch keine
    Hunger-/Durstsimulation.
-5. **Rest der API 1.8:** Der Server kann mehr, als die App schon nutzt. Offen sind:
+5. **Rest der API 1.14:** Der Server kann mehr, als die App schon nutzt. Offen sind:
    - `GET /v1/players` und `GET /v1/players/{id}`: Liste und Profil anderer Jellies.
    - `POST /v1/stacks`, `POST /v1/stacks/members`, `DELETE /v1/stacks/current`: Stapel. Die Bühne zeigt sie
      schon, im Pet fehlen Knöpfe und `stack.changed`.
@@ -302,7 +305,7 @@ beide Körper-Shader wirklich, schaltet im laufenden Betrieb zwischen den Modi u
    - Modell für `golden-cup`: Das Studio bietet den Pokal an, gezeichnet wird er erst mit
      `src/cosmetics/golden-cup.glb`. Für `body` und `aura` führt der Server noch kein Cosmetic.
      Das Studio zeigt die Plätze trotzdem, die App kann sie schon tragen.
-   - `follow_until` als Restzeit im Panel anzeigen.
+   - `follow.ends_at` als Restzeit im Panel anzeigen.
 
 WebGL ist vorerst die Rendering-Basis, damit WebGPU keine Startvoraussetzung ist. Ein späterer
 WebGPU-Renderer benötigt auch eine passende Portierung der GLSL-Shader. CSS-Glas ist umgesetzt;

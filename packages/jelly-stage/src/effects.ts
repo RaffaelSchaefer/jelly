@@ -126,7 +126,7 @@ export function calculateHighlightHue(highlighterId: number): number {
  * from the player who asked for it, so several beams at once can be told apart.
  */
 function createSpotlight(event: StageEvent, highlighterId: number, now: number): StageEffect[] {
-  const { target_id: playerId, until } = event.payload;
+  const { target_id: playerId, ends_at: until } = event.payload;
   if (playerId === undefined || until === undefined) {
     return [];
   }

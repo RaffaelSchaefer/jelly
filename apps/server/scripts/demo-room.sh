@@ -23,10 +23,11 @@ row_depth=2
 seat_depth=5
 spine_top=22
 spine_bottom=90
-# The front of the hall as x y width height kind blocks prop: stage with what stands on it, lounge,
-# the snack bar counter with its queue, and a zone for visitors.
+# The front of the hall as x y width height kind blocks prop [rotation]: the stage platform with what
+# stands on it as its own obstacles, the lounge, the snack bar counter with its queue, and a desk
+# turned by 30 degrees next to the lounge, to compare the model with the obstacle.
 front_zones=(
-  "5 1 90 8 stage false stage-set"
+  "5 1 90 8 stage false stage-platform"
   "22 1.75 20 0.5 none true screen"
   "58 1.75 20 0.5 none true screen"
   "7.86 1.5 4.76 2 none true speaker"
@@ -35,6 +36,7 @@ front_zones=(
   "5 12 40 10 lounge false lounge-set"
   "65 14 20 3 none true snack-bar-set"
   "50 17 45 5 queue false"
+  "48 12.5 10 2 none true desk 30"
 )
 
 # Rows from the back of the hall to the front: top edge, left half, right half, and the side the
@@ -62,10 +64,10 @@ admin_call() {
   curl -sf -b "$cookie" -H 'Content-Type: application/json' "$@"
 }
 
-# create_area x y width height kind [blocks] [prop]
+# create_area x y width height kind [blocks] [prop] [rotation]
 create_area() {
   admin_call -X POST "$base_url/admin/api/lans/$lan_id/areas" \
-    -d "{\"x\":$1,\"y\":$2,\"width\":$3,\"height\":$4,\"kind\":\"$5\",\"blocks\":${6:-false},\"prop\":\"${7:-}\"}" \
+    -d "{\"x\":$1,\"y\":$2,\"width\":$3,\"height\":$4,\"kind\":\"$5\",\"blocks\":${6:-false},\"prop\":\"${7:-}\",\"rotation\":${8:-0}}" \
     >/dev/null || exit 2
 }
 
