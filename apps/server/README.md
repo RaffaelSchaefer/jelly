@@ -88,13 +88,13 @@ Damit lässt sich auch der Server auf dem VPS prüfen. Eine LAN muss laufen.
 JELLY_JOIN_CODE=geheim go run ./cmd/jelly-server simulate -url http://localhost:8080
 ```
 
-| Option       | Standard                | Zweck                                                         |
-| ------------ | ----------------------- | ------------------------------------------------------------- |
-| `-url`       | `http://localhost:8080` | Adresse des Servers                                           |
-| `-players`   | 70                      | Anzahl der Jellies, höchstens 1000                            |
-| `-min-delay` | `2s`                    | Kürzeste Zeit zwischen zwei Aktionen                          |
-| `-max-delay` | `20s`                   | Längste Zeit zwischen zwei Aktionen                           |
-| `-duration`  | `0`                     | Laufzeit, `0` läuft bis zu einem Signal                       |
+| Option       | Standard                | Zweck                                  |
+| ------------ | ----------------------- | -------------------------------------- |
+| `-url`       | `http://localhost:8080` | Adresse des Servers                    |
+| `-players`   | 70                      | Anzahl der Jellies, höchstens 1000     |
+| `-min-delay` | `2s`                    | Kürzeste Zeit zwischen zwei Aktionen   |
+| `-max-delay` | `20s`                   | Längste Zeit zwischen zwei Aktionen    |
+| `-duration`  | `0`                     | Laufzeit, `0` läuft bis zu einem Signal |
 | `-run-id`    | zufällig                | Teil der Namen, gleiche ID auf derselben Datenbank kollidiert |
 
 Am Ende stehen im Log angenommene und abgelehnte Aktionen, Fehler und Antwortzeiten. Können alle Bots
@@ -109,30 +109,30 @@ dem Rest des Monorepos. Lint und Formatierung starten die feste Version von `gol
 Die Version und alle Code-Regeln stehen in [AGENTS.md](AGENTS.md). Die Bühne bündelt `three`, `@jelly/scene` und `@jelly/stage` aus `node_modules`, daher
 muss vor `go generate` einmal `pnpm install` im Root laufen. Gebündelt wird über `go tool esbuild`.
 
-| Variable                   | Standard   | Zweck                                            |
-| -------------------------- | ---------- | ------------------------------------------------ |
-| `JELLY_DB`                 | `jelly.db` | Pfad zur Datenbank                               |
-| `JELLY_ADDR`               | `:8080`    | Adresse des Servers                              |
-| `JELLY_JOIN_CODE`          | keiner     | Anmeldecode, nur für `create-lan` nötig          |
-| `JELLY_STAGE_KEY`          | keiner     | Pflicht: Schlüssel der Bühne                     |
-| `JELLY_ADMIN_SECRET`       | keiner     | Pflicht: Geheimnis der Admin-Anmeldung           |
-| `JELLY_MIN_CLIENT_VERSION` | keine      | Älteste App, die noch funktioniert, Form `1.2.3` |
+| Variable          | Standard   | Zweck                                       |
+| ----------------- | ---------- | ------------------------------------------- |
+| `JELLY_DB`        | `jelly.db` | Pfad zur Datenbank                          |
+| `JELLY_ADDR`      | `:8080`    | Adresse des Servers                         |
+| `JELLY_JOIN_CODE` | keiner     | Anmeldecode, nur für `create-lan` nötig     |
+| `JELLY_STAGE_KEY` | keiner     | Pflicht: Schlüssel der Bühne                |
+| `JELLY_ADMIN_SECRET` | keiner  | Pflicht: Geheimnis der Admin-Anmeldung      |
+| `JELLY_MIN_CLIENT_VERSION` | keine | Älteste App, die noch funktioniert, Form `1.2.3` |
 
 ## Aufbau
 
-| Ort                     | Inhalt                                                                                       |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| `cmd/jelly-server`      | Einstieg, Serverstart, `create-lan`, `simulate`, `openapi`                                   |
-| `internal/api`          | HTTP-Wege, OpenAPI über huma, Fehlercodes                                                    |
-| `internal/store`        | SQLite, Transaktionen, goose-Migrationen in `migrations/`                                    |
-| `internal/architecture` | Tests für Regeln, die kein Linter prüft                                                      |
-| `internal/rules`        | Spielregeln als reine Funktionen, ohne IO                                                    |
-| `internal/simulator`    | Simulierte Spieler, nutzt nur die öffentliche API                                            |
-| `internal/web`          | Liefert die gebauten Seiten aus, mit Sicherheits-Headern                                     |
-| `web/stage`             | Die Seite der Bühne und ihr Weg zum Server, die Bühne selbst steht in `packages/jelly-stage` |
-| `scripts`               | Wiederholbare Hilfen wie die Demo                                                            |
-| `benchmarks`            | Lasttest und Baselines                                                                       |
-| `testdata/contract`     | Regelfälle als JSON, Teil des API-Vertrags                                                   |
+| Ort                | Inhalt                                                  |
+| ------------------ | ------------------------------------------------------- |
+| `cmd/jelly-server` | Einstieg, Serverstart, `create-lan`, `simulate`, `openapi` |
+| `internal/api`     | HTTP-Wege, OpenAPI über huma, Fehlercodes               |
+| `internal/store`   | SQLite, Transaktionen, goose-Migrationen in `migrations/` |
+| `internal/architecture` | Tests für Regeln, die kein Linter prüft            |
+| `internal/rules`   | Spielregeln als reine Funktionen, ohne IO               |
+| `internal/simulator` | Simulierte Spieler, nutzt nur die öffentliche API     |
+| `internal/web`     | Liefert die gebauten Seiten aus, mit Sicherheits-Headern |
+| `web/stage`        | Die Seite der Bühne und ihr Weg zum Server, die Bühne selbst steht in `packages/jelly-stage` |
+| `scripts`          | Wiederholbare Hilfen wie die Demo                       |
+| `benchmarks`       | Lasttest und Baselines                                  |
+| `testdata/contract`| Regelfälle als JSON, Teil des API-Vertrags              |
 
 ## Betrieb
 
