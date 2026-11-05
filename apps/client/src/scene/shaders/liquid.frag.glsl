@@ -6,7 +6,7 @@
 // Studio-Licht glänzt wie das Jelly. Am Rand schillert sie wie eine Seifenblase.
 //
 // Gerechnet wird in CSS-Pixeln mit y nach unten, wie im DOM. Die Normale zeigt mit y nach oben, wie
-// in der Szene. MAX_SHAPES und SOLO_SHAPES kommen als #define aus LiquidGlass.tsx.
+// in der Szene. MAX_SHAPES, SOLO_SHAPES und SHADOW kommen als #define aus glassMaterial.ts.
 
 uniform sampler2D uBackdrop;
 uniform vec2 uBuffer;
@@ -181,7 +181,7 @@ vec4 glassAt(vec2 uv, vec2 p, vec4 field) {
 
 // Der weiche Schatten, den der Tropfen auf alles darunter wirft.
 vec4 shadowed(vec4 behind, vec2 p) {
-  float shade = 0.3 * (1.0 - smoothstep(-6.0, 14.0, fieldAt(p - vec2(2.0, 7.0)).x));
+  float shade = SHADOW * (1.0 - smoothstep(-6.0, 14.0, fieldAt(p - vec2(2.0, 7.0)).x));
   return behind * (1.0 - shade) + vec4(0.0, 0.0, 0.0, shade);
 }
 

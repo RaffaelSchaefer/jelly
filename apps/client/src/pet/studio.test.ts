@@ -11,6 +11,7 @@ import {
   regionItems,
   shapeGrowth,
   shapeOnCanvas,
+  stepPresence,
   wornRegions,
 } from ".";
 
@@ -98,6 +99,16 @@ describe("nameToSave", () => {
 });
 
 describe("studio shapes", () => {
+  it("lets the glass appear slowly, vanish quickly and stay within its range", () => {
+    expect(stepPresence(0, true, 0.35, false)).toBeCloseTo(0.5);
+    expect(stepPresence(1, false, 0.15, false)).toBeCloseTo(0.5);
+    expect(stepPresence(0.9, true, 1, false)).toBe(1);
+    expect(stepPresence(0.1, false, 1, false)).toBe(0);
+  });
+  it("skips the transition with reduced motion", () => {
+    expect(stepPresence(0, true, 0, true)).toBe(1);
+    expect(stepPresence(1, false, 0, true)).toBe(0);
+  });
   it("reads an element as center and half size on the canvas", () => {
     const canvas = { left: 100, top: 50, width: 594, height: 472 };
     const rect = { left: 200, top: 100, width: 40, height: 20 };

@@ -165,6 +165,25 @@ const GROWTH_STAGGER = 0.06;
 /** Wie weit ein Tropfen beim Aufploppen über seine Größe hinausschießt. */
 const GROWTH_OVERSHOOT = 1.7;
 
+/** Sekunden, die das Glas zum Erscheinen und zum Verschwinden braucht. */
+const APPEAR_SECONDS = 0.7;
+const VANISH_SECONDS = 0.3;
+
+/**
+ * Wie weit das Glas nach `seconds` da ist, von 0 bis 1. Bei reduzierter Bewegung sofort ganz oder
+ * gar nicht.
+ */
+export function stepPresence(
+  presence: number,
+  visible: boolean,
+  seconds: number,
+  reducedMotion: boolean,
+) {
+  if (reducedMotion) return visible ? 1 : 0;
+  const step = visible ? seconds / APPEAR_SECONDS : -seconds / VANISH_SECONDS;
+  return Math.min(1, Math.max(0, presence + step));
+}
+
 /**
  * Größe der Fläche Nummer `index` beim Ein- und Ausblenden: 0 bis 1, kurz vor dem Ziel etwas
  * darüber.

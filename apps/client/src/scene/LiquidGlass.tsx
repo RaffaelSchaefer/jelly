@@ -14,23 +14,18 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
-  BufferGeometry,
   Color,
-  Float32BufferAttribute,
   FramebufferTexture,
   LinearFilter,
-  NoBlending,
-  ShaderMaterial,
   Vector2,
   Vector4,
   type Mesh,
   type WebGLRenderer,
 } from "three";
 
-import { PET_COLORS, shapeGrowth, shapeOnCanvas, type PetColor } from "../pet";
+import { PET_COLORS, shapeGrowth, stepPresence, type PetColor } from "../pet";
 import { cameraAway } from "./CameraRig";
-import vertexShader from "./shaders/fullscreen.vert.glsl?raw";
-import fragmentShader from "./shaders/liquid.frag.glsl?raw";
+import { createGlass, FULLSCREEN, readShapes, type GlassUniforms } from "./glassMaterial";
 
 /**
  * Plätze in der Reihenfolge des DOM. Im Studio: Namensschild, Fertig-Knopf, vier Blobs und ein
@@ -44,64 +39,16 @@ import fragmentShader from "./shaders/liquid.frag.glsl?raw";
 const MAX_SHAPES = 15;
 
 /** Für den Shader: Die ersten beiden Flächen verschmelzen mit nichts. */
-const DEFINES = { MAX_SHAPES, SOLO_SHAPES: 2 };
+const LAYOUT = { maxShapes: MAX_SHAPES, soloShapes: 2, shadow: 0.3 };
 
 /** Hinter allem anderen in der Szene zeichnen. */
 const LAST = 1000;
-
-/** Sekunden, die das Glas zum Erscheinen und zum Verschwinden braucht. */
-const APPEAR_SECONDS = 0.7;
-const VANISH_SECONDS = 0.3;
 
 /** Wie schnell eine neue Jelly-Farbe ins Glas fließt, pro Sekunde. */
 const COLOR_SPEED = 5;
 
 /** Takt bei reduzierter Bewegung. Die Uhr steht dann, Hover und Tippen brauchen trotzdem ein Bild. */
 const STILL_REFRESH_MS = 100;
-
-/** Ein Dreieck, das die ganze Canvas abdeckt. Alle teilen es sich. */
-const FULLSCREEN = new BufferGeometry().setAttribute(
-  "position",
-  new Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3),
-);
-
-/** Uniforms des Shaders in den Farben von `color`. */
-function createUniforms(color: PetColor) {
-  const palette = PET_COLORS[color];
-  return {
-    uBackdrop: { value: null as FramebufferTexture | null },
-    uBuffer: { value: new Vector2(1, 1) },
-    uCanvas: { value: new Vector2(1, 1) },
-    uTime: { value: 0 },
-    uShapes: { value: Array.from({ length: MAX_SHAPES }, () => new Vector4()) },
-    uCalm: { value: Array.from({ length: MAX_SHAPES }, () => 0) },
-    uColor: { value: new Color(palette.hex) },
-    uGlow: { value: new Color(palette.glow) },
-    uInk: { value: new Color(palette.outline) },
-  };
-}
-
-/** Die Uniforms des Glases. */
-type GlassUniforms = ReturnType<typeof createUniforms>;
-
-/**
- * Das Material samt seiner Uniforms. Bewusst nicht als JSX: Fiber kopiert dort jeden
- * Uniform-Eintrag, und ein neu gesetztes `.value` käme nie beim Shader an.
- */
-function createGlass(color: PetColor) {
-  const uniforms = createUniforms(color);
-  const material = new ShaderMaterial({
-    defines: DEFINES,
-    uniforms,
-    vertexShader,
-    fragmentShader,
-    transparent: true,
-    depthTest: false,
-    depthWrite: false,
-    blending: NoBlending,
-  });
-  return { material, uniforms };
-}
 
 /**
  * Was von Bild zu Bild bleibt. Liegt nicht im React-Zustand, das gäbe 30 Renderdurchläufe je
@@ -137,34 +84,6 @@ function copyBackdrop(renderer: WebGLRenderer, uniforms: GlassUniforms) {
 }
 
 /**
- * Liest die Lage aller `data-liquid`-Elemente in `stage` in Pixeln auf der Canvas und merkt sich in
- * `calm`, welche davon `data-liquid="calm"` tragen und sich deshalb kaum verformen.
- */
-function readShapes(
-  stage: HTMLElement,
-  canvas: HTMLCanvasElement,
-  width: number,
-  { shapes, calm }: { shapes: Vector4[]; calm: number[] },
-) {
-  const box = canvas.getBoundingClientRect();
-  const found = stage.querySelectorAll("[data-liquid]");
-  shapes.forEach((shape, index) => {
-    const element = found[index];
-    calm[index] = element?.getAttribute("data-liquid") === "calm" ? 1 : 0;
-    if (!element) {
-      shape.setScalar(0);
-      return;
-    }
-    const { x, y, halfWidth, halfHeight } = shapeOnCanvas(
-      element.getBoundingClientRect(),
-      box,
-      width,
-    );
-    shape.set(x, y, halfWidth, halfHeight);
-  });
-}
-
-/**
  * Muss in `<Canvas>` stehen. Bleibt auch ohne Flächen dort: So kann das Glas noch verschwinden und
  * das Jelly beim Zurückfahren der Kamera weich auslaufen, wenn das Studio schon zu ist.
  *
@@ -181,7 +100,7 @@ export default function LiquidGlass({
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const mesh = useRef<Mesh>(null);
-  const [{ material, uniforms }] = useState(() => createGlass(color));
+  const [{ material, uniforms }] = useState(() => createGlass(color, LAYOUT));
   const frame = useMemo(() => createFrameState(uniforms), [uniforms]);
 
   useEffect(
@@ -199,10 +118,7 @@ export default function LiquidGlass({
   }, [reducedMotion, anchors, invalidate]);
 
   useFrame(({ camera, clock }, delta) => {
-    const seconds = anchors ? APPEAR_SECONDS : VANISH_SECONDS;
-    const step = (anchors ? delta : -delta) / seconds;
-    frame.presence = reducedMotion ? Number(Boolean(anchors)) : frame.presence + step;
-    frame.presence = Math.min(1, Math.max(0, frame.presence));
+    frame.presence = stepPresence(frame.presence, Boolean(anchors), delta, reducedMotion);
     if (mesh.current) mesh.current.visible = frame.presence > 0 || cameraAway(camera);
     uniforms.uTime.value = reducedMotion ? 0 : clock.elapsedTime;
     const palette = PET_COLORS[color];
