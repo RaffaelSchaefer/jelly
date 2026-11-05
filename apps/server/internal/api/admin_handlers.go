@@ -16,7 +16,6 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/players/{id}/hide":              server.handleHidePlayer,
 		"POST /admin/api/players/{id}/show":              server.handleShowPlayer,
 		"POST /admin/api/players/{id}/reset-name":        server.handleResetName,
-		"POST /admin/api/players/{id}/rotate-token":      server.handleRotateToken,
 		"POST /admin/api/players/{id}/recovery-code":     server.handleCreateRecoveryCode,
 		"DELETE /admin/api/players/{id}":                 server.handleDeletePlayer,
 		"GET /admin/api/lans":                            server.handleListLANs,
@@ -92,17 +91,6 @@ func (server *apiServer) handleResetName(writer http.ResponseWriter, request *ht
 	if valid {
 		err := server.Store.ResetPlayerName(request.Context(), playerID, server.currentMillis())
 		server.writeOutcome(writer, request, map[string]bool{"reset": true}, err)
-	}
-}
-
-// handleRotateToken creates a new token for a lost account and returns it once.
-func (server *apiServer) handleRotateToken(writer http.ResponseWriter, request *http.Request) {
-	playerID, valid := server.readPathID(writer, request)
-	if valid {
-		token, err := server.Store.RotatePlayerToken(
-			request.Context(), playerID, server.currentMillis(),
-		)
-		server.writeOutcome(writer, request, map[string]string{fieldSecret: token}, err)
 	}
 }
 

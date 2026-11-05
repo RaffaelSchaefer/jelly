@@ -378,14 +378,8 @@ func TestModeration(t *testing.T) {
 		t.Fatalf("name = %q", got)
 	}
 
-	response := testFixture.callAdmin("POST", base+"/rotate-token", "")
-	rotated := decodeBody[registerResponse](t, response)
-	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", token, ""),
-		http.StatusUnauthorized, "unauthorized")
-	testFixture.loadMe(rotated.Token)
-
 	testFixture.callAdmin("DELETE", base, "")
-	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", rotated.Token, ""),
+	requireProblem(t, testFixture.callAPI("GET", "/v1/players/me", token, ""),
 		http.StatusUnauthorized, "unauthorized")
 	requireProblem(t, testFixture.callAdmin("DELETE", base, ""),
 		http.StatusNotFound, "player_not_found")

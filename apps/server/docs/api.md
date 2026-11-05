@@ -421,7 +421,6 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/players?search=`                 |                                           |
 | `POST /admin/api/players/{id}/hide`, `/show`     |                                           |
 | `POST /admin/api/players/{id}/reset-name`        |                                           |
-| `POST /admin/api/players/{id}/rotate-token`      | Antwort: `{"secret"}`, nur dieses eine Mal |
 | `POST /admin/api/players/{id}/recovery-code`     | `{"valid_seconds"}`, ohne Angabe 24 Stunden, höchstens 30 Tage. Antwort: `{"code","expires_at"}`, nur dieses eine Mal |
 | `DELETE /admin/api/players/{id}`                 |                                           |
 | `GET`, `POST /admin/api/lans`                    | `{"slug","name","timezone","join_code","starts_at","ends_at"}` |
