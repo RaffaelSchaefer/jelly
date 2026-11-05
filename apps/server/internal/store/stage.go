@@ -15,19 +15,21 @@ const noArea int64 = 0
 
 // StagePlayer is a jelly as the stage shows it. Its area is a number without a name.
 type StagePlayer struct {
-	ID             int64                       `json:"id"`
-	Name           string                      `json:"name"`
-	Color          string                      `json:"color"`
-	Equipped       map[string]EquippedCosmetic `json:"equipped"`
-	Level          int                         `json:"level"`
-	Sign           *string                     `json:"sign"`
-	FollowPlayerID *int64                      `json:"follow_player_id"`
-	FollowUntil    *int64                      `json:"follow_until"`
-	LastSeenAt     int64                       `json:"last_seen_at"`
-	AreaID         *int64                      `json:"area_id"`
+	ID       int64                       `json:"id"`
+	Name     string                      `json:"name"`
+	Color    string                      `json:"color"`
+	Equipped map[string]EquippedCosmetic `json:"equipped"`
+	Level    int                         `json:"level"`
+	Sign     *string                     `json:"sign"`
+	Follow   *Follow                     `json:"follow"`
+	AreaID   *int64                      `json:"area_id"`
 	// IsVisitor marks a jelly without a place of its own, which wanders through the visitor zones.
-	IsVisitor bool  `json:"is_visitor"`
-	Trip      *Trip `json:"trip"`
+	IsVisitor bool `json:"is_visitor"`
+	// Trip and LastSeenAt tell the movement planner and the presence check what is going on.
+	// Clients
+	// see the same in the moves and in who is listed at all.
+	Trip       *Trip `json:"-"`
+	LastSeenAt int64 `json:"-"`
 	// SnackUntil tells the movement planner when a snack run ends.
 	SnackUntil int64 `json:"-"`
 	// LastSpot tells the movement planner where the jelly stood before a restart, or nil.
@@ -44,6 +46,7 @@ type StageState struct {
 	Areas       []StageArea   `json:"areas"`
 	Players     []StagePlayer `json:"players"`
 	Stacks      []Stack       `json:"stacks"`
+	Gathering   *Gathering    `json:"gathering"`
 	// WalkSpeed tells the movement planner how fast jellies walk in this LAN.
 	WalkSpeed float64 `json:"-"`
 }
@@ -59,7 +62,7 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	}
 	state := StageState{
 		LastEventID: latestID, ServerTime: now, Room: rules.DescribeRoom(),
-		Areas: []StageArea{}, Players: []StagePlayer{}, Stacks: []Stack{},
+		Areas: []StageArea{}, Players: []StagePlayer{}, Stacks: []Stack{}, Gathering: nil,
 	}
 	lan, err := loadActiveLAN(queryCtx, store.readDB, now)
 	if errors.Is(err, ErrNoActiveLAN) {
@@ -74,6 +77,10 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 		return StageState{}, err
 	}
 	state.Stacks, err = loadRunningStacks(queryCtx, store.readDB, lan.id, now)
+	if err != nil {
+		return StageState{}, err
+	}
+	state.Gathering, err = loadRunningGathering(queryCtx, store.readDB, lan.id, now)
 	if err != nil {
 		return StageState{}, err
 	}
@@ -226,7 +233,7 @@ func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePla
 	if err != nil {
 		return StagePlayer{}, fmt.Errorf("read stage player: %w", err)
 	}
-	player.Level = rules.CalculateLevel(lanXP)
+	player.Level = rules.CalculateLevel(gameRules, lanXP)
 	player.SnackUntil = rules.CalculateSnackRunEnd(gameRules, lastSnackAt)
 	player.Trip = trip.findRunningTrip(now)
 	if spotX.Valid && spotY.Valid {
@@ -235,8 +242,7 @@ func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePla
 	if sign.Valid {
 		player.Sign = &sign.String
 	}
-	running := findRunningFollow(gameRules, follow, followStartedAt, now)
-	player.FollowPlayerID, player.FollowUntil = running.playerID, running.until
+	player.Follow = findRunningFollow(gameRules, follow, followStartedAt, now)
 	if area.Valid {
 		player.AreaID = &area.Int64
 	}

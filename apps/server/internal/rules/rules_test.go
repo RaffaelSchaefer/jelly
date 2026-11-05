@@ -81,7 +81,7 @@ func TestCalculateNextPokeTime(t *testing.T) {
 
 func TestCalculateLevel(t *testing.T) {
 	for _, testCase := range loadContractCases(t).Level {
-		if got := rules.CalculateLevel(testCase.XP); got != testCase.Level {
+		if got := rules.CalculateLevel(rules.DefaultRules(), testCase.XP); got != testCase.Level {
 			t.Errorf("CalculateLevel(%d) = %d, want %d", testCase.XP, got, testCase.Level)
 		}
 	}
@@ -120,11 +120,12 @@ func TestValidateArea(t *testing.T) {
 		valid bool
 	}{
 		{"seats", rules.Area{X: 0, Y: 0, Width: 100, Height: 100, Kind: "seats"}, true},
-		{"desk", rules.Area{X: 4, Y: 5, Width: 43, Height: 2, Kind: "desk"}, true},
-		{"cable", rules.Area{X: 49, Y: 2, Width: 2, Height: 97, Kind: "cable"}, true},
+		{"fractions", rules.Area{X: 7.86, Y: 1.5, Width: 4.76, Height: 2, Kind: "none"}, true},
+		{"old desk", rules.Area{X: 4, Y: 5, Width: 43, Height: 2, Kind: "desk"}, false},
 		{"stage", rules.Area{X: 5, Y: 1, Width: 90, Height: 8, Kind: "stage"}, true},
 		{"lounge", rules.Area{X: 5, Y: 12, Width: 40, Height: 10, Kind: "lounge"}, true},
-		{"snackbar", rules.Area{X: 65, Y: 14, Width: 20, Height: 3, Kind: "snackbar"}, true},
+		{"queue", rules.Area{X: 65, Y: 14, Width: 20, Height: 3, Kind: "queue"}, true},
+		{"public", rules.Area{X: 65, Y: 14, Width: 20, Height: 3, Kind: "public"}, true},
 		{"missing kind", rules.Area{X: 0, Y: 0, Width: 10, Height: 10, Kind: ""}, false},
 		{"unknown kind", rules.Area{X: 0, Y: 0, Width: 10, Height: 10, Kind: "plant"}, false},
 		{"outside", rules.Area{X: 95, Y: 0, Width: 10, Height: 10, Kind: "seats"}, false},
@@ -144,11 +145,79 @@ func TestValidateArea(t *testing.T) {
 func TestOnlySeatsStageAndLoungeHoldJellies(t *testing.T) {
 	for kind, isStanding := range map[string]bool{
 		"seats": true, "stage": true, "lounge": true,
-		"desk": false, "cable": false, "snackbar": false,
+		"queue": false, "public": false, "spectators": false, "winner": false, "none": false,
 	} {
 		if rules.IsStandingKind(kind) != isStanding {
 			t.Errorf("IsStandingKind(%q) = %v", kind, !isStanding)
 		}
+	}
+}
+
+func TestFreeFloorEndsAtEveryBlockingZone(t *testing.T) {
+	areas := []rules.Area{
+		{X: 10, Y: 10, Width: 10, Height: 10, Kind: "none", Blocks: true, Prop: "couch"},
+		{X: 40, Y: 10, Width: 10, Height: 10, Kind: "seats", Blocks: false, Prop: ""},
+	}
+	testCases := []struct {
+		point rules.StagePoint
+		free  bool
+	}{
+		{rules.StagePoint{X: 15, Y: 15}, false},
+		{rules.StagePoint{X: 45, Y: 15}, true},
+		{rules.StagePoint{X: 30, Y: 30}, true},
+		{rules.StagePoint{X: 130, Y: 30}, false},
+	}
+	for _, testCase := range testCases {
+		if rules.IsOnFreeFloor(testCase.point, areas) != testCase.free {
+			t.Errorf("point %+v, want free = %v", testCase.point, testCase.free)
+		}
+	}
+}
+
+func TestMapChecksFindEveryBadZone(t *testing.T) {
+	good := rules.MapZone{
+		ID:     "a",
+		Name:   "A",
+		X:      1,
+		Y:      1,
+		Width:  1,
+		Height: 1,
+		Blocks: false,
+		Prop:   "",
+	}
+	again := good
+	outside := good
+	outside.ID, outside.X = "c", 100
+	missing := good
+	missing.ID = ""
+	invalid := rules.ListInvalidMapZones([]rules.MapZone{good, again, outside, missing})
+	if len(invalid) != 3 || invalid[0] != "a" || invalid[1] != "c" || invalid[2] != "" {
+		t.Fatalf("invalid = %v", invalid)
+	}
+	if !rules.IsMapSizeValid(rules.RoomMap{Version: 1, Zones: nil}) ||
+		rules.IsMapSizeValid(rules.RoomMap{Version: 2, Zones: nil}) {
+		t.Fatal("only format 1 is known")
+	}
+}
+
+func TestUnknownPropsAreListedOnce(t *testing.T) {
+	zone := func(prop string) rules.MapZone {
+		return rules.MapZone{
+			ID:     prop,
+			Name:   "",
+			X:      0,
+			Y:      0,
+			Width:  1,
+			Height: 1,
+			Blocks: false,
+			Prop:   prop,
+		}
+	}
+	unknown := rules.ListUnknownProps(
+		[]rules.MapZone{zone("couch"), zone("yacht"), zone(""), zone("yacht"), zone("kraken")},
+	)
+	if len(unknown) != 2 || unknown[0] != "kraken" || unknown[1] != "yacht" {
+		t.Fatalf("unknown = %v", unknown)
 	}
 }
 

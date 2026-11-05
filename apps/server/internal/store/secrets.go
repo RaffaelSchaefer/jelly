@@ -10,6 +10,8 @@ import (
 const (
 	tokenBytes     = 32
 	seatCodeLength = 8
+	// A recovery code opens an account, so it is much longer than a seat code.
+	recoveryCodeLength = 16
 	// Without letters and digits that look alike, because people type the code from a note.
 	seatCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 )
@@ -24,10 +26,20 @@ func generateToken() string {
 
 // generateSeatCode creates a code that is short enough to type. Attempts are rate limited.
 func generateSeatCode() string {
-	raw := make([]byte, seatCodeLength)
+	return generateReadableCode(seatCodeLength)
+}
+
+// generateRecoveryCode creates a code that people can type from a note.
+func generateRecoveryCode() string {
+	return generateReadableCode(recoveryCodeLength)
+}
+
+// generateReadableCode creates a random code from the readable alphabet.
+func generateReadableCode(length int) string {
+	raw := make([]byte, length)
 	// crypto/rand.Read never returns an error and aborts the program itself on failure.
 	_, _ = rand.Read(raw)
-	code := make([]byte, seatCodeLength)
+	code := make([]byte, length)
 	for index, value := range raw {
 		code[index] = seatCodeAlphabet[int(value)%len(seatCodeAlphabet)]
 	}

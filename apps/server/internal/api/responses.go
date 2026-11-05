@@ -14,9 +14,16 @@ import (
 
 const maxBodyBytes = 4 << 10
 
+const (
+	// maxMapBytes is the limit for map files, far above a hall with two thousand zones.
+	maxMapBytes    = 1 << 20
+	codeInvalidMap = "invalid_map"
+)
+
 // Field names shared by several responses.
 const (
 	fieldCreated = "created"
+	fieldEnded   = "ended"
 	fieldDeleted = "deleted"
 	fieldHidden  = "hidden"
 	fieldSecret  = "secret"
@@ -107,9 +114,7 @@ func listPlayerErrors() []knownError {
 		{store.ErrLANOverlap, problem{
 			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
 		}},
-		{store.ErrInvalidInput, problem{
-			http.StatusBadRequest, "invalid_input", "Die Angaben sind unvollständig.",
-		}},
+		{store.ErrInvalidInput, problemInvalidRequest()},
 		{store.ErrAreaNotFound, problem{
 			http.StatusNotFound, "area_not_found", "Diesen Bereich gibt es nicht.",
 		}},
@@ -178,9 +183,7 @@ func listStackErrors() []knownError {
 // listInviteErrors returns the errors of partner emote invites.
 func listInviteErrors() []knownError {
 	return []knownError{
-		{store.ErrInvalidPartner, problem{
-			http.StatusBadRequest, "invalid_partner", "Dieses Jelly kannst du nicht auffordern.",
-		}},
+		{store.ErrInvalidPartner, problemInvalidPartner()},
 		{store.ErrInviteOpen, problem{
 			http.StatusConflict, "partner_emote_open", "Du hast dieses Jelly schon aufgefordert.",
 		}},
@@ -208,8 +211,17 @@ func listSeatErrors() []knownError {
 			http.StatusConflict, "code_redeemed",
 			"Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben.",
 		}},
-		{store.ErrAreaOccupied, problem{
-			http.StatusConflict, "area_occupied", "In diesem Bereich stehen mehrere Jellies.",
+		{store.ErrGatheringNotFound, problem{
+			http.StatusNotFound, "gathering_not_found", "Gerade läuft kein solches Ereignis.",
+		}},
+		{store.ErrSeatCodeOtherAccount, problem{
+			http.StatusForbidden, "seat_code_other_account",
+			"Dieser Sitzplatz-Code gehört zu einem anderen Konto. Fehlt dein Konto auf diesem " +
+				"Gerät, gibt dir die Orga einen Wiederherstellungs-Code.",
+		}},
+		{store.ErrInvalidRecoveryCode, problem{
+			http.StatusForbidden, "invalid_recovery_code",
+			"Dieser Wiederherstellungs-Code stimmt nicht oder ist abgelaufen.",
 		}},
 	}
 }
@@ -224,7 +236,7 @@ func listGameErrors() []knownError {
 			http.StatusConflict, "not_joined", "Du nimmst an dieser LAN noch nicht teil.",
 		}},
 		{store.ErrEventCodeInvalid, problem{
-			http.StatusBadRequest, "invalid_event_code", "Dieser Event-Code gilt gerade nicht.",
+			http.StatusForbidden, "invalid_event_code", "Dieser Event-Code gilt gerade nicht.",
 		}},
 		{store.ErrEventCodeRedeemed, problem{
 			http.StatusConflict, "event_code_redeemed",
@@ -241,14 +253,12 @@ func listGameErrors() []knownError {
 			"Zu diesem Jelly kannst du dich nicht stellen.",
 		}},
 		{store.ErrInvalidTrip, problem{
-			http.StatusBadRequest, "invalid_trip", "Dieser Punkt liegt nicht auf der Bühne.",
+			http.StatusBadRequest, "invalid_trip", "Auf diesem Punkt kann kein Jelly stehen.",
 		}},
 		{store.ErrTooFar, problem{
 			http.StatusConflict, "too_far", "Ihr steht nicht nah genug beieinander.",
 		}},
-		{store.ErrPartnerSelf, problem{
-			http.StatusBadRequest, "partner_self", "Dafür brauchst du ein anderes Jelly.",
-		}},
+		{store.ErrPartnerSelf, problemInvalidPartner()},
 		{rules.ErrUnknownPartnerEmote, problem{
 			http.StatusBadRequest, "unknown_partner_emote", "Dieses Partner-Emote gibt es nicht.",
 		}},
@@ -264,23 +274,37 @@ func listGameErrors() []knownError {
 		{rules.ErrUnknownSign, problem{
 			http.StatusBadRequest, "unknown_sign", "Dieses Schild gibt es nicht.",
 		}},
-		{errUnknownAction, problemUnknownAction()},
+		{errUnknownReportKind, problemUnknownReportKind()},
 	}
 }
 
-// problemUnknownAction is the response to an unknown action.
-func problemUnknownAction() problem {
-	return problem{http.StatusBadRequest, "unknown_action", "Diese Aktion gibt es nicht."}
+// problemUnknownReportKind is the response to an unknown kind of report.
+func problemUnknownReportKind() problem {
+	return problem{http.StatusBadRequest, "unknown_report_kind", "Diese Meldung gibt es nicht."}
 }
 
-// problemInvalidBody is the response to an invalid request.
-func problemInvalidBody() problem {
-	return problem{http.StatusBadRequest, "invalid_body", "Die Anfrage ist ungültig."}
+// problemInvalidPartner is the response to an invite for the own or an unsuitable jelly.
+func problemInvalidPartner() problem {
+	return problem{
+		http.StatusBadRequest, "invalid_partner", "Dieses Jelly kannst du nicht auffordern.",
+	}
+}
+
+// problemInvalidRequest is the response to a request with a broken body, parameter or value.
+func problemInvalidRequest() problem {
+	return problem{http.StatusBadRequest, "invalid_request", "Die Anfrage ist ungültig."}
 }
 
 // problemNotFound is the response to a path outside the contract.
 func problemNotFound() problem {
 	return problem{http.StatusNotFound, "not_found", "Diesen Weg gibt es nicht."}
+}
+
+// problemInternal is the response to a failure on the server.
+func problemInternal() problem {
+	return problem{
+		http.StatusInternalServerError, "internal", "Auf dem Server ist ein Fehler aufgetreten.",
+	}
 }
 
 // problemRateLimited is the response when too many attempts arrive at once.
@@ -292,15 +316,22 @@ func problemRateLimited() problem {
 func (server *apiServer) readJSON(
 	writer http.ResponseWriter, request *http.Request, target any,
 ) bool {
-	decoder := json.NewDecoder(http.MaxBytesReader(writer, request.Body, maxBodyBytes))
+	return server.readLimitedJSON(writer, request, target, maxBodyBytes)
+}
+
+// readLimitedJSON is `readJSON` with its own limit for the size of the body.
+func (server *apiServer) readLimitedJSON(
+	writer http.ResponseWriter, request *http.Request, target any, limit int64,
+) bool {
+	decoder := json.NewDecoder(http.MaxBytesReader(writer, request.Body, limit))
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(target)
 	if err != nil {
-		server.writeProblem(writer, problemInvalidBody())
+		server.writeProblem(writer, problemInvalidRequest())
 		return false
 	}
 	if !errors.Is(decoder.Decode(&struct{}{}), io.EOF) {
-		server.writeProblem(writer, problemInvalidBody())
+		server.writeProblem(writer, problemInvalidRequest())
 		return false
 	}
 	return true
@@ -325,9 +356,7 @@ func (server *apiServer) translateError(ctx context.Context, route string, err e
 		logFailure = server.Logger.DebugContext
 	}
 	logFailure(ctx, "request failed", "route", route, "error", err)
-	return problem{
-		http.StatusInternalServerError, "internal", "Auf dem Server ist ein Fehler aufgetreten.",
-	}
+	return problemInternal()
 }
 
 // isClientGone reports a request cancelled by its own client, which is no fault of the server.

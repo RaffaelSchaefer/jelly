@@ -53,7 +53,7 @@ func TestStackGrowsAndShowsOnTheStage(t *testing.T) {
 		if move.PlayerID == topID {
 			wantLevel = 1
 		}
-		if move.Kind != movement.KindStack || move.Level != wantLevel {
+		if move.Kind != movement.KindStack || move.StackLevel != wantLevel {
 			t.Fatalf("move = %+v", move)
 		}
 	}

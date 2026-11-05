@@ -18,18 +18,16 @@ const (
 	inviteAccepted  = "accepted"
 	inviteDeclined  = "declined"
 	inviteCancelled = "cancelled"
-	// Only a list of one partner works so far. Group emotes will raise this limit.
-	maxInvitedPartners = 1
 )
 
 // PartnerInvite asks other jellies for a partner emote.
 type PartnerInvite struct {
-	ID         int64   `json:"id"`
-	EmoteKey   string  `json:"key"`
-	FromID     int64   `json:"from_id"`
-	PartnerIDs []int64 `json:"partner_ids"`
-	State      string  `json:"state"`
-	ExpiresAt  int64   `json:"expires_at"`
+	ID        int64  `json:"id"`
+	EmoteKey  string `json:"key"`
+	FromID    int64  `json:"from_id"`
+	PartnerID int64  `json:"partner_id"`
+	State     string `json:"state"`
+	ExpiresAt int64  `json:"expires_at"`
 }
 
 // PartnerInviteResult is an invite after a change, with the XP that change earned.
@@ -41,16 +39,15 @@ type PartnerInviteResult struct {
 
 // PartnerInviteList holds the open invites of a player.
 type PartnerInviteList struct {
-	Items      []PartnerInvite `json:"items"`
-	NextCursor *string         `json:"next_cursor"`
+	Items []PartnerInvite `json:"items"`
 }
 
 // NewPartnerInvite is a request for a partner emote.
 type NewPartnerInvite struct {
-	PlayerID   int64
-	EmoteKey   string
-	PartnerIDs []int64
-	Now        int64
+	PlayerID  int64
+	EmoteKey  string
+	PartnerID int64
+	Now       int64
 	// IsNear says whether the partner stands within this distance of the player.
 	IsNear func(partnerID int64, reach float64) bool
 }
@@ -62,9 +59,6 @@ func (store *Store) CreatePartnerInvite(
 	err := rules.ValidatePartnerEmote(request.EmoteKey)
 	if err != nil {
 		return PartnerInviteResult{}, fmt.Errorf("validate partner emote: %w", err)
-	}
-	if len(request.PartnerIDs) != maxInvitedPartners {
-		return PartnerInviteResult{}, ErrInvalidPartner
 	}
 	var result PartnerInviteResult
 	work := func(action actionContext) error {
@@ -83,7 +77,7 @@ func (store *Store) CreatePartnerInvite(
 func insertPartnerInvite(
 	ctx context.Context, action actionContext, request NewPartnerInvite,
 ) (PartnerInvite, error) {
-	partnerID := request.PartnerIDs[0]
+	partnerID := request.PartnerID
 	if partnerID == action.playerID {
 		return PartnerInvite{}, ErrPartnerSelf
 	}
@@ -109,7 +103,7 @@ func insertPartnerInvite(
 		return PartnerInvite{}, fmt.Errorf("find open invite: %w", err)
 	}
 	invite := PartnerInvite{
-		ID: 0, EmoteKey: request.EmoteKey, FromID: action.playerID, PartnerIDs: []int64{partnerID},
+		ID: 0, EmoteKey: request.EmoteKey, FromID: action.playerID, PartnerID: partnerID,
 		State:     invitePending,
 		ExpiresAt: action.now + action.lan.gameRules.PartnerInviteSeconds*millisPerSecond,
 	}
@@ -180,11 +174,11 @@ func (store *Store) AnswerPartnerInvite(
 func loadAnswerableInvite(
 	ctx context.Context, action actionContext, inviteID int64, state string,
 ) (PartnerInvite, error) {
-	invite := PartnerInvite{ID: inviteID, PartnerIDs: []int64{0}}
+	invite := PartnerInvite{ID: inviteID}
 	const selectInviteSQL = `SELECT emote_key, from_id, to_id, state, expires_at
 		FROM partner_invites WHERE id = ? AND lan_id = ?`
 	err := action.transaction.QueryRowContext(ctx, selectInviteSQL, inviteID, action.lan.id).Scan(
-		&invite.EmoteKey, &invite.FromID, &invite.PartnerIDs[0], &invite.State, &invite.ExpiresAt,
+		&invite.EmoteKey, &invite.FromID, &invite.PartnerID, &invite.State, &invite.ExpiresAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PartnerInvite{}, ErrInviteNotFound
@@ -192,7 +186,7 @@ func loadAnswerableInvite(
 	if err != nil {
 		return PartnerInvite{}, fmt.Errorf("load invite: %w", err)
 	}
-	isInvited := invite.PartnerIDs[0] == action.playerID
+	isInvited := invite.PartnerID == action.playerID
 	if !isInvited && invite.FromID != action.playerID {
 		return PartnerInvite{}, ErrInviteNotFound
 	}
@@ -231,7 +225,7 @@ func (store *Store) ListOpenPartnerInvites(
 ) (PartnerInviteList, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	list := PartnerInviteList{Items: []PartnerInvite{}, NextCursor: nil}
+	list := PartnerInviteList{Items: []PartnerInvite{}}
 	const selectOpenInvitesSQL = `SELECT id, emote_key, from_id, to_id, state, expires_at
 		FROM partner_invites
 		WHERE state = ? AND expires_at > ? AND (from_id = ? OR to_id = ?) ORDER BY id`
@@ -242,8 +236,8 @@ func (store *Store) ListOpenPartnerInvites(
 	}
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
-		invite := PartnerInvite{PartnerIDs: []int64{0}}
-		err = rows.Scan(&invite.ID, &invite.EmoteKey, &invite.FromID, &invite.PartnerIDs[0],
+		var invite PartnerInvite
+		err = rows.Scan(&invite.ID, &invite.EmoteKey, &invite.FromID, &invite.PartnerID,
 			&invite.State, &invite.ExpiresAt)
 		if err != nil {
 			return list, fmt.Errorf("read invite: %w", err)

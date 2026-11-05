@@ -27,15 +27,15 @@ curl -X POST localhost:8080/v1/auth/redeem -H 'Content-Type: application/json' \
 `scripts/demo.sh` startet einen Wegwerf-Server mit 70 simulierten Jellies und nennt den Link zur
 Bühne. Mit Strg+C ist alles wieder weg. Der Raum folgt dem Hallenplan der LAN: hinten die Bühne
 (`stage`) mit zwei Beamern für Turniere und Public Gaming, davor links die Chillout-Lounge
-(`lounge`) und rechts die Snackbar (`snackbar`). Dann in der Mitte eine Reihe Tische mit Server und
+(`lounge`) und rechts die Theke der Snackbar mit einer Anstellzone (`queue`). Dann in der Mitte eine Reihe Tische mit Server und
 Bodentank, links und rechts Tischreihen mit Gängen dazwischen. Meist
 stehen drei Reihen zusammen: Spieltische, eine Tischreihe für Switches und Kabel, wieder Spieltische.
 Jeder Spieltisch ist ein Platz, die Spieler stehen im Gang davor, und die Plätze nebeneinander in
-einer Reihe sind eine Gruppe (`seats`). Tische (`desk`), die Theke der Snackbar und auf der Bühne
-Beamer, Boxen und Pokal sind Hindernisse, um die die Jellies herumlaufen. Jellies ohne Platz chillen
-in der Lounge, auf die Bühne stellt sie ein Admin, etwa für ein Turnier. Wer Essen oder Trinken
-meldet, holt sich kurz etwas an der Snackbar. Der Aufbau steht in `scripts/demo-room.sh`,
-`kind: "cable"` für Kabelkanäle am Boden nutzt die Demo nicht.
+einer Reihe sind eine Gruppe (`seats`). Tische, die Theke der Snackbar und auf der Bühne Beamer, Boxen
+und Pokal sind Zonen mit `blocks`, um die die Jellies herumlaufen. Jellies ohne Platz chillen in der
+Lounge, auf die Bühne stellt sie ein Admin, etwa für ein Turnier. Wer Essen oder Trinken meldet, stellt
+sich kurz in der Anstellzone an. Der Aufbau steht in `scripts/demo-room.sh`. Die Bühne zeichnet noch nach
+der alten Zuweisung und muss `prop` erst übernehmen, Tische und Theke fehlen bis dahin im Bild.
 
 ![Die 3D-Bühne mit 70 simulierten Jellies](docs/images/stage-3d.jpg)
 

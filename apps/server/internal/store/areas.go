@@ -10,18 +10,22 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
 
-// StageArea is one part of the room map.
+// StageArea is one part of the room map. Only public zones show their name.
 type StageArea struct {
 	ID int64 `json:"id"`
 	rules.Area
+
+	Name *string `json:"name"`
 }
 
-// AdminArea is a zone as the admin sees it. Its name helps whoever builds the map and stays out of
-// the public stage.
+// AdminArea is a zone as the admin sees it. `MapID` is its ID in the map file, empty if it was not
+// imported.
 type AdminArea struct {
-	StageArea
+	ID int64 `json:"id"`
+	rules.Area
 
-	Name string `json:"name"`
+	Name  string `json:"name"`
+	MapID string `json:"map_id"`
 }
 
 // AreaAssignment says which area of a LAN a player belongs to.
@@ -63,9 +67,14 @@ func (store *Store) UpdateArea(ctx context.Context, lanID int64, area AdminArea,
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		const updateAreaSQL = `UPDATE lan_areas
-			SET x = ?, y = ?, width = ?, height = ?, kind = ?, name = ? WHERE id = ? AND lan_id = ?`
-		result, err := transaction.ExecContext(ctx, updateAreaSQL,
-			area.X, area.Y, area.Width, area.Height, area.Kind, area.Name, area.ID, lanID)
+			SET x = ?, y = ?, width = ?, height = ?, rotation = ?, kind = ?, name = ?, blocks = ?,
+				prop = ?
+			WHERE id = ? AND lan_id = ?`
+		result, err := transaction.ExecContext(
+			ctx,
+			updateAreaSQL,
+			area.X, area.Y, area.Width, area.Height, area.Rotation, area.Kind, area.Name,
+			area.Blocks, area.Prop, area.ID, lanID)
 		if err != nil {
 			return fmt.Errorf("update area: %w", err)
 		}
@@ -113,8 +122,9 @@ func (store *Store) DeleteArea(ctx context.Context, lanID, areaID, now int64) er
 func (store *Store) ListAreas(ctx context.Context, lanID int64) ([]AdminArea, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
-	const selectAdminAreasSQL = `SELECT id, x, y, width, height, kind, name FROM lan_areas
-		WHERE lan_id = ? ORDER BY id`
+	const selectAdminAreasSQL = `SELECT id, x, y, width, height, rotation, kind, blocks, prop, name,
+			COALESCE(map_id, '')
+		FROM lan_areas WHERE lan_id = ? ORDER BY id`
 	rows, err := store.readDB.QueryContext(queryCtx, selectAdminAreasSQL, lanID)
 	if err != nil {
 		return nil, fmt.Errorf("list areas: %w", err)
@@ -129,8 +139,12 @@ func (store *Store) ListAreas(ctx context.Context, lanID int64) ([]AdminArea, er
 			&area.Y,
 			&area.Width,
 			&area.Height,
+			&area.Rotation,
 			&area.Kind,
+			&area.Blocks,
+			&area.Prop,
 			&area.Name,
+			&area.MapID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("read area: %w", err)
@@ -207,10 +221,24 @@ func (store *Store) AssignArea(
 func insertArea(
 	ctx context.Context, transaction *sql.Tx, lanID int64, area AdminArea,
 ) (int64, error) {
-	const insertAreaSQL = `INSERT INTO lan_areas (lan_id, x, y, width, height, kind, name)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
-	result, err := transaction.ExecContext(ctx, insertAreaSQL,
-		lanID, area.X, area.Y, area.Width, area.Height, area.Kind, area.Name)
+	const insertAreaSQL = `INSERT INTO lan_areas
+		(lan_id, x, y, width, height, rotation, kind, blocks, prop, name, map_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''))`
+	result, err := transaction.ExecContext(
+		ctx,
+		insertAreaSQL,
+		lanID,
+		area.X,
+		area.Y,
+		area.Width,
+		area.Height,
+		area.Rotation,
+		area.Kind,
+		area.Blocks,
+		area.Prop,
+		area.Name,
+		area.MapID,
+	)
 	if err != nil && strings.Contains(err.Error(), "FOREIGN KEY") {
 		return 0, ErrLANNotFound
 	}
@@ -226,8 +254,8 @@ func insertArea(
 
 // loadAreas reads the room map of a LAN.
 func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea, error) {
-	const selectAreasSQL = `SELECT id, x, y, width, height, kind FROM lan_areas
-		WHERE lan_id = ? ORDER BY id`
+	const selectAreasSQL = `SELECT id, x, y, width, height, rotation, kind, blocks, prop, name
+		FROM lan_areas WHERE lan_id = ? ORDER BY id`
 	rows, err := database.QueryContext(ctx, selectAreasSQL, lanID)
 	if err != nil {
 		return nil, fmt.Errorf("load areas: %w", err)
@@ -236,9 +264,14 @@ func loadAreas(ctx context.Context, database querier, lanID int64) ([]StageArea,
 	areas := []StageArea{}
 	for rows.Next() {
 		var area StageArea
-		err := rows.Scan(&area.ID, &area.X, &area.Y, &area.Width, &area.Height, &area.Kind)
+		var name string
+		err := rows.Scan(&area.ID, &area.X, &area.Y, &area.Width, &area.Height, &area.Rotation,
+			&area.Kind, &area.Blocks, &area.Prop, &name)
 		if err != nil {
 			return nil, fmt.Errorf("read area: %w", err)
+		}
+		if area.Kind == rules.AreaKindPublic {
+			area.Name = &name
 		}
 		areas = append(areas, area)
 	}

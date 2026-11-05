@@ -3,27 +3,31 @@
     "schemas": {
       "Achievement": {
         "additionalProperties": true,
+        "description": "One achievement of the catalog.",
         "properties": {
           "description": {
+            "description": "German text that says how to earn it.",
             "type": "string"
           },
           "goal": {
+            "description": "How often the action has to happen until it is earned.",
             "format": "int64",
             "type": "integer"
           },
           "key": {
+            "description": "Stable key of the achievement.",
             "type": "string"
           },
           "record_unit": {
+            "description": "German unit of the personal record. With it, the achievement has one stage and then only tracks the best value.",
             "type": "string"
           },
           "scope": {
+            "description": "`permanent` stays across all LANs, `lan` can be earned again at each LAN.",
             "type": "string"
           },
-          "secret": {
-            "type": "boolean"
-          },
           "title": {
+            "description": "German title to show.",
             "type": "string"
           }
         },
@@ -32,18 +36,24 @@
           "title",
           "description",
           "scope",
-          "secret",
           "goal"
         ],
         "type": "object"
       },
       "ActionAnswer": {
         "additionalProperties": true,
+        "description": "The result of an action that can earn XP.",
         "properties": {
           "me": {
-            "$ref": "#/components/schemas/PlayerState"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerState"
+              }
+            ],
+            "description": "The state of the player after the action."
           },
           "xp_gained": {
+            "description": "XP this action earned. 0 is no error, for example after a poke that came too early.",
             "format": "int64",
             "type": "integer"
           }
@@ -56,11 +66,14 @@
       },
       "Badge": {
         "additionalProperties": true,
+        "description": "Shows that a player attended a LAN.",
         "properties": {
           "name": {
+            "description": "Name of the LAN to show.",
             "type": "string"
           },
           "slug": {
+            "description": "Stable short name of the LAN.",
             "type": "string"
           }
         },
@@ -72,50 +85,59 @@
       },
       "Catalog": {
         "additionalProperties": true,
+        "description": "The fixed lists of the server. Entries can be added in any version.",
         "properties": {
           "achievements": {
+            "description": "All achievements that are not secret.",
             "items": {
               "$ref": "#/components/schemas/Achievement"
             },
             "type": "array"
           },
           "colors": {
+            "description": "Colors a jelly can have.",
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
             },
             "type": "array"
           },
           "cosmetic_colors": {
+            "description": "Hex colors that colorable cosmetics can take.",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "cosmetic_slots": {
+            "description": "The places on a jelly that can wear a cosmetic.",
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
             },
             "type": "array"
           },
           "cosmetics": {
+            "description": "All cosmetics. Some can only be given as an award.",
             "items": {
               "$ref": "#/components/schemas/Cosmetic"
             },
             "type": "array"
           },
           "emotes": {
+            "description": "Emotes for `POST /v1/emotes`.",
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
             },
             "type": "array"
           },
           "partner_emotes": {
+            "description": "Emotes for `POST /v1/partner-emotes`.",
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
             },
             "type": "array"
           },
           "signs": {
+            "description": "Signs for `PUT /v1/signs/current`.",
             "items": {
               "$ref": "#/components/schemas/CatalogEntry"
             },
@@ -136,11 +158,14 @@
       },
       "CatalogEntry": {
         "additionalProperties": true,
+        "description": "One choice of a fixed list.",
         "properties": {
           "key": {
+            "description": "Stable key to send to the server.",
             "type": "string"
           },
           "label": {
+            "description": "German text to show.",
             "type": "string"
           }
         },
@@ -152,8 +177,10 @@
       },
       "CodeBody": {
         "additionalProperties": false,
+        "description": "A request with one event code.",
         "properties": {
           "code": {
+            "description": "The code as the player typed it.",
             "type": "string"
           }
         },
@@ -164,27 +191,35 @@
       },
       "Cosmetic": {
         "additionalProperties": true,
+        "description": "One item a jelly can wear.",
         "properties": {
           "colorable": {
+            "description": "Whether it takes a color from `cosmetic_colors`. The others always look the same.",
             "type": "boolean"
           },
           "key": {
+            "description": "Stable key of the cosmetic.",
             "type": "string"
           },
           "level": {
+            "description": "The level that unlocks it, only with `unlock` `level`.",
             "format": "int64",
             "type": "integer"
           },
           "name": {
+            "description": "German name to show.",
             "type": "string"
           },
-          "requires_event": {
-            "type": "boolean"
-          },
           "scope": {
+            "description": "`permanent` counts progress over all LANs, `lan` only counts the current LAN.",
             "type": "string"
           },
           "slot": {
+            "description": "The place on the jelly that wears it, one of `cosmetic_slots`.",
+            "type": "string"
+          },
+          "unlock": {
+            "description": "How a player gets it: `level` from reaching `level`, `event` from an event code, `award` as a prize from the orga, `none` not at all. Treat new values like `none`.",
             "type": "string"
           }
         },
@@ -193,32 +228,40 @@
           "name",
           "scope",
           "slot",
-          "colorable"
+          "colorable",
+          "unlock"
         ],
         "type": "object"
       },
       "EarnedAchievement": {
         "additionalProperties": true,
+        "description": "An achievement in the history of a player.",
         "properties": {
           "best": {
+            "description": "The personal record, only for record achievements.",
             "format": "int64",
             "type": "integer"
           },
           "earned_at": {
+            "description": "When it was earned.",
             "format": "int64",
             "type": "integer"
           },
           "key": {
+            "description": "Key of the achievement. Secret ones are not in the catalog, so show `title`.",
             "type": "string"
           },
           "lan_slug": {
+            "description": "The LAN it was earned at, or null for one that stays across LANs.",
             "nullable": true,
             "type": "string"
           },
           "record_unit": {
+            "description": "German unit of the record, only for record achievements.",
             "type": "string"
           },
           "title": {
+            "description": "German title to show.",
             "type": "string"
           }
         },
@@ -232,14 +275,18 @@
       },
       "EquipBody": {
         "additionalProperties": false,
+        "description": "Changes one cosmetic slot.",
         "properties": {
           "color": {
+            "description": "Hex color from `cosmetic_colors`, only for colorable cosmetics.",
             "type": "string"
           },
           "key": {
+            "description": "The cosmetic to put on, out of `cosmetics` in the state. Without it, the slot is emptied.",
             "type": "string"
           },
           "slot": {
+            "description": "The slot to change, one of `cosmetic_slots`.",
             "type": "string"
           }
         },
@@ -250,12 +297,15 @@
       },
       "EquippedCosmetic": {
         "additionalProperties": true,
+        "description": "What a jelly wears in one slot.",
         "properties": {
           "color": {
+            "description": "The chosen hex color, null for cosmetics that are not colorable.",
             "nullable": true,
             "type": "string"
           },
           "key": {
+            "description": "Key of the cosmetic.",
             "type": "string"
           }
         },
@@ -267,11 +317,14 @@
       },
       "ErrorDetails": {
         "additionalProperties": true,
+        "description": "The content of an error answer.",
         "properties": {
           "code": {
+            "description": "Stable code for programs. The overview of this document lists all codes.",
             "type": "string"
           },
           "message": {
+            "description": "German text for people. Show it for codes the client does not know.",
             "type": "string"
           }
         },
@@ -283,9 +336,15 @@
       },
       "ErrorResponse": {
         "additionalProperties": true,
+        "description": "The form of every error answer.",
         "properties": {
           "error": {
-            "$ref": "#/components/schemas/ErrorDetails"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetails"
+              }
+            ],
+            "description": "What went wrong."
           }
         },
         "required": [
@@ -295,22 +354,29 @@
       },
       "Event": {
         "additionalProperties": true,
+        "description": "One entry of the event log. It holds IDs and keys, never names.",
         "properties": {
           "created_at": {
+            "description": "When it happened.",
             "format": "int64",
             "type": "integer"
           },
           "id": {
+            "description": "Rising number of the event, the `since` of a later reconnect.",
             "format": "int64",
             "type": "integer"
           },
-          "payload": {},
+          "payload": {
+            "description": "Details that depend on `type`, see the stream route."
+          },
           "player_id": {
+            "description": "The player it is about, null for events of the whole stage.",
             "format": "int64",
             "nullable": true,
             "type": "integer"
           },
           "type": {
+            "description": "What happened. The stream route lists all types, unknown ones are ignored.",
             "type": "string"
           }
         },
@@ -323,10 +389,33 @@
         ],
         "type": "object"
       },
+      "Follow": {
+        "additionalProperties": true,
+        "description": "Whom a jelly follows.",
+        "properties": {
+          "ends_at": {
+            "description": "When following ends by itself.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "player_id": {
+            "description": "The followed jelly.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player_id",
+          "ends_at"
+        ],
+        "type": "object"
+      },
       "FollowBody": {
         "additionalProperties": false,
+        "description": "Names the jelly to follow.",
         "properties": {
           "player_id": {
+            "description": "The player to follow. Circles of followers answer `400 invalid_follow`.",
             "format": "int64",
             "type": "integer"
           }
@@ -336,10 +425,39 @@
         ],
         "type": "object"
       },
+      "Gathering": {
+        "additionalProperties": true,
+        "description": "Sends all jellies of a LAN somewhere for a while, started by the orga. Nothing pauses: a trip, following or a stack runs on in the background and goes on afterwards if its time is not over yet.",
+        "properties": {
+          "ends_at": {
+            "description": "When it ends and the jellies walk back.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "`food` sends the jellies to the zones of kind `queue`. `ceremony` sends them to `spectators` and the winner to `winner`. Treat new values as nothing to show.",
+            "type": "string"
+          },
+          "winner_id": {
+            "description": "The winner of a ceremony, who grows on the stage. Null without one.",
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "winner_id",
+          "ends_at"
+        ],
+        "type": "object"
+      },
       "HighlightBody": {
         "additionalProperties": false,
+        "description": "Names the jelly to light up.",
         "properties": {
           "player_id": {
+            "description": "The player to light up, which can be the own one.",
             "format": "int64",
             "type": "integer"
           }
@@ -351,12 +469,15 @@
       },
       "InviteAnswerBody": {
         "additionalProperties": false,
+        "description": "Changes an open partner emote.",
         "properties": {
           "id": {
+            "description": "The partner emote to change.",
             "format": "int64",
             "type": "integer"
           },
           "state": {
+            "description": "`accepted` or `declined` from the invited jelly, `cancelled` from the one who asked.",
             "type": "string"
           }
         },
@@ -368,29 +489,30 @@
       },
       "InviteBody": {
         "additionalProperties": false,
+        "description": "Asks for a partner emote.",
         "properties": {
           "key": {
+            "description": "The emote, out of `partner_emotes` in the catalog.",
             "type": "string"
           },
-          "partner_ids": {
-            "items": {
-              "format": "int64",
-              "type": "integer"
-            },
-            "nullable": true,
-            "type": "array"
+          "partner_id": {
+            "description": "The invited jelly.",
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
           "key",
-          "partner_ids"
+          "partner_id"
         ],
         "type": "object"
       },
       "KeyBody": {
         "additionalProperties": false,
+        "description": "A request that names one entry of a fixed list.",
         "properties": {
           "key": {
+            "description": "The key from the catalog.",
             "type": "string"
           }
         },
@@ -401,14 +523,18 @@
       },
       "LANInfo": {
         "additionalProperties": true,
+        "description": "The newest LAN of an account, which does not have to be the running one.",
         "properties": {
           "active": {
+            "description": "Whether this LAN runs right now.",
             "type": "boolean"
           },
           "name": {
+            "description": "Name of the LAN to show.",
             "type": "string"
           },
           "slug": {
+            "description": "Stable short name of the LAN.",
             "type": "string"
           }
         },
@@ -421,18 +547,23 @@
       },
       "LANPeriod": {
         "additionalProperties": true,
+        "description": "When a LAN runs.",
         "properties": {
           "ends_at": {
+            "description": "When it ends.",
             "format": "int64",
             "type": "integer"
           },
           "name": {
+            "description": "Name of the LAN to show.",
             "type": "string"
           },
           "slug": {
+            "description": "Stable short name of the LAN.",
             "type": "string"
           },
           "starts_at": {
+            "description": "When it starts.",
             "format": "int64",
             "type": "integer"
           }
@@ -447,6 +578,7 @@
       },
       "LANStatus": {
         "additionalProperties": true,
+        "description": "Which LAN runs and which comes next.",
         "properties": {
           "current": {
             "allOf": [
@@ -454,10 +586,12 @@
                 "$ref": "#/components/schemas/LANPeriod"
               }
             ],
+            "description": "The running LAN, or null.",
             "nullable": true,
             "type": "object"
           },
           "joined": {
+            "description": "With a secret, whether this player takes part in the running LAN. Otherwise null.",
             "nullable": true,
             "type": "boolean"
           },
@@ -467,10 +601,20 @@
                 "$ref": "#/components/schemas/LANPeriod"
               }
             ],
+            "description": "The next LAN, or null.",
             "nullable": true,
             "type": "object"
           },
+          "rules": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublicRules"
+              }
+            ],
+            "description": "The rules of the running LAN, otherwise of the next one, otherwise the defaults. Read them again after `rules.changed`."
+          },
           "server_time": {
+            "description": "The time of the server when it answered.",
             "format": "int64",
             "type": "integer"
           }
@@ -479,31 +623,38 @@
           "server_time",
           "current",
           "next",
+          "rules",
           "joined"
         ],
         "type": "object"
       },
       "Move": {
         "additionalProperties": true,
+        "description": "One walk of a jelly, planned by the server so all screens show the same. Between two points the jelly walks straight, after the last one it stands there. A newer move of the same jelly replaces this one and starts where the jelly is at its `start_at`.",
         "properties": {
           "kind": {
+            "description": "Why it walks: `wander`, `follow`, `trip`, `snack`, `stack`, `food` or `ceremony`. Treat new values like `wander`.",
             "type": "string"
           },
-          "level": {
-            "format": "int64",
-            "type": "integer"
-          },
           "player_id": {
+            "description": "The jelly that walks.",
             "format": "int64",
             "type": "integer"
           },
           "points": {
+            "description": "The way to walk. A single point means the jelly stands there.",
             "items": {
               "$ref": "#/components/schemas/Waypoint"
             },
             "type": "array"
           },
+          "stack_level": {
+            "description": "How many jellies stand below this one, once it arrived at the last point. Above 0 only on a stack.",
+            "format": "int64",
+            "type": "integer"
+          },
           "start_at": {
+            "description": "When the walk starts. New walks start about one second in the future, so they reach every screen in time.",
             "format": "int64",
             "type": "integer"
           }
@@ -513,36 +664,40 @@
           "kind",
           "start_at",
           "points",
-          "level"
+          "stack_level"
         ],
         "type": "object"
       },
       "PartnerInvite": {
         "additionalProperties": true,
+        "description": "A request for a partner emote.",
         "properties": {
           "expires_at": {
+            "description": "When it runs out unanswered.",
             "format": "int64",
             "type": "integer"
           },
           "from_id": {
+            "description": "The jelly that asked.",
             "format": "int64",
             "type": "integer"
           },
           "id": {
+            "description": "Number of the invite, for answering it.",
             "format": "int64",
             "type": "integer"
           },
           "key": {
+            "description": "The emote, out of `partner_emotes` in the catalog.",
             "type": "string"
           },
-          "partner_ids": {
-            "items": {
-              "format": "int64",
-              "type": "integer"
-            },
-            "type": "array"
+          "partner_id": {
+            "description": "The invited jelly.",
+            "format": "int64",
+            "type": "integer"
           },
           "state": {
+            "description": "`pending`, `accepted`, `declined` or `cancelled`.",
             "type": "string"
           }
         },
@@ -550,7 +705,7 @@
           "id",
           "key",
           "from_id",
-          "partner_ids",
+          "partner_id",
           "state",
           "expires_at"
         ],
@@ -558,34 +713,43 @@
       },
       "PartnerInviteList": {
         "additionalProperties": true,
+        "description": "The open partner emotes of the player.",
         "properties": {
           "items": {
+            "description": "All open invites.",
             "items": {
               "$ref": "#/components/schemas/PartnerInvite"
             },
             "type": "array"
-          },
-          "next_cursor": {
-            "nullable": true,
-            "type": "string"
           }
         },
         "required": [
-          "items",
-          "next_cursor"
+          "items"
         ],
         "type": "object"
       },
       "PartnerInviteResult": {
         "additionalProperties": true,
+        "description": "A partner emote after a change.",
         "properties": {
           "me": {
-            "$ref": "#/components/schemas/PlayerState"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerState"
+              }
+            ],
+            "description": "The state of the player after the change."
           },
           "partner_emote": {
-            "$ref": "#/components/schemas/PartnerInvite"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartnerInvite"
+              }
+            ],
+            "description": "The invite in its new state."
           },
           "xp_gained": {
+            "description": "XP this change earned. Both jellies earn once per partner and LAN, afterwards it is 0.",
             "format": "int64",
             "type": "integer"
           }
@@ -599,16 +763,20 @@
       },
       "PlayerAward": {
         "additionalProperties": true,
+        "description": "A prize in the history of a player, given by the orga.",
         "properties": {
           "cosmetic_key": {
+            "description": "The cosmetic that came with it, or null.",
             "nullable": true,
             "type": "string"
           },
           "given_at": {
+            "description": "When it was given.",
             "format": "int64",
             "type": "integer"
           },
           "title": {
+            "description": "Free text of the orga.",
             "type": "string"
           }
         },
@@ -621,14 +789,17 @@
       },
       "PlayerList": {
         "additionalProperties": true,
+        "description": "One page of the player list.",
         "properties": {
           "items": {
+            "description": "The players of this page.",
             "items": {
               "$ref": "#/components/schemas/PublicPlayer"
             },
             "type": "array"
           },
           "next_cursor": {
+            "description": "The `cursor` of the next page, null on the last page.",
             "nullable": true,
             "type": "string"
           }
@@ -641,54 +812,66 @@
       },
       "PlayerProfile": {
         "additionalProperties": true,
+        "description": "What every account can read about another player.",
         "properties": {
           "achievements": {
+            "description": "The earned achievements.",
             "items": {
               "$ref": "#/components/schemas/EarnedAchievement"
             },
             "type": "array"
           },
           "awards": {
+            "description": "The prizes from the orga.",
             "items": {
               "$ref": "#/components/schemas/PlayerAward"
             },
             "type": "array"
           },
           "badges": {
+            "description": "One badge for each attended LAN.",
             "items": {
               "$ref": "#/components/schemas/Badge"
             },
             "type": "array"
           },
           "color": {
+            "description": "The color of the jelly, out of `colors` in the catalog.",
             "type": "string"
           },
           "equipped": {
             "additionalProperties": {
               "$ref": "#/components/schemas/EquippedCosmetic"
             },
+            "description": "What the jelly wears, by slot.",
             "type": "object"
           },
           "id": {
+            "description": "The number of the player.",
             "format": "int64",
             "type": "integer"
           },
           "lans_attended": {
+            "description": "How many LANs the player was active at.",
             "format": "int64",
             "type": "integer"
           },
           "level": {
+            "description": "Level in the newest LAN of the player.",
             "format": "int64",
             "type": "integer"
           },
           "name": {
+            "description": "The name of the jelly.",
             "type": "string"
           },
           "total_xp": {
+            "description": "XP over all LANs.",
             "format": "int64",
             "type": "integer"
           },
           "xp": {
+            "description": "XP in the newest LAN of the player.",
             "format": "int64",
             "type": "integer"
           }
@@ -710,29 +893,35 @@
       },
       "PlayerState": {
         "additionalProperties": true,
+        "description": "The state of the own player, the answer of most actions. Fields that only make sense during a LAN are null outside of one.",
         "properties": {
           "achievements": {
+            "description": "The earned achievements.",
             "items": {
               "$ref": "#/components/schemas/EarnedAchievement"
             },
             "type": "array"
           },
           "awards": {
+            "description": "The prizes from the orga.",
             "items": {
               "$ref": "#/components/schemas/PlayerAward"
             },
             "type": "array"
           },
           "badges": {
+            "description": "One badge for each attended LAN.",
             "items": {
               "$ref": "#/components/schemas/Badge"
             },
             "type": "array"
           },
           "color": {
+            "description": "The color of the jelly, out of `colors` in the catalog.",
             "type": "string"
           },
           "cosmetics": {
+            "description": "Keys of all cosmetics this player may wear.",
             "items": {
               "type": "string"
             },
@@ -742,22 +931,25 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/EquippedCosmetic"
             },
+            "description": "What the jelly wears, by slot.",
             "type": "object"
           },
-          "follow_player_id": {
-            "format": "int64",
+          "follow": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Follow"
+              }
+            ],
+            "description": "The jelly this one follows, or null. The server can end following by itself, so always read it from here.",
             "nullable": true,
-            "type": "integer"
-          },
-          "follow_until": {
-            "format": "int64",
-            "nullable": true,
-            "type": "integer"
+            "type": "object"
           },
           "hidden": {
+            "description": "Whether the orga hid this jelly from the stage.",
             "type": "boolean"
           },
           "id": {
+            "description": "The number of the player. It can be known to others and opens nothing without the secret.",
             "format": "int64",
             "type": "integer"
           },
@@ -767,25 +959,31 @@
                 "$ref": "#/components/schemas/LANInfo"
               }
             ],
+            "description": "The newest LAN of the account, which does not have to be the running one. Null without any. `GET /v1/lans/current` says whether one runs.",
             "nullable": true,
             "type": "object"
           },
           "lans_attended": {
+            "description": "How many LANs the player was active at.",
             "format": "int64",
             "type": "integer"
           },
           "last_event_id": {
+            "description": "Where to open the stream to miss nothing after this state.",
             "format": "int64",
             "type": "integer"
           },
           "level": {
+            "description": "Level in the LAN of `lan`.",
             "format": "int64",
             "type": "integer"
           },
           "name": {
+            "description": "The name of the jelly.",
             "type": "string"
           },
           "next_poke_at": {
+            "description": "When the next poke can earn XP. Null outside an active LAN.",
             "format": "int64",
             "nullable": true,
             "type": "integer"
@@ -796,25 +994,37 @@
                 "$ref": "#/components/schemas/ReportStatus"
               }
             ],
+            "description": "What the player can report now. Null outside an active LAN.",
             "nullable": true,
             "type": "object"
           },
           "server_time": {
+            "description": "The time of the server when it answered, for countdowns.",
             "format": "int64",
             "type": "integer"
           },
           "sign": {
+            "description": "Key of the raised sign, or null.",
             "nullable": true,
             "type": "string"
           },
           "total_xp": {
+            "description": "XP over all LANs.",
             "format": "int64",
             "type": "integer"
           },
           "trip": {
-            "$ref": "#/components/schemas/Trip"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Trip"
+              }
+            ],
+            "description": "The running trip, or null.",
+            "nullable": true,
+            "type": "object"
           },
           "xp": {
+            "description": "XP in the LAN of `lan`.",
             "format": "int64",
             "type": "integer"
           }
@@ -834,8 +1044,7 @@
           "next_poke_at",
           "reports",
           "sign",
-          "follow_player_id",
-          "follow_until",
+          "follow",
           "trip",
           "lans_attended",
           "badges",
@@ -847,11 +1056,14 @@
       },
       "ProfileBody": {
         "additionalProperties": false,
+        "description": "Changes the profile. Missing fields stay unchanged.",
         "properties": {
           "color": {
+            "description": "The new color, out of `colors` in the catalog.",
             "type": "string"
           },
           "name": {
+            "description": "The new name: 1 to 24 characters of Latin letters, umlauts, ß, digits, spaces and `. _ ' -`, at least one letter or digit. The prefix `Jelly-` is reserved.",
             "type": "string"
           }
         },
@@ -859,19 +1071,24 @@
       },
       "PublicPlayer": {
         "additionalProperties": true,
+        "description": "One line of the player list.",
         "properties": {
           "color": {
+            "description": "The color of the jelly, out of `colors` in the catalog.",
             "type": "string"
           },
           "id": {
+            "description": "The number of the player.",
             "format": "int64",
             "type": "integer"
           },
           "level": {
+            "description": "The level of the jelly.",
             "format": "int64",
             "type": "integer"
           },
           "name": {
+            "description": "The name of the jelly.",
             "type": "string"
           }
         },
@@ -883,13 +1100,167 @@
         ],
         "type": "object"
       },
-      "RedeemAnswer": {
+      "PublicRules": {
         "additionalProperties": true,
+        "description": "The values a client needs to show what the server will decide. The server still checks every action. Times are seconds.",
+        "properties": {
+          "drink_xp": {
+            "description": "XP for a drink report.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "emote_cooldown": {
+            "description": "Time between two emotes of one player.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "follow_seconds": {
+            "description": "How long a jelly follows another one.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "food_xp": {
+            "description": "XP for a food report.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "full_house_percent": {
+            "description": "The share of the players of a LAN that must redeem one event code together.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "highlight_cooldown": {
+            "description": "Time between two highlights of one player.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "highlight_seconds": {
+            "description": "How long a highlighted jelly lights up.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "near_distance": {
+            "description": "How far apart two jellies count as next to each other, in jelly units and not in percent. A jelly is about 1.7 wide, the hall 21 wide and 40 deep.",
+            "format": "double",
+            "type": "number"
+          },
+          "partner_invite_seconds": {
+            "description": "How long a partner emote can be answered.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "partner_xp": {
+            "description": "XP for both players for a partner emote with someone new in this LAN.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "poke_interval": {
+            "description": "Minimum time between two XP pokes.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "poke_max_ticks": {
+            "description": "How many intervals one poke collects at most.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "poke_xp": {
+            "description": "XP per interval.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "presence_window": {
+            "description": "How long a jelly stays on the stage after its last action.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "report_cooldown": {
+            "description": "Time between two reports of the same kind.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "report_window": {
+            "description": "The rolling window for `reports_per_window`.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "reports_per_window": {
+            "description": "How many food and drink reports count in the window, together.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "snack_run_seconds": {
+            "description": "How long a jelly stays in a queue zone after a report.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "stack_max_members": {
+            "description": "How many jellies fit on one stack, 0 means no limit.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "stack_seconds": {
+            "description": "How long a stack stands.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "trip_seconds": {
+            "description": "How long a jelly stays at the point of a trip.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "walk_speed": {
+            "description": "How fast jellies walk, in jelly units per second.",
+            "format": "double",
+            "type": "number"
+          },
+          "xp_per_level": {
+            "description": "XP that one level takes, the same for every level. Fixed once a LAN has started.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp_per_level",
+          "poke_interval",
+          "poke_xp",
+          "poke_max_ticks",
+          "food_xp",
+          "drink_xp",
+          "report_cooldown",
+          "report_window",
+          "reports_per_window",
+          "presence_window",
+          "emote_cooldown",
+          "partner_invite_seconds",
+          "partner_xp",
+          "full_house_percent",
+          "snack_run_seconds",
+          "trip_seconds",
+          "follow_seconds",
+          "near_distance",
+          "walk_speed",
+          "stack_seconds",
+          "stack_max_members",
+          "highlight_seconds",
+          "highlight_cooldown"
+        ],
+        "type": "object"
+      },
+      "RecoverAnswer": {
+        "additionalProperties": true,
+        "description": "The account behind a recovery code.",
         "properties": {
           "me": {
-            "$ref": "#/components/schemas/PlayerState"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerState"
+              }
+            ],
+            "description": "The state of the player."
           },
           "secret": {
+            "description": "The new secret of the account, the old one no longer works. Keep it safe, it cannot be read again.",
             "type": "string"
           }
         },
@@ -899,16 +1270,62 @@
         ],
         "type": "object"
       },
-      "RedeemBody": {
+      "RecoverBody": {
         "additionalProperties": false,
+        "description": "Exchanges a recovery code for a new secret.",
         "properties": {
           "code": {
+            "description": "The recovery code from the orga.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "RedeemAnswer": {
+        "additionalProperties": true,
+        "description": "The account behind a code.",
+        "properties": {
+          "me": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerState"
+              }
+            ],
+            "description": "The state of the player."
+          },
+          "seat_assigned": {
+            "description": "Whether the account got the seat of the code. False for the code of a LAN and when the seat was taken or the account already has one. Then the orga assigns a seat by hand.",
+            "type": "boolean"
+          },
+          "secret": {
+            "description": "The secret of the account: new for a new account, otherwise the one the caller sent. Keep it safe, it cannot be read again.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "seat_assigned",
+          "me"
+        ],
+        "type": "object"
+      },
+      "RedeemBody": {
+        "additionalProperties": false,
+        "description": "Brings an account into a LAN with a code.",
+        "properties": {
+          "code": {
+            "description": "The seat code or the code of a LAN.",
             "type": "string"
           },
           "color": {
+            "description": "The color of a new account, out of `colors` in the catalog. Ignored with a secret.",
             "type": "string"
           },
           "name": {
+            "description": "The name of a new account, with the same rules as in `PATCH /v1/players/me`. Ignored with a secret.",
             "type": "string"
           }
         },
@@ -919,14 +1336,22 @@
       },
       "RedeemedCode": {
         "additionalProperties": true,
+        "description": "The result of an event code.",
         "properties": {
           "me": {
-            "$ref": "#/components/schemas/PlayerState"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerState"
+              }
+            ],
+            "description": "The state of the player after the code."
           },
           "title": {
+            "description": "The title of the code, as the orga wrote it.",
             "type": "string"
           },
           "xp_gained": {
+            "description": "The XP the code earned.",
             "format": "int64",
             "type": "integer"
           }
@@ -940,8 +1365,10 @@
       },
       "ReportBody": {
         "additionalProperties": false,
+        "description": "Names what the player reports.",
         "properties": {
           "kind": {
+            "description": "`food` or `drink`.",
             "type": "string"
           }
         },
@@ -952,16 +1379,20 @@
       },
       "ReportStatus": {
         "additionalProperties": true,
+        "description": "What a player can report right now.",
         "properties": {
           "drink_ready_at": {
+            "description": "When a drink can be reported again, 0 if nothing was reported yet.",
             "format": "int64",
             "type": "integer"
           },
           "food_ready_at": {
+            "description": "When food can be reported again, 0 if nothing was reported yet.",
             "format": "int64",
             "type": "integer"
           },
           "reports_left": {
+            "description": "How many reports are left in the current time window of the LAN.",
             "format": "int64",
             "type": "integer"
           }
@@ -975,15 +1406,19 @@
       },
       "Room": {
         "additionalProperties": true,
+        "description": "What the coordinates of the stage mean.",
         "properties": {
           "height": {
+            "description": "Height of the room in `unit`.",
             "format": "int64",
             "type": "integer"
           },
           "unit": {
+            "description": "The unit of all positions, `percent` for now.",
             "type": "string"
           },
           "width": {
+            "description": "Width of the room in `unit`.",
             "format": "int64",
             "type": "integer"
           }
@@ -997,16 +1432,20 @@
       },
       "Stack": {
         "additionalProperties": true,
+        "description": "A tower of jellies at one spot.",
         "properties": {
           "ends_at": {
+            "description": "When it falls apart.",
             "format": "int64",
             "type": "integer"
           },
           "id": {
+            "description": "Number of the stack, for climbing on it.",
             "format": "int64",
             "type": "integer"
           },
           "member_ids": {
+            "description": "The jellies on it, from the bottom to the top.",
             "items": {
               "format": "int64",
               "type": "integer"
@@ -1014,10 +1453,12 @@
             "type": "array"
           },
           "x": {
+            "description": "Position of the stack in percent of the stage width.",
             "format": "double",
             "type": "number"
           },
           "y": {
+            "description": "Position of the stack in percent of the stage height.",
             "format": "double",
             "type": "number"
           }
@@ -1033,12 +1474,23 @@
       },
       "StackAnswer": {
         "additionalProperties": true,
+        "description": "A stack after a change.",
         "properties": {
           "me": {
-            "$ref": "#/components/schemas/PlayerState"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerState"
+              }
+            ],
+            "description": "The state of the player after the change."
           },
           "stack": {
-            "$ref": "#/components/schemas/Stack"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Stack"
+              }
+            ],
+            "description": "The stack in its new form."
           }
         },
         "required": [
@@ -1049,8 +1501,10 @@
       },
       "StackMemberBody": {
         "additionalProperties": false,
+        "description": "Names the stack to climb on.",
         "properties": {
           "stack_id": {
+            "description": "The stack, out of `stacks` in `GET /v1/stage`.",
             "format": "int64",
             "type": "integer"
           }
@@ -1062,37 +1516,59 @@
       },
       "StageAnswer": {
         "additionalProperties": true,
+        "description": "Everything a stage or a map needs to start.",
         "properties": {
           "areas": {
+            "description": "The zones of the room.",
             "items": {
               "$ref": "#/components/schemas/StageArea"
             },
             "type": "array"
           },
+          "gathering": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Gathering"
+              }
+            ],
+            "description": "What all jellies do right now, or null. It ends at `ends_at` without an event.",
+            "nullable": true,
+            "type": "object"
+          },
           "last_event_id": {
+            "description": "Where to open the stream to miss nothing after this state.",
             "format": "int64",
             "type": "integer"
           },
           "moves": {
+            "description": "The current walk of each jelly. New ones arrive in the stream as `move`.",
             "items": {
               "$ref": "#/components/schemas/Move"
             },
             "type": "array"
           },
           "players": {
+            "description": "All jellies on the stage. Absent ones are not listed.",
             "items": {
               "$ref": "#/components/schemas/StagePlayer"
             },
             "type": "array"
           },
           "room": {
-            "$ref": "#/components/schemas/Room"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Room"
+              }
+            ],
+            "description": "What the coordinates mean."
           },
           "server_time": {
+            "description": "The time of the server when it answered. Moves are played against this clock.",
             "format": "int64",
             "type": "integer"
           },
           "stacks": {
+            "description": "The running stacks.",
             "items": {
               "$ref": "#/components/schemas/Stack"
             },
@@ -1106,106 +1582,140 @@
           "room",
           "areas",
           "players",
-          "stacks"
+          "stacks",
+          "gathering"
         ],
         "type": "object"
       },
       "StageArea": {
         "additionalProperties": true,
+        "description": "One zone of the room, in percent of the stage. Zones can overlap. `x`, `y`, `width` and `height` say where it would stand without `rotation`.",
         "properties": {
+          "blocks": {
+            "description": "Whether jellies walk around this zone. `POST /v1/trips/goto` refuses points in it.",
+            "type": "boolean"
+          },
           "height": {
-            "format": "int64",
-            "type": "integer"
+            "description": "Height before the rotation.",
+            "format": "double",
+            "type": "number"
           },
           "id": {
+            "description": "Number of the zone.",
             "format": "int64",
             "type": "integer"
           },
           "kind": {
+            "description": "How jellies use the zone. They belong to `seats`, `stage`, `lounge` and `visitors`, line up in `queue`, and `public` is a named place to go to. `spectators` and `winner` are for a ceremony, `none` is not assigned yet. Treat new values like `none`.",
             "type": "string"
           },
+          "name": {
+            "description": "The name of a `public` zone to show, null for all other kinds.",
+            "nullable": true,
+            "type": "string"
+          },
+          "prop": {
+            "description": "The model that stands here, or empty for bare floor. Unknown props show bare floor.",
+            "type": "string"
+          },
+          "rotation": {
+            "description": "Degrees clockwise seen from above, from 0 up to below 360. The zone turns around its middle and keeps its size on the floor. Percent has a different length on each axis, so turn it on the floor and not in percent. At 0, the front of the model faces the camera, toward larger `y`.",
+            "format": "double",
+            "type": "number"
+          },
           "width": {
-            "format": "int64",
-            "type": "integer"
+            "description": "Width before the rotation.",
+            "format": "double",
+            "type": "number"
           },
           "x": {
-            "format": "int64",
-            "type": "integer"
+            "description": "Left edge before the rotation.",
+            "format": "double",
+            "type": "number"
           },
           "y": {
-            "format": "int64",
-            "type": "integer"
+            "description": "Top edge before the rotation.",
+            "format": "double",
+            "type": "number"
           }
         },
         "required": [
           "id",
+          "name",
           "x",
           "y",
           "width",
           "height",
-          "kind"
+          "rotation",
+          "kind",
+          "blocks",
+          "prop"
         ],
         "type": "object"
       },
       "StagePlayer": {
         "additionalProperties": true,
+        "description": "A jelly as the stage shows it.",
         "properties": {
           "area_id": {
+            "description": "The zone the jelly belongs to, for a visitor the first zone it wanders through, or null.",
             "format": "int64",
             "nullable": true,
             "type": "integer"
           },
           "color": {
+            "description": "The color of the jelly, out of `colors` in the catalog.",
             "type": "string"
           },
           "equipped": {
             "additionalProperties": {
               "$ref": "#/components/schemas/EquippedCosmetic"
             },
+            "description": "What the jelly wears, by slot.",
             "type": "object"
           },
-          "follow_player_id": {
-            "format": "int64",
+          "follow": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Follow"
+              }
+            ],
+            "description": "The jelly this one follows, or null.",
             "nullable": true,
-            "type": "integer"
-          },
-          "follow_until": {
-            "format": "int64",
-            "nullable": true,
-            "type": "integer"
+            "type": "object"
           },
           "home_x": {
+            "description": "The place of the jelly in percent of the stage width. Where it is right now comes from `moves`.",
             "format": "double",
             "type": "number"
           },
           "home_y": {
+            "description": "The place of the jelly in percent of the stage height. Where it is right now comes from `moves`.",
             "format": "double",
             "type": "number"
           },
           "id": {
+            "description": "The number of the player.",
             "format": "int64",
             "type": "integer"
           },
           "is_visitor": {
+            "description": "A jelly without a place of its own wanders through the zones of kind `visitors`.",
             "type": "boolean"
           },
-          "last_seen_at": {
-            "format": "int64",
-            "type": "integer"
-          },
           "level": {
+            "description": "The level in the running LAN.",
             "format": "int64",
             "type": "integer"
           },
           "name": {
+            "description": "The name of the jelly.",
             "type": "string"
           },
           "sign": {
+            "description": "Key of the raised sign, or null.",
             "nullable": true,
             "type": "string"
-          },
-          "trip": {
-            "$ref": "#/components/schemas/Trip"
           }
         },
         "required": [
@@ -1215,12 +1725,9 @@
           "equipped",
           "level",
           "sign",
-          "follow_player_id",
-          "follow_until",
-          "last_seen_at",
+          "follow",
           "area_id",
           "is_visitor",
-          "trip",
           "home_x",
           "home_y"
         ],
@@ -1228,12 +1735,15 @@
       },
       "StagePoint": {
         "additionalProperties": true,
+        "description": "A point on the stage, for example the goal of a trip. A point outside or in a zone with `blocks` answers `400 invalid_trip`.",
         "properties": {
           "x": {
+            "description": "Percent of the stage width.",
             "format": "double",
             "type": "number"
           },
           "y": {
+            "description": "Percent of the stage height.",
             "format": "double",
             "type": "number"
           }
@@ -1246,16 +1756,20 @@
       },
       "Trip": {
         "additionalProperties": true,
+        "description": "A running walk to a point on the stage.",
         "properties": {
-          "until": {
+          "ends_at": {
+            "description": "When the jelly walks back to its place.",
             "format": "int64",
             "type": "integer"
           },
           "x": {
+            "description": "The goal in percent of the stage width.",
             "format": "double",
             "type": "number"
           },
           "y": {
+            "description": "The goal in percent of the stage height.",
             "format": "double",
             "type": "number"
           }
@@ -1263,17 +1777,20 @@
         "required": [
           "x",
           "y",
-          "until"
+          "ends_at"
         ],
         "type": "object"
       },
       "VersionInfo": {
         "additionalProperties": true,
+        "description": "Tells an app whether it can still talk to this server.",
         "properties": {
           "api_version": {
+            "description": "The version of this API, in the form `1.2.3`.",
             "type": "string"
           },
           "min_client_version": {
+            "description": "The oldest app that still works, in the form `1.2.3`. Empty means no minimum.",
             "type": "string"
           }
         },
@@ -1285,16 +1802,20 @@
       },
       "Waypoint": {
         "additionalProperties": true,
+        "description": "A point of a move.",
         "properties": {
           "t": {
+            "description": "Milliseconds after `start_at` when the jelly reaches this point.",
             "format": "int64",
             "type": "integer"
           },
           "x": {
+            "description": "Percent of the stage width.",
             "format": "double",
             "type": "number"
           },
           "y": {
+            "description": "Percent of the stage height.",
             "format": "double",
             "type": "number"
           }
@@ -1320,14 +1841,61 @@
     }
   },
   "info": {
+    "description": "The contract between the Jelly server and its clients, the desktop app and the stage page.\n\n**Authentication:** A player sends `Authorization: Bearer \u003csecret\u003e`. A new secret only arrives from `POST /v1/auth/redeem` or `POST /v1/auth/recover`, and clients keep it to themselves. The stage page reads with the stage key in the query `key`, which allows reading only.\n\n**Units:** All times are milliseconds since 1970 in server time. Use `server_time` from an answer for countdowns instead of the clock of the device. All positions on the stage are percent of the room. Distances in rules such as `near_distance` and `walk_speed` count jelly units: a jelly is about 1.7 wide, the hall 21 wide and 40 deep.\n\n**Growth:** Answers can gain fields, event types, catalog entries, enum values and error codes in any version, so clients ignore what they do not know. Requests reject unknown fields. A breaking change gets a new path version.\n\n**Errors:** Every error has the form `{\"error\":{\"code\",\"message\"}}`. `code` is stable and meant for code, `message` is German and meant for people, so show it for unknown codes. `invalid_request` answers with 400 (no valid JSON), 408 or 413 (body too slow or too large), 415 (not JSON) or 422 (unknown or missing field, wrong type). After a network error, read `GET /v1/players/me` before repeating an action, because it may have counted already. `401` means the secret is no longer valid. Never delete a secret because of a network error.\n\n**Error codes:** New ones can appear in any version.\n\n| Status | Code | Message |\n| --- | --- | --- |\n| 400 | `invalid_request` | Die Anfrage ist ungültig. |\n| 404 | `not_found` | Diesen Weg gibt es nicht. |\n| 429 | `rate_limited` | Zu viele Versuche, bitte warten. |\n| 500 | `internal` | Auf dem Server ist ein Fehler aufgetreten. |\n| 401 | `unauthorized` | Dieses Konto ist nicht bekannt. |\n| 403 | `forbidden` | Zugriff verweigert. |\n| 403 | `invalid_code` | Der Anmeldecode stimmt nicht. |\n| 409 | `name_taken` | Dieser Name ist schon vergeben. |\n| 404 | `player_not_found` | Dieses Konto gibt es nicht. |\n| 404 | `lan_not_found` | Diese LAN gibt es nicht. |\n| 409 | `lan_full` | Diese LAN ist schon voll. |\n| 409 | `lan_overlap` | Der Zeitraum überschneidet sich mit einer LAN. |\n| 404 | `area_not_found` | Diesen Bereich gibt es nicht. |\n| 409 | `area_not_assignable` | In diesem Bereich kann kein Jelly stehen. |\n| 400 | `invalid_area` | Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art. |\n| 400 | `invalid_rules` | Diese Regeln sind ungültig. |\n| 400 | `invalid_name` | Der Name muss 1 bis 24 Zeichen lang sein und darf keine Steuerzeichen enthalten. |\n| 400 | `invalid_color` | Diese Farbe gibt es nicht. |\n| 409 | `code_redeemed` | Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben. |\n| 404 | `gathering_not_found` | Gerade läuft kein solches Ereignis. |\n| 403 | `seat_code_other_account` | Dieser Sitzplatz-Code gehört zu einem anderen Konto. Fehlt dein Konto auf diesem Gerät, gibt dir die Orga einen Wiederherstellungs-Code. |\n| 403 | `invalid_recovery_code` | Dieser Wiederherstellungs-Code stimmt nicht oder ist abgelaufen. |\n| 400 | `unknown_slot` | Diesen Platz für Cosmetics gibt es nicht. |\n| 400 | `unknown_cosmetic` | Dieses Cosmetic passt nicht auf diesen Platz. |\n| 400 | `invalid_cosmetic_color` | Diese Farbe geht hier nicht. |\n| 409 | `cosmetic_locked` | Dieses Cosmetic ist noch nicht freigeschaltet. |\n| 400 | `invalid_partner` | Dieses Jelly kannst du nicht auffordern. |\n| 409 | `partner_emote_open` | Du hast dieses Jelly schon aufgefordert. |\n| 404 | `partner_emote_not_found` | Diese Aufforderung gibt es nicht. |\n| 409 | `partner_emote_closed` | Diese Aufforderung ist schon vorbei. |\n| 400 | `invalid_partner_emote_state` | Das geht bei dieser Aufforderung nicht. |\n| 409 | `no_active_lan` | Gerade läuft keine LAN. |\n| 409 | `not_joined` | Du nimmst an dieser LAN noch nicht teil. |\n| 403 | `invalid_event_code` | Dieser Event-Code gilt gerade nicht. |\n| 409 | `event_code_redeemed` | Diesen Event-Code hast du schon eingelöst. |\n| 409 | `event_code_exists` | Diesen Event-Code gibt es schon. |\n| 409 | `emote_cooldown` | Warte kurz bis zum nächsten Emote. |\n| 400 | `invalid_follow` | Zu diesem Jelly kannst du dich nicht stellen. |\n| 400 | `invalid_trip` | Auf diesem Punkt kann kein Jelly stehen. |\n| 409 | `too_far` | Ihr steht nicht nah genug beieinander. |\n| 400 | `unknown_partner_emote` | Dieses Partner-Emote gibt es nicht. |\n| 409 | `report_cooldown` | Das hast du gerade erst gemeldet. |\n| 409 | `report_limit` | Du hast dein Tageslimit erreicht. |\n| 400 | `unknown_emote` | Dieses Emote gibt es nicht. |\n| 400 | `unknown_sign` | Dieses Schild gibt es nicht. |\n| 400 | `unknown_report_kind` | Diese Meldung gibt es nicht. |\n| 404 | `stack_not_found` | Diesen Stapel gibt es nicht mehr. |\n| 409 | `stack_full` | Dieser Stapel ist schon hoch genug. |\n| 400 | `invalid_highlight` | Dieses Jelly kannst du nicht hervorheben. |\n| 409 | `highlight_cooldown` | Warte kurz bis zum nächsten Hervorheben. |\n",
     "title": "Jelly API",
-    "version": "1.8.0"
+    "version": "1.14.0"
   },
   "openapi": "3.0.3",
   "paths": {
+    "/v1/auth/recover": {
+      "post": {
+        "description": "The orga creates the code for one account. It works once, without a LAN or a seat. The answer holds a new secret, and the old one stops working. An unknown, used or expired code answers `403 invalid_recovery_code`.",
+        "operationId": "recoverAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoverAnswer"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "summary": "Bring back an account whose secret is lost, with a recovery code"
+      }
+    },
     "/v1/auth/redeem": {
       "post": {
-        "description": "A seat code creates an account on that seat or brings back the account it belongs to. Name and color are required for a new account. Any older secret of the account stops working. A used code answers `409 code_redeemed`.",
+        "description": "With a bearer secret, that account joins and keeps its secret. Without one, a new account appears, which needs name and color. A seat code also gives the seat, unless it is taken or the account has another one: then the code is used up, the account is in the LAN, `seat_assigned` is false and the orga assigns a seat. Seats are never given out by chance. A seat code bound to another account answers `403 seat_code_other_account` and stays valid, a used one `409 code_redeemed`. A wrong secret answers `401`, so never send a secret the server rejected before.",
         "operationId": "redeemCode",
         "requestBody": {
           "content": {
@@ -1368,11 +1936,18 @@
             "description": "Error with a stable code"
           }
         },
-        "summary": "Exchange a code for a secret"
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bring an account into a LAN with a code"
       }
     },
     "/v1/catalog": {
       "get": {
+        "description": "Works without an account. Clients read keys, names and labels from here instead of hard-coding them. Secret achievements are not listed.",
         "operationId": "getCatalog",
         "responses": {
           "200": {
@@ -1445,6 +2020,7 @@
     },
     "/v1/emotes": {
       "post": {
+        "description": "All screens hear about it through the event `emote`. Can answer `unknown_emote` and `emote_cooldown`.",
         "operationId": "playEmote",
         "requestBody": {
           "content": {
@@ -1488,6 +2064,7 @@
     },
     "/v1/event-codes/redemptions": {
       "post": {
+        "description": "Earns the XP of the code once per player. Can answer `invalid_event_code` and `event_code_redeemed`.",
         "operationId": "redeemEventCode",
         "requestBody": {
           "content": {
@@ -1610,6 +2187,7 @@
     },
     "/v1/partner-emotes": {
       "get": {
+        "description": "Lets an app bring back its popups after a restart.",
         "operationId": "listPartnerEmotes",
         "responses": {
           "200": {
@@ -1683,7 +2261,7 @@
         "summary": "Accept, decline or cancel a partner emote"
       },
       "post": {
-        "description": "The other client learns about it from `partner_emote.updated` and answers with PATCH. `partner_ids` holds exactly one jelly for now. Jellies further apart than `near_distance` get `409 too_far`.",
+        "description": "The other client learns about it from `partner_emote.updated` and answers with PATCH. Jellies further apart than `near_distance` get `409 too_far`.",
         "operationId": "createPartnerEmote",
         "requestBody": {
           "content": {
@@ -1731,6 +2309,7 @@
         "operationId": "listPlayers",
         "parameters": [
           {
+            "description": "Where the page starts, the `next_cursor` of the page before. Empty for the first page.",
             "explode": false,
             "in": "query",
             "name": "cursor",
@@ -1739,6 +2318,7 @@
             }
           },
           {
+            "description": "How many entries a page holds at most.",
             "explode": false,
             "in": "query",
             "name": "limit",
@@ -1783,6 +2363,7 @@
     },
     "/v1/players/me": {
       "get": {
+        "description": "The main read of the app. Open the stream afterwards with `since` set to `last_event_id`, so nothing gets lost in between.",
         "operationId": "getMe",
         "responses": {
           "200": {
@@ -1814,6 +2395,7 @@
         "summary": "Read the state of the player"
       },
       "patch": {
+        "description": "Missing fields stay unchanged, and an empty request changes nothing and sends no event. Can answer `invalid_name`, `invalid_color` and `name_taken`.",
         "operationId": "updateMe",
         "requestBody": {
           "content": {
@@ -1857,9 +2439,11 @@
     },
     "/v1/players/{id}": {
       "get": {
+        "description": "Works for every player with an account. An unknown or removed player answers `404 player_not_found`.",
         "operationId": "getPlayer",
         "parameters": [
           {
+            "description": "The number of the player.",
             "in": "path",
             "name": "id",
             "required": true,
@@ -1970,6 +2554,7 @@
     },
     "/v1/reports": {
       "post": {
+        "description": "Earns XP within the rules of the LAN. Can answer `report_cooldown`, `report_limit`, `no_active_lan` and `not_joined`. After a report the jelly walks to a zone of kind `queue` for `snack_run_seconds`.",
         "operationId": "createReport",
         "requestBody": {
           "content": {
@@ -2013,6 +2598,7 @@
     },
     "/v1/signs/current": {
       "delete": {
+        "description": "Lowering without a sign changes nothing.",
         "operationId": "lowerSign",
         "responses": {
           "200": {
@@ -2044,6 +2630,7 @@
         "summary": "Lower the sign"
       },
       "put": {
+        "description": "The sign stays up until it is lowered or replaced. Answers `unknown_sign` for a key that is not in the catalog.",
         "operationId": "showSign",
         "requestBody": {
           "content": {
@@ -2087,6 +2674,7 @@
     },
     "/v1/stacks": {
       "post": {
+        "description": "Everyone nearby can climb on it with `POST /v1/stacks/members`. It falls apart after `stack_seconds`. Starting a stack ends a trip or following.",
         "operationId": "startStack",
         "responses": {
           "200": {
@@ -2120,6 +2708,7 @@
     },
     "/v1/stacks/current": {
       "delete": {
+        "description": "The jellies above slide down one level.",
         "operationId": "leaveStack",
         "responses": {
           "200": {
@@ -2197,6 +2786,7 @@
     },
     "/v1/stage": {
       "get": {
+        "description": "Takes a player secret or the stage key. Afterwards open the stream with `since` set to `last_event_id`. `moves` holds the current walk of each jelly.",
         "operationId": "getStage",
         "responses": {
           "200": {
@@ -2233,10 +2823,11 @@
     },
     "/v1/stage/events": {
       "get": {
-        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events, further back they get `reset` and read their state again. `topics` is a comma-separated list of `events` and `moves`, without it both arrive. Messages of type `move` have no ID and carry a `Move`. Every new connection first gets the current move of each jelly. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
+        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events, further back they get `reset` and read their state again. `topics` is a comma-separated list of `events` and `moves`, without it both arrive. Messages of type `move` have no ID and carry a `Move`. Every new connection first gets the current move of each jelly. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.\n\n**Messages:** The SSE message type equals `type`.\n\n| Type | Meaning | `player_id` | `payload` |\n| --- | --- | --- | --- |\n| `player.active` | A jelly came to the stage. | the player | `{}` |\n| `player.updated` | A jelly changed. | the player | `{}`, or `{\"edited\":true}` if the player changed it |\n| `player.hidden` | The orga hid a jelly. | the player | `{}` |\n| `player.removed` | An account was deleted. | null | `{\"player_id\"}` |\n| `xp.gained` | A player earned XP. `source` is `poke`, `food`, `drink`, `event` or `partner`. | the player | `{\"amount\",\"source\"}` |\n| `level.up` | A player reached a new level. | the player | `{\"level\"}` |\n| `achievement.earned` | A player earned an achievement. | the player | `{\"key\"}` |\n| `award.given` | The orga gave a prize. `title` is free text. | the player | `{\"title\"}` |\n| `emote` | A jelly plays an emote. | the player | `{\"key\"}` |\n| `partner.emote` | Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden. | who accepted | `{\"key\",\"partner_id\"}`, `partner_id` is who asked |\n| `partner_emote.updated` | A partner emote was created or changed. The app of an invited jelly finds itself in `partner_id` and shows its popup. | who acted | `{\"id\",\"key\",\"from_id\",\"partner_id\",\"state\",\"expires_at\"}` |\n| `sign.changed` | A jelly raised or lowered a sign. | the player | `{\"key\"}`, null when lowered |\n| `follow.changed` | A jelly started following, or following ended, also when its time ran out. | the player | `{\"target_id\"}`, null when it ended |\n| `trip.changed` | A jelly started a trip, or its trip ended, also when its time ran out. | the player | `{\"x\",\"y\",\"ends_at\"}`, null when it ended |\n| `stack.changed` | A stack was started, changed or ended, also when its time ran out. | the player, null when its time ran out | The stack, only `{\"id\"}` after climbing down or when it ended |\n| `highlight` | A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`. | who asked | `{\"target_id\",\"ends_at\",\"cosmetic_key\"}` |\n| `stage.changed` | The room changed, so read `GET /v1/stage` again. | null | `{}` |\n| `rules.changed` | The orga changed the rules of a LAN, so read `GET /lans/current` again. | null | `{}` |\n| `gathering.changed` | A gathering started or ended, also when its time ran out. | null | The `Gathering`, null when it ended |\n| `move` | A jelly starts a walk. This message has no ID and is not part of the event log. | `player_id` of the move | The data is a whole `Move`, not an `Event` |\n| `reset` | The stream dropped events for this client, so read the state again. | none | None |\n",
         "operationId": "streamEvents",
         "parameters": [
           {
+            "description": "The last event ID the client knows, usually `last_event_id` from a state it just read.",
             "in": "query",
             "name": "since",
             "schema": {
@@ -2245,6 +2836,7 @@
             }
           },
           {
+            "description": "Sent by the browser or the client when it reconnects, and takes priority over `since`.",
             "in": "header",
             "name": "Last-Event-ID",
             "schema": {
@@ -2253,6 +2845,7 @@
             }
           },
           {
+            "description": "The stage key, for the stage page. Players send their secret as a bearer token instead.",
             "in": "query",
             "name": "key",
             "schema": {
@@ -2260,6 +2853,7 @@
             }
           },
           {
+            "description": "Comma-separated list of `events` and `moves`. Without it, both arrive. Unknown topics answer `400 invalid_request`.",
             "in": "query",
             "name": "topics",
             "schema": {
@@ -2302,6 +2896,7 @@
     },
     "/v1/trips/current": {
       "delete": {
+        "description": "Ends a trip or following at once, and the jelly walks back to its place.",
         "operationId": "endTrip",
         "responses": {
           "200": {
@@ -2335,7 +2930,7 @@
     },
     "/v1/trips/follow": {
       "post": {
-        "description": "The jelly walks back after `follow_seconds`, see `follow_until`. The server may end this by itself, so read `follow_player_id` instead of assuming it stays set.",
+        "description": "The jelly walks back after `follow_seconds`, see `follow.ends_at`. The server may end this by itself, so read `follow_player_id` instead of assuming it stays set.",
         "operationId": "followPlayer",
         "requestBody": {
           "content": {
@@ -2379,7 +2974,7 @@
     },
     "/v1/trips/goto": {
       "post": {
-        "description": "`x` and `y` are percent of the stage. The jelly walks to the free spot closest to the point and back after `trip_seconds`. This ends following.",
+        "description": "`x` and `y` are percent of the stage, also the seat of someone else. A point in a zone with `blocks` answers `400 invalid_trip`. The jelly walks to the free spot closest to the point and back after `trip_seconds`. This ends following.",
         "operationId": "goToPoint",
         "requestBody": {
           "content": {

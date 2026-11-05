@@ -204,7 +204,7 @@ func TestStrangersCannotUseUpTheLimitsOfOthers(t *testing.T) {
 		testFixture.callAPI("POST", "/v1/event-codes/redemptions", "", `{"code":"x"}`)
 	}
 	response := testFixture.callAPI("POST", "/v1/event-codes/redemptions", token, `{"code":"x"}`)
-	requireProblem(t, response, http.StatusBadRequest, "invalid_event_code")
+	requireProblem(t, response, http.StatusForbidden, "invalid_event_code")
 	cookie := testFixture.loginAdmin()
 	if cookie == "" {
 		t.Fatal("login must still work")

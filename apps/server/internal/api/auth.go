@@ -10,8 +10,11 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
-// noViewerPlayer is the viewer ID of a stage, which has no account.
-const noViewerPlayer int64 = 0
+const (
+	// noViewerPlayer is the viewer ID of a stage, which has no account.
+	noViewerPlayer int64 = 0
+	bearerPrefix         = "Bearer "
+)
 
 // errForbidden reports a wrong admin secret.
 var errForbidden = errors.New("access denied")
@@ -72,7 +75,7 @@ func (server *apiServer) limitLogins(next http.HandlerFunc) http.HandlerFunc {
 
 // findPlayer returns the player of an Authorization header.
 func (server *apiServer) findPlayer(ctx context.Context, authorization string) (int64, error) {
-	token, found := strings.CutPrefix(authorization, "Bearer ")
+	token, found := strings.CutPrefix(authorization, bearerPrefix)
 	if !found || token == "" {
 		return 0, store.ErrUnauthorized
 	}

@@ -228,9 +228,9 @@ func TestRegisterRejections(t *testing.T) {
 		{"name taken", buildRegisterBody("glibber", "mint"), "name_taken", 409},
 		{"empty name", buildRegisterBody("  ", "mint"), "invalid_name", 400},
 		{"unknown color", buildRegisterBody("B", "red"), "invalid_color", 400},
-		{"unknown field", `{"code":"x","name":"C","color":"mint","xp":9}`, "invalid_body", 422},
-		{"two objects", `{"code":"x","name":"D","color":"mint"}{}`, "invalid_body", 400},
-		{"no JSON", `nope`, "invalid_body", 400},
+		{"unknown field", `{"code":"x","name":"C","color":"mint","xp":9}`, "invalid_request", 422},
+		{"two objects", `{"code":"x","name":"D","color":"mint"}{}`, "invalid_request", 400},
+		{"no JSON", `nope`, "invalid_request", 400},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -252,7 +252,7 @@ func TestUnknownAction(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 	response := testFixture.callAPI("POST", "/v1/reports", token, `{"kind":"xp"}`)
-	requireProblem(t, response, http.StatusBadRequest, "unknown_action")
+	requireProblem(t, response, http.StatusBadRequest, "unknown_report_kind")
 }
 
 func TestNoActiveLAN(t *testing.T) {

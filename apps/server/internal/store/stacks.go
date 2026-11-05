@@ -110,12 +110,9 @@ func addStackMember(ctx context.Context, action actionContext, stackID int64) (S
 	if err != nil {
 		return Stack{}, fmt.Errorf("insert stack member: %w", err)
 	}
-	const clearWalksSQL = `UPDATE lan_entries
-		SET trip_x = NULL, trip_y = NULL, trip_until = NULL, follow_player_id = NULL
-		WHERE lan_id = ? AND player_id = ?`
-	_, err = action.transaction.ExecContext(ctx, clearWalksSQL, action.lan.id, action.playerID)
+	err = endWalks(ctx, action)
 	if err != nil {
-		return Stack{}, fmt.Errorf("clear walks: %w", err)
+		return Stack{}, err
 	}
 	stack, err := loadRunningStack(ctx, action, stackID)
 	if err != nil {
@@ -147,7 +144,12 @@ func removeStackMember(ctx context.Context, action actionContext) error {
 	if err != nil {
 		return fmt.Errorf("delete empty stack: %w", err)
 	}
-	return appendVisibleEvent(ctx, action, EventStackChanged, map[string]int64{"id": stackID})
+	return appendVisibleEvent(
+		ctx,
+		action,
+		EventStackChanged,
+		map[string]int64{payloadStackID: stackID},
+	)
 }
 
 // loadRunningStack returns a stack of this LAN whose time is not over.
@@ -241,9 +243,10 @@ func (store *Store) ApplyHighlight(
 		if err != nil {
 			return err
 		}
-		err = appendVisibleEvent(ctx, action, EventHighlight, map[string]int64{
+		err = appendVisibleEvent(ctx, action, EventHighlight, map[string]any{
 			payloadTargetID: targetID,
-			"until":         rules.CalculateHighlightEnd(action.lan.gameRules, now),
+			"ends_at":       rules.CalculateHighlightEnd(action.lan.gameRules, now),
+			"cosmetic_key":  rules.CosmeticHighlightAura,
 		})
 		if err != nil {
 			return err
