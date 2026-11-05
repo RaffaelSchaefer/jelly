@@ -35,6 +35,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"GET /admin/api/lans/{id}/seat-codes":            server.handleListSeatCodes,
 		"PUT /admin/api/lans/{id}/players/{player}/area": server.handleAssignArea,
 		"PUT /admin/api/lans/{id}/map":                   server.handleImportMap,
+		"POST /admin/api/lans/{id}/gathering":            server.handleStartGathering,
+		"DELETE /admin/api/lans/{id}/gathering":          server.handleEndGathering,
 	}
 	for pattern, handler := range routes {
 		mux.HandleFunc(pattern, server.requireAdmin(handler))
@@ -299,6 +301,32 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 		request.Context(), lanID, roomMap, server.currentMillis(),
 	)
 	server.writeOutcome(writer, request, report, err)
+}
+
+// handleStartGathering sends all jellies of a LAN somewhere for a while.
+func (server *apiServer) handleStartGathering(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var body store.NewGathering
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	gathering, err := server.Store.StartGathering(
+		request.Context(), lanID, body, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, gathering, err)
+}
+
+// handleEndGathering ends a running gathering early.
+func (server *apiServer) handleEndGathering(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	err := server.Store.EndGathering(request.Context(), lanID, server.currentMillis())
+	server.writeOutcome(writer, request, map[string]bool{fieldEnded: true}, err)
 }
 
 // handleDeleteArea removes an area and the assignments to it.

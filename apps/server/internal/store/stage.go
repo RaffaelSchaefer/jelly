@@ -44,6 +44,7 @@ type StageState struct {
 	Areas       []StageArea   `json:"areas"`
 	Players     []StagePlayer `json:"players"`
 	Stacks      []Stack       `json:"stacks"`
+	Gathering   *Gathering    `json:"gathering"`
 	// WalkSpeed tells the movement planner how fast jellies walk in this LAN.
 	WalkSpeed float64 `json:"-"`
 }
@@ -59,7 +60,7 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	}
 	state := StageState{
 		LastEventID: latestID, ServerTime: now, Room: rules.DescribeRoom(),
-		Areas: []StageArea{}, Players: []StagePlayer{}, Stacks: []Stack{},
+		Areas: []StageArea{}, Players: []StagePlayer{}, Stacks: []Stack{}, Gathering: nil,
 	}
 	lan, err := loadActiveLAN(queryCtx, store.readDB, now)
 	if errors.Is(err, ErrNoActiveLAN) {
@@ -74,6 +75,10 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 		return StageState{}, err
 	}
 	state.Stacks, err = loadRunningStacks(queryCtx, store.readDB, lan.id, now)
+	if err != nil {
+		return StageState{}, err
+	}
+	state.Gathering, err = loadRunningGathering(queryCtx, store.readDB, lan.id, now)
 	if err != nil {
 		return StageState{}, err
 	}

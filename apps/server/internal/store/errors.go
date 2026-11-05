@@ -14,6 +14,8 @@ var (
 	ErrNotJoined = errors.New("player has not joined the current LAN")
 	// ErrCodeRedeemed reports a seat code that was already used.
 	ErrCodeRedeemed = errors.New("seat code was already redeemed")
+	// ErrGatheringNotFound reports that no gathering is running.
+	ErrGatheringNotFound = errors.New("no gathering is running")
 	// ErrSeatCodeOtherAccount reports a seat code that belongs to a different account.
 	ErrSeatCodeOtherAccount = errors.New("seat code belongs to another account")
 	// ErrInvalidRecoveryCode reports a recovery code that is unknown, used up or too old.

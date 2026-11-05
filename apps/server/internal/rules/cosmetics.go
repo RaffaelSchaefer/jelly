@@ -23,6 +23,10 @@ var (
 	ErrInvalidCosmeticColor = errors.New("invalid cosmetic color")
 )
 
+// CosmeticHighlightAura is what a jelly shows for a moment while it is highlighted. Nobody unlocks
+// it.
+const CosmeticHighlightAura = "highlight-aura"
+
 // Scope says how long something earned stays. Changing one catalog value changes the behavior.
 type Scope string
 
@@ -90,6 +94,8 @@ func ListCosmetics() []Cosmetic {
 		},
 		{Key: "crown", Name: "Krone", Scope: ScopeLAN, Slot: SlotHead, Level: levelCrown},
 		{Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands},
+		{Key: "glow-aura", Name: "Glüh-Aura", Scope: ScopePermanent, Slot: SlotAura},
+		{Key: CosmeticHighlightAura, Name: "Leuchtaura", Scope: ScopePermanent, Slot: SlotAura},
 	}
 }
 

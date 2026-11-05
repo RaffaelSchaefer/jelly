@@ -160,6 +160,7 @@ func buildRoster(state store.StageState) movement.Roster {
 		WalkSpeed: state.WalkSpeed,
 		Areas:     make([]rules.Area, 0, len(state.Areas)),
 		Players:   make([]movement.Player, 0, len(state.Players)),
+		Gathering: buildGathering(state.Gathering),
 	}
 	areaByID := make(map[int64]rules.Area, len(state.Areas))
 	for _, area := range state.Areas {
@@ -193,6 +194,18 @@ func buildRoster(state store.StageState) movement.Roster {
 		roster.Players = append(roster.Players, planned)
 	}
 	return roster
+}
+
+// buildGathering tells the planner about a running gathering.
+func buildGathering(gathering *store.Gathering) *movement.Gathering {
+	if gathering == nil {
+		return nil
+	}
+	planned := movement.Gathering{Kind: gathering.Kind, WinnerID: 0}
+	if gathering.WinnerID != nil {
+		planned.WinnerID = *gathering.WinnerID
+	}
+	return &planned
 }
 
 // listStackPlaces returns where each jelly on a stack stands.

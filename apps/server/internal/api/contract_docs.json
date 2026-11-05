@@ -145,6 +145,14 @@
         "player_id": "The player to follow. Circles of followers answer `400 invalid_follow`."
       }
     },
+    "Gathering": {
+      "description": "Sends all jellies of a LAN somewhere for a while, started by the orga. Nothing pauses: a trip, following or a stack runs on in the background and goes on afterwards if its time is not over yet.",
+      "fields": {
+        "kind": "`food` sends the jellies to the zones of kind `queue`. `ceremony` sends them to `spectators` and the winner to `winner`. Treat new values as nothing to show.",
+        "winner_id": "The winner of a ceremony, who grows on the stage. Null without one.",
+        "ends_at": "When it ends and the jellies walk back."
+      }
+    },
     "HighlightBody": {
       "description": "Names the jelly to light up.",
       "fields": {
@@ -201,7 +209,7 @@
       "description": "One walk of a jelly, planned by the server so all screens show the same. Between two points the jelly walks straight, after the last one it stands there. A newer move of the same jelly replaces this one and starts where the jelly is at its `start_at`.",
       "fields": {
         "player_id": "The jelly that walks.",
-        "kind": "Why it walks: `wander`, `follow`, `trip`, `snack` or `stack`. Treat new values like `wander`.",
+        "kind": "Why it walks: `wander`, `follow`, `trip`, `snack`, `stack`, `food` or `ceremony`. Treat new values like `wander`.",
         "start_at": "When the walk starts. New walks start about one second in the future, so they reach every screen in time.",
         "points": "The way to walk. A single point means the jelly stands there.",
         "level": "How many jellies stand below this one, once it arrived at the last point. Above 0 only on a stack."
@@ -398,6 +406,7 @@
         "areas": "The zones of the room.",
         "players": "All jellies on the stage. Absent ones are not listed.",
         "stacks": "The running stacks.",
+        "gathering": "What all jellies do right now, or null. It ends at `ends_at` without an event.",
         "moves": "The current walk of each jelly. New ones arrive in the stream as `move`."
       }
     },
@@ -481,8 +490,9 @@
     { "type": "follow.changed", "meaning": "A jelly started following, or ended following or a trip.", "player": "the player", "payload": "`{\"target_id\"}`, null when it ended" },
     { "type": "trip.changed", "meaning": "A jelly started a trip.", "player": "the player", "payload": "`{\"x\",\"y\",\"until\"}`" },
     { "type": "stack.changed", "meaning": "A stack was started or changed.", "player": "the player", "payload": "The stack, only `{\"id\"}` after climbing down" },
-    { "type": "highlight", "meaning": "A jelly lights up so it can be found.", "player": "who asked", "payload": "`{\"target_id\",\"until\"}`" },
+    { "type": "highlight", "meaning": "A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `until`.", "player": "who asked", "payload": "`{\"target_id\",\"until\",\"cosmetic_key\"}`" },
     { "type": "stage.changed", "meaning": "The room changed, so read `GET /v1/stage` again.", "player": "null", "payload": "`{}`" },
+    { "type": "gathering.changed", "meaning": "A gathering started or was ended early. A normal end sends nothing, so use `ends_at`.", "player": "null", "payload": "The `Gathering`, null after an early end" },
     { "type": "move", "meaning": "A jelly starts a walk. This message has no ID and is not part of the event log.", "player": "`player_id` of the move", "payload": "The data is a whole `Move`, not an `Event`" },
     { "type": "reset", "meaning": "The stream dropped events for this client, so read the state again.", "player": "none", "payload": "None" }
   ]

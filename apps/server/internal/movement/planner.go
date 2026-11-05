@@ -15,6 +15,9 @@ const (
 	KindFollow = "follow"
 	KindSnack  = "snack"
 	KindStack  = "stack"
+	// All jellies gather. Their other plans go on afterwards, if their time is not over.
+	KindFood     = "food"
+	KindCeremony = "ceremony"
 )
 
 const (
@@ -77,12 +80,21 @@ type StackPlace struct {
 	Level int
 }
 
+// Gathering sends all jellies somewhere for a while. `Kind` is a kind of move, and `WinnerID` is 0
+// without a winner.
+type Gathering struct {
+	Kind     string
+	WinnerID int64
+}
+
 // Roster is everyone on the stage and the room they stand in, in the order of their IDs.
 type Roster struct {
 	// WalkSpeed is how fast jellies walk, in jelly units per second.
 	WalkSpeed float64
 	Areas     []rules.Area
 	Players   []Player
+	// Gathering is what all jellies do right now, or nil.
+	Gathering *Gathering
 }
 
 // Planner decides where the jellies walk. It lives as long as the server and all methods can be
@@ -95,11 +107,10 @@ type Planner struct {
 	walkSpeed   float64
 	areas       []rules.Area
 	floor       *grid
-	// queueZones are where jellies line up, shrunk so they stay inside.
-	queueZones []floorRect
-	// visitorZones are where visitors wander, shrunk so they stay inside.
-	visitorZones []floorRect
-	walkers      map[int64]*walker
+	// zones holds the zones jellies go to by their kind, shrunk so they stay inside.
+	zones     map[string][]floorRect
+	gathering *Gathering
+	walkers   map[int64]*walker
 	// journal holds the newest moves. The move at index i has the number firstNumber + i.
 	journal     []Move
 	firstNumber int64
@@ -111,6 +122,7 @@ func NewPlanner() *Planner {
 		//nolint:gosec // Where a jelly wanders needs no secure randomness.
 		random:      rand.New(rand.NewPCG(seedStream, seedStream)),
 		floor:       newGrid(listRoomRect(), nil, jellyRadius),
+		zones:       map[string][]floorRect{},
 		walkers:     map[int64]*walker{},
 		firstNumber: 1,
 	}
@@ -132,6 +144,7 @@ func (planner *Planner) Advance(now int64, roster Roster) {
 	planner.mutex.Lock()
 	defer planner.mutex.Unlock()
 	planner.walkSpeed = roster.WalkSpeed
+	planner.gathering = roster.Gathering
 	planner.syncRoom(roster.Areas)
 	planner.syncWalkers(now, roster.Players)
 	for _, player := range roster.Players {
@@ -229,19 +242,11 @@ func (planner *Planner) syncRoom(areas []rules.Area) {
 	}
 	planner.areas = slices.Clone(areas)
 	planner.floor = newGrid(listRoomRect(), listObstacles(areas), jellyRadius)
-	planner.queueZones = nil
-	planner.visitorZones = nil
+	planner.zones = map[string][]floorRect{}
 	for _, area := range areas {
-		switch area.Kind {
-		case rules.AreaKindQueue:
-			planner.queueZones = append(
-				planner.queueZones, shrinkRect(toFloorRect(area), edgeMargin),
-			)
-		case rules.AreaKindVisitors:
-			planner.visitorZones = append(
-				planner.visitorZones, shrinkRect(toFloorRect(area), edgeMargin),
-			)
-		}
+		planner.zones[area.Kind] = append(
+			planner.zones[area.Kind], shrinkRect(toFloorRect(area), edgeMargin),
+		)
 	}
 	for _, walker := range planner.walkers {
 		walker.isPlaced = false

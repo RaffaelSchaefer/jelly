@@ -16,7 +16,7 @@ import (
 
 const (
 	// APIVersion is the version of `/v1`. Every new feature raises it, see `docs/api.md`.
-	APIVersion = "1.11.0"
+	APIVersion = "1.12.0"
 	apiTitle   = "Jelly API"
 	// versionPrefix only changes for a breaking change, which then lives next to the old one.
 	versionPrefix = "/v1"
@@ -245,7 +245,8 @@ func finishContract(contract huma.API) {
 // listNullableFields names the object fields that can be null. Go tags cannot express this.
 func listNullableFields() []string {
 	return []string{
-		"PlayerState.lan", "PlayerState.reports", "LANStatus.current", "LANStatus.next",
+		"PlayerState.lan", "PlayerState.reports", "PlayerState.trip", "LANStatus.current",
+		"LANStatus.next", "StagePlayer.trip", "StageAnswer.gathering",
 	}
 }
 

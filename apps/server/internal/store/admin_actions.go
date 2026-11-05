@@ -20,6 +20,7 @@ const (
 	AdminActionSeatCode    = "seat.code"
 	AdminActionRecovery    = "player.recovery_code"
 	AdminActionMapImport   = "lan.map_import"
+	AdminActionGathering   = "lan.gathering"
 
 	maxAdminActionRows = 200
 )

@@ -27,6 +27,7 @@ Aktuelle Version: **1.8.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.12.0  | `gathering` in `GET /stage`, Ereignis `gathering.changed`, Wege `food` und `ceremony`: Essens-Event und Siegerehrung. `highlight` nennt `cosmetic_key`, das Hervorheben wird eine kurze Aura. `glow-aura` und `highlight-aura` im Katalog |
 | 1.11.0  | Brechend: `desk`, `cable` und `snackbar` sind keine Zuweisungen mehr, sondern Props. Neu in `areas`: `blocks`, `prop`, `name`, Positionen dürfen Bruchteile haben. Neue Zuweisungen `queue`, `public`, `spectators`, `winner`. Kartenformat mit `PUT /admin/api/lans/{id}/map`. `POST /trips/goto` lehnt blockende Zonen ab, Jellies füllen die Fläche von `queue`-Zonen |
 | 1.10.0  | Brechend: `POST /auth/redeem` nimmt das Secret an, das Konto tritt bei und behält es, Sitzplatz-Codes holen kein Konto mehr zurück und können an ein Konto gebunden sein, `seat_assigned` in der Antwort. Neu: `POST /auth/recover` und `POST /admin/api/players/{id}/recovery-code`. `area_occupied` entfällt |
 | 1.9.0   | `docs/openapi.json` beschreibt alle Wege, Parameter und Felder, dazu alle Fehlercodes und Stream-Nachrichten. Keine Änderung am Verhalten |
@@ -91,6 +92,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 403    | `forbidden`                               | Admin-Anmeldung fehlt oder ist abgelaufen |
 | 404    | `player_not_found`, `lan_not_found`       | Eintrag gibt es nicht                     |
 | 404    | `area_not_found`                          | Bereich gehört nicht zu dieser LAN        |
+| 404    | `gathering_not_found`                     | Gerade läuft kein Essens-Event und keine Siegerehrung |
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
 | 409    | `name_taken`, `lan_overlap`               | Steht im Konflikt mit Vorhandenem         |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
@@ -268,7 +270,8 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
   fällt ein Stapel auseinander, ohne `stack_max_members` ist er unbegrenzt, mit gesetztem Wert folgt darüber `409 stack_full`. Ist er weg, folgt
   `404 stack_not_found`. Jede Änderung meldet `stack.changed`.
 - `level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
-- `POST /highlights` mit `{"player_id"}` lässt ein Jelly für `highlight_seconds` aufleuchten, auch das eigene.
+- `POST /highlights` mit `{"player_id"}` lässt ein Jelly für `highlight_seconds` aufleuchten, auch das eigene. Das Ereignis
+  nennt `cosmetic_key`, die Aura `highlight-aura` ersetzt so lange die getragene. Freischalten kann sie niemand.
   Danach folgt das nächste erst nach `highlight_cooldown`, sonst `409 highlight_cooldown`.
 - Wird die Spitze eines Stapels mit mindestens zwei Jellies hervorgehoben, bekommen alle darauf `lighthouse` und die
   Spitze zusätzlich `lighthouse-light`.
@@ -314,6 +317,19 @@ das Lesen und ist die einzige Ausnahme. Spieler-Secrets gehören immer in den He
 - Jeder Jelly bekommt im Bereich den nächsten freien Platz in der Reihenfolge der Spieler-IDs. Ohne
   Bereich und ohne Lounge gilt die ganze Bühne. Abwesende behalten ihren Platz, Neue verschieben niemanden.
 
+### Essens-Event und Siegerehrung
+
+Die Orga startet ein `gathering`, und alle Jellies der LAN laufen los. Bühne und Apps lesen es aus `gathering` in `GET /stage`
+mit `kind`, `winner_id` und `ends_at`, Änderungen meldet `gathering.changed`.
+
+- `food` schickt alle in die Zonen der Art `queue`. `ceremony` schickt alle zu `spectators` und den Sieger zu `winner`, der
+  Sieger wächst dort auf der Bühne. Den Preis vergibt die Orga wie bisher über `POST /admin/api/awards`.
+- Sie füllen die Fläche wie beim Thekenlauf: nächste Zone mit Platz, sonst stellen sie sich nah dazu. Ohne passende Zone
+  bleibt alles, wie es ist.
+- Es wird nur gelaufen, nichts pausiert. Ein Ausflug, Folgen oder ein Stapel läuft im Hintergrund weiter und geht danach
+  weiter, wenn seine Zeit noch nicht um ist. Die Endzeit steht in der Datenbank, ein Neustart ändert nichts.
+- Ein reguläres Ende sendet kein Ereignis, also zählt `ends_at`.
+
 ### Wege
 
 Der Server plant, wo die Jellies laufen. Bühne und Apps spielen die Wege nur ab, so zeigen alle Bildschirme
@@ -324,7 +340,8 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
 - `points` sind Prozentwerte der Bühne, `t` zählt Millisekunden ab `start_at`. Zwischen zwei Punkten läuft das Jelly
   geradeaus, nach dem letzten steht es dort. Ein einzelner Punkt heißt: Es steht.
 - Ein neuer Weg desselben Jellys ersetzt den alten. Er beginnt dort, wo das Jelly zu seinem `start_at` ist.
-- `kind` nennt den Grund: `wander` (bummelt um seinen Platz oder geht dorthin zurück), `follow`, `trip`, `snack` und `stack`.
+- `kind` nennt den Grund: `wander` (bummelt um seinen Platz oder geht dorthin zurück), `follow`, `trip`, `snack`, `stack`,
+  `food` und `ceremony`.
   Weitere Werte können dazukommen und sind wie `wander` zu behandeln.
 - Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Jelly-Einheiten pro Sekunde. Ein Jelly ist etwa
   1,7 breit, die Halle 21 breit und 40 tief.
@@ -363,6 +380,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `sign.changed`, `follow.changed`, `trip.changed`  | Schild oder Standort               |
 | `stack.changed`, `highlight`                      | Stapel, ein Jelly leuchtet auf     |
 | `stage.changed`                                   | Raumkarte geändert, Stand neu laden |
+| `gathering.changed`                               | Essens-Event oder Siegerehrung, Stand neu laden |
 
 Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` hängt vom Typ ab:
 
@@ -381,8 +399,9 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `follow.changed`                                  | Spieler     | `{"target_id"}`, `null` beim Weggehen |
 | `trip.changed`                                    | Spieler     | `{"x","y","until"}`                |
 | `stack.changed`                                   | Spieler     | Der Stapel, nach dem Absteigen nur `{"id"}` |
-| `highlight`                                       | Spieler     | `{"target_id","until"}`            |
+| `highlight`                                       | Spieler     | `{"target_id","until","cosmetic_key"}` |
 | `stage.changed`                                   | `null`      | `{}`                              |
+| `gathering.changed`                               | `null`      | Das Gathering, `null` nach vorzeitigem Ende |
 
 `source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`.
 
@@ -410,6 +429,8 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","kind","name","blocks","prop"}` |
+| `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
+| `DELETE /admin/api/lans/{id}/gathering`          | Beendet es vorzeitig                      |
 | `PUT /admin/api/lans/{id}/map`                   | Kartendatei, siehe unten. Antwort: `{"created","updated","removed","unknown_props","unassigned_players"}` |
 | `POST /admin/api/lans/{id}/areas/{area}/code`    | `{"player_id"}`, optional, bindet den Code ans Konto |
 | `GET /admin/api/lans/{id}/seat-codes`            | Antwort: Codes mit `used_at`, `player_id`, `name` und `is_seated`, ob das Konto dort sitzt |

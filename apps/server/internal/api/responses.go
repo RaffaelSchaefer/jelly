@@ -23,6 +23,7 @@ const (
 // Field names shared by several responses.
 const (
 	fieldCreated = "created"
+	fieldEnded   = "ended"
 	fieldDeleted = "deleted"
 	fieldHidden  = "hidden"
 	fieldSecret  = "secret"
@@ -213,6 +214,9 @@ func listSeatErrors() []knownError {
 		{store.ErrCodeRedeemed, problem{
 			http.StatusConflict, "code_redeemed",
 			"Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben.",
+		}},
+		{store.ErrGatheringNotFound, problem{
+			http.StatusNotFound, "gathering_not_found", "Gerade läuft kein solches Ereignis.",
 		}},
 		{store.ErrSeatCodeOtherAccount, problem{
 			http.StatusForbidden, "seat_code_other_account",
