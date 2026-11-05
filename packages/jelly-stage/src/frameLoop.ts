@@ -1,5 +1,5 @@
 /**
- * The frames of a view: a steady rate, independent of the screen, and a canvas that follows the size
+ * The frames of a view: a rate independent of the screen, and a canvas that follows the size
  * of the window.
  *
  * @module
@@ -7,19 +7,18 @@
 
 import type { ScreenSize } from "./lens.ts";
 
+import { createFramePacer, type FrameLimit } from "./framePacing.ts";
 import { calculateCanvasDensity } from "./world.ts";
 
-/** Enough for smooth jellies, and the raymarched bodies cost a lot per frame. */
-const FRAMES_PER_SECOND = 30;
-/** A frame may come this much early, because the screen refresh does not match the rate exactly. */
-const FRAME_TOLERANCE_MS = 4;
-/** After a hidden tab, the jellies continue instead of jumping. */
-const LONGEST_FRAME_SECONDS = 0.1;
+/** After a hidden tab, the jellies continue instead of jumping. Still fits the slowest limit. */
+const LONGEST_FRAME_SECONDS = 0.25;
 
 /** What the loop calls and how sharp it draws. */
 export interface FrameLoopOptions {
   /** Canvas pixels per screen pixel, see `calculateCanvasDensity`. */
   supersampling: number | undefined;
+  /** How many frames per second, see {@link createFramePacer}. */
+  frameLimit: FrameLimit | undefined;
   /** The canvas changed its size or density. */
   onResize: (size: ScreenSize, density: number) => void;
   onFrame: (seconds: number, density: number) => void;
@@ -42,13 +41,21 @@ export function fitCanvas(
   return { width, height };
 }
 
-/** Runs the frames at a steady rate for the life of the page. */
-export function startFrameLoop(canvas: HTMLCanvasElement, options: FrameLoopOptions): void {
+/**
+ * Runs the frames for the life of the page.
+ *
+ * @returns A function that changes the rate.
+ */
+export function startFrameLoop(
+  canvas: HTMLCanvasElement,
+  options: FrameLoopOptions,
+): (limit: FrameLimit) => void {
+  const pacer = createFramePacer(options.frameLimit);
   let lastFrameAt = performance.now();
   let lastSize = "";
   const tick = (frameAt: number) => {
     requestAnimationFrame(tick);
-    if (frameAt - lastFrameAt < 1000 / FRAMES_PER_SECOND - FRAME_TOLERANCE_MS) {
+    if (!pacer.isDue(frameAt)) {
       return;
     }
     const seconds = Math.min(LONGEST_FRAME_SECONDS, (frameAt - lastFrameAt) / 1000);
@@ -62,4 +69,5 @@ export function startFrameLoop(canvas: HTMLCanvasElement, options: FrameLoopOpti
     options.onFrame(seconds, density);
   };
   requestAnimationFrame(tick);
+  return pacer.setLimit;
 }

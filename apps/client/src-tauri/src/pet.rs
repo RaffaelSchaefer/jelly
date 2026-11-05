@@ -26,6 +26,13 @@ pub const MIN_VOLUME: u8 = 10;
 /// Größte erlaubte Lautstärke in Prozent, zugleich der Standard.
 pub const MAX_VOLUME: u8 = 100;
 
+/// Kleinste erlaubte Bildrate in Bildern pro Sekunde.
+pub const MIN_FRAME_LIMIT: u16 = 5;
+/// Größte begrenzte Bildrate in Bildern pro Sekunde. Darüber gibt es nur noch „unbegrenzt“.
+pub const MAX_FRAME_LIMIT: u16 = 144;
+/// Bildrate in Bildern pro Sekunde, bis jemand den Regler bewegt.
+pub const DEFAULT_FRAME_LIMIT: u16 = 30;
+
 /// Version dieser App, verglichen mit `min_client_version` des Servers.
 pub const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -83,6 +90,10 @@ pub struct Settings {
     /// aus.
     #[serde(default)]
     pub optimized_rendering: bool,
+    /// Bildrate, [`MIN_FRAME_LIMIT`]…[`MAX_FRAME_LIMIT`], `None` heißt unbegrenzt. Fehlt in älteren
+    /// Dateien und gilt dort als [`DEFAULT_FRAME_LIMIT`].
+    #[serde(default = "default_frame_limit")]
+    pub frame_limit: Option<u16>,
 }
 
 /// Geräusche sind an, bis jemand sie abschaltet.
@@ -95,6 +106,11 @@ fn default_volume() -> u8 {
     MAX_VOLUME
 }
 
+/// Dieselbe Bildrate wie vor dem Regler.
+fn default_frame_limit() -> Option<u16> {
+    Some(DEFAULT_FRAME_LIMIT)
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -103,6 +119,7 @@ impl Default for Settings {
             sound: default_sound(),
             volume: default_volume(),
             optimized_rendering: false,
+            frame_limit: default_frame_limit(),
         }
     }
 }
@@ -135,7 +152,8 @@ impl Local {
     ///
     /// # Fehler
     ///
-    /// [`Error::UnknownSchema`], [`Error::InvalidSize`] oder [`Error::InvalidVolume`].
+    /// [`Error::UnknownSchema`], [`Error::InvalidSize`], [`Error::InvalidVolume`] oder
+    /// [`Error::InvalidFrameLimit`].
     pub(crate) fn validate(&self) -> Result<()> {
         if self.schema_version != SCHEMA_VERSION {
             return Err(Error::UnknownSchema);
@@ -145,6 +163,11 @@ impl Local {
         }
         if !(MIN_VOLUME..=MAX_VOLUME).contains(&self.settings.volume) {
             return Err(Error::InvalidVolume);
+        }
+        if let Some(limit) = self.settings.frame_limit {
+            if !(MIN_FRAME_LIMIT..=MAX_FRAME_LIMIT).contains(&limit) {
+                return Err(Error::InvalidFrameLimit);
+            }
         }
         Ok(())
     }

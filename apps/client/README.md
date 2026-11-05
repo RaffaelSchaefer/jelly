@@ -144,17 +144,18 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Ereignisse vom Server (neue XP, Erfolge, Auszeichnungen) kommen per Stream und lösen eine
   Sprechblase aus. Alle 5 Minuten meldet die App, dass sie noch läuft.
 - Lokal in `jelly.json` im App-Datenverzeichnis für `de.ucb.jelly` liegen nur Secret, Größe,
-  „Weniger Bewegung“, „Optimierter Modus“, „Geräusche“ und Lautstärke. Rust ersetzt die Datei erst nach einem vollständigen Schreibvorgang. Defekte
+  „Weniger Bewegung“, „Optimierter Modus“, Bildrate, „Geräusche“ und Lautstärke. Rust ersetzt die Datei erst nach einem vollständigen Schreibvorgang. Defekte
   oder unbekannte Dateiformate werden nicht still zurückgesetzt, und das Secret wird nie wegen eines
   Netzfehlers gelöscht.
 - Eine zweite gestartete Instanz aktiviert das vorhandene Pet, damit nicht zwei unabhängige Prozesse
   denselben Spielstand überschreiben.
-- Animation mit etwa 30 Bildern pro Sekunde, begrenzter Pixeldichte und Pause bei verborgenem
+- Animation mit 30 Bildern pro Sekunde, einstellbar unter „Bildrate“ von 5 bis 144 FPS oder unbegrenzt,
+  begrenzter Pixeldichte und Pause bei verborgenem
   WebView. Die Option „Weniger Bewegung“ und die entsprechende Systemeinstellung reduzieren die
   Animation auf eine statische Darstellung.
 - „Optimierter Modus“ in den Einstellungen senkt die Grafiklast für ältere PCs: Das flüssige Glas
   entfällt, die Bedienelemente werden feste Flächen, die Pixeldichte bleibt bei 1 und der Körper-Shader
-  verzichtet auf den Weg durchs Innere. Jelly behält Form, Mimik, Cosmetics und 30 Bilder pro Sekunde.
+  verzichtet auf den Weg durchs Innere. Jelly behält Form, Mimik, Cosmetics und die eingestellte Bildrate.
   Auf der Karte werden die Knöpfe ebenfalls fest, ihre Bühne und die des Servers bleiben unverändert.
   Eine offene Karte übernimmt die Einstellung beim nächsten Lesen, spätestens wenn sie wieder den Fokus
   bekommt. Wirkung und Messungen stehen in
@@ -167,6 +168,10 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 > `de.ucb.lan-desk-pet`. Spielstände von damals liegen weiter im alten App-Datenverzeichnis und
 > werden nicht übernommen. Wer einen behalten will, kopiert die alte `pet.json` in das neue
 > Verzeichnis.
+
+- „Bildrate“ gilt für Jelly, Studio, Duett und die Karte samt ihrem Glas und ist unabhängig vom optimierten
+  Modus. „Unbegrenzt“ heißt: kein eigenes Limit, Bildschirm, WebView und Hardware bestimmen die Bildrate. Die
+  Server-Bühne bleibt bei 30 FPS. Ältere Versionen der App lehnen das Feld `frameLimit` in `jelly.json` ab.
 
 ## Aufbau
 
@@ -268,7 +273,7 @@ mit dem Tauri-Mock beziehungsweise ohne Backend, rendern die Stimme und melden n
 
 Shader kompilieren erst zur Laufzeit. `http://127.0.0.1:1420/scripts/render-check.html?measure=0` kompiliert
 beide Körper-Shader wirklich, schaltet im laufenden Betrieb zwischen den Modi um und meldet das Ergebnis. Ohne
-`measure=0` misst die Seite zusätzlich die Zeit pro Bild, siehe [docs/optimized-rendering.md](docs/optimized-rendering.md).
+`measure=0` misst die Seite zusätzlich die Zeit pro Bild, mit `fps=60` oder `fps=max` bei anderer Bildrate, siehe [docs/optimized-rendering.md](docs/optimized-rendering.md).
 
 ## Bewusste Grenzen und nächste Schritte
 

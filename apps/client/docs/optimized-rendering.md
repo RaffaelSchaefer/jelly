@@ -13,7 +13,7 @@ in `jelly.json` (`optimizedRendering`), ist standardmäßig aus und wirkt ohne N
 | CSS-Effekte            | Blur, Filter, Schweben | keine                                         |
 | Knöpfe der Karte       | Glas-Shader            | feste Knöpfe, Grafikspeicher des Glases frei  |
 
-Gleich bleiben Form, Mimik, Cosmetics, Animationen und die 30 Bilder pro Sekunde. Die Bühne der Karte und
+Gleich bleiben Form, Mimik, Cosmetics, Animationen und die eingestellte Bildrate. Die Bühne der Karte und
 die des Servers zeichnen weiter mit voller Qualität. Eine offene Karte übernimmt die Einstellung beim
 nächsten Lesen, spätestens wenn sie wieder den Fokus bekommt.
 

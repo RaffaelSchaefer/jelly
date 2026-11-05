@@ -6,7 +6,7 @@
 
 use serde::{Serialize, Serializer};
 
-use crate::pet::{MAX_SIZE, MAX_VOLUME, MIN_SIZE, MIN_VOLUME};
+use crate::pet::{MAX_FRAME_LIMIT, MAX_SIZE, MAX_VOLUME, MIN_FRAME_LIMIT, MIN_SIZE, MIN_VOLUME};
 
 /// Kurzform für Ergebnisse, die mit [`Error`] scheitern können.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -25,6 +25,10 @@ pub enum Error {
     /// Die Lautstärke liegt außerhalb von [`MIN_VOLUME`]…[`MAX_VOLUME`].
     #[error("Die Lautstärke muss zwischen {MIN_VOLUME} und {MAX_VOLUME} % liegen.")]
     InvalidVolume,
+
+    /// Die Bildrate liegt außerhalb von [`MIN_FRAME_LIMIT`]…[`MAX_FRAME_LIMIT`].
+    #[error("Die Bildrate muss zwischen {MIN_FRAME_LIMIT} und {MAX_FRAME_LIMIT} FPS liegen.")]
+    InvalidFrameLimit,
 
     /// Die Datei existiert, ist aber kein gültiger Stand. Sie wird nicht überschrieben.
     #[error("Gespeicherte Daten konnten nicht gelesen werden: {0}. Die Datei bleibt unverändert.")]

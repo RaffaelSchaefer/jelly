@@ -17,10 +17,12 @@ import PartnerInvitePopup from "./panels/PartnerInvitePopup";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
 import {
+  frameLimitToStop,
   FULL_RENDERING,
   OPTIMIZED_RENDERING,
   PREVIEW_ME,
   stageLayout,
+  stopToFrameLimit,
   type Cosmetic,
   type Me,
   type Report,
@@ -92,7 +94,10 @@ function useSettingSliders(game: PetGame) {
   const [volume, onVolume] = useSettingDraft(settings.volume, (next) =>
     game.saveSettings({ ...latest.current, volume: next }),
   );
-  return { size, volume, onSize, onVolume };
+  const [frameStop, onFrameStop] = useSettingDraft(frameLimitToStop(settings.frameLimit), (next) =>
+    game.saveSettings({ ...latest.current, frameLimit: stopToFrameLimit(next) }),
+  );
+  return { size, volume, frameStop, onSize, onVolume, onFrameStop };
 }
 
 /** Eigenschaften von {@link PanelContent}. */
@@ -309,6 +314,7 @@ export default function App() {
           {...{ game, me, panel, joining }}
           reducedMotion={settings.reducedMotion || OS_REDUCED_MOTION}
           rendering={settings.optimizedRendering ? OPTIMIZED_RENDERING : FULL_RENDERING}
+          frameLimit={stopToFrameLimit(sliders.frameStop)}
           onToggle={toggle}
           onClose={close}
         />

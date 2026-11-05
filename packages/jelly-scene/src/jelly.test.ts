@@ -51,6 +51,19 @@ test("both qualities move alike, so the emote and mouth tests hold for the optim
   }
 });
 
+test("at the slowest frame rate the hands come out and settle without blowing up", () => {
+  const jelly = createJelly(JELLY_COLORS.mint);
+  const motion = createMotion(0);
+  let highest = 0;
+  for (let step = 0; step < 15; step++) {
+    const input = { ...frame, time: 1 + step * 0.2, rawDelta: 0.2, pulse: 1, holding: true };
+    animateJelly(jelly, motion, input);
+    highest = Math.max(highest, motion.hands);
+  }
+  expect(highest).toBeLessThan(1.5);
+  expect(motion.hands).toBeCloseTo(1, 1);
+});
+
 test("every eye is one mesh and the cheeks are hidden until the jelly is happy", () => {
   const jelly = createJelly(JELLY_COLORS.mint);
   expect(jelly.face.eyes.every((eye) => eye instanceof Mesh)).toBe(true);

@@ -8,6 +8,7 @@
 export * from "./achievements";
 export * from "./colors";
 export * from "./cosmetics";
+export * from "./frameRate";
 export * from "./layout";
 export * from "./mouth";
 export * from "./partner";

@@ -1,7 +1,9 @@
 //! Tests für Laden und Speichern, jeweils mit eigenem Temp-Verzeichnis.
 
 use super::*;
-use crate::pet::{DEFAULT_SIZE, MAX_SIZE, MAX_VOLUME};
+use crate::pet::{
+    DEFAULT_FRAME_LIMIT, DEFAULT_SIZE, MAX_FRAME_LIMIT, MAX_SIZE, MAX_VOLUME, MIN_FRAME_LIMIT,
+};
 
 #[test]
 fn secret_and_settings_survive_reopening() {
@@ -17,6 +19,7 @@ fn secret_and_settings_survive_reopening() {
             sound: false,
             volume: 40,
             optimized_rendering: true,
+            frame_limit: Some(60),
         })
         .unwrap();
     let restored = Store::open(path).unwrap();
@@ -26,6 +29,72 @@ fn secret_and_settings_survive_reopening() {
     assert!(!restored.local.settings.sound);
     assert_eq!(restored.local.settings.volume, 40);
     assert!(restored.local.settings.optimized_rendering);
+    assert_eq!(restored.local.settings.frame_limit, Some(60));
+}
+
+#[test]
+fn every_frame_limit_survives_reopening_and_keeps_the_secret() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    let mut store = Store::open(path.clone()).unwrap();
+    store.set_secret("geheim".into()).unwrap();
+    for limit in [Some(MIN_FRAME_LIMIT), Some(MAX_FRAME_LIMIT), None] {
+        let settings = Settings {
+            frame_limit: limit,
+            ..Settings::default()
+        };
+        store.set_settings(settings).unwrap();
+        let restored = Store::open(path.clone()).unwrap();
+        assert_eq!(restored.local.settings.frame_limit, limit);
+        assert_eq!(restored.local.secret.as_deref(), Some("geheim"));
+    }
+}
+
+#[test]
+fn a_frame_limit_outside_the_range_is_rejected_without_saving() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    let mut store = Store::open(path.clone()).unwrap();
+    for limit in [0, MIN_FRAME_LIMIT - 1, MAX_FRAME_LIMIT + 1] {
+        let wrong = Settings {
+            frame_limit: Some(limit),
+            ..Settings::default()
+        };
+        assert!(matches!(
+            store.set_settings(wrong),
+            Err(Error::InvalidFrameLimit)
+        ));
+        assert_eq!(store.local.settings.frame_limit, Some(DEFAULT_FRAME_LIMIT));
+    }
+    assert!(!path.exists());
+}
+
+#[test]
+fn a_frame_limit_of_the_wrong_type_in_the_file_is_preserved() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    for value in ["30.5", "\"schnell\"", "true", "-30"] {
+        let wrong = format!(
+            r#"{{"schemaVersion":2,"token":"geheim","settings":{{"reducedMotion":false,"size":100,"frameLimit":{value}}}}}"#
+        );
+        fs::write(&path, &wrong).unwrap();
+        assert!(matches!(Store::open(path.clone()), Err(Error::Corrupt(_))));
+        assert_eq!(fs::read_to_string(&path).unwrap(), wrong);
+    }
+}
+
+#[test]
+fn a_save_file_with_an_out_of_range_frame_limit_is_preserved() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    let wrong =
+        r#"{"schemaVersion":2,"settings":{"reducedMotion":false,"size":100,"frameLimit":145}}"#;
+    fs::write(&path, wrong).unwrap();
+    assert!(matches!(
+        Store::open(path.clone()),
+        Err(Error::InvalidFrameLimit)
+    ));
+    assert_eq!(fs::read_to_string(&path).unwrap(), wrong);
 }
 
 #[test]
@@ -68,7 +137,13 @@ fn a_failed_save_keeps_the_confirmed_optimized_rendering() {
     };
     assert!(matches!(store.set_settings(on), Err(Error::Save(_))));
     assert!(!store.local.settings.optimized_rendering);
-    assert!(!Store::open(path).unwrap().local.settings.optimized_rendering);
+    assert!(
+        !Store::open(path)
+            .unwrap()
+            .local
+            .settings
+            .optimized_rendering
+    );
 }
 
 #[test]
@@ -84,6 +159,10 @@ fn a_save_file_without_sound_loads_with_sound_on_at_full_volume() {
     assert!(restored.local.settings.sound);
     assert_eq!(restored.local.settings.volume, MAX_VOLUME);
     assert!(!restored.local.settings.optimized_rendering);
+    assert_eq!(
+        restored.local.settings.frame_limit,
+        Some(DEFAULT_FRAME_LIMIT)
+    );
 }
 
 #[test]

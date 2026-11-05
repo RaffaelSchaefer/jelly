@@ -10,11 +10,23 @@ import type { StageEvent, StageMove, StagePoint, StageSource, StreamListener } f
 import type { CatalogEntry, PartnerInvite } from "../pet";
 
 import * as backend from "../backend";
+import { FRAME_RATE } from "../pet";
+
+/** Das eigene Jelly und die Einstellungen, die die Karte betreffen. */
+type MapOwn = Omit<backend.MapState, "ownId" | "stage"> & { id: number | null };
+
+/** Bis zum ersten Lesen: noch kein Jelly, die Einstellungen stehen auf ihrem Standard. */
+const UNREAD_OWN: MapOwn = {
+  id: null,
+  reducedMotion: false,
+  optimizedRendering: false,
+  frameLimit: FRAME_RATE.default,
+};
 
 /** Was die Karte zusätzlich zur Bühne braucht. */
 export interface MapSource extends StageSource {
-  /** Das eigene Jelly und die Einstellungen, die die Karte betreffen, vom letzten Lesen. */
-  readOwn: () => { id: number | null; reducedMotion: boolean; optimizedRendering: boolean };
+  /** Stand vom letzten Lesen. */
+  readOwn: () => MapOwn;
   /** Stellt das Jelly neben ein anderes oder mit `null` weg. Liefert das neue Ziel. */
   setFollow: (playerId: number | null) => Promise<number | null>;
   /** Schickt das Jelly auf einen Ausflug zu einem Punkt der Bühne. */
@@ -41,7 +53,7 @@ export async function createDesktopSource(): Promise<MapSource> {
   const early: StageEvent[] = [];
   const earlyMoves: StageMove[] = [];
   let listener: StreamListener | null = null;
-  let own = { id: null as number | null, reducedMotion: false, optimizedRendering: false };
+  let own = UNREAD_OWN;
   let onInvite: ((event: StageEvent) => void) | null = null;
   await backend.onStageEvent((event) => {
     onInvite?.(event);
@@ -56,13 +68,9 @@ export async function createDesktopSource(): Promise<MapSource> {
   await backend.onStreamReset(() => listener?.onReset());
   return {
     readState: async () => {
-      const state = await backend.getMapState();
-      own = {
-        id: state.ownId,
-        reducedMotion: state.reducedMotion,
-        optimizedRendering: state.optimizedRendering,
-      };
-      return state.stage;
+      const { ownId, stage, ...settings } = await backend.getMapState();
+      own = { id: ownId, ...settings };
+      return stage;
     },
     readCatalog: backend.getCatalog,
     subscribe: (firstEventId, next) => {

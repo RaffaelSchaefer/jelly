@@ -18,7 +18,7 @@ import { createDemoRoom } from "@jelly/stage/demo-room";
 
 import type { MapSource } from "./source";
 
-import { PREVIEW_CATALOG, PREVIEW_ME, type PartnerInvite } from "../pet";
+import { FRAME_RATE, PREVIEW_CATALOG, PREVIEW_ME, type PartnerInvite } from "../pet";
 
 /**
  * Das eigene Jelly. Nicht 0: Die Bühne liest ein fehlendes Ziel als ID 0, sonst stünden alle bei
@@ -41,6 +41,13 @@ const INVITE_MS = 120_000;
 /** So lange dauert hier ein Ausflug und so lange leuchtet ein Jelly. */
 const TRIP_MS = 20_000;
 const HIGHLIGHT_MS = 10_000;
+
+/** Die Bildrate aus der Adresse: `fps=60` oder `fps=max` für unbegrenzt. */
+function previewFrameLimit() {
+  const fps = new URLSearchParams(location.search).get("fps");
+  if (fps === "max") return null;
+  return fps ? Number(fps) : FRAME_RATE.default;
+}
 
 /** Die Jellies auf den Plätzen der Halle, das erste ist das eigene. */
 function listPlayers(areas: StageArea[]): StagePlayer[] {
@@ -193,11 +200,12 @@ export function createPreviewSource(): MapSource {
       next.onConnectionChange(true);
       startWalks(players, next);
     },
-    // Die Vorschau teilt keine Einstellungen mit dem Pet: `map.html?optimized` zeigt den Modus.
+    // Die Vorschau teilt keine Einstellungen mit dem Pet: `map.html?optimized&fps=60` zeigt sie.
     readOwn: () => ({
       id: OWN_ID,
       reducedMotion: false,
       optimizedRendering: new URLSearchParams(location.search).has("optimized"),
+      frameLimit: previewFrameLimit(),
     }),
     setFollow: (playerId) => {
       const own = players[0];

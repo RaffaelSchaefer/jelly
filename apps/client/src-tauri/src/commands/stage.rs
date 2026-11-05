@@ -20,6 +20,8 @@ pub struct MapState {
     reduced_motion: bool,
     /// Einstellung „Optimierter Modus“: feste Knöpfe statt Glas.
     optimized_rendering: bool,
+    /// Einstellung „Bildrate“, `None` heißt unbegrenzt.
+    frame_limit: Option<u16>,
     /// Raumkarte und Jellies vom Server.
     stage: Stage,
 }
@@ -98,6 +100,7 @@ pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Resul
         own_id,
         reduced_motion: settings.reduced_motion,
         optimized_rendering: settings.optimized_rendering,
+        frame_limit: settings.frame_limit,
         stage,
     })
 }

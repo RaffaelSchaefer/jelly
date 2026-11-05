@@ -6,6 +6,7 @@
  * @module
  */
 
+import { FRAME_RATE } from "./frameRate";
 import { PET_SIZE, VOLUME, type Catalog, type Game, type Me } from "./types";
 
 /** Auszug aus dem Server-Katalog. */
@@ -153,6 +154,7 @@ export const PREVIEW_GAME: Game = {
     sound: true,
     volume: VOLUME.max,
     optimizedRendering: false,
+    frameLimit: FRAME_RATE.default,
   },
   me: PREVIEW_ME,
   lan: {

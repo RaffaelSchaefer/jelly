@@ -7,7 +7,7 @@
  * @module
  */
 
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useState, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 
 import { PET_COLORS, speechSyllables, type PetColor } from "../pet";
 import { cx } from "./cx";
@@ -234,8 +234,12 @@ export interface PercentSliderProps {
   label: string;
   /** Erklärung unter der Beschriftung. */
   hint?: string;
-  /** Aktueller Wert in Prozent. */
+  /** Aktueller Wert, ohne `valueText` in Prozent. */
   value: number;
+  /** Der Wert in Worten, wenn es keine Prozent sind. Screenreader lesen ihn statt der Zahl vor. */
+  valueText?: string;
+  /** Eigene Anzeige des Werts anstelle des Textes. */
+  display?: ReactNode;
   min: number;
   max: number;
   step: number;
@@ -251,6 +255,8 @@ export function PercentSlider({
   label,
   hint,
   value,
+  valueText,
+  display,
   min,
   max,
   step,
@@ -258,14 +264,16 @@ export function PercentSlider({
   disabled,
   onChange,
 }: PercentSliderProps) {
+  // Bis wohin die Spur des Reglers gefüllt ist, siehe `styles.css`.
+  const fill = { "--slider-fill": (value - min) / (max - min) } as CSSProperties;
   return (
-    <div className="size-row">
+    <div className="size-row" style={fill}>
       <div className="size-heading">
         <label htmlFor={id}>
           <strong>{label}</strong>
           {hint ? <small>{hint}</small> : null}
         </label>
-        <output htmlFor={id}>{value} %</output>
+        <output htmlFor={id}>{display ?? valueText ?? `${value} %`}</output>
       </div>
       <input
         id={id}
@@ -274,6 +282,7 @@ export function PercentSlider({
         max={max}
         step={step}
         value={value}
+        aria-valuetext={valueText}
         disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
       />
