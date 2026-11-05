@@ -1,8 +1,8 @@
 # Cosmetics in Blender
 
 Cosmetics are modelled in Blender around a copy of the pet and exported as `.glb` into
-`src/cosmetics/<id>.glb`. The app picks them up at the next build or dev reload and draws them on
-the pet when the cosmetic is equipped. Needs Blender 4.2 or newer.
+`packages/jelly-scene/src/cosmetics/<id>.glb`. The app, the map and the stage draw them on the pet
+when the cosmetic is equipped. Needs Blender 4.2 or newer.
 
 ## Set up once
 
@@ -47,13 +47,16 @@ skipped. Without opening Blender:
 blender blender/cosmetics.blend --background --python blender/setup_cosmetics.py -- --export
 ```
 
-Then commit `src/cosmetics/<id>.glb` (and `cosmetics.blend`, so others can carry on).
+Then commit `packages/jelly-scene/src/cosmetics/<id>.glb` (and `cosmetics.blend`, so others can carry
+on).
 
 ## A new cosmetic
 
 1. Add it to `COSMETICS` in `src/pet.ts` (id, name, slot, icon, unlock).
 2. Add a collection with that id under **Cosmetics** in Blender (or to `COSMETICS` in
    `setup_cosmetics.py` for fresh setups), model, export.
+3. Add an import line and an entry to `COSMETIC_MODELS` in `packages/jelly-scene/src/cosmetic.ts`.
+   Without it nothing shows it, and only then does its test run.
 
 ## When the pet changes
 

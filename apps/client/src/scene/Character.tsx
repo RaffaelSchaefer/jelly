@@ -14,6 +14,7 @@ import {
   createJelly,
   createMotion,
   disposeJelly,
+  hasCosmeticModel,
   isEmoteKey,
   isPartnerMotionKey,
   partnerPose,
@@ -36,7 +37,7 @@ import {
   type Equipped,
   type PetColor,
 } from "../pet";
-import Cosmetic, { hasCosmeticModel } from "./Cosmetic";
+import Cosmetic from "./Cosmetic";
 import HandHeld from "./HandHeld";
 import SignBoard from "./SignBoard";
 
