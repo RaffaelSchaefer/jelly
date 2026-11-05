@@ -27,6 +27,15 @@ const SHADOW_COLOR = "#46566a";
 export const SHADOW_HEIGHT = 0.07;
 /** Shadows draw after the floor and flat things, before everything standing on them. */
 export const SHADOW_ORDER = 2;
+/** Blended, but drawn with the solid objects, so it lies under the jellies and desks. */
+export const FLOOR_BLENDING = {
+  blending: CustomBlending,
+  blendSrc: SrcAlphaFactor,
+  blendDst: OneMinusSrcAlphaFactor,
+  blendSrcAlpha: OneFactor,
+  blendDstAlpha: OneMinusSrcAlphaFactor,
+  depthWrite: false,
+};
 
 /** Size and look of a shadow, in jelly units. */
 export interface ShadowShape {
@@ -60,13 +69,7 @@ export function createShadowMaterial(shape: ShadowShape): ShaderMaterial {
     },
     vertexShader,
     fragmentShader,
-    // Blended, but drawn with the solid objects, so it lies under the jellies and desks.
-    blending: CustomBlending,
-    blendSrc: SrcAlphaFactor,
-    blendDst: OneMinusSrcAlphaFactor,
-    blendSrcAlpha: OneFactor,
-    blendDstAlpha: OneMinusSrcAlphaFactor,
-    depthWrite: false,
+    ...FLOOR_BLENDING,
   });
 }
 
