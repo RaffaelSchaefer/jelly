@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.8.0**
+Aktuelle Version: **1.14.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.8.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.14.0  | Einheitliche Namen: `ends_at`, `follow`, `stack_level`, `partner_id`. Weniger Fehlercodes, `unlock` im Katalog, `rules` in `GET /lans/current` samt `rules.changed`, `xp_per_level` je LAN. Alles, was endet, meldet sich per Ereignis |
 | 1.13.0  | `rotation` in `areas` und in der Kartendatei: Zonen stehen in jedem Winkel, Hindernisse und Plätze drehen sich mit |
 | 1.12.0  | `gathering` in `GET /stage`, Ereignis `gathering.changed`, Wege `food` und `ceremony`: Essens-Event und Siegerehrung. `highlight` nennt `cosmetic_key`, das Hervorheben wird eine kurze Aura. `glow-aura` und `highlight-aura` im Katalog |
 | 1.11.0  | Brechend: `desk`, `cable` und `snackbar` sind keine Zuweisungen mehr, sondern Props. Neu in `areas`: `blocks`, `prop`, `name`, Positionen dürfen Bruchteile haben. Neue Zuweisungen `queue`, `public`, `spectators`, `winner`. Kartenformat mit `PUT /admin/api/lans/{id}/map`. `POST /trips/goto` lehnt blockende Zonen ab, Jellies füllen die Fläche von `queue`-Zonen |
@@ -49,6 +50,11 @@ dem Client abgestimmt. Ab der ersten LAN bekommt jede brechende Änderung einen 
 
 | Version | Änderung | Begründung |
 | ------- | -------- | ---------- |
+| 1.14.0  | `trip.until` und `until` bei `highlight` heißen `ends_at`, `follow_player_id` und `follow_until` werden `follow {player_id, ends_at}`, `moves[].level` heißt `stack_level` | Ein Name je Sache, das Level eines Wegs war leicht mit dem XP-Level zu verwechseln |
+| 1.14.0  | `trip` und `last_seen_at` fehlen in `players` von `GET /stage` | Ziel und Art stehen im Weg, die letzte Aktivität war nur Zustand des Servers |
+| 1.14.0  | `invalid_request` und `invalid_input` werden `invalid_request`, `unknown_action` wird `unknown_report_kind`, `partner_self` wird `invalid_partner`, `invalid_event_code` antwortet 403 | Codes sollen sagen, was falsch ist, falsche Codes antworten einheitlich |
+| 1.14.0  | `partner_ids` wird `partner_id`, `next_cursor` fehlt bei `GET /partner-emotes` | Gruppen sind nicht geplant, die Liste ist immer vollständig |
+| 1.14.0  | Katalog: `unlock` statt `requires_event`, `secret` fehlt bei Achievements | Die Freischaltung musste man erraten, `secret` war dort immer `false` |
 | 1.11.0  | `kind` in `areas` nennt nur noch das Verhalten, siehe [Bühne](#bühne) | Was dort steht, kommt aus der Karte. Beides war doppelt und konnte sich widersprechen |
 | 1.10.0  | `POST /auth/redeem` und Codes, siehe [Anmeldung](#anmeldung) | Ein Sitzplatz-Code öffnete sonst ein fremdes Konto. Das Secret gehört zum Konto, nicht zur LAN |
 
@@ -73,27 +79,32 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 
 | Status | Code                                      | Bedeutung                                 |
 | ------ | ----------------------------------------- | ----------------------------------------- |
-| 400    | `invalid_body`                            | Kein gültiges JSON                        |
-| 408, 413 | `invalid_body`                          | Körper zu langsam oder zu groß            |
-| 415    | `invalid_body`                            | `Content-Type` ist nicht JSON             |
-| 422    | `invalid_body`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
-| 400    | `invalid_input`, `invalid_rules`          | Admin-Angaben oder `since` sind ungültig  |
+| 400    | `invalid_request`                            | Kein gültiges JSON                        |
+| 408, 413 | `invalid_request`                          | Körper zu langsam oder zu groß            |
+| 415    | `invalid_request`                            | `Content-Type` ist nicht JSON             |
+| 422    | `invalid_request`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
+| 400    | `invalid_request`                         | Admin-Angaben, `since`, `cursor` oder `topics` sind ungültig |
+| 400    | `invalid_rules`                           | Regeln ungültig, oder `xp_per_level` nach dem Start der LAN geändert |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
 | 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
 | 400    | `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color` | Cosmetic passt nicht |
-| 400    | `unknown_action`, `unknown_emote`         | Eintrag steht nicht in der festen Liste   |
+| 400    | `unknown_report_kind`, `unknown_emote`         | Eintrag steht nicht in der festen Liste   |
 | 400    | `unknown_partner_emote`, `unknown_sign`   | Eintrag steht nicht in der festen Liste   |
-| 400    | `invalid_event_code`                      | Code unbekannt oder außerhalb seiner Zeit |
 | 400    | `invalid_follow`                          | Zu diesem Jelly kann man sich nicht stellen |
-| 401    | `unauthorized`                            | Token oder Schlüssel fehlt oder ist falsch |
+| 400    | `invalid_trip`                            | Auf diesem Punkt kann kein Jelly stehen   |
+| 400    | `invalid_highlight`                       | Dieses Jelly lässt sich nicht hervorheben |
+| 400    | `invalid_partner`, `invalid_partner_emote_state` | Jelly oder Antwort passen nicht zur Aufforderung |
+| 401    | `unauthorized`                            | Secret oder Schlüssel fehlt oder ist falsch |
 | 403    | `invalid_code`                            | Anmeldecode stimmt nicht, oder die LAN des Sitzplatz-Codes ist vorbei |
 | 403    | `seat_code_other_account`                 | Sitzplatz-Code gehört zu einem anderen Konto |
+| 403    | `invalid_event_code`                      | Event-Code unbekannt oder außerhalb seiner Zeit |
 | 403    | `invalid_recovery_code`                   | Wiederherstellungs-Code stimmt nicht, ist benutzt oder abgelaufen |
 | 403    | `forbidden`                               | Admin-Anmeldung fehlt oder ist abgelaufen |
 | 404    | `player_not_found`, `lan_not_found`       | Eintrag gibt es nicht                     |
 | 404    | `area_not_found`                          | Bereich gehört nicht zu dieser LAN        |
 | 404    | `gathering_not_found`                     | Gerade läuft kein Essens-Event und keine Siegerehrung |
+| 404    | `stack_not_found`, `partner_emote_not_found` | Stapel oder Aufforderung gibt es nicht mehr |
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
 | 409    | `name_taken`, `lan_overlap`               | Steht im Konflikt mit Vorhandenem         |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
@@ -102,9 +113,21 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 409    | `event_code_redeemed`, `event_code_exists` | Event-Code schon eingelöst oder vorhanden |
 | 409    | `emote_cooldown`, `report_cooldown`       | Zu früh wiederholt                        |
 | 409    | `report_limit`      | Limit erreicht, später erneut versuchen   |
+| 409    | `stack_full`, `too_far`                   | Stapel voll, oder die Jellies stehen zu weit auseinander |
+| 409    | `partner_emote_open`, `partner_emote_closed` | Aufforderung läuft schon oder ist vorbei |
 | 409    | `area_not_assignable`                     | In diesem Bereich kann kein Jelly stehen  |
 | 429    | `rate_limited`                            | Zu viele Versuche                         |
 | 500    | `internal`                                | Fehler auf dem Server                     |
+
+### Regeln
+
+`GET /lans/current` liefert in `rules` die Regeln der laufenden LAN, sonst der nächsten, sonst die Standardwerte. Nur die
+Betriebsgrenzen `max_players`, `max_streams` und `max_player_streams` fehlen. Die App zeigt damit an, was der Server
+entscheiden wird, zum Beispiel die Reichweite `near_distance` in Jelly-Einheiten oder den Fortschritt zum nächsten Level mit
+`xp_per_level`. Geprüft wird trotzdem immer auf dem Server. Ändert die Orga etwas, kommt `rules.changed`.
+
+`xp_per_level` gilt linear für jedes Level, Standard 100, und lässt sich nur bis zum Start der LAN ändern. Sonst würden
+Level und Cosmetics für alle springen.
 
 ### Stand eines Spielers
 
@@ -126,8 +149,8 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
   "next_poke_at": 1795000900000,
   "reports": { "food_ready_at": 0, "drink_ready_at": 0, "reports_left": 8 },
   "sign": null,
-  "follow_player_id": null,
-  "follow_until": null,
+  "trip": null,
+  "follow": { "player_id": 7, "ends_at": 1795001800000 },
   "lans_attended": 1,
   "badges": [{ "slug": "ucb-2026", "name": "UCB LAN 2026" }],
   "cosmetics": [],
@@ -138,11 +161,11 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 
 - `lan` ist die jüngste LAN des Kontos, nicht unbedingt die laufende. Ob eine läuft, sagt
   `GET /lans/current`. `xp` und `level` gelten für diese LAN, `total_xp` über alle LANs.
-- `next_poke_at`, `reports`, `sign` und `follow_player_id` sind außerhalb einer aktiven LAN `null`.
+- `next_poke_at`, `reports`, `sign`, `trip` und `follow` sind außerhalb einer aktiven LAN `null`.
 - `server_time` gilt für Countdowns statt der Uhr des Geräts. `food_ready_at` und `drink_ready_at`
   sind 0, wenn noch nichts gemeldet wurde.
-- `cosmetics` sind die Schlüssel, die der Spieler tragen darf. Manche Einträge des Katalogs gibt es nur per Award,
-  etwa `golden-cup` für die Hände.
+- `cosmetics` sind die Schlüssel, die der Spieler tragen darf. Wie man einen Eintrag bekommt, sagt `unlock` im Katalog:
+  `level`, `event` (Event-Code), `award` (Preis der Orga) oder `none`. Ein Admin kann jeden Eintrag vergeben.
 - Rekord-Achievements wie Marathon tragen zusätzlich `best` und `record_unit`.
 
 ## Anmeldung
@@ -224,7 +247,7 @@ gezählt haben, eine Wiederholung ergibt dann einen Fehler wie `report_cooldown`
 gilt nicht mehr. Die App fragt dann nach einem Wiederherstellungs-Code, sie löscht ihr Secret aber nie wegen eines
 Netzfehlers.
 
-Der Server darf ein `POST /trips/follow` später von sich aus beenden, also zählt immer `follow_player_id` im
+Der Server darf ein `POST /trips/follow` später von sich aus beenden, also zählt immer `follow` im
 Stand. Ein zu früher Stupser ist kein Fehler, sondern ergibt `xp_gained: 0`. Die App muss den Server nur
 ansprechen, wenn `next_poke_at` erreicht ist.
 
@@ -234,11 +257,11 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 
 | Weg                       | Körper                                     | Antwort                        |
 | ------------------------- | ------------------------------------------ | ------------------------------ |
-| `POST /partner-emotes`    | `{"key","partner_ids"}`, vorerst genau ein Jelly | `{"partner_emote","xp_gained","me"}` |
+| `POST /partner-emotes`    | `{"key","partner_id"}` | `{"partner_emote","xp_gained","me"}` |
 | `PATCH /partner-emotes`   | `{"id","state"}`                           | `{"partner_emote","xp_gained","me"}` |
-| `GET /partner-emotes`     |                                            | `{"items","next_cursor"}`      |
+| `GET /partner-emotes`     |                                            | `{"items"}`, alle offenen       |
 
-- B erfährt davon aus dem Stream über `partner_emote.updated` und zeigt sein Pop-up, die App filtert über `partner_ids`.
+- B erfährt davon aus dem Stream über `partner_emote.updated` und zeigt sein Pop-up, die App filtert über `partner_id`.
 - B sendet `accepted` oder `declined`, A kann mit `cancelled` zurückziehen. Eine Aufforderung gilt `partner_invite_seconds` lang.
 - Je Paar gibt es eine offene Aufforderung, sonst `409 partner_emote_open`. Vorbei ergibt `409 partner_emote_closed`.
 - Beide erhalten `partner_xp` einmal je Partner und LAN. Danach ist `xp_gained` 0.
@@ -251,12 +274,12 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 ### Ausflug und Folgen
 
 - `POST /trips/goto` schickt das Jelly zu einem Punkt, `x` und `y` sind Prozentwerte der Bühne. Es läuft zur freien
-  Stelle am nächsten dran und nach `trip_seconds` zurück auf seinen Platz. `trip` im Stand nennt `x`, `y` und `until`.
+  Stelle am nächsten dran und nach `trip_seconds` zurück auf seinen Platz. `trip` im Stand nennt `x`, `y` und `ends_at`.
   Punkte außerhalb der Bühne oder in einer Zone mit `blocks` ergeben `400 invalid_trip`, alles andere ist erlaubt, auch ein
   fremder Platz. Öffentliche Orte findet man über `name` in `areas`.
 - `POST /trips/follow` läuft einem anderen Jelly nach. Bekommt das Ziel einen neuen Weg, plant der Server selbst nach.
-  Nach `follow_seconds` läuft das Jelly zurück auf seinen Platz, `follow_until` im Stand nennt die Zeit. Dann werden
-  `follow_player_id` und `follow_until` ohne eigenes Ereignis wieder `null`. Dasselbe Jelly erneut zu wählen verlängert
+  Nach `follow_seconds` läuft das Jelly zurück auf seinen Platz, `follow.ends_at` im Stand nennt die Zeit. Dann wird `follow`
+  wieder `null`, und `follow.changed` meldet das Ende. Dasselbe Jelly erneut zu wählen verlängert
   nichts, ein anderes Jelly startet die Zeit neu. Einen Kreis aus Folgenden lehnt der Server mit `400 invalid_follow` ab.
 - `DELETE /trips/current` beendet beides sofort. Ausflug und Folgen schließen sich aus, das Neue beendet das Alte.
 - Das Achievement `conga` gibt es, wenn mehrere demselben Jelly folgen oder man jemandem folgt, der selbst folgt.
@@ -282,21 +305,25 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 Der Bühnenschlüssel steht bewusst in der Adresse, denn `EventSource` kann im Browser keinen Header senden. Er erlaubt nur
 das Lesen und ist die einzige Ausnahme. Spieler-Secrets gehören immer in den Header.
 
-`GET /stage` nimmt den Bühnenschlüssel oder ein Spieler-Token:
+`GET /stage` nimmt den Bühnenschlüssel oder das Secret eines Spielers:
 
 ```json
 {
   "last_event_id": 42,
   "server_time": 1795000000000,
   "room": { "width": 100, "height": 100, "unit": "percent" },
-  "areas": [{ "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "kind": "seats" }],
+  "areas": [{
+    "id": 1, "x": 0, "y": 0, "width": 50, "height": 100, "rotation": 0, "kind": "seats",
+    "blocks": false, "prop": "", "name": null
+  }],
   "players": [{
     "id": 1, "name": "Glibber", "color": "mint", "equipped": {}, "level": 1,
-    "sign": null, "follow_player_id": null, "follow_until": null, "last_seen_at": 1795000000000,
-    "area_id": 1, "trip": null, "home_x": 24.2, "home_y": 61.8
+    "sign": null, "follow": null, "area_id": 1, "is_visitor": false, "home_x": 24.2, "home_y": 61.8
   }],
+  "stacks": [],
+  "gathering": null,
   "moves": [{
-    "player_id": 1, "kind": "wander", "start_at": 1795000001000,
+    "player_id": 1, "kind": "wander", "start_at": 1795000001000, "stack_level": 0,
     "points": [{ "x": 24.2, "y": 61.8, "t": 0 }, { "x": 27.4, "y": 58, "t": 2400 }]
   }]
 }
@@ -356,11 +383,11 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
   jedes Jelly dort weiter, ein neuer `move` kann also um bis zu 30 Sekunden Weg springen. Ausflug, Folgen, Stapel und
   Thekenlauf laufen auch während eines Ausfalls ab. Danach läuft das Jelly von selbst zurück zu seinem Platz.
 
-`GET /stage/events` sendet Ereignisse und Wege als SSE und nimmt ebenfalls Schlüssel oder Token. Der Stream ist
+`GET /stage/events` sendet Ereignisse und Wege als SSE und nimmt ebenfalls Schlüssel oder Secret. Der Stream ist
 für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 
 - **Themen:** `?topics=events`, `?topics=moves` oder `?topics=events,moves` wählen aus, ohne Angabe kommt beides.
-  Unbekannte Themen ergeben `400 invalid_input`.
+  Unbekannte Themen ergeben `400 invalid_request`.
 - **Wege:** Nachrichten vom Typ `move` haben keine ID und stehen nicht im Ereignis-Log. Jede neue Verbindung bekommt
   zuerst den aktuellen Weg jedes Jellys, nach einem Abbruch geht also nichts verloren.
 
@@ -384,6 +411,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `sign.changed`, `follow.changed`, `trip.changed`  | Schild oder Standort               |
 | `stack.changed`, `highlight`                      | Stapel, ein Jelly leuchtet auf     |
 | `stage.changed`                                   | Raumkarte geändert, Stand neu laden |
+| `rules.changed`                                   | Regeln geändert, `GET /lans/current` neu lesen |
 | `gathering.changed`                               | Essens-Event oder Siegerehrung, Stand neu laden |
 
 Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` hängt vom Typ ab:
@@ -398,14 +426,17 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `achievement.earned`, `emote`                     | Spieler     | `{"key"}`                         |
 | `award.given`                                     | Spieler     | `{"title"}`, Freitext vom Admin   |
 | `partner.emote`                                   | B           | `{"key","partner_id"}`, `partner_id` ist A |
-| `partner_emote.updated`                           | Handelnder  | `{"id","key","from_id","partner_ids","state","expires_at"}` |
+| `partner_emote.updated`                           | Handelnder  | `{"id","key","from_id","partner_id","state","expires_at"}` |
 | `sign.changed`                                    | Spieler     | `{"key"}`, `null` beim Senken     |
-| `follow.changed`                                  | Spieler     | `{"target_id"}`, `null` beim Weggehen |
-| `trip.changed`                                    | Spieler     | `{"x","y","until"}`                |
-| `stack.changed`                                   | Spieler     | Der Stapel, nach dem Absteigen nur `{"id"}` |
-| `highlight`                                       | Spieler     | `{"target_id","until","cosmetic_key"}` |
-| `stage.changed`                                   | `null`      | `{}`                              |
-| `gathering.changed`                               | `null`      | Das Gathering, `null` nach vorzeitigem Ende |
+| `follow.changed`                                  | Spieler     | `{"target_id"}`, `null` am Ende   |
+| `trip.changed`                                    | Spieler     | `{"x","y","ends_at"}`, `null` am Ende |
+| `stack.changed`                                   | Spieler, `null` beim Ablauf | Der Stapel, nach dem Absteigen oder Ablauf nur `{"id"}` |
+| `highlight`                                       | Spieler     | `{"target_id","ends_at","cosmetic_key"}` |
+| `stage.changed`, `rules.changed`                  | `null`      | `{}`                              |
+| `gathering.changed`                               | `null`      | Das Gathering, `null` am Ende     |
+
+Ausflug, Folgen, Stapel und Gathering melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
+Sekunde. Eine App braucht dafür keine eigenen Timer. Das Bild bleibt schon vorher überall gleich, weil alle Wege vom Server kommen.
 
 `source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`.
 

@@ -468,7 +468,7 @@
         "level": "The level in the running LAN.",
         "sign": "Key of the raised sign, or null.",
         "follow": "The jelly this one follows, or null.",
-        "area_id": "The zone the jelly belongs to, or null.",
+        "area_id": "The zone the jelly belongs to, for a visitor the first zone it wanders through, or null.",
         "is_visitor": "A jelly without a place of its own wanders through the zones of kind `visitors`.",
         "home_x": "The place of the jelly in percent of the stage width. Where it is right now comes from `moves`.",
         "home_y": "The place of the jelly in percent of the stage height. Where it is right now comes from `moves`."
