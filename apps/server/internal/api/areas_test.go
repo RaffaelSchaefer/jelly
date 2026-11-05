@@ -210,3 +210,44 @@ func TestZoneWithoutAssignmentTakesNoJelly(t *testing.T) {
 		t.Fatalf("assign: %s", response.body)
 	}
 }
+
+func TestEditingAnImportedZoneKeepsItsMapID(t *testing.T) {
+	testFixture := newFixture(t)
+	zone := `{"version":1,"zones":[{"id":"t1","x":10,"y":10,"width":5,"height":5}]}`
+	if response := testFixture.callAdmin(
+		"PUT",
+		"/admin/api/lans/1/map",
+		zone,
+	); response.status != http.StatusOK {
+		t.Fatalf("import: %d %s", response.status, response.body)
+	}
+	var listed struct {
+		Areas []store.AdminArea `json:"areas"`
+	}
+	areas := testFixture.callAdmin("GET", "/admin/api/lans/1/areas", "")
+	if err := json.Unmarshal(areas.body, &listed); err != nil || len(listed.Areas) != 1 {
+		t.Fatalf("areas: %v %s", err, areas.body)
+	}
+	path := "/admin/api/lans/1/areas/" + strconv.FormatInt(listed.Areas[0].ID, 10)
+
+	response := testFixture.callAdmin(
+		"PUT",
+		path,
+		`{"x":20,"y":10,"width":5,"height":5,"kind":"none"}`,
+	)
+	if response.status != http.StatusOK ||
+		decodeBody[store.AdminArea](t, response).MapID != "t1" {
+		t.Errorf("edit: %d %s", response.status, response.body)
+	}
+	long := strings.Repeat("x", 65)
+	response = testFixture.callAdmin("PUT", path,
+		`{"x":20,"y":10,"width":5,"height":5,"kind":"none","name":"`+long+`"}`)
+	if response.status != http.StatusBadRequest {
+		t.Errorf("long name: %d %s", response.status, response.body)
+	}
+	response = testFixture.callAdmin("POST", "/admin/api/lans/1/areas",
+		`{"x":30,"y":10,"width":5,"height":5,"kind":"none","name":"`+long+`"}`)
+	if response.status != http.StatusBadRequest {
+		t.Errorf("long name of a new zone: %d %s", response.status, response.body)
+	}
+}

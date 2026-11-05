@@ -84,7 +84,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 415    | `invalid_request`                            | `Content-Type` ist nicht JSON             |
 | 422    | `invalid_request`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
 | 400    | `invalid_request`                         | Admin-Angaben, `since`, `cursor` oder `topics` sind ungültig |
-| 400    | `invalid_rules`                           | Regeln ungültig, oder `xp_per_level` nach dem Start der LAN geändert |
+| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, oder `xp_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
 | 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
@@ -106,7 +106,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 404    | `gathering_not_found`                     | Gerade läuft kein Essens-Event und keine Siegerehrung |
 | 404    | `stack_not_found`, `partner_emote_not_found` | Stapel oder Aufforderung gibt es nicht mehr |
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
-| 409    | `name_taken`, `lan_overlap`               | Steht im Konflikt mit Vorhandenem         |
+| 409    | `name_taken`, `slug_taken`, `lan_overlap` | Steht im Konflikt mit Vorhandenem         |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
 | 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |
@@ -484,6 +484,37 @@ bis ein Admin sie neu zuweist.
 - Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. `xp_per_level` lässt sich nach dem Start der
   LAN mit keinem von beiden ändern.
 
+Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, höchstens 30 Tage:
+
+| Regel                    | Erlaubt          | Bedeutung                                                   |
+| ------------------------ | ---------------- | ----------------------------------------------------------- |
+| `xp_per_level`           | 1 bis 1000000    | XP pro Level, nach dem Start der LAN fest                   |
+| `poke_interval`          | 1 bis 2592000    | Mindestzeit zwischen zwei Stupsern, die XP geben            |
+| `poke_xp`                | 0 bis 10000      | XP pro Stupser                                              |
+| `poke_max_ticks`         | 1 bis 1000       | Abstände, die ein Stupser nachholt, 1 heißt kein Nachholen  |
+| `food_xp`                | 0 bis 10000      | XP für eine Essensmeldung                                   |
+| `drink_xp`               | 0 bis 10000      | XP für eine Getränkemeldung                                 |
+| `report_cooldown`        | 1 bis 2592000    | Zeit zwischen zwei Meldungen derselben Art                  |
+| `report_window`          | 1 bis 2592000    | Zeitfenster für `reports_per_window`                        |
+| `reports_per_window`     | 0 bis 1000       | Meldungen im Zeitfenster, Essen und Trinken zusammen        |
+| `presence_window`        | 1 bis 2592000    | So lange bleibt ein Jelly nach seiner letzten Aktion da     |
+| `emote_cooldown`         | 0 bis 2592000    | Zeit zwischen zwei Emotes, 0 schaltet sie ab                |
+| `partner_invite_seconds` | 1 bis 2592000    | So lange lässt sich ein Partner-Emote beantworten           |
+| `partner_xp`             | 0 bis 10000      | XP für ein Partner-Emote mit jemand Neuem in dieser LAN     |
+| `full_house_percent`     | 1 bis 100        | Anteil der Spieler, die denselben Event-Code einlösen müssen |
+| `snack_run_seconds`      | 1 bis 2592000    | So lange bleibt ein Jelly nach einer Meldung an der Theke   |
+| `trip_seconds`           | 1 bis 2592000    | So lange bleibt ein Jelly am Ziel eines Ausflugs            |
+| `follow_seconds`         | 1 bis 2592000    | So lange folgt ein Jelly einem anderen                      |
+| `near_distance`          | 0,01 bis 1000    | Abstand für „nebeneinander“ in Jelly-Einheiten              |
+| `walk_speed`             | 0,01 bis 100     | Jelly-Einheiten pro Sekunde                                 |
+| `stack_seconds`          | 1 bis 2592000    | So lange steht ein Stapel                                   |
+| `stack_max_members`      | 0 bis 1000       | Jellies pro Stapel, 0 heißt ohne Grenze                     |
+| `highlight_seconds`      | 1 bis 2592000    | So lange leuchtet ein hervorgehobenes Jelly                 |
+| `highlight_cooldown`     | 0 bis 2592000    | Zeit zwischen zwei Hervorhebungen, 0 schaltet sie ab        |
+| `max_players`            | 1 bis 100000     | Konten pro LAN                                              |
+| `max_streams`            | 1 bis 100000     | Offene Ereignis-Streams insgesamt                           |
+| `max_player_streams`     | 1 bis 1000       | Offene Ereignis-Streams pro Spieler                         |
+
 ### Kartendatei
 
 Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der Admin danach in der Datenbank.
@@ -502,6 +533,7 @@ Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der 
   Von Hand angelegte Zonen bleiben unberührt.
 - `rotation` ist optional, von 0 bis unter 360 Grad, Nachkommastellen sind erlaubt. Fehlt sie, zeigt das Modell zur Kamera.
   Alle vier Ecken müssen nach dem Drehen im Raum liegen. Hindernis und Plätze der Zone drehen sich mit.
+- `zones` ist Pflicht, damit eine falsche Datei nicht alle Zonen entfernt. `"zones": []` entfernt sie mit Absicht.
 - Der Import läuft auch während einer LAN und sendet `stage.changed`.
 - Ist eine Zone ungültig, ändert sich nichts, und es folgt `400 invalid_map`. Unbekannte Props hindern den Import nicht,
   stehen aber in `unknown_props`. Die bekannten Props stehen in `ListProps` in `internal/rules/maps.go`.

@@ -123,3 +123,25 @@ func TestPatchIsCheckedLikeEveryOtherChangeOfTheRules(t *testing.T) {
 		"lan_not_found",
 	)
 }
+
+func TestRuleErrorsSayWhatToFix(t *testing.T) {
+	testFixture := newFixture(t)
+	const path = "/admin/api/lans/1/rules"
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"too low", `{"trip_seconds":0}`, "trip_seconds muss zwischen 1 und 2592000 liegen."},
+		{"too high", `{"trip_seconds":9223372036854775807}`, "trip_seconds muss zwischen"},
+		{"decimals", `{"walk_speed":0}`, "walk_speed muss zwischen 0,01 und 100 liegen."},
+		{"after the start", `{"xp_per_level":50}`, "xp_per_level lässt sich nach dem Start"},
+	}
+	for _, testCase := range cases {
+		response := testFixture.callAdmin("PATCH", path, testCase.body)
+		if response.status != http.StatusBadRequest ||
+			!strings.Contains(string(response.body), testCase.want) {
+			t.Errorf("%s: %d %s", testCase.name, response.status, response.body)
+		}
+	}
+}

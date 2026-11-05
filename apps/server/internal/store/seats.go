@@ -59,6 +59,7 @@ type seatClaim struct {
 	areaID   int64
 	lanID    int64
 	playerID int64
+	kind     string
 	isUsed   bool
 }
 
@@ -190,7 +191,8 @@ func joinLAN(
 func findLANByCode(ctx context.Context, transaction *sql.Tx, code string) (codeLAN, error) {
 	const selectLANByCodeSQL = `SELECT id, timezone, rules, starts_at, ends_at FROM lans
 		WHERE join_code_hash = ? ORDER BY starts_at DESC LIMIT 1`
-	row := transaction.QueryRowContext(ctx, selectLANByCodeSQL, hashSecret(code))
+	row := transaction.QueryRowContext(ctx, selectLANByCodeSQL,
+		hashSecret(strings.TrimSpace(code)))
 	return scanCodeLAN(row)
 }
 
@@ -222,10 +224,10 @@ func findSeatClaim(
 ) (seatClaim, bool, error) {
 	var claim seatClaim
 	var usedAt, playerID sql.NullInt64
-	const selectSeatClaimSQL = `SELECT id, lan_id, code_used_at, code_player_id
+	const selectSeatClaimSQL = `SELECT id, lan_id, kind, code_used_at, code_player_id
 		FROM lan_areas WHERE code = ?`
 	err := transaction.QueryRowContext(ctx, selectSeatClaimSQL, normalizeSeatCode(code)).
-		Scan(&claim.areaID, &claim.lanID, &usedAt, &playerID)
+		Scan(&claim.areaID, &claim.lanID, &claim.kind, &usedAt, &playerID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return seatClaim{}, false, nil
 	}
@@ -257,6 +259,10 @@ func createAccount(ctx context.Context, transaction *sql.Tx, item redemption) (i
 func takeFreeSeat(
 	ctx context.Context, transaction *sql.Tx, item redemption, claim seatClaim, playerID int64,
 ) (bool, error) {
+	// An admin may have turned the seat into something nobody stands in after giving out the code.
+	if !rules.IsStandingKind(claim.kind) {
+		return false, nil
+	}
 	var conflicts int
 	const countSeatConflictsSQL = `SELECT COUNT(*) FROM lan_entries WHERE lan_id = ? AND (
 			(area_id = ? AND player_id != ?)
