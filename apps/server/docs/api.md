@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.8.0**
+Aktuelle Version: **1.9.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.8.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.9.0   | Neues Cosmetic `headset-neutral` im Katalog, ab Level 2 frei wie `headset` |
 | 1.8.0   | Der LAN-Code legt auch vor und nach der LAN Konten an, XP gibt es weiter nur während der LAN |
 | 1.7.0   | Zonen haben im Admin einen Namen, neue Zuweisungen `visitors` und `none`, Besucher wandern (`is_visitor`), Jellies wählen die nächste Theke mit Platz |
 | 1.6.0   | Annehmen eines Partner-Emotes prüft die Nähe, Stapel sind ohne Regel unbegrenzt, `golden-cup` steht im Katalog, Awards prüfen ihr Cosmetic |
