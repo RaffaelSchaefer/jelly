@@ -39,5 +39,6 @@ sleep 3
 scripts/demo-room.sh assign "$base_url" "$JELLY_ADMIN_SECRET"
 
 echo "Stage: $base_url/stage/?key=$JELLY_STAGE_KEY"
+echo "Admin: $base_url/admin/ (password: $JELLY_ADMIN_SECRET)"
 echo "Stop with Ctrl+C."
 wait "$server_pid"
