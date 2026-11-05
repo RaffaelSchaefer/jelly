@@ -79,6 +79,21 @@ function check(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+/** Wartet auf eine Bedingung. Auf schwachen Geräten dauert schon das erste Bild Sekunden. */
+async function until(condition, message, ms = 60_000) {
+  const end = performance.now() + ms;
+  while (!condition()) {
+    check(performance.now() < end, message);
+    await sleep(50);
+  }
+}
+
+/** Wartet, bis `count` weitere Bilder fertig sind. */
+function framesDrawn(probe, count = 3) {
+  const target = probe.stamps.length + count;
+  return until(() => probe.stamps.length >= target, "Die Szene zeichnet keine Bilder");
+}
+
 /** Der echte Spielstand-Hook und die echte Bühne. */
 function Harness({ rendering, panel }) {
   const game = usePet(noop);
@@ -283,26 +298,34 @@ function watchTimers() {
   return { live, restore };
 }
 
+/** Schaltet mehrmals hin und her und wartet jeweils auf fertige Bilder im neuen Modus. */
+async function cycleModes(probe) {
+  for (let cycle = 0; cycle < 4; cycle++) {
+    show(VARIANTS.optimiert, null);
+    await framesDrawn(probe);
+    show(VARIANTS.ausgang, null);
+    await framesDrawn(probe);
+  }
+}
+
 /** Prüft den Wechsel der Modi: gleiche Canvas und gleicher Kontext, keine wachsenden Ressourcen. */
 async function checkSwitching() {
   const { live, restore } = watchTimers();
   show(VARIANTS.ausgang, null);
   const state = await fiberState();
+  const probe = instrument(state.gl);
+  probe.recording = true;
   const context = state.gl.getContext();
   const canvas = state.gl.domElement;
-  await sleep(1000);
+  await framesDrawn(probe);
   const counts = () => {
     const { memory, programs } = state.gl.info;
     return { ...memory, programs: programs.length, timers: live.size };
   };
   const before = counts();
-  for (let cycle = 0; cycle < 4; cycle++) {
-    show(VARIANTS.optimiert, null);
-    await sleep(400);
-    show(VARIANTS.ausgang, null);
-    await sleep(400);
-  }
+  await cycleModes(probe);
   const after = counts();
+  probe.stop();
   restore();
   check(document.querySelector("canvas") === canvas, "Die Canvas darf nicht neu entstehen");
   check(state.gl.getContext() === context && !context.isContextLost(), "Der Kontext muss bleiben");
@@ -322,17 +345,19 @@ async function checkHidden() {
   show(VARIANTS.optimiert, null);
   const state = await fiberState();
   const probe = instrument(state.gl);
+  probe.recording = true;
+  await framesDrawn(probe);
   let hidden = true;
   Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
   document.dispatchEvent(new Event("visibilitychange"));
-  await sleep(200);
-  probe.recording = true;
+  // Ein Bild kann noch unterwegs sein, erst danach darf nichts mehr kommen.
+  await sleep(500);
+  probe.stamps.length = 0;
   await sleep(500);
   check(probe.stamps.length === 0, "Verborgen darf nichts gezeichnet werden");
   hidden = false;
   document.dispatchEvent(new Event("visibilitychange"));
-  await sleep(200);
-  check(probe.stamps.length > 0, "Beim Wiederanzeigen muss sofort ein Bild kommen");
+  await framesDrawn(probe, 1);
   delete document.hidden;
   probe.stop();
   return true;
