@@ -276,8 +276,8 @@ func (server *apiServer) handleUpdateArea(writer http.ResponseWriter, request *h
 		return
 	}
 	body.ID = areaID
-	err := server.Store.UpdateArea(request.Context(), lanID, body, server.currentMillis())
-	server.writeOutcome(writer, request, body, err)
+	updated, err := server.Store.UpdateArea(request.Context(), lanID, body, server.currentMillis())
+	server.writeOutcome(writer, request, updated, err)
 }
 
 // handleImportMap brings the zones of a LAN in line with a map file and reports what changed.

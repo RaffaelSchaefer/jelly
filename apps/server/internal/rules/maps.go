@@ -43,6 +43,11 @@ func IsMapSizeValid(roomMap RoomMap) bool {
 	return roomMap.Version == MapFormatVersion && len(roomMap.Zones) <= maxMapZones
 }
 
+// IsZoneNameValid reports whether a name fits on the admin page and the stage.
+func IsZoneNameValid(name string) bool {
+	return len(name) <= maxZoneTextLength
+}
+
 // ListInvalidMapZones returns the IDs of zones that cannot be imported: without a usable ID, with
 // an
 // ID that came before, with a name that is too long or outside the stage.
@@ -51,7 +56,7 @@ func ListInvalidMapZones(zones []MapZone) []string {
 	seen := map[string]bool{}
 	for _, zone := range zones {
 		isUsable := zone.ID != "" && len(zone.ID) <= maxZoneTextLength && !seen[zone.ID] &&
-			len(zone.Name) <= maxZoneTextLength && ValidateArea(zone.ToArea()) == nil
+			IsZoneNameValid(zone.Name) && ValidateArea(zone.ToArea()) == nil
 		if !isUsable {
 			invalid = append(invalid, zone.ID)
 		}

@@ -39,7 +39,7 @@ type AreaAssignment struct {
 func (store *Store) CreateArea(
 	ctx context.Context, lanID int64, area AdminArea, now int64,
 ) (AdminArea, error) {
-	err := rules.ValidateArea(area.Area)
+	err := validateAdminArea(area)
 	if err != nil {
 		return AdminArea{}, fmt.Errorf("validate area: %w", err)
 	}
@@ -60,12 +60,14 @@ func (store *Store) CreateArea(
 
 // UpdateArea moves, resizes, renames or changes the assignment of an area. Jellies in it stay
 // assigned while they can still stand there.
-func (store *Store) UpdateArea(ctx context.Context, lanID int64, area AdminArea, now int64) error {
-	err := rules.ValidateArea(area.Area)
-	if err != nil {
-		return fmt.Errorf("validate area: %w", err)
+func (store *Store) UpdateArea(
+	ctx context.Context, lanID int64, area AdminArea, now int64,
+) (AdminArea, error) {
+	invalid := validateAdminArea(area)
+	if invalid != nil {
+		return AdminArea{}, fmt.Errorf("validate area: %w", invalid)
 	}
-	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
+	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		const updateAreaSQL = `UPDATE lan_areas
 			SET x = ?, y = ?, width = ?, height = ?, rotation = ?, kind = ?, name = ?, blocks = ?,
 				prop = ?
@@ -88,8 +90,27 @@ func (store *Store) UpdateArea(ctx context.Context, lanID int64, area AdminArea,
 				return err
 			}
 		}
+		// The body does not name the map ID, and an edit keeps the one the zone has.
+		const selectAreaMapIDSQL = `SELECT COALESCE(map_id, '') FROM lan_areas WHERE id = ?`
+		err = transaction.QueryRowContext(ctx, selectAreaMapIDSQL, area.ID).Scan(&area.MapID)
+		if err != nil {
+			return fmt.Errorf("read map ID: %w", err)
+		}
 		return appendStageChanged(ctx, transaction, lanID, now)
 	})
+	return area, err
+}
+
+// validateAdminArea checks what the stage needs and what only the admin page shows.
+func validateAdminArea(area AdminArea) error {
+	if !rules.IsZoneNameValid(area.Name) {
+		return rules.ErrInvalidArea
+	}
+	err := rules.ValidateArea(area.Area)
+	if err != nil {
+		return fmt.Errorf("check zone: %w", err)
+	}
+	return nil
 }
 
 // clearAreaAssignments sends the jellies of an area where nobody can stand back to the lounge.
