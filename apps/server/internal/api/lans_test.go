@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -63,4 +64,37 @@ func TestLANCodeIgnoresSpacesAroundIt(t *testing.T) {
 	if response.status != http.StatusBadRequest {
 		t.Errorf("only spaces: %d %s", response.status, response.body)
 	}
+}
+
+func TestCreateLANRefusesValuesThatCannotBeRight(t *testing.T) {
+	testFixture := newFixture(t)
+	const start, end = 4102444800000, 4102531200000
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"name of spaces", lanBody("a", "   ", "Europe/Berlin", start, end)},
+		{"no time zone", lanBody("b", "B", "", start, end)},
+		{"zone of the server", lanBody("c", "C", "Local", start, end)},
+		{
+			"seconds instead of milliseconds",
+			lanBody("d", "D", "Europe/Berlin", 1700000000, 1700090000),
+		},
+		{"never ends", lanBody("e", "E", "Europe/Berlin", start, 9000000000000000)},
+		{"end before start", lanBody("f", "F", "Europe/Berlin", end, start)},
+	}
+	for _, testCase := range cases {
+		response := testFixture.callAdmin("POST", "/admin/api/lans", testCase.body)
+		if response.status != http.StatusBadRequest {
+			t.Errorf("%s: %d %s", testCase.name, response.status, response.body)
+		}
+	}
+}
+
+// lanBody builds the request for a new LAN.
+func lanBody(slug, name, timezone string, startsAt, endsAt int64) string {
+	return fmt.Sprintf(
+		`{"slug":%q,"name":%q,"timezone":%q,"join_code":"code","starts_at":%d,"ends_at":%d}`,
+		slug, name, timezone, startsAt, endsAt,
+	)
 }

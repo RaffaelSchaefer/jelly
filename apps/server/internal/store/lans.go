@@ -70,13 +70,11 @@ type querier interface {
 
 // CreateLAN creates a LAN. Periods must not overlap, so at most one LAN is active.
 func (store *Store) CreateLAN(ctx context.Context, lan NewLAN) error {
+	lan.Slug = strings.TrimSpace(lan.Slug)
+	lan.Name = strings.TrimSpace(lan.Name)
 	lan.JoinCode = strings.TrimSpace(lan.JoinCode)
-	if lan.Slug == "" || lan.Name == "" || lan.JoinCode == "" || lan.StartsAt >= lan.EndsAt {
-		return ErrInvalidInput
-	}
-	// Achievements read the time zone during the LAN, so an unknown one must not get that far.
-	_, err := time.LoadLocation(lan.Timezone)
-	if err != nil {
+	if lan.Slug == "" || lan.Name == "" || lan.JoinCode == "" ||
+		!rules.IsLANPeriodValid(lan.StartsAt, lan.EndsAt) || !isTimeZoneUsable(lan.Timezone) {
 		return ErrInvalidInput
 	}
 	rulesJSON, err := json.Marshal(lan.Rules)
@@ -152,6 +150,17 @@ func (store *Store) UpdateLANRules(
 			playerID: 0, payload: struct{}{}, now: now,
 		})
 	})
+}
+
+// isTimeZoneUsable reports whether achievements can read this time zone during the LAN. An empty
+// one
+// and "Local" load fine, but mean UTC or whatever zone the server runs in.
+func isTimeZoneUsable(timezone string) bool {
+	if timezone == "" || timezone == time.Local.String() {
+		return false
+	}
+	_, err := time.LoadLocation(timezone)
+	return err == nil
 }
 
 // UpdateJoinCode replaces the code of a LAN, for example after it reached the wrong people.

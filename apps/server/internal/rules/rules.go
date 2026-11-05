@@ -46,6 +46,14 @@ const (
 	maxPercent                   = 100
 )
 
+const (
+	// earliestLANStart is the start of the year 2000 in milliseconds. Older LANs can be added
+	// later,
+	// but none is older than this.
+	earliestLANStart = 946_684_800_000
+	maxLANMillis     = 60 * 24 * 60 * 60 * 1000
+)
+
 // ErrInvalidRules reports rules with a value that would break the game.
 var ErrInvalidRules = errors.New("invalid rules")
 
@@ -144,6 +152,12 @@ func DefaultRules() Rules {
 		MaxStreams:               defaultMaxStreams,
 		MaxPlayerStreams:         defaultMaxPlayerStreams,
 	}
+}
+
+// IsLANPeriodValid reports whether a period can be a LAN. Times in seconds instead of milliseconds
+// end up in 1970, and a LAN that never ends would block every later one, which overlaps it.
+func IsLANPeriodValid(startsAt, endsAt int64) bool {
+	return startsAt >= earliestLANStart && startsAt < endsAt && endsAt-startsAt <= maxLANMillis
 }
 
 // ValidateRules rejects values that would break the game, such as a zero interval.
