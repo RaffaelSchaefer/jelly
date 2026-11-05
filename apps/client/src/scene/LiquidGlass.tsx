@@ -39,7 +39,7 @@ import { createGlass, FULLSCREEN, readShapes, type GlassUniforms } from "./glass
 const MAX_SHAPES = 15;
 
 /** Für den Shader: Die ersten beiden Flächen verschmelzen mit nichts. */
-const LAYOUT = { maxShapes: MAX_SHAPES, soloShapes: 2, shadow: 0.3 };
+const LAYOUT = { maxShapes: MAX_SHAPES, soloShapes: 2, shadow: 0.3, body: 0.32 };
 
 /** Hinter allem anderen in der Szene zeichnen. */
 const LAST = 1000;

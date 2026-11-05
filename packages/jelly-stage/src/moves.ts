@@ -8,7 +8,10 @@ import type { StageMove, StagePlayer } from "./types.ts";
 import type { FloorPoint } from "./world.ts";
 
 import { findMovePosition, findStackLevel } from "./walking.ts";
-import { toFloorPoint } from "./world.ts";
+import { measureDistance, toFloorPoint } from "./world.ts";
+
+/** Which jellies light up on a personal screen: all others, or those within `reach` of the own. */
+export type StageHighlight = { kind: "others" } | { kind: "near"; reach: number };
 
 /** Returns where the move of every jelly puts it. A jelly without a move stands at home. */
 export function findPositions(
@@ -44,4 +47,24 @@ export function pruneMoves(moves: Map<number, StageMove>, players: StagePlayer[]
   for (const playerId of moves.keys()) {
     if (!present.has(playerId)) moves.delete(playerId);
   }
+}
+
+/**
+ * Returns the jellies that light up. The own jelly never does, and without it on the stage nobody is
+ * near. Distances are in the same jelly units as `near_distance` on the server.
+ */
+export function listHighlighted(
+  positions: Map<number, FloorPoint>,
+  ownId: number | null,
+  highlight: StageHighlight,
+): Set<number> {
+  const own = ownId === null ? undefined : positions.get(ownId);
+  const lit = new Set<number>();
+  for (const [playerId, position] of positions) {
+    if (playerId === ownId) continue;
+    const isNear =
+      highlight.kind === "near" && own && measureDistance(own, position) <= highlight.reach;
+    if (highlight.kind === "others" || isNear) lit.add(playerId);
+  }
+  return lit;
 }

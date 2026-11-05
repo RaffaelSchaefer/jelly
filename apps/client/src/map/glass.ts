@@ -1,6 +1,6 @@
 /**
- * Das flüssige Glas von „Weggehen“ auf der Karte: derselbe Tropfen wie am Jelly, auf einer eigenen
- * Canvas.
+ * Das flüssige Glas der Karte: „Weggehen“ und die Kapseln der Partner-Emotes, dieselben Tropfen wie
+ * am Jelly, auf einer eigenen Canvas.
  *
  * Eine eigene, weil die Canvas der Bühne zum Rand hin ausläuft und Tropfen in den Ecken mit ihr
  * verschwänden. Hinter dem Glas liegt hier nichts zum Brechen: Der helle Boden würde die Seifenhaut
@@ -23,8 +23,15 @@ import {
 import { PET_COLORS, shapeGrowth, stepPresence, type PetColor } from "../pet";
 import { createGlass, FULLSCREEN, readShapes } from "../scene/glassMaterial";
 
-/** Nur „Weggehen“. Auf dem hellen Boden fällt ein Schatten stärker auf als am Jelly. */
-const LAYOUT = { maxShapes: 1, soloShapes: 1, shadow: 0.1 };
+/**
+ * „Weggehen“ steht im DOM zuerst und bleibt für sich, die Kapseln fließen ineinander. Auf dem
+ * hellen Boden fällt ein Schatten stärker auf als am Jelly, und mehr Farbe hält die Schrift lesbar,
+ * wenn Namen und Jellies dahinter durchscheinen.
+ *
+ * Ponytail: Platz für Hinweis, Abbrechen und fünf Gesten. Der Server kennt drei, mehr Plätze kosten
+ * jedes Pixel einen Blick mehr. Darüber fehlt der letzten Geste das Glas.
+ */
+const LAYOUT = { maxShapes: 8, soloShapes: 1, shadow: 0.1, body: 0.62 };
 /** Dieselbe Bildrate wie am Jelly, bei reduzierter Bewegung nur noch für Hover. */
 const FRAME_MS = 1000 / 30;
 const STILL_FRAME_MS = 100;
@@ -59,7 +66,7 @@ function createEmptyBackdrop() {
 /**
  * Startet das Glas und zeichnet es für die Lebensdauer der Seite.
  *
- * @param root - Das Element mit dem `data-liquid`-Knopf.
+ * @param root - Das Element mit den `data-liquid`-Knöpfen.
  * @throws Wenn das Gerät kein WebGL kann.
  */
 export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassLayer {
@@ -77,8 +84,9 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
   const size = new Vector2();
   let reducedMotion = false;
   let lastFrame = performance.now();
+  let wasEmpty = false;
 
-  /** Liest den Knopf und lässt seinen Tropfen wachsen oder schrumpfen. */
+  /** Liest die Knöpfe und lässt ihre Tropfen wachsen oder schrumpfen. */
   function placeShapes(seconds: number) {
     readShapes(root, canvas, size.x, { shapes: found, calm: uniforms.uCalm.value });
     found.forEach((shape, index) => {
@@ -107,7 +115,10 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
     renderer.getDrawingBufferSize(uniforms.uBuffer.value);
     uniforms.uTime.value = reducedMotion ? 0 : now / 1000;
     placeShapes(seconds);
-    renderer.render(scene, camera);
+    // Die Canvas deckt das ganze Fenster: Ohne Tropfen genügt ein leeres Bild.
+    const isEmpty = presence.every((value) => value === 0);
+    if (!isEmpty || !wasEmpty) renderer.render(scene, camera);
+    wasEmpty = isEmpty;
   }
   requestAnimationFrame(tick);
 

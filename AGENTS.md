@@ -51,11 +51,12 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
   `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
   `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
-- `src/panels/PeoplePanel.tsx`: Panel „Dabei“ mit zwei Reitern. `src/useFollow.ts`,
-  `src/panels/FollowTab.tsx`: Dazustellen zu einem anderen Jelly, die Liste kommt aus `GET /v1/stage`.
-  `src/usePartnerEmote.ts`, `src/panels/PartnerTab.tsx`, `src/panels/PartnerInvitePopup.tsx`: Partner-Emotes
-  als Aufforderung (`POST` und `PATCH /v1/partner-emotes`). Das andere Jelly erfährt davon per
-  `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`.
+- Dazustellen geht auf der Karte (`src/map/main.ts`), `src/useFollow.ts` lässt das Pet darauf reagieren.
+  Partner-Emotes als Aufforderung
+  (`POST` und `PATCH /v1/partner-emotes`): Auffordern geht in `src/map/partner.ts`, Antworten und Duett im Pet
+  (`src/usePartnerEmote.ts`, `src/panels/PartnerInvitePopup.tsx`). Das andere Jelly erfährt davon per
+  `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`. Beide Ereignisse schließen
+  die Karte (`closes_map` in `src-tauri/src/events.rs`).
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
   (Noten, reine Logik): die Stimme des Jellys. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
@@ -69,8 +70,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `source.ts` beschreibt ihre Daten, `labels.ts` und `picking.ts` zeichnen Namen und finden das Jelly
   unter dem Zeiger, `moves.ts` und `walking.ts` spielen die Wege des Servers ab, der Rest ist der Raum.
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
-  `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `glass.ts` (Glas von „Weggehen“, eigene
-  Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
+  `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
+  `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
   sie öffnet.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),

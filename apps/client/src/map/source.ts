@@ -7,6 +7,8 @@
 
 import type { StageEvent, StageMove, StageSource, StreamListener } from "@jelly/stage";
 
+import type { CatalogEntry, PartnerInvite } from "../pet";
+
 import * as backend from "../backend";
 
 /** Was die Karte zusätzlich zur Bühne braucht. */
@@ -15,6 +17,14 @@ export interface MapSource extends StageSource {
   readOwn: () => { id: number | null; reducedMotion: boolean };
   /** Stellt das Jelly neben ein anderes oder mit `null` weg. Liefert das neue Ziel. */
   setFollow: (playerId: number | null) => Promise<number | null>;
+  /** Die Gesten, die zwei Jellies zusammen machen können. */
+  readPartnerEmotes: () => Promise<CatalogEntry[]>;
+  /** Fordert ein Jelly zu einem Partner-Emote auf. */
+  invitePartner: (key: string, partnerId: number) => Promise<PartnerInvite>;
+  /** Zieht die eigene Aufforderung zurück. */
+  cancelInvite: (id: number) => Promise<void>;
+  /** Hört auf alle Ereignisse der LAN, auch auf solche, die die Bühne nicht kennt. */
+  onInviteEvent: (handler: (event: StageEvent) => void) => void;
 }
 
 /**
@@ -28,7 +38,9 @@ export async function createDesktopSource(): Promise<MapSource> {
   const earlyMoves: StageMove[] = [];
   let listener: StreamListener | null = null;
   let own = { id: null as number | null, reducedMotion: false };
+  let onInvite: ((event: StageEvent) => void) | null = null;
   await backend.onStageEvent((event) => {
+    onInvite?.(event);
     if (listener) listener.onEvent(event);
     else early.push(event);
   });
@@ -56,6 +68,14 @@ export async function createDesktopSource(): Promise<MapSource> {
     setFollow: async (playerId) => {
       const game = await backend.setFollow(playerId);
       return game.me?.follow_player_id ?? null;
+    },
+    readPartnerEmotes: async () => (await backend.getCatalog()).partner_emotes,
+    invitePartner: async (key, partnerId) => (await backend.invitePartner(key, partnerId)).invite,
+    cancelInvite: async (id) => {
+      await backend.answerPartner(id, "cancelled");
+    },
+    onInviteEvent: (handler) => {
+      onInvite = handler;
     },
   };
 }

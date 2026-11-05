@@ -101,36 +101,33 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   der Bühne erscheint das Schild über seinem Kopf. Ein Klick auf das gewählte Schild senkt es
   (`DELETE /v1/signs/current`). Im Studio legt das Jelly die Tafel kurz weg. Schilder gibt es nur während einer
   LAN, in der Browser-Vorschau auch ohne Server.
-- Der Dock-Knopf „Dabei“ öffnet zwei Reiter. „Dazustellen“ listet die anderen anwesenden Jellies (`GET /v1/stage`). Ein Klick
-  lässt das eigene Jelly auf der Bühne zum gewählten laufen (`POST /v1/trips/follow`), ein zweiter Klick
-  oder „Weggehen“ beendet das (`DELETE /v1/trips/current`). Die Lupe öffnet ein Suchfeld, das die Liste
-  nach Namen filtert. `follow.changed` lädt den Stand neu. Nach `follow_until` endet das Dazustellen von
-  selbst, ohne Ereignis: Dann liest die App ihren Stand von sich aus neu. Die Browser-Vorschau zeigt zwei
-  Beispiel-Jellies.
 - Der Karten-Tropfen rechts unten am Jelly öffnet die Halle mit allen Jellies in einem eigenen Fenster,
   dieselbe 3D-Bühne wie auf dem Beamer (`@jelly/stage`, Daten aus `GET /v1/stage`). Wo die Jellies laufen,
   plant der Server, die Karte spielt seine Wege nur ab (`moves`, Nachricht `move` im Stream). Das eigene Jelly trägt seine
   Farbe im Namen und eine Markierung über dem Kopf, sein Ziel eine weiße. Unter dem Zeiger zeigt jedes
-  Jelly seinen Namen, auch im Gedränge. Ein Klick stellt das eigene Jelly dazu, ein zweiter Klick auf
-  das Ziel oder „Weggehen“ beendet das. Das Pet reagiert darauf wie bei der Liste, auch wenn der Server
-  das Dazustellen beendet. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
+  Jelly seinen Namen, auch im Gedränge. Ein Klick lässt das eigene Jelly zum gewählten laufen
+  (`POST /v1/trips/follow`), ein zweiter Klick auf das Ziel oder „Weggehen“ beendet das
+  (`DELETE /v1/trips/current`). Das Pet sagt etwas dazu, auch wenn der Server das Dazustellen beendet:
+  Nach `follow_until` endet es von selbst und ohne Ereignis, dann liest die App ihren Stand neu. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
   die doppelte Auflösung des Beamers und schließt sich mit dem Pet. Solange sie offen ist, ist das Pet
   versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
   Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. „Weggehen“
   ist ein Tropfen aus demselben flüssigen Glas wie am Jelly, in dessen Farbe. Die Browser-Vorschau zeigt
   die Halle der Server-Demo.
-- Der Reiter „Partner-Emote“ im selben Panel fordert ein anderes Jelly auf (`POST /v1/partner-emotes`):
-  Erst die Geste wählen, dann das Jelly aus der Liste der Bühne. Wer zu weit weg steht, erfährt es vom
-  Server (`409 too_far`). Die Aufforderung steht in einer Stoppuhr, deren Ring leer läuft und im letzten
-  Viertel drängt, „Abbrechen“ zieht sie zurück. Das andere Jelly bekommt über dem Dock ein Pop-up
-  (`partner_emote.updated`) und nimmt an oder lehnt ab (`PATCH /v1/partner-emotes`). Sobald die Geste
-  startet, schließt sich das Panel, denn es verdeckt Jelly und Sprechblase. Der Auffordernde erfährt
-  davon aus dem Stream (`partner.emote` mit seiner ID als `partner_id`), die XP kommen als `xp.gained`
-  hinterher. Auf beiden Bildschirmen hüpft dann das Jelly des anderen von links herein, beide teilen
-  sich den Platz, machen die Geste abwechselnd und singen dazu, das eigene Jelly oben, der Partner
-  tiefer, und es hüpft wieder hinaus. Farbe und Cosmetics kommen aus `GET /v1/stage`. Ohne sie tanzt das
-  eigene Jelly allein. Die Tropfen am Jelly sind solange weg, sie kreisten sonst mit. In der
-  Browser-Vorschau nimmt Wabbel nach zwei Sekunden an, Glibber fragt zurück, so ist das Pop-up zu sehen.
+- Partner-Emotes startet man auf der Karte. Ein Klick aufs eigene Jelly öffnet daneben ein Fenster mit den
+  Gesten, alle anderen Jellies leuchten. Nach der Wahl leuchten nur noch die in der Nähe, ein Klick auf eines
+  fordert es auf (`POST /v1/partner-emotes`). Oben steht dann „Warte auf …“ mit der Restzeit und „Abbrechen“.
+  Ob ein Jelly nah genug steht, entscheidet am Ende der Server (`409 too_far`). Der Standardwert von
+  `near_distance` steht als Kopie in `src/pet/partner.ts`, die Regel kommt in keiner Antwort an Spieler vor.
+  Die Anfrage erscheint beim anderen im Pet-Fenster über dem Dock (`partner_emote.updated`), seine Karte
+  schließt sich dafür. Er nimmt an oder lehnt ab (`PATCH /v1/partner-emotes`). Nach einer Annahme schließt
+  sich auch die Karte des Auffordernden, er erfährt davon aus dem Stream (`partner.emote` mit seiner ID als
+  `partner_id`), die XP kommen als `xp.gained` hinterher. Auf beiden Bildschirmen hüpft dann das Jelly des
+  anderen von links herein, beide teilen sich den Platz, machen die Geste abwechselnd und singen dazu, das
+  eigene Jelly oben, der Partner tiefer, und es hüpft wieder hinaus. Farbe und Cosmetics kommen aus
+  `GET /v1/stage`. Ohne sie tanzt das eigene Jelly allein. Die Tropfen am Jelly sind solange weg, sie kreisten
+  sonst mit. In der Browser-Vorschau der Karte nehmen Jellies mit ungerader ID nach zwei Sekunden an, gerade
+  lehnen ab. Das Pop-up im Pet lässt sich dort nicht auslösen.
 - Die Sprechblase ist flüssiges Glas wie die Tropfen. Neuer Text federt auf und erscheint Silbe für
   Silbe, in Panels und im Studio ist sie weg.
 - Das Jelly hat eine eigene Synth-Stimme aus WebAudio, ohne Samples. Es singt die Vokale seiner Sätze
@@ -168,8 +165,8 @@ src/
   usePet.ts           Hooks: Spielstand, Aktionen, Tastatur-Stupser, Größen-Regler
   useGame.ts          Hooks: Stand halten, Aufrufe, Server-Ereignisse, Lebenszeichen
   useSigns.ts         Hook: Schild heben und senken
-  useFollow.ts        Hook: zu einem anderen Jelly stellen, Liste der Bühne
-  usePartnerEmote.ts  Hook: Jelly zum Partner-Emote auffordern und auf Aufforderungen antworten
+  useFollow.ts        Hook: was das Pet vom Dazustellen auf der Karte mitbekommt
+  usePartnerEmote.ts  Hook: auf Aufforderungen antworten und das Duett zeigen
   useStagePopover.ts  Hook: Auswahlen am Jelly schließen, Fokus halten
   useJellyVoice.ts    Hook: was das Jelly gerade sagt und welcher Laut erklingt
   voice.ts            Synthesizer der Stimme (WebAudio)
@@ -178,9 +175,9 @@ src/
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
   SignPicker.tsx      Schild-Tropfen und Kapsel-Säule
   MapDrop.tsx         Karten-Tropfen
-  map/                Karte im eigenen Fenster (map.html), ohne React: Seite, Daten, Vorschau
+  map/                Karte im eigenen Fenster (map.html), ohne React: Seite, Daten, Partner-Emotes, Vorschau
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
-  panels/             Inhalte der Glas-Panels (Beitritt, XP und Dabei mit Reitern, Level, Einstellungen)
+  panels/             Inhalte der Glas-Panels (Beitritt, XP mit Reitern, Level, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
                       Jelly und Animation aus packages/jelly-scene
     shaders/          GLSL der Cosmetics (Toon, Outline) und des Studio-Glases, per `?raw` importiert
@@ -284,7 +281,6 @@ mit dem Tauri-Mock beziehungsweise ohne Backend, rendern die Stimme und melden n
    - `POST /v1/highlights`: ein Jelly aufleuchten lassen. Die Bühne zeigt den Lichtkegel schon.
    - `GET /v1/partner-emotes`: offene Aufforderungen nach einem Neustart wiederherstellen. Bis dahin gehen
      sie mit der App verloren und laufen beim Server aus.
-   - Partner-Liste: nur Jellies in der Nähe zeigen (`near_distance`), bisher antwortet erst der Server.
    - Farbwahl für `colorable` Cosmetics aus `cosmetic_colors`, dazu das Einfärben der Modelle.
    - Modelle für die Plätze `hands` (etwa `golden-cup`) und `body`.
    - `follow_until` als Restzeit im Panel anzeigen.

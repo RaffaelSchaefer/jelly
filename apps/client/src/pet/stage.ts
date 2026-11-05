@@ -1,5 +1,6 @@
 /**
- * Die anderen Jellies der Bühne: Reihenfolge in der Liste, Suche nach Namen und ihr Farbpunkt.
+ * Die anderen Jellies der Bühne: was das eigene zu einem neuen Ziel sagt und wie ein Partner
+ * aussieht.
  *
  * @module
  */
@@ -7,23 +8,6 @@
 import type { Equipped, PetColor, StagePlayer } from "./types";
 
 import { PET_COLORS } from "./colors";
-
-/** Die anderen Jellies nach Namen. Das eigene steht auch auf der Bühne, gehört aber nicht zur Wahl. */
-export function sortStagePlayers(players: StagePlayer[], ownId?: number) {
-  return players
-    .filter((player) => player.id !== ownId)
-    .sort((first, second) => first.name.localeCompare(second.name, "de"));
-}
-
-/**
- * Die Jellies, deren Name `query` enthält, ohne Rücksicht auf Groß- und Kleinschreibung.
- *
- * Ponytail: „muller“ findet „Müller“ nicht. Umlaute falten, wenn jemand ohne sie sucht.
- */
-export function filterStagePlayers(players: StagePlayer[], query: string) {
-  const wanted = query.trim().toLocaleLowerCase("de");
-  return players.filter((player) => player.name.toLocaleLowerCase("de").includes(wanted));
-}
 
 /**
  * Was das Jelly sagt, wenn sich sein Ziel ändert, sonst `null`. `undefined` heißt: Es gibt noch

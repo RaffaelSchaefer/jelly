@@ -98,3 +98,30 @@ fn messages_from_a_newer_server_are_skipped() {
         StreamMessage::Other
     ));
 }
+
+#[test]
+fn the_map_closes_for_a_new_invite_and_for_the_duet() {
+    let invite = |state: &str| {
+        event(
+            PARTNER_INVITE,
+            Some(7),
+            json!({ "id": 1, "key": "hop", "from_id": 7, "partner_ids": [8], "state": state }),
+        )
+    };
+    assert!(closes_map(&invite("pending"), 8));
+    assert!(!closes_map(&invite("pending"), 7), "wer auffordert, wartet");
+    assert!(!closes_map(&invite("pending"), 9));
+    assert!(!closes_map(&invite("declined"), 8));
+
+    let duet = event(
+        PARTNER_EMOTE,
+        Some(8),
+        json!({ "key": "hop", "partner_id": 7 }),
+    );
+    assert!(closes_map(&duet, 7));
+    assert!(
+        !closes_map(&duet, 8),
+        "wer annimmt, hat keine Karte mehr offen"
+    );
+    assert!(!closes_map(&event("xp.gained", Some(7), json!({})), 7));
+}

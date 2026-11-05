@@ -24,7 +24,7 @@ import { useJellyVoice, type ActiveVoice } from "./useJellyVoice";
 const PetScene = lazy(() => import("./scene/PetScene"));
 
 /** Welches Panel über dem Dock oder direkt am Jelly offen ist. */
-export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "signs" | "follow";
+export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "signs";
 
 /** Vorübergehende Anzeige, ohne die letzte Fortschrittsmeldung zu überschreiben. */
 function emoteMessage(emote: ActiveEmote | null) {
@@ -121,7 +121,10 @@ function StageDrops({
         onClose={onClose}
         onPick={game.playEmote}
       />
-      <MapDrop disabled={!game.ready} onOpen={() => void game.openMap()} />
+      <MapDrop
+        disabled={!game.ready || game.incoming !== null}
+        onOpen={() => void game.openMap()}
+      />
       <SignPicker
         catalog={game.catalog}
         current={me.sign}

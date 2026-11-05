@@ -21,7 +21,13 @@ import { createJellyCast, pulseJelly, syncJellies, updateJellies } from "./jelli
 import { drawLabels } from "./labels.ts";
 import { bendToLens, LENS_RANGE } from "./lens.ts";
 import { applyLens, createLensPass, type LensPass } from "./lensPass.ts";
-import { findLevels, findPositions, pruneMoves } from "./moves.ts";
+import {
+  findLevels,
+  findPositions,
+  listHighlighted,
+  pruneMoves,
+  type StageHighlight,
+} from "./moves.ts";
 import { pickJelly } from "./picking.ts";
 import { disposeProps } from "./props.ts";
 import { createStageScene, findViewer, projectToScreen, resizeStageScene } from "./scene.ts";
@@ -48,6 +54,8 @@ const ANIMATION_EVENT_TYPES = new Set(ANIMATION_EVENTS);
 export interface StageMarks {
   ownId: number | null;
   targetId: number | null;
+  /** While set, only the jellies that light up can be hovered and picked. */
+  highlight?: StageHighlight | null;
 }
 
 /** What a view is shown on, where its data comes from and how it looks. */
@@ -79,6 +87,8 @@ export interface StageView {
   setPointer: (point: ScreenPoint | null) => void;
   /** Returns the player of the nearest jelly at a point in CSS pixels. The own jelly never counts. */
   pickAt: (point: ScreenPoint) => number | null;
+  /** Reports whether the own jelly is the frontmost one at a point in CSS pixels. */
+  isOwnAt: (point: ScreenPoint) => boolean;
   setReducedMotion: (reduced: boolean) => void;
 }
 
@@ -110,6 +120,8 @@ interface StageMemory {
   pointer: ScreenPoint | null;
   /** Where the jellies were in the last frame, from back to front. */
   anchors: LabelAnchor[];
+  /** The jellies that light up in this frame. */
+  highlighted: Set<number>;
   reducedMotion: boolean;
 }
 
@@ -226,8 +238,11 @@ function fitCanvas(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D,
 function moveJellies(memory: StageMemory, seconds: number, now: number): JellySpot[] {
   const time = performance.now() / 1000;
   const serverTime = now + memory.clockOffset;
+  const positions = findPositions(memory.state?.players ?? [], memory.moves, serverTime);
+  const { ownId, highlight } = memory.marks;
+  memory.highlighted = highlight ? listHighlighted(positions, ownId, highlight) : new Set();
   const spots = updateJellies(memory.cast, {
-    positions: findPositions(memory.state?.players ?? [], memory.moves, serverTime),
+    positions,
     levels: findLevels(memory.moves, serverTime),
     viewer: findViewer(memory.stage.camera),
     camera: memory.stage.camera.position,
@@ -245,13 +260,29 @@ function moveJellies(memory: StageMemory, seconds: number, now: number): JellySp
   return spots;
 }
 
+/** Returns the player of the jelly at a point that can be picked right now. */
+function pickAvailable(memory: StageMemory, point: ScreenPoint): number | null {
+  const { ownId, highlight } = memory.marks;
+  const anchors = highlight
+    ? memory.anchors.filter((anchor) => memory.highlighted.has(anchor.player.id))
+    : memory.anchors;
+  return pickJelly(anchors, point, ownId);
+}
+
+/** Reports whether the own jelly is the frontmost one at a point. */
+function isOwnAt(memory: StageMemory, point: ScreenPoint): boolean {
+  const { ownId } = memory.marks;
+  return ownId !== null && pickJelly(memory.anchors, point, null) === ownId;
+}
+
 /** Finds the jelly under the pointer and shows on the canvas that it can be clicked. */
 function findHovered(memory: StageMemory, canvas: HTMLCanvasElement): number | null {
   if (!memory.pointer) {
     return null;
   }
-  const hoveredId = pickJelly(memory.anchors, memory.pointer, memory.marks.ownId);
-  canvas.style.cursor = hoveredId === null ? "" : "pointer";
+  const isOwn = !memory.marks.highlight && isOwnAt(memory, memory.pointer);
+  const hoveredId = isOwn ? null : pickAvailable(memory, memory.pointer);
+  canvas.style.cursor = isOwn || hoveredId !== null ? "pointer" : "";
   return hoveredId;
 }
 
@@ -283,7 +314,11 @@ function paintFrame(
     effects: memory.effects,
     signLabels: memory.signLabels,
     now,
-    marks: { ...memory.marks, hoveredId: findHovered(memory, context.canvas) },
+    marks: {
+      ...memory.marks,
+      hoveredId: findHovered(memory, context.canvas),
+      highlightedIds: memory.highlighted,
+    },
   });
 }
 
@@ -339,6 +374,7 @@ function createMemory(options: StageViewOptions): StageMemory {
     marks: { ownId: null, targetId: null },
     pointer: null,
     anchors: [],
+    highlighted: new Set(),
     reducedMotion: false,
   };
 }
@@ -365,7 +401,8 @@ export function createStageView(options: StageViewOptions): StageView {
     setPointer: (point) => {
       memory.pointer = point;
     },
-    pickAt: (point) => pickJelly(memory.anchors, point, memory.marks.ownId),
+    pickAt: (point) => pickAvailable(memory, point),
+    isOwnAt: (point) => isOwnAt(memory, point),
     setReducedMotion: (reduced) => {
       memory.reducedMotion = reduced;
     },

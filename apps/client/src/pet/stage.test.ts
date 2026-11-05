@@ -1,41 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  filterStagePlayers,
-  followMessage,
-  partnerLook,
-  PET_COLORS,
-  PREVIEW_PLAYERS,
-  sortStagePlayers,
-  stagePlayerHex,
-} from ".";
+import { followMessage, partnerLook, PET_COLORS, stagePlayerHex, type StagePlayer } from ".";
+
+/** Ein Jelly mit Mütze auf der Bühne. */
+const GLIBBER: StagePlayer = {
+  id: 1,
+  name: "Glibber",
+  color: "lilac",
+  equipped: { head: { key: "beanie", color: "#ffffff" } },
+  level: 2,
+  sign: null,
+  follow_player_id: null,
+  follow_until: null,
+  last_seen_at: 0,
+  area_id: null,
+  is_visitor: true,
+  trip: null,
+  home_x: 0,
+  home_y: 0,
+};
 
 describe("stage players", () => {
-  it("lists the others by name, without the own jelly", () => {
-    const player = PREVIEW_PLAYERS[0];
-    const own = { ...player, id: 7, name: "Aaa" };
-    const umlaut = { ...player, id: 8, name: "Äpfel" };
-    const later = { ...player, id: 9, name: "Birne" };
-    const sorted = sortStagePlayers([later, own, umlaut], own.id);
-    expect(sorted.map((player) => player.name)).toEqual(["Äpfel", "Birne"]);
-  });
-  it("keeps everyone without an own jelly and leaves the input alone", () => {
-    const input = [...PREVIEW_PLAYERS].reverse();
-    const before = [...input];
-    expect(sortStagePlayers(input)).toHaveLength(input.length);
-    expect(input).toEqual(before);
-  });
-  it("searches names anywhere, ignoring case and surrounding spaces", () => {
-    const names = (query: string) =>
-      filterStagePlayers(PREVIEW_PLAYERS, query).map((player) => player.name);
-    expect(names("GLIB")).toEqual(["Glibber"]);
-    expect(names("  bbel ")).toEqual(["Wabbel"]);
-    expect(names("bb")).toEqual(["Wabbel", "Glibber"]);
-    expect(names("   ")).toHaveLength(PREVIEW_PLAYERS.length);
-    expect(names("niemand")).toEqual([]);
-    const umlaut = [{ ...PREVIEW_PLAYERS[0], name: "ÄRGER" }];
-    expect(filterStagePlayers(umlaut, "ärg")).toHaveLength(1);
-  });
   it("finds the colour of a jelly and falls back for those of a newer server", () => {
     expect(stagePlayerHex("mint")).toBe(PET_COLORS.mint.hex);
     expect(stagePlayerHex("future")).toBeUndefined();
@@ -43,9 +28,9 @@ describe("stage players", () => {
   });
   it("finds the look of a partner and falls back for an unknown colour", () => {
     const beanie = { head: { key: "beanie", color: "#ffffff" } };
-    expect(partnerLook(PREVIEW_PLAYERS, 1)).toEqual({ color: "lilac", equipped: beanie });
-    expect(partnerLook(PREVIEW_PLAYERS, 99)).toBeNull();
-    const future = [{ ...PREVIEW_PLAYERS[0], id: 7, color: "future", equipped: {} }];
+    expect(partnerLook([GLIBBER], 1)).toEqual({ color: "lilac", equipped: beanie });
+    expect(partnerLook([GLIBBER], 99)).toBeNull();
+    const future = [{ ...GLIBBER, id: 7, color: "future", equipped: {} }];
     expect(partnerLook(future, 7)).toEqual({ color: "mint", equipped: {} });
   });
   it("comments on a new target, also when the server ends it", () => {

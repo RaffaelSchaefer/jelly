@@ -5,13 +5,20 @@
  * @module
  */
 
-import type { StageArea, StageMove, StagePlayer, StagePoint, StreamListener } from "@jelly/stage";
+import type {
+  StageArea,
+  StageEvent,
+  StageMove,
+  StagePlayer,
+  StagePoint,
+  StreamListener,
+} from "@jelly/stage";
 
 import { createDemoRoom } from "@jelly/stage/demo-room";
 
 import type { MapSource } from "./source";
 
-import { PREVIEW_CATALOG, PREVIEW_ME } from "../pet";
+import { PREVIEW_CATALOG, PREVIEW_ME, type PartnerInvite } from "../pet";
 
 /**
  * Das eigene Jelly. Nicht 0: Die Bühne liest ein fehlendes Ziel als ID 0, sonst stünden alle bei
@@ -28,6 +35,9 @@ const LEVELS = 9;
 const WALK_EVERY_MS = 500;
 const WALK_MS = 2000;
 const WALK_REACH = 3;
+/** So lange überlegt das andere Jelly und so lange gilt eine Aufforderung. */
+const ANSWER_MS = 2000;
+const INVITE_MS = 120_000;
 
 /** Die Jellies auf den Plätzen der Halle, das erste ist das eigene. */
 function listPlayers(areas: StageArea[]): StagePlayer[] {
@@ -84,11 +94,35 @@ function startWalks(players: StagePlayer[], listener: StreamListener) {
   }, WALK_EVERY_MS);
 }
 
-/** Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier keine. */
+/** Die Änderung einer Aufforderung, wie sie sonst im Stream kommt. */
+function inviteEvent(invite: PartnerInvite, state: PartnerInvite["state"]): StageEvent {
+  const payload: PartnerInvite = { ...invite, state };
+  return {
+    id: 0,
+    type: "partner_emote.updated",
+    player_id: invite.partner_ids[0] ?? null,
+    payload,
+    created_at: Date.now(),
+  };
+}
+
+/**
+ * Antwortet wie sonst das andere Jelly: Ungerade IDs nehmen an, gerade lehnen ab. Eine Annahme
+ * schließt die Karte, soweit der Browser das erlaubt, denn das Duett zeigt nur das Pet.
+ */
+function answerInvite(invite: PartnerInvite, notify: (event: StageEvent) => void) {
+  const accepted = (invite.partner_ids[0] ?? 0) % 2 === 1;
+  notify(inviteEvent(invite, accepted ? "accepted" : "declined"));
+  if (accepted) window.close();
+}
+
+/** Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier nur für Aufforderungen. */
 export function createPreviewSource(): MapSource {
   const areas = createDemoRoom();
   const players = listPlayers(areas);
   let listener: StreamListener | null = null;
+  let onInvite: ((event: StageEvent) => void) | null = null;
+  let answer: ReturnType<typeof setTimeout> | undefined;
   return {
     readState: () =>
       Promise.resolve({
@@ -114,6 +148,26 @@ export function createPreviewSource(): MapSource {
       const home = { x: own.home_x, y: own.home_y };
       listener?.onMove(createWalk(own.id, home, { x: target.home_x, y: target.home_y }));
       return Promise.resolve(playerId);
+    },
+    readPartnerEmotes: () => Promise.resolve(PREVIEW_CATALOG.partner_emotes),
+    invitePartner: (key, partnerId) => {
+      const invite: PartnerInvite = {
+        id: Date.now(),
+        key,
+        from_id: OWN_ID,
+        partner_ids: [partnerId],
+        state: "pending",
+        expires_at: Date.now() + INVITE_MS,
+      };
+      answer = setTimeout(() => answerInvite(invite, (event) => onInvite?.(event)), ANSWER_MS);
+      return Promise.resolve(invite);
+    },
+    cancelInvite: () => {
+      clearTimeout(answer);
+      return Promise.resolve();
+    },
+    onInviteEvent: (handler) => {
+      onInvite = handler;
     },
   };
 }

@@ -6,7 +6,7 @@
  * @module
  */
 
-import { PET_SIZE, VOLUME, type Catalog, type Game, type Me, type StagePlayer } from "./types";
+import { PET_SIZE, VOLUME, type Catalog, type Game, type Me } from "./types";
 
 /** Auszug aus dem Server-Katalog. */
 export const PREVIEW_CATALOG: Catalog = {
@@ -144,42 +144,6 @@ export const PREVIEW_ME: Me = {
   achievements: [{ key: "hatched", title: "Frisch geschlüpft", lan_slug: null, earned_at: 0 }],
   awards: [],
 };
-
-/** Zwei andere Jellies auf der Bühne, damit das Panel „Dabei“ etwas zeigt. */
-export const PREVIEW_PLAYERS: StagePlayer[] = [
-  {
-    id: 2,
-    name: "Wabbel",
-    color: "peach",
-    equipped: {},
-    level: 4,
-    sign: "cs2",
-    follow_player_id: null,
-    follow_until: null,
-    last_seen_at: 0,
-    area_id: null,
-    is_visitor: true,
-    trip: null,
-    home_x: 0,
-    home_y: 0,
-  },
-  {
-    id: 1,
-    name: "Glibber",
-    color: "lilac",
-    equipped: { head: { key: "beanie", color: "#ffffff" } },
-    level: 2,
-    sign: null,
-    follow_player_id: null,
-    follow_until: null,
-    last_seen_at: 0,
-    area_id: null,
-    is_visitor: true,
-    trip: null,
-    home_x: 0,
-    home_y: 0,
-  },
-];
 
 /** Startzustand der Oberfläche, solange Rust noch nichts geliefert hat. */
 export const PREVIEW_GAME: Game = {

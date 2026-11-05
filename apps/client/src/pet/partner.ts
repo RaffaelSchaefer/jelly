@@ -7,14 +7,12 @@
 
 import type { PartnerInvite } from "./types";
 
-/** Ab diesem Anteil der Restzeit drängt die Uhr. */
-const PARTNER_CLOCK_URGENT = 0.25;
-
-/** Wie voll die Uhr noch ist, von 0 bis 1, und ob man sich beeilen muss. */
-export function partnerClock(remainingMs: number, durationMs: number) {
-  const left = Math.min(1, Math.max(0, remainingMs / durationMs));
-  return { left, urgent: left <= PARTNER_CLOCK_URGENT };
-}
+/**
+ * Bis zu diesem Abstand in Jelly-Einheiten lohnt eine Aufforderung. Die Regel `near_distance` steht
+ * in keiner Antwort an Spieler, das ist ihr Standardwert. Weicht die Orga ab, entscheidet trotzdem
+ * der Server und antwortet `too_far`.
+ */
+export const NEAR_DISTANCE = 6;
 
 /** Was eine Aufforderung für dieses Jelly ist. */
 export interface InviteChange {

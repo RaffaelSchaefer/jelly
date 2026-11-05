@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import type { StageMove, StagePlayer } from "./types.ts";
 
-import { findLevels, findPositions, pruneMoves } from "./moves.ts";
+import { findLevels, findPositions, listHighlighted, pruneMoves } from "./moves.ts";
 import { toFloorPoint } from "./world.ts";
 
 function makePlayer(id: number): StagePlayer {
@@ -54,4 +54,21 @@ test("moves of jellies that left are forgotten", () => {
   ]);
   pruneMoves(moves, [makePlayer(1)]);
   assert.deepEqual([...moves.keys()], [1]);
+});
+
+test("all others light up, or only those near the own jelly, never the own", () => {
+  const positions = new Map([
+    [1, { x: 0, z: 0 }],
+    [2, { x: 3, z: 4 }],
+    [3, { x: 6, z: 8 }],
+  ]);
+  assert.deepEqual([...listHighlighted(positions, 1, { kind: "others" })], [2, 3]);
+  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 5 })], [2]);
+  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 1 })], []);
+});
+
+test("without the own jelly on the stage nobody counts as near", () => {
+  const positions = new Map([[2, { x: 0, z: 0 }]]);
+  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 5 })], []);
+  assert.deepEqual([...listHighlighted(positions, null, { kind: "others" })], [2]);
 });

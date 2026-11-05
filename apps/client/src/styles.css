@@ -109,43 +109,6 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .action-xp { margin-left: auto; white-space: nowrap; color: var(--accent); font-size: 10px; }
 .panel-note { color: var(--text-muted); font-size: 11px; line-height: 1.7; margin: 12px 0 0; }
 
-/* Panel "Dabei": rows like the action list, plus colour dot, marked target and walking away. */
-.action-button[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-.follow-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); }
-.follow-marks { display: inline-flex; align-items: center; gap: 6px; }
-.follow-marks svg { width: 14px; height: 14px; }
-.follow-leave { margin: 4px 0 10px; }
-
-/* Tab "Partner-Emote": the own code inside a stopwatch that runs empty, sized like the redeem seal. The gestures sit side by side, so all fits without scrolling. */
-.partner-offer { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 4px; }
-.partner-clock { position: relative; display: grid; place-items: center; align-content: center; gap: 1px; width: 172px; height: 172px; border-radius: 50%; color: var(--accent); background: radial-gradient(circle, color-mix(in srgb, currentColor 22%, transparent) 0%, transparent 64%); transition: color 600ms; }
-.partner-clock[data-urgent] { color: #ff9a82; animation: partner-clock-pulse 1s ease-in-out infinite; }
-.partner-clock svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; fill: none; stroke: currentColor; filter: drop-shadow(0 0 7px color-mix(in srgb, currentColor 55%, transparent)); }
-.partner-clock-crown { fill: currentColor; stroke: none; transition: opacity 600ms; }
-/* Once the hand has passed it, the pusher looks like the empty ring around it. */
-.partner-clock-crown[data-passed] { opacity: 0.16; }
-.partner-clock-track { stroke-width: 8; opacity: 0.16; }
-.partner-clock-ticks { stroke-width: 5; opacity: 0.35; }
-.partner-clock-left { stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
-.partner-clock-hand { fill: currentColor; stroke: var(--surface-solid); stroke-width: 3; transform-origin: 100px 100px; transition: transform 1s linear; }
-.partner-waiting { position: relative; max-width: 120px; overflow: hidden; font-size: 17px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.partner-clock small { position: relative; max-width: 100px; font-size: 9px; color: var(--text-muted); text-align: center; }
-.partner-back { padding: 5px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text-muted); font-size: 11px; }
-.partner-back:hover { background: #ffffff0d; color: #f4f8fa; }
-.partner-list { display: grid; grid-template-columns: repeat(3, 1fr); }
-.partner-list .action-button { justify-content: center; padding: 9px 6px; text-align: center; }
-/* Only the list scrolls, so heading and search stay in reach with 70 jellies. */
-.panel:has(.follow-list) { display: flex; flex-direction: column; overflow: hidden; }
-.follow-list { position: relative; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
-.follow-list button:focus-visible { outline-offset: -2px; }
-/* The panel hangs from the dock: at a fixed height the field does not move while the results shrink. */
-.panel:has(.follow-search) { height: var(--panel-max); }
-.follow-search { flex: none; margin: 4px 0 10px; }
-/* Sits in the heading row, left of the close button (top: panel padding minus heading margin). */
-.follow-search-toggle { position: absolute; top: 12px; right: 45px; }
-.follow-search-toggle svg { width: 17px; height: 17px; }
-.follow-search-toggle[aria-expanded='true'] { color: var(--accent); }
-
 /* XP panel: tabs, log, self-reports, cosmetics, achievements, level-up. */
 .tabs { display: flex; gap: 3px; padding: 3px; margin: 8px 0 14px; border: 1px solid #ffffff0d; border-radius: 9px; }
 .tabs button { flex: 1; height: 26px; border: 0; border-radius: 7px; background: transparent; color: var(--text-muted); font-size: 11px; font-weight: 550; }
@@ -259,7 +222,7 @@ input + .primary-button { margin-top: 16px; }
 .redeem-form input { flex: 1; min-width: 0; width: auto; height: 44px; border-radius: 12px; letter-spacing: 0.06em; transition: border-color 200ms, box-shadow 200ms; }
 .redeem-form input:disabled { opacity: 0.65; }
 .redeem-form input::placeholder { color: var(--text-muted); letter-spacing: 0; }
-.redeem-form input:focus-visible, .follow-search:focus-visible { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
+.redeem-form input:focus-visible { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
 .redeem-form .redeem-send { flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 30%, transparent); transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms, opacity 200ms; }
 .redeem-form .redeem-send:hover:enabled { background: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 26px color-mix(in srgb, var(--accent) 55%, transparent); }
 .redeem-form .redeem-send:active:enabled { transform: scale(0.92); }
@@ -272,11 +235,9 @@ input + .primary-button { margin-top: 16px; }
 @keyframes redeem-shimmer { from { background-position: 130% 0; } 65%, to { background-position: -30% 0; } }
 @keyframes redeem-spin { to { transform: rotate(360deg); } }
 @keyframes redeem-stamp { from { transform: scale(1.7) rotate(-24deg); opacity: 0; } 60% { transform: scale(0.92) rotate(3deg); opacity: 1; } to { transform: none; } }
-@keyframes partner-clock-pulse { 50% { scale: 1.035; } }
 @keyframes redeem-burst { from { transform: scale(0.5); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
 html[data-reduced-motion] .speech, html[data-reduced-motion] .speech * { animation: none; transition: none; }
 html[data-reduced-motion] .ground-shadow { transition: none; }
-html[data-reduced-motion] .partner-clock, html[data-reduced-motion] .partner-clock-crown, html[data-reduced-motion] .partner-clock-left, html[data-reduced-motion] .partner-clock-hand { animation: none; transition: none; }
 html[data-reduced-motion] .redeem-ring, html[data-reduced-motion] .redeem-seal::after, html[data-reduced-motion] .redeem-ticket, html[data-reduced-motion] .redeem-ticket::after, html[data-reduced-motion] .redeem-shimmer { animation: none; }
 html[data-reduced-motion] .redeem-seal::before, html[data-reduced-motion] .redeem-ticket svg, html[data-reduced-motion] .redeem-send, html[data-reduced-motion] .redeem-send svg { transition: none; }
 @media (max-width: 500px) { .preview-header { top: 16px; left: 18px; right: 18px; }.preview-label { display: none; }.preview-header div > span { font-size: 10px; }.preview-footer { font-size: 9px; flex-wrap: wrap; bottom: 16px; }.preview-footer code { font-size: 9px; }.pet-window { width: min(var(--window-width, 384px), 100vw); } }

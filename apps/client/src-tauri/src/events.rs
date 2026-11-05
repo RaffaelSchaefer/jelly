@@ -91,14 +91,31 @@ fn parse_message(kind: &str, data: &str) -> StreamMessage {
     }
 }
 
-/// Ob die Aufforderung in `payload` von `player_id` stammt oder an `player_id` geht.
-fn concerns_invite(payload: &Value, player_id: i64) -> bool {
-    let is_sender = payload.get("from_id").and_then(Value::as_i64) == Some(player_id);
-    let is_partner = payload
+/// Ob die Aufforderung in `payload` an `player_id` geht.
+fn is_invited(payload: &Value, player_id: i64) -> bool {
+    payload
         .get("partner_ids")
         .and_then(Value::as_array)
-        .is_some_and(|ids| ids.iter().any(|id| id.as_i64() == Some(player_id)));
-    is_sender || is_partner
+        .is_some_and(|ids| ids.iter().any(|id| id.as_i64() == Some(player_id)))
+}
+
+/// Ob die Aufforderung in `payload` von `player_id` stammt oder an `player_id` geht.
+fn concerns_invite(payload: &Value, player_id: i64) -> bool {
+    payload.get("from_id").and_then(Value::as_i64) == Some(player_id)
+        || is_invited(payload, player_id)
+}
+
+/// Ob die Karte wegen `event` zugeht, denn beides zeigt nur das Pet: eine neue Aufforderung an
+/// `player_id` und das Duett, wenn jemand die eigene Aufforderung angenommen hat.
+fn closes_map(event: &ServerEvent, player_id: i64) -> bool {
+    match event.kind.as_str() {
+        PARTNER_EMOTE => event.payload.get("partner_id").and_then(Value::as_i64) == Some(player_id),
+        PARTNER_INVITE => {
+            event.payload.get("state").and_then(Value::as_str) == Some("pending")
+                && is_invited(&event.payload, player_id)
+        }
+        _ => false,
+    }
 }
 
 /// Ob `event` das Jelly von `player_id` betrifft und an die Oberfläche soll.
@@ -174,6 +191,9 @@ fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64) {
             }
             if map::is_open(app) {
                 emit_to_ui(app, STAGE_EVENT_NAME, &event);
+            }
+            if closes_map(&event, player_id) {
+                map::close(app);
             }
         }
         StreamMessage::Move(walk) => {

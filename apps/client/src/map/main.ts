@@ -1,6 +1,7 @@
 /**
  * Die Karte im eigenen Fenster: die Bühne aus `@jelly/stage` über das ganze Fenster, dazu das
- * eigene Jelly, Klicks zum Dazustellen und „Weggehen“.
+ * eigene Jelly, Klicks zum Dazustellen und „Weggehen“. Ein Klick aufs eigene Jelly startet ein
+ * Partner-Emote (`partner.ts`).
  *
  * Reines TypeScript ohne React: Außer der Canvas gibt es hier nur ein paar Knöpfe und eine
  * Statuszeile.
@@ -8,11 +9,26 @@
  * @module
  */
 
-import { createStageView, type ScreenPoint, type StageState, type StageView } from "@jelly/stage";
+import {
+  createStageView,
+  type ScreenPoint,
+  type StageHighlight,
+  type StagePlayer,
+  type StageState,
+  type StageView,
+} from "@jelly/stage";
 
 import { desktop, windowAction } from "../backend";
 import { knownPetColor } from "../pet";
 import { startGlass, type GlassLayer } from "./glass";
+import {
+  cancelFlow,
+  handleEscape,
+  handleInviteEvent,
+  handleStageClick,
+  openGestures,
+  type PartnerFlow,
+} from "./partner";
 import { createDesktopSource, type MapSource } from "./source";
 import "./map.css";
 
@@ -29,6 +45,7 @@ const FOLLOW_END_GRACE_MS = 1000;
 const ACTION_PROBLEM_MS = 6000;
 const TEXT_NO_LAN = "Gerade läuft keine LAN.";
 const TEXT_NO_WEBGL = "Dieses Gerät kann die 3D-Karte nicht zeichnen.";
+const TEXT_UNKNOWN_JELLY = "dem Jelly";
 const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 /** Die Seite und was sich auf ihr ändert. */
@@ -39,9 +56,15 @@ interface MapPage {
   status: HTMLElement;
   /** `null`, bis die Bühne läuft. */
   view: StageView | null;
-  /** `null` ohne WebGL: Dann bleibt „Weggehen“ einfarbig. */
+  /** `null` ohne WebGL: Dann bleiben Knöpfe und Hinweise einfarbig. */
   glass: GlassLayer | null;
   targetId: number | null;
+  /** Wer gerade leuchtet, solange man einen Partner wählt. */
+  highlight: StageHighlight | null;
+  /** Die Jellies vom letzten Lesen, für den Namen eines Partners. */
+  players: StagePlayer[];
+  /** Abstand zur Uhr des Servers vom letzten Lesen. */
+  clockOffset: number;
   /** Ein Aufruf zum Dazustellen läuft. Sie laufen einzeln, damit keiner einen neueren überholt. */
   following: boolean;
   /** Liest neu, wenn das Folgen von selbst endet. Dazu kommt kein Ereignis. */
@@ -60,11 +83,20 @@ function renderStatus(page: MapPage) {
   page.status.toggleAttribute("data-problem", problem !== "");
 }
 
+/** Gibt Ziel und Leuchten an die Bühne. */
+function applyMarks(page: MapPage) {
+  page.view?.setMarks({
+    ownId: page.source.readOwn().id,
+    targetId: page.targetId,
+    highlight: page.highlight,
+  });
+}
+
 /** Übernimmt das Ziel für Markierung und „Weggehen“. */
 function setTarget(page: MapPage, targetId: number | null) {
   page.targetId = targetId;
   page.leave.hidden = targetId === null;
-  page.view?.setMarks({ ownId: page.source.readOwn().id, targetId });
+  applyMarks(page);
 }
 
 /**
@@ -74,6 +106,8 @@ function setTarget(page: MapPage, targetId: number | null) {
 function applyState(page: MapPage, state: StageState) {
   const { id, reducedMotion } = page.source.readOwn();
   const own = state.players.find((player) => player.id === id);
+  page.players = state.players;
+  page.clockOffset = state.server_time - Date.now();
   setTarget(page, own?.follow_player_id ?? null);
   clearTimeout(page.followEnd);
   if (own?.follow_until) {
@@ -116,22 +150,64 @@ async function follow(page: MapPage, playerId: number | null) {
   page.view?.reload();
 }
 
+/** Baut den Ablauf der Partner-Emotes aus den Elementen von `map.html`. */
+function createPartnerFlow(page: MapPage): PartnerFlow {
+  return {
+    context: {
+      source: page.source,
+      pickAt: (point) => page.view?.pickAt(point) ?? null,
+      findName: (playerId) =>
+        page.players.find((player) => player.id === playerId)?.name ?? TEXT_UNKNOWN_JELLY,
+      readServerTime: () => Date.now() + page.clockOffset,
+      setHighlight: (highlight) => {
+        page.highlight = highlight;
+        applyMarks(page);
+      },
+      report: (message) => {
+        showActionProblem(page, message);
+        renderStatus(page);
+      },
+    },
+    step: { kind: "idle" },
+    entries: null,
+    menu: document.querySelector<HTMLElement>("#partner-menu")!,
+    bar: document.querySelector<HTMLElement>("#partner-bar")!,
+    note: document.querySelector<HTMLElement>("#partner-note")!,
+    sending: false,
+    clock: undefined,
+  };
+}
+
 /** Wo ein Zeiger-Ereignis auf der Canvas liegt, in CSS-Pixeln wie die Jellies der Bühne. */
 function pointOf(event: MouseEvent): ScreenPoint {
   return { x: event.offsetX, y: event.offsetY };
 }
 
-/** Hover, Klick auf ein Jelly und der Knopf „Weggehen“. */
-function listenToInput(page: MapPage) {
+/**
+ * Hover, Klick auf ein Jelly und der Knopf „Weggehen“. Der laufende Partner-Ablauf hat Vorrang,
+ * dann das eigene Jelly, sonst stellt ein Klick dazu.
+ */
+function listenToInput(page: MapPage, flow: PartnerFlow) {
   page.canvas.addEventListener("pointermove", (event) => page.view?.setPointer(pointOf(event)));
   page.canvas.addEventListener("pointerleave", () => page.view?.setPointer(null));
   page.canvas.addEventListener("click", (event) => {
     // Ein Doppelklick zählt einmal, sonst ginge das Jelly gleich wieder weg.
     if (event.detail > 1) return;
-    const picked = page.view?.pickAt(pointOf(event)) ?? null;
+    const point = pointOf(event);
+    if (handleStageClick(flow, point)) return;
+    if (page.view?.isOwnAt(point)) {
+      void openGestures(flow, point);
+      return;
+    }
+    const picked = page.view?.pickAt(point) ?? null;
     if (picked !== null) void follow(page, picked === page.targetId ? null : picked);
   });
   page.leave.addEventListener("click", () => void follow(page, null));
+  document.querySelector("#partner-cancel")!.addEventListener("click", () => cancelFlow(flow));
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") handleEscape(flow);
+  });
+  page.source.onInviteEvent((event) => handleInviteEvent(flow, event, page.source.readOwn().id));
 }
 
 /** Die Fensterknöpfe. In der Vorschau tut das Browser-Fenster, was es kann. */
@@ -149,10 +225,7 @@ function listenToWindowTools() {
   });
 }
 
-/**
- * Legt das Glas unter „Weggehen“. `data-glass` nimmt dem Knopf in `map.css` den eigenen
- * Hintergrund.
- */
+/** Legt das Glas unter die Knöpfe. `data-glass` nimmt ihnen in `map.css` den eigenen Hintergrund. */
 function startButtonGlass(page: MapPage) {
   try {
     const canvas = document.querySelector<HTMLCanvasElement>("#glass")!;
@@ -196,13 +269,16 @@ async function startMap() {
     view: null,
     glass: null,
     targetId: null,
+    highlight: null,
+    players: [],
+    clockOffset: 0,
     following: false,
     followEnd: undefined,
     actionProblem: "",
     readProblem: "",
     note: "",
   };
-  listenToInput(page);
+  listenToInput(page, createPartnerFlow(page));
   listenToWindowTools();
   startButtonGlass(page);
   startView(page);

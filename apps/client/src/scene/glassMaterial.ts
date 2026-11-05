@@ -33,6 +33,8 @@ export interface GlassLayout {
   soloShapes: number;
   /** Wie dunkel der Schatten unter den Tropfen ist, von 0 bis 1. */
   shadow: number;
+  /** Wie viel Jelly-Farbe in der Mitte eines Tropfens steckt, von 0 bis 1. Der Rest scheint durch. */
+  body: number;
 }
 
 /** Uniforms des Shaders in den Farben von `color`. */
@@ -58,10 +60,15 @@ export type GlassUniforms = ReturnType<typeof createUniforms>;
  * Das Material samt seiner Uniforms. Bewusst nicht als JSX: Fiber kopiert dort jeden
  * Uniform-Eintrag, und ein neu gesetztes `.value` käme nie beim Shader an.
  */
-export function createGlass(color: PetColor, { maxShapes, soloShapes, shadow }: GlassLayout) {
+export function createGlass(color: PetColor, { maxShapes, soloShapes, shadow, body }: GlassLayout) {
   const uniforms = createUniforms(color, maxShapes);
   const material = new ShaderMaterial({
-    defines: { MAX_SHAPES: maxShapes, SOLO_SHAPES: soloShapes, SHADOW: shadow.toFixed(2) },
+    defines: {
+      MAX_SHAPES: maxShapes,
+      SOLO_SHAPES: soloShapes,
+      SHADOW: shadow.toFixed(2),
+      BODY_CENTER: body.toFixed(2),
+    },
     uniforms,
     vertexShader,
     fragmentShader,

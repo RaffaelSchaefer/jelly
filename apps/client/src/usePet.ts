@@ -201,7 +201,7 @@ export function usePet(onLevelUp: () => void) {
   const look = useLook({ patchGame, setGame, run, inFlight, setMessage, catalog });
   const emotes = useEmotes(state, account, ready);
   const signs = useSigns(state, account, ready, hopAndSay);
-  const follow = useFollow(state, account, ready, hopAndSay);
+  useFollow(state, ready, hopAndSay);
   // Ohne Hüpfer: Er stapelte sich mit dem Duett und holte die Hände heraus.
   const playPartner = usePlayPartner(emotes.showEmote, setMessage);
   const partner = usePartnerEmote(state, account, ready, { play: playPartner, say: setMessage });
@@ -216,7 +216,6 @@ export function usePet(onLevelUp: () => void) {
     ...look,
     ...emotes,
     ...signs,
-    ...follow,
     ...partner,
   };
 }
