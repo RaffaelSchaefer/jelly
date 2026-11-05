@@ -74,7 +74,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Transparentes, rahmenloses, verschiebbares Fenster, stets im Vordergrund.
 - Animiertes Jelly-Pet mit Raymarching-Shader; drei Farben und ein eigener Name.
 - Cosmetics zum Freischalten über Level, Erfolge und Events. Die 3D-Modelle kommen aus der
-  Blender-Pipeline in `blender/`; im Repository liegen noch keine.
+  Blender-Pipeline in `blender/`, bisher gibt es das Headset.
 - Kleine Glas-Leiste mit LAN-Aktionen, Studio und Einstellungen.
 - Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Händen, Körper, Aura und Farbe öffnen flüssige Popovers für
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die

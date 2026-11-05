@@ -63,5 +63,6 @@ Server. Ohne Server startet die App weiter und zeigt den letzten Stand, vergibt 
       getrennt, Anti-Cheat-Verträglichkeit testen.
 - [ ] Linux und macOS auf echter Hardware testen.
 - [ ] Bundling: `icon.icns` für macOS, Installer, Signierung, Updates.
-- [ ] Cosmetic-Modelle (`.glb`) in Blender bauen und nach `apps/client/src/cosmetics/` exportieren.
+- [ ] Cosmetic-Modelle (`.glb`) in Blender bauen und nach `apps/client/src/cosmetics/` exportieren. Das
+      Headset steht, es fehlen `beanie`, `party-hat`, `pixel-glasses`, `hood`, `crown` und `golden-cup`.
 - [ ] TypeDoc nachrüsten, sobald es TypeScript 7 unterstützt.
