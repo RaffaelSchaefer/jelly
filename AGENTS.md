@@ -60,10 +60,13 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
   (Noten, reine Logik): die Stimme des Jellys. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
+- `src/pet/rendering.ts`, `src/optimized.css`: der optimierte Modus (`Settings.optimizedRendering`). Das Profil
+  sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Messung und Shader-Prüfung:
+  `scripts/render-check.html`, Ergebnisse in `apps/client/docs/optimized-rendering.md`.
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
   Cosmetics, ihre Shader), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
-  `body.ts` (geraymarchter Körper, Shader in `shaders/`), `face.ts`, `mouthShapes.ts`, `animation.ts`,
+  `body.ts` (geraymarchter Körper, Shader in `shaders/`, volle und optimierte Variante per `JellyQuality`), `face.ts`, `mouthShapes.ts`, `animation.ts`,
   `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `partnerEmotes.ts` (Duett-Posen der
   Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben).
 - `packages/jelly-stage/src/`: die Bühne als reines Three.js. `view.ts` startet sie auf einer Canvas,
@@ -104,6 +107,10 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.
   Das Paket spricht nicht mit dem Netz: Jeder Nutzer bringt seine `StageSource` mit, die App holt
   alles über Rust. Was nur die Karte braucht (Markierungen, Treffer), bleibt auf dem Beamer aus.
+- **Neue Tropfen brauchen auch eine Fläche:** Im optimierten Modus läuft `LiquidGlass` nicht. Jedes neue sichtbare
+  `data-liquid`-Element bekommt in `src/optimized.css` einen eigenen Hintergrund, reine Vorlagen werden dort
+  ausgeblendet. Jede Schwebe-Animation wird dort abgeschaltet. Die Karte lässt ihr Glas (`src/map/glass.ts`) im
+  optimierten Modus ebenfalls weg, ihre `.glass-pill`-Knöpfe bleiben dann einfarbig (`src/map/map.css`).
 - **Identifier** `de.ucb.jelly` nicht ändern, sonst findet die App vorhandene Spielstände nicht mehr.
 - **Kein TypeDoc**, solange es TypeScript 7 nicht unterstützt (Begründung in der README).
 - **App-Icon** kommt aus `apps/client/public/pet.svg`. Neu erzeugen mit

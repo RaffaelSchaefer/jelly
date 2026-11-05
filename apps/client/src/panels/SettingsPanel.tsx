@@ -1,6 +1,6 @@
 /**
- * Panel „Einstellungen“: Pet-Größe, reduzierte Bewegung, Geräusche und ihre Lautstärke. Alles
- * bleibt auf diesem Gerät.
+ * Panel „Einstellungen“: Pet-Größe, reduzierte Bewegung, optimierter Modus, Geräusche und ihre
+ * Lautstärke. Alles bleibt auf diesem Gerät.
  *
  * @module
  */
@@ -22,6 +22,7 @@ interface SettingsPanelProps {
   onSize: (size: number) => void;
   onVolume: (volume: number) => void;
   onReducedMotion: (reducedMotion: boolean) => void;
+  onOptimizedRendering: (optimizedRendering: boolean) => void;
   onSound: (sound: boolean) => void;
 }
 
@@ -34,7 +35,7 @@ function SoundRows({
   busy,
   onVolume,
   onSound,
-}: Omit<SettingsPanelProps, "size" | "onSize" | "onReducedMotion">) {
+}: Omit<SettingsPanelProps, "size" | "onSize" | "onReducedMotion" | "onOptimizedRendering">) {
   return (
     <>
       <ToggleRow
@@ -60,7 +61,8 @@ function SoundRows({
 
 /** Die Einstellungen. Die Regler speichern, sobald sie ruhen (siehe `useSettingDraft`). */
 export default function SettingsPanel(props: SettingsPanelProps) {
-  const { name, settings, size, ready, busy, onSize, onReducedMotion } = props;
+  const { name, settings, size, ready, busy, onSize, onReducedMotion, onOptimizedRendering } =
+    props;
   return (
     <>
       <PercentSlider
@@ -81,6 +83,13 @@ export default function SettingsPanel(props: SettingsPanelProps) {
         checked={settings.reducedMotion}
         disabled={busy || !ready}
         onChange={onReducedMotion}
+      />
+      <ToggleRow
+        label="Optimierter Modus"
+        hint="Einfachere Oberflächen und weniger Grafikeffekte. Jelly bewegt sich weiterhin flüssig."
+        checked={settings.optimizedRendering}
+        disabled={busy || !ready}
+        onChange={onOptimizedRendering}
       />
       <SoundRows {...props} />
     </>

@@ -79,6 +79,10 @@ pub struct Settings {
     /// Lautstärke in Prozent, [`MIN_VOLUME`]…[`MAX_VOLUME`]. Fehlt in älteren Dateien.
     #[serde(default = "default_volume")]
     pub volume: u8,
+    /// Einfachere Oberflächen und weniger Grafikeffekte. Fehlt in älteren Dateien und gilt dort als
+    /// aus.
+    #[serde(default)]
+    pub optimized_rendering: bool,
 }
 
 /// Geräusche sind an, bis jemand sie abschaltet.
@@ -98,6 +102,7 @@ impl Default for Settings {
             size: DEFAULT_SIZE,
             sound: default_sound(),
             volume: default_volume(),
+            optimized_rendering: false,
         }
     }
 }

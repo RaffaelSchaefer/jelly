@@ -12,7 +12,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useState, type RefObject } from "react";
 import { MathUtils } from "three";
 
-import { CANVAS_OVERSCAN, type StudioFocus } from "../pet";
+import { CANVAS_OVERSCAN, type RenderProfile, type StudioFocus } from "../pet";
 import CameraRig from "./CameraRig";
 import Character, { type CharacterProps } from "./Character";
 import LiquidGlass from "./LiquidGlass";
@@ -45,21 +45,35 @@ const OVERSCAN_STYLE = {
 /**
  * Taktet die Szene mit {@link FPS} Bildern pro Sekunde, solange das Fenster sichtbar ist. Die Canvas
  * läuft mit `frameloop="demand"` und zeichnet nur, wenn dieser Takt es anstößt.
+ *
+ * Verborgen steht der Timer ganz. Ein Fokusverlust hält ihn nicht an: Das Jelly lebt beim Spielen
+ * weiter.
  */
 function AnimationClock({ paused }: { paused: boolean }) {
   const invalidate = useThree((state) => state.invalidate);
   useEffect(() => {
-    if (paused) return;
-    const timer = window.setInterval(() => {
-      if (!document.hidden) invalidate();
-    }, 1000 / FPS);
-    return () => window.clearInterval(timer);
+    let timer: number | undefined;
+    function sync() {
+      window.clearInterval(timer);
+      if (document.hidden) return;
+      // Auch bei stehender Uhr: Beim Wiederanzeigen soll sofort ein aktuelles Bild dastehen.
+      invalidate();
+      if (!paused) timer = window.setInterval(invalidate, 1000 / FPS);
+    }
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", sync);
+    };
   }, [paused, invalidate]);
   return null;
 }
 
 /** Eigenschaften von {@link PetScene}. */
-export interface PetSceneProps extends CharacterProps {
+export interface PetSceneProps extends Omit<CharacterProps, "quality"> {
+  /** Wie aufwendig die Szene gezeichnet wird. */
+  rendering: RenderProfile;
   /** Worauf die Kamera fährt. Ohne Wert steht sie in der Grundansicht. */
   focus?: StudioFocus | null;
   /** Element für die Anker des Studios. Ohne Element wird nichts projiziert. */
@@ -67,7 +81,12 @@ export interface PetSceneProps extends CharacterProps {
 }
 
 /** Das Pet auf transparentem Hintergrund. Ohne WebGL erscheint ein Hinweis statt eines Fehlers. */
-export default function PetScene({ focus = null, anchors, ...character }: PetSceneProps) {
+export default function PetScene({
+  rendering,
+  focus = null,
+  anchors,
+  ...character
+}: PetSceneProps) {
   const [jelly, setJelly] = useState<Jelly | null>(null);
   return (
     <RenderBoundary>
@@ -76,7 +95,7 @@ export default function PetScene({ focus = null, anchors, ...character }: PetSce
         camera={{ position: [0, 0.1, 5.8], fov: FOV }}
         style={OVERSCAN_STYLE}
         // Pixeldichte deckeln, damit hochauflösende Displays nicht unnötig GPU kosten.
-        dpr={[1, 1.5]}
+        dpr={rendering.dpr}
         gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
         frameloop="demand"
         fallback={<p className="render-fallback">Dieser WebView unterstützt kein WebGL.</p>}
@@ -84,10 +103,11 @@ export default function PetScene({ focus = null, anchors, ...character }: PetSce
       >
         <AnimationClock paused={character.reducedMotion} />
         <CameraRig focus={focus} reducedMotion={character.reducedMotion} />
-        <Character {...character} onJelly={setJelly} />
+        <Character {...character} quality={rendering.quality} onJelly={setJelly} />
         {character.emote?.partner ? (
           <Character
             role="partner"
+            quality={rendering.quality}
             color={character.emote.partner.color}
             equipped={character.emote.partner.equipped}
             pulse={0}
@@ -97,11 +117,13 @@ export default function PetScene({ focus = null, anchors, ...character }: PetSce
           />
         ) : null}
         {anchors && jelly ? <StudioAnchors jelly={jelly} target={anchors} /> : null}
-        <LiquidGlass
-          color={character.color}
-          anchors={anchors}
-          reducedMotion={character.reducedMotion}
-        />
+        {rendering.glass ? (
+          <LiquidGlass
+            color={character.color}
+            anchors={anchors}
+            reducedMotion={character.reducedMotion}
+          />
+        ) : null}
       </Canvas>
     </RenderBoundary>
   );

@@ -1,0 +1,140 @@
+/*
+ * Optimierter Modus (`html[data-optimized-rendering]`, gesetzt in App.tsx). Der Glas-Shader läuft dann
+ * nicht, also tragen die Bedienelemente ihre Fläche selbst. Nichts schwebt, schillert oder filtert mehr.
+ * Lage, Größe und Verhalten kommen weiter aus den übrigen Stylesheets.
+ */
+html[data-optimized-rendering] {
+  --glass-ink-shadow: none;
+  --glass-icon-shadow: none;
+  --solid-line: color-mix(in srgb, var(--accent) 35%, var(--surface-solid));
+  --solid-hover: color-mix(in srgb, var(--accent) 22%, var(--surface-solid));
+}
+
+/* Der untere Bildauslauf stand im Glas-Shader. Beim Zoom ragt das Jelly unten aus der Canvas. */
+html[data-optimized-rendering] .pet-touch canvas {
+  -webkit-mask-image: linear-gradient(to top, transparent, #000 20%);
+  mask-image: linear-gradient(to top, transparent, #000 20%);
+}
+
+/* Vorlagen, die nur der Shader liest. Jedes andere `data-liquid`-Element ist selbst sichtbar. */
+html[data-optimized-rendering] :is(.studio-shapes, .sign-fill) {
+  display: none;
+}
+
+/* Flächen */
+html[data-optimized-rendering] :is(.speech, .speech-tail, .blob, .pop, .emote-trigger, .emote-pop, .sign-trigger, .sign-pop, .studio-done) {
+  background: var(--surface-solid);
+  border: 1px solid var(--solid-line);
+}
+/* Der Schwanz der Sprechblase: ein gedrehtes Quadrat, das die Blase unten überdeckt. So läuft ihr Rand ohne Naht in ihn hinein. */
+html[data-optimized-rendering] .speech-tail {
+  top: auto;
+  bottom: -8px;
+  left: calc(50% - 7px);
+  width: 14px;
+  height: 14px;
+  border-width: 0 1px 1px 0;
+  border-radius: 0 0 3px;
+  rotate: 45deg;
+}
+html[data-optimized-rendering] :is(.dock, .panel) {
+  background: var(--surface-solid);
+  border-color: var(--solid-line);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-optimized-rendering] .pop {
+  border-radius: 23px;
+}
+/* Der Rand zählt zur Breite: Die drei Spalten brauchen die 156 px sonst für sich. */
+html[data-optimized-rendering] .emote-pop {
+  padding: 7px;
+}
+/* Innen statt als Rand: Der Spiegel-Text gibt dem Feld genau die Breite seines Inhalts. */
+html[data-optimized-rendering] .studio .name-tag input {
+  background: var(--surface-solid);
+  box-shadow: inset 0 0 0 1px var(--solid-line);
+}
+html[data-optimized-rendering] :is(.emote-trigger, .studio-done, .studio .name-tag input) {
+  text-shadow: none;
+}
+html[data-optimized-rendering] :is(.blob, .pop button, .sign-controls) svg {
+  filter: none;
+}
+
+/* Griff und Fensterknöpfe bleiben auf hellem Desktop lesbar, auch ohne weichen Schatten. */
+html[data-optimized-rendering] :is(.drag-handle, .window-tools-right) {
+  background: var(--surface-solid);
+  border-color: var(--solid-line);
+}
+html[data-optimized-rendering] .window-tools .icon-button:is(:hover:enabled, :focus-visible) {
+  background: var(--solid-hover);
+  box-shadow: none;
+}
+
+/* Zustände */
+html[data-optimized-rendering] :is(.blob, .emote-trigger, .sign-trigger, .studio-done):not([aria-expanded='true']):hover:enabled {
+  background: var(--solid-hover);
+}
+html[data-optimized-rendering] :is(.blob, .emote-trigger, .sign-trigger)[aria-expanded='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+html[data-optimized-rendering] .pop button[aria-pressed='true']::after {
+  inset: 0;
+  background: none;
+  border: 2px solid var(--accent);
+  mask: none;
+  animation: none;
+}
+html[data-optimized-rendering] .sign-pill[aria-pressed='true']::before {
+  padding: 0;
+  background: none;
+  border: 1.5px solid var(--accent);
+  mask: none;
+  animation: none;
+}
+
+/* Die Säule ist eine Liste auf einer Fläche, keine einzelnen Tropfen. */
+html[data-optimized-rendering] .sign-pop {
+  align-items: stretch;
+  padding: 0 5px 5px;
+  border-radius: 18px;
+}
+html[data-optimized-rendering] .sign-pill:is(:hover, :focus-visible) {
+  scale: none;
+}
+/* Beim Schließen nichts auslaufen lassen, auch wenn sie noch kurz im DOM bleibt. */
+html[data-optimized-rendering] .sign-pop:not([data-open]) {
+  display: none;
+}
+
+/* Ruhe: keine Schwebebewegung und kein Federn. Kurze Übergänge von Farbe und Deckkraft bleiben. */
+html[data-optimized-rendering] :is(.speech, .speech-tail, .blob, .sign-trigger, .sign-pill, .sign-note) {
+  animation: none;
+}
+html[data-optimized-rendering] .ink .pop > button {
+  animation: none;
+}
+
+/* Bodenschatten ohne Blur: So hoch und breit wie vorher samt seines weichen Rands. */
+html[data-optimized-rendering] .ground-shadow {
+  height: calc(36px * var(--pet-scale, 1));
+  margin-top: calc(-9px * var(--pet-scale, 1));
+  background: radial-gradient(closest-side, #0814114d, transparent);
+  filter: none;
+}
+
+/* Reiter „Einlösen“ */
+html[data-optimized-rendering] .redeem-shimmer,
+html[data-optimized-rendering] .redeem-seal::after {
+  display: none;
+}
+html[data-optimized-rendering] .redeem-ring {
+  animation: none;
+}
+html[data-optimized-rendering] .redeem-ticket svg,
+html[data-optimized-rendering] .redeem-seal:hover .redeem-ticket svg {
+  filter: none;
+}

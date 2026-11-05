@@ -43,6 +43,8 @@ const INITIAL_COLOR: PetColor = "mint";
 export interface GlassLayer {
   /** Das Glas trägt die Farbe des eigenen Jellys. */
   setLook: (color: PetColor, reducedMotion: boolean) => void;
+  /** Hält das Glas an und gibt seinen Grafikspeicher frei. */
+  stop: () => void;
 }
 
 /** Ein Zeichner mit durchsichtigem Hintergrund und dem Licht der Pet-Szene. */
@@ -64,8 +66,26 @@ function createEmptyBackdrop() {
   return backdrop;
 }
 
+/** Hält den Zeichner so groß wie die Canvas und schreibt seine Größe nach `size`. */
+function fitRenderer(renderer: WebGLRenderer, canvas: HTMLCanvasElement, size: Vector2) {
+  renderer.getSize(size);
+  if (size.x === canvas.clientWidth && size.y === canvas.clientHeight) return;
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  renderer.getSize(size);
+}
+
 /**
- * Startet das Glas und zeichnet es für die Lebensdauer der Seite.
+ * Gibt den Grafikspeicher frei. Ein verlorener Kontext kommt nie wieder, also gibt es eine neue
+ * Canvas.
+ */
+function releaseCanvas(renderer: WebGLRenderer, canvas: HTMLCanvasElement) {
+  renderer.dispose();
+  renderer.forceContextLoss();
+  canvas.replaceWith(canvas.cloneNode());
+}
+
+/**
+ * Startet das Glas und zeichnet es, bis jemand `stop` ruft.
  *
  * @param root - Das Element mit den `data-liquid`-Knöpfen.
  * @throws Wenn das Gerät kein WebGL kann.
@@ -86,6 +106,7 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
   let reducedMotion = false;
   let lastFrame = performance.now();
   let wasEmpty = false;
+  let frame = 0;
 
   /** Liest die Knöpfe und lässt ihre Tropfen wachsen oder schrumpfen. */
   function placeShapes(seconds: number) {
@@ -103,15 +124,11 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
 
   /** Zeichnet ein Bild, wenn es so weit ist. Ein verborgenes Fenster bekommt keine. */
   function tick(now: number) {
-    requestAnimationFrame(tick);
+    frame = requestAnimationFrame(tick);
     if (now - lastFrame < (reducedMotion ? STILL_FRAME_MS : FRAME_MS)) return;
     const seconds = (now - lastFrame) / 1000;
     lastFrame = now;
-    renderer.getSize(size);
-    if (size.x !== canvas.clientWidth || size.y !== canvas.clientHeight) {
-      renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-      renderer.getSize(size);
-    }
+    fitRenderer(renderer, canvas, size);
     uniforms.uCanvas.value.copy(size);
     renderer.getDrawingBufferSize(uniforms.uBuffer.value);
     uniforms.uTime.value = reducedMotion ? 0 : now / 1000;
@@ -121,7 +138,7 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
     if (!isEmpty || !wasEmpty) renderer.render(scene, camera);
     wasEmpty = isEmpty;
   }
-  requestAnimationFrame(tick);
+  frame = requestAnimationFrame(tick);
 
   return {
     setLook: (color, reduced) => {
@@ -130,6 +147,10 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
       uniforms.uGlow.value.set(palette.glow);
       uniforms.uInk.value.set(palette.outline);
       reducedMotion = reduced;
+    },
+    stop: () => {
+      cancelAnimationFrame(frame);
+      releaseCanvas(renderer, canvas);
     },
   };
 }

@@ -144,7 +144,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Ereignisse vom Server (neue XP, Erfolge, Auszeichnungen) kommen per Stream und lösen eine
   Sprechblase aus. Alle 5 Minuten meldet die App, dass sie noch läuft.
 - Lokal in `jelly.json` im App-Datenverzeichnis für `de.ucb.jelly` liegen nur Secret, Größe,
-  „Weniger Bewegung“, „Geräusche“ und Lautstärke. Rust ersetzt die Datei erst nach einem vollständigen Schreibvorgang. Defekte
+  „Weniger Bewegung“, „Optimierter Modus“, „Geräusche“ und Lautstärke. Rust ersetzt die Datei erst nach einem vollständigen Schreibvorgang. Defekte
   oder unbekannte Dateiformate werden nicht still zurückgesetzt, und das Secret wird nie wegen eines
   Netzfehlers gelöscht.
 - Eine zweite gestartete Instanz aktiviert das vorhandene Pet, damit nicht zwei unabhängige Prozesse
@@ -152,6 +152,13 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Animation mit etwa 30 Bildern pro Sekunde, begrenzter Pixeldichte und Pause bei verborgenem
   WebView. Die Option „Weniger Bewegung“ und die entsprechende Systemeinstellung reduzieren die
   Animation auf eine statische Darstellung.
+- „Optimierter Modus“ in den Einstellungen senkt die Grafiklast für ältere PCs: Das flüssige Glas
+  entfällt, die Bedienelemente werden feste Flächen, die Pixeldichte bleibt bei 1 und der Körper-Shader
+  verzichtet auf den Weg durchs Innere. Jelly behält Form, Mimik, Cosmetics und 30 Bilder pro Sekunde.
+  Auf der Karte werden die Knöpfe ebenfalls fest, ihre Bühne und die des Servers bleiben unverändert.
+  Eine offene Karte übernimmt die Einstellung beim nächsten Lesen, spätestens wenn sie wieder den Fokus
+  bekommt. Wirkung und Messungen stehen in
+  [docs/optimized-rendering.md](docs/optimized-rendering.md).
 
 > **Alte Spielstände:** Vor der Server-Anbindung rechnete die App XP lokal in `pet.json`. Diese Datei
 > bleibt unberührt, ihr Fortschritt lässt sich aber nicht auf den Server übertragen.
@@ -192,6 +199,7 @@ src/
   styles.css          Transparenz, Leiste, Panels und Browser-Vorschau
   studio.css          Knöpfe und Vorlagen des Studios
   signs.css           Schild-Tropfen und Kapsel-Säule
+  optimized.css       feste Flächen statt Glas im optimierten Modus
 src-tauri/
   src/main.rs         Desktop-Einstieg, ruft nur jelly_lib::run()
   src/lib.rs          App zusammensetzen: Plugins, State, Befehle
@@ -257,6 +265,10 @@ Die Emote- und Schild-Hooks und die Stimme lassen sich ohne zusätzliche Test-Bi
 `pnpm webpreview:dev` die Seiten `http://127.0.0.1:1420/scripts/emotes-check.html` und
 `http://127.0.0.1:1420/scripts/emotes-check.html?preview` öffnen. Sie prüfen die echten React-Hooks
 mit dem Tauri-Mock beziehungsweise ohne Backend, rendern die Stimme und melden nach wenigen Sekunden das Ergebnis.
+
+Shader kompilieren erst zur Laufzeit. `http://127.0.0.1:1420/scripts/render-check.html?measure=0` kompiliert
+beide Körper-Shader wirklich, schaltet im laufenden Betrieb zwischen den Modi um und meldet das Ergebnis. Ohne
+`measure=0` misst die Seite zusätzlich die Zeit pro Bild, siehe [docs/optimized-rendering.md](docs/optimized-rendering.md).
 
 ## Bewusste Grenzen und nächste Schritte
 

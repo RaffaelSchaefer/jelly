@@ -8,7 +8,7 @@
 
 import { BODY_BOTTOM, HAND, HEAD, type Jelly } from "@jelly/scene";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { Vector3 } from "three";
 
 import { CANVAS_OVERSCAN, projectToStage, type StudioRegionId } from "../pet";
@@ -49,6 +49,14 @@ export default function StudioAnchors({
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
+  const written = useRef(new Map<string, string>());
+
+  // Jede neu gesetzte Variable lässt den Browser die Stile der ganzen Bühne neu berechnen.
+  function write(style: CSSStyleDeclaration, name: string, value: string) {
+    if (written.current.get(name) === value) return;
+    written.current.set(name, value);
+    style.setProperty(name, value);
+  }
 
   // Steht die Uhr, bräuchten die Blobs sonst einen Anstoß für ihre erste Position.
   useEffect(() => invalidate(), [invalidate, size]);
@@ -64,10 +72,10 @@ export default function StudioAnchors({
         { x: point.x * CANVAS_OVERSCAN, y: point.y * CANVAS_OVERSCAN },
         { width: size.width / CANVAS_OVERSCAN, height: size.height / CANVAS_OVERSCAN },
       );
-      style.setProperty(`--anchor-${id}-x`, `${x.toFixed(1)}px`);
-      style.setProperty(`--anchor-${id}-y`, `${y.toFixed(1)}px`);
+      write(style, `--anchor-${id}-x`, `${x.toFixed(1)}px`);
+      write(style, `--anchor-${id}-y`, `${y.toFixed(1)}px`);
     }
-    style.setProperty("--studio-ready", "1");
+    write(style, "--studio-ready", "1");
   });
 
   return null;

@@ -16,11 +16,20 @@ import LevelUpPanel from "./panels/LevelUpPanel";
 import PartnerInvitePopup from "./panels/PartnerInvitePopup";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
-import { PREVIEW_ME, stageLayout, type Cosmetic, type Me, type Report } from "./pet";
+import {
+  FULL_RENDERING,
+  OPTIMIZED_RENDERING,
+  PREVIEW_ME,
+  stageLayout,
+  type Cosmetic,
+  type Me,
+  type Report,
+} from "./pet";
 import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
 import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
 import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
+import "./optimized.css";
 
 /** Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt zusätzlich zur Einstellung im Pet. */
 const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -39,7 +48,7 @@ function panelTitle(panel: GlassPanelId, xpTab: XpTab, me: Me) {
 }
 
 /** Die Bühnengeometrie als CSS-Variablen für `.pet-window` (siehe `styles.css`). */
-function stageStyle(size: number) {
+export function stageStyle(size: number) {
   const layout = stageLayout(size);
   return {
     "--pet-scale": layout.scale,
@@ -128,6 +137,9 @@ function PanelContent(props: PanelContentProps) {
       {...{ settings, ready, busy, ...sliders }}
       name={me.name}
       onReducedMotion={(reducedMotion) => void game.saveSettings({ ...settings, reducedMotion })}
+      onOptimizedRendering={(optimizedRendering) =>
+        void game.saveSettings({ ...settings, optimizedRendering })
+      }
       onSound={(sound) => void game.saveSettings({ ...settings, sound })}
     />
   );
@@ -198,8 +210,11 @@ function JoinControls({ game }: { game: PetGame }) {
   );
 }
 
-/** Legt Pet-Farbe und reduzierte Bewegung als Attribute auf `<html>`, `styles.css` liest sie. */
-function useDocumentTheme(color: Me["color"], reducedMotion: boolean) {
+/**
+ * Legt Pet-Farbe, reduzierte Bewegung und den optimierten Modus als Attribute auf `<html>`. Das CSS
+ * liest sie.
+ */
+function useDocumentTheme(color: Me["color"], reducedMotion: boolean, optimized: boolean) {
   // Das UI-Theme (Akzent, Panels, Sprechblase) folgt der Farbe des Pets.
   useEffect(() => {
     document.documentElement.dataset.petColor = color;
@@ -209,6 +224,10 @@ function useDocumentTheme(color: Me["color"], reducedMotion: boolean) {
   useEffect(() => {
     document.documentElement.toggleAttribute("data-reduced-motion", reducedMotion);
   }, [reducedMotion]);
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-optimized-rendering", optimized);
+  }, [optimized]);
 }
 
 /** Ob das Panel seinen Inhalt über dem Dock zeigt. */
@@ -255,7 +274,11 @@ export default function App() {
   const joining = needsJoin(game);
   usePokeKeys(game.interact, panel === null && !joining);
 
-  useDocumentTheme(me.color, settings.reducedMotion || OS_REDUCED_MOTION);
+  useDocumentTheme(
+    me.color,
+    settings.reducedMotion || OS_REDUCED_MOTION,
+    settings.optimizedRendering,
+  );
 
   const close = useCallback(() => setPanel(null), []);
   // Das Panel verdeckt Jelly und Sprechblase: Sonst sähe man vom Partner-Emote nichts.
@@ -285,6 +308,7 @@ export default function App() {
         <PetStage
           {...{ game, me, panel, joining }}
           reducedMotion={settings.reducedMotion || OS_REDUCED_MOTION}
+          rendering={settings.optimizedRendering ? OPTIMIZED_RENDERING : FULL_RENDERING}
           onToggle={toggle}
           onClose={close}
         />

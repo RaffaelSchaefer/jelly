@@ -16,7 +16,7 @@ import type { JellyPalette } from "./colors.ts";
 import type { EmoteFrame } from "./emotes.ts";
 
 import { animateBody, animateFace, animateHands, startFrame, type Motion } from "./animation.ts";
-import { createJellyBody } from "./body.ts";
+import { createJellyBody, type JellyQuality } from "./body.ts";
 import { animateEmote } from "./emoteAnimation.ts";
 import { createFace, type Face } from "./face.ts";
 import { HAND, HEAD } from "./jellyGeometry.ts";
@@ -66,8 +66,12 @@ function createHand(side: number) {
   return hand;
 }
 
-/** Baut ein Jelly in den Farben `palette`. Es steht mit der Körpermitte im Ursprung. */
-export function createJelly(palette: JellyPalette): Jelly {
+/**
+ * Baut ein Jelly in den Farben `palette`. Es steht mit der Körpermitte im Ursprung.
+ *
+ * @param quality - Welchen Körper-Shader es bekommt. Form, Gesicht und Animation bleiben dieselben.
+ */
+export function createJelly(palette: JellyPalette, quality: JellyQuality = "full"): Jelly {
   const root = new Object3D();
   const hands = SIDES.map(createHand);
   const head = new Object3D();
@@ -78,7 +82,7 @@ export function createJelly(palette: JellyPalette): Jelly {
   faceAnchor.add(face.root);
   head.add(faceAnchor);
   // Körper, Kopf und Hände müssen Geschwister sein: der Shader liest ihre lokale Lage.
-  root.add(createJellyBody(palette, { head, hands }), ...hands, head);
+  root.add(createJellyBody(palette, { head, hands }, quality), ...hands, head);
   return { root, head, hands, faceAnchor, face };
 }
 

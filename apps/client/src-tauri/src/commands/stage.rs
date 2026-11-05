@@ -18,6 +18,8 @@ pub struct MapState {
     own_id: i64,
     /// Einstellung „Weniger Bewegung“.
     reduced_motion: bool,
+    /// Einstellung „Optimierter Modus“: feste Knöpfe statt Glas.
+    optimized_rendering: bool,
     /// Raumkarte und Jellies vom Server.
     stage: Stage,
 }
@@ -80,7 +82,7 @@ pub async fn highlight_player(
 /// [`Error::NotRegistered`] ohne geladene Sitzung oder Konto, sonst Netzwerk- oder Serverfehler.
 #[tauri::command]
 pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Result<MapState> {
-    let (api, own_id, reduced_motion) = {
+    let (api, own_id, settings) = {
         let mut slot = state.0.lock().await;
         let session = slot.as_mut().ok_or(Error::NotRegistered)?;
         // Über `refresh`, damit der neue Stream beim frischen Stand beginnt und das Pet nichts
@@ -89,13 +91,13 @@ pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Resul
             session.refresh(&app).await?;
         }
         let own_id = session.registered()?.id;
-        let reduced_motion = session.store.local.settings.reduced_motion;
-        (session.api.clone(), own_id, reduced_motion)
+        (session.api.clone(), own_id, session.store.local.settings)
     };
     let stage = api.stage().await?;
     Ok(MapState {
         own_id,
-        reduced_motion,
+        reduced_motion: settings.reduced_motion,
+        optimized_rendering: settings.optimized_rendering,
         stage,
     })
 }

@@ -147,7 +147,13 @@ export const PREVIEW_ME: Me = {
 
 /** Startzustand der Oberfläche, solange Rust noch nichts geliefert hat. */
 export const PREVIEW_GAME: Game = {
-  settings: { reducedMotion: false, size: PET_SIZE.default, sound: true, volume: VOLUME.max },
+  settings: {
+    reducedMotion: false,
+    size: PET_SIZE.default,
+    sound: true,
+    volume: VOLUME.max,
+    optimizedRendering: false,
+  },
   me: PREVIEW_ME,
   lan: {
     server_time: 0,
