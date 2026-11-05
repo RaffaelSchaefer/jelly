@@ -17,6 +17,16 @@ export function readLocalDateTime(value: string): number {
   return new Date(value).getTime();
 }
 
+/** Says whether the browser knows a time zone like `Europe/Berlin`. */
+export function isTimeZoneKnown(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("de-DE", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Suggests a short name for addresses: `LAN Herbst 2026` gives `lan-herbst-2026`. */
 export function suggestSlug(name: string): string {
   return name

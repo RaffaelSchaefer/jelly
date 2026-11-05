@@ -6,10 +6,11 @@
 
 import { createLAN, type NewLAN } from "./api.ts";
 import { createElement, createField, createMessage, type Field } from "./dom.ts";
-import { readLocalDateTime, suggestSlug } from "./format.ts";
+import { isTimeZoneKnown, readLocalDateTime, suggestSlug } from "./format.ts";
 
 const TEXT_FILL_TIMES = "Bitte gib Beginn und Ende an.";
 const TEXT_END_AFTER_START = "Das Ende muss nach dem Beginn liegen.";
+const TEXT_UNKNOWN_TIME_ZONE = "Diese Zeitzone gibt es nicht. Beispiel: Europe/Berlin";
 
 /** What the form needs from the work area. */
 export interface LANFormActions {
@@ -112,6 +113,10 @@ export function createLANForm(actions: LANFormActions): HTMLElement {
     }
     if (lan.starts_at >= lan.ends_at) {
       message.showBad(TEXT_END_AFTER_START);
+      return;
+    }
+    if (!isTimeZoneKnown(lan.timezone)) {
+      message.showBad(TEXT_UNKNOWN_TIME_ZONE);
       return;
     }
     submit.disabled = true;
