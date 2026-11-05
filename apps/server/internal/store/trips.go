@@ -84,12 +84,16 @@ func (store *Store) StartTrip(
 		if err != nil {
 			return err
 		}
+		err = endFollow(ctx, action)
+		if err != nil {
+			return err
+		}
 		trip := Trip{
 			X: point.X, Y: point.Y,
 			EndsAt: rules.CalculateTripEnd(action.lan.gameRules, now),
 		}
 		const updateTripSQL = `UPDATE lan_entries
-			SET trip_x = ?, trip_y = ?, trip_until = ?, follow_player_id = NULL
+			SET trip_x = ?, trip_y = ?, trip_until = ?
 			WHERE lan_id = ? AND player_id = ?`
 		_, err = action.transaction.ExecContext(ctx, updateTripSQL,
 			trip.X, trip.Y, trip.EndsAt, action.lan.id, playerID)
@@ -103,26 +107,7 @@ func (store *Store) StartTrip(
 // EndTrip ends a trip or following, so the jelly walks back to its place.
 func (store *Store) EndTrip(ctx context.Context, playerID, now int64) (PlayerState, error) {
 	return store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		follow, err := loadFollow(ctx, action)
-		if err != nil {
-			return err
-		}
-		const clearTripSQL = `UPDATE lan_entries
-			SET trip_x = NULL, trip_y = NULL, trip_until = NULL, follow_player_id = NULL
-			WHERE lan_id = ? AND player_id = ?`
-		_, err = action.transaction.ExecContext(ctx, clearTripSQL, action.lan.id, playerID)
-		if err != nil {
-			return fmt.Errorf("clear trip: %w", err)
-		}
-		if !follow.Valid {
-			return nil
-		}
-		return appendVisibleEvent(
-			ctx,
-			action,
-			EventFollowChanged,
-			map[string]any{payloadTargetID: nil},
-		)
+		return endWalks(ctx, action)
 	})
 }
 
@@ -161,8 +146,11 @@ func writeFollow(ctx context.Context, action actionContext, targetID int64) erro
 	if err != nil {
 		return err
 	}
-	const updateFollowSQL = `UPDATE lan_entries SET follow_player_id = ?, follow_started_at = ?,
-			trip_x = NULL, trip_y = NULL, trip_until = NULL
+	err = endTrip(ctx, action)
+	if err != nil {
+		return err
+	}
+	const updateFollowSQL = `UPDATE lan_entries SET follow_player_id = ?, follow_started_at = ?
 		WHERE lan_id = ? AND player_id = ?`
 	_, err = action.transaction.ExecContext(ctx, updateFollowSQL,
 		targetID, action.now, action.lan.id, action.playerID)

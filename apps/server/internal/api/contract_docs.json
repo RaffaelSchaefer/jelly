@@ -518,13 +518,13 @@
     { "type": "partner.emote", "meaning": "Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden.", "player": "who accepted", "payload": "`{\"key\",\"partner_id\"}`, `partner_id` is who asked" },
     { "type": "partner_emote.updated", "meaning": "A partner emote was created or changed. The app of an invited jelly finds itself in `partner_id` and shows its popup.", "player": "who acted", "payload": "`{\"id\",\"key\",\"from_id\",\"partner_id\",\"state\",\"expires_at\"}`" },
     { "type": "sign.changed", "meaning": "A jelly raised or lowered a sign.", "player": "the player", "payload": "`{\"key\"}`, null when lowered" },
-    { "type": "follow.changed", "meaning": "A jelly started following, or ended following or a trip.", "player": "the player", "payload": "`{\"target_id\"}`, null when it ended" },
-    { "type": "trip.changed", "meaning": "A jelly started a trip.", "player": "the player", "payload": "`{\"x\",\"y\",\"ends_at\"}`" },
-    { "type": "stack.changed", "meaning": "A stack was started or changed.", "player": "the player", "payload": "The stack, only `{\"id\"}` after climbing down" },
+    { "type": "follow.changed", "meaning": "A jelly started following, or following ended, also when its time ran out.", "player": "the player", "payload": "`{\"target_id\"}`, null when it ended" },
+    { "type": "trip.changed", "meaning": "A jelly started a trip, or its trip ended, also when its time ran out.", "player": "the player", "payload": "`{\"x\",\"y\",\"ends_at\"}`, null when it ended" },
+    { "type": "stack.changed", "meaning": "A stack was started, changed or ended, also when its time ran out.", "player": "the player, null when its time ran out", "payload": "The stack, only `{\"id\"}` after climbing down or when it ended" },
     { "type": "highlight", "meaning": "A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`.", "player": "who asked", "payload": "`{\"target_id\",\"ends_at\",\"cosmetic_key\"}`" },
     { "type": "stage.changed", "meaning": "The room changed, so read `GET /v1/stage` again.", "player": "null", "payload": "`{}`" },
     { "type": "rules.changed", "meaning": "The orga changed the rules of a LAN, so read `GET /lans/current` again.", "player": "null", "payload": "`{}`" },
-    { "type": "gathering.changed", "meaning": "A gathering started or was ended early. A normal end sends nothing, so use `ends_at`.", "player": "null", "payload": "The `Gathering`, null after an early end" },
+    { "type": "gathering.changed", "meaning": "A gathering started or ended, also when its time ran out.", "player": "null", "payload": "The `Gathering`, null when it ended" },
     { "type": "move", "meaning": "A jelly starts a walk. This message has no ID and is not part of the event log.", "player": "`player_id` of the move", "payload": "The data is a whole `Move`, not an `Event`" },
     { "type": "reset", "meaning": "The stream dropped events for this client, so read the state again.", "player": "none", "payload": "None" }
   ]

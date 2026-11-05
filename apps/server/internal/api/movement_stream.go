@@ -118,6 +118,10 @@ func (server *apiServer) advanceMovement(ctx context.Context) {
 	if !server.planner.ClaimAdvance(now) {
 		return
 	}
+	err := server.Store.FinishExpired(ctx, now)
+	if err != nil && ctx.Err() == nil {
+		server.Logger.WarnContext(ctx, "finish expired", "error", err)
+	}
 	server.refreshMovement(ctx, now)
 }
 
