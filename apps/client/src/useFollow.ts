@@ -11,6 +11,24 @@ import * as backend from "./backend";
 import { followMessage, PREVIEW_PLAYERS, sortStagePlayers, type StagePlayer } from "./pet";
 import { inRunningLan, type useBackendCall, type useGameState } from "./useGame";
 
+/** Etwas nach dem Ende lesen, die Uhren von App und Server gehen nicht genau gleich. */
+const FOLLOW_END_GRACE_MS = 1000;
+
+/**
+ * Liest den Stand neu, wenn das Folgen von selbst endet: Dazu kommt kein Ereignis.
+ *
+ * @param until - Ende als Server-Zeit, `null` oder `undefined` ohne Ziel.
+ * @param offset - Abstand zur Uhr des Servers.
+ */
+function useFollowEnd(until: number | null | undefined, offset: number, reload: () => void) {
+  useEffect(() => {
+    if (until === null || until === undefined || !backend.desktop) return;
+    const remaining = until - (Date.now() + offset);
+    const timer = window.setTimeout(reload, Math.max(0, remaining) + FOLLOW_END_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, [until, offset, reload]);
+}
+
 /**
  * Meldet, was das Jelly zu einem neuen Ziel sagt. Als Effekt, nicht in `setFollow`: Auch die Karte
  * im anderen Fenster und der Server ändern das Ziel, hier kommt es nur als neuer Stand an.
@@ -38,7 +56,7 @@ export function useFollow(
   ready: boolean,
   onChanged: (message: string) => void,
 ) {
-  const { game, patchGame, setGame } = state;
+  const { game, patchGame, setGame, offset, reload } = state;
   const { busy, inFlight, run } = call;
   const allowed = inRunningLan(game, ready);
   const ownId = game.me?.id;
@@ -46,6 +64,7 @@ export function useFollow(
   const [players, setPlayers] = useState<StagePlayer[] | null>(null);
   // Vor dem ersten Laden steht hier der Vorschau-Stand, und ein gespeichertes Ziel ist nichts Neues.
   useFollowReaction(ready ? game.me?.follow_player_id : undefined, onChanged);
+  useFollowEnd(game.me?.follow_until, offset, reload);
 
   /**
    * Liest die Liste. Scheitert es, bleibt die letzte stehen und die Fehleranzeige meldet es.
@@ -74,7 +93,7 @@ export function useFollow(
       } else {
         patchGame((current) => ({
           ...current,
-          me: current.me && { ...current.me, follow_player_id: playerId },
+          me: current.me && { ...current.me, follow_player_id: playerId, follow_until: null },
         }));
       }
       return true;

@@ -5,7 +5,7 @@
  * @module
  */
 
-import type { StageEvent, StageSource, StreamListener } from "@jelly/stage";
+import type { StageEvent, StageMove, StageSource, StreamListener } from "@jelly/stage";
 
 import * as backend from "../backend";
 
@@ -25,12 +25,19 @@ export interface MapSource extends StageSource {
  */
 export async function createDesktopSource(): Promise<MapSource> {
   const early: StageEvent[] = [];
+  const earlyMoves: StageMove[] = [];
   let listener: StreamListener | null = null;
   let own = { id: null as number | null, reducedMotion: false };
   await backend.onStageEvent((event) => {
     if (listener) listener.onEvent(event);
     else early.push(event);
   });
+  await backend.onStageMove((move) => {
+    if (listener) listener.onMove(move);
+    else earlyMoves.push(move);
+  });
+  // Vor dem ersten Lesen gibt es nichts zurückzusetzen: Das Lesen holt ohnehin den neuen Stand.
+  await backend.onStreamReset(() => listener?.onReset());
   return {
     readState: async () => {
       const state = await backend.getMapState();
@@ -43,6 +50,7 @@ export async function createDesktopSource(): Promise<MapSource> {
       for (const event of early.splice(0)) {
         if (event.id > firstEventId) next.onEvent(event);
       }
+      for (const move of earlyMoves.splice(0)) next.onMove(move);
     },
     readOwn: () => own,
     setFollow: async (playerId) => {

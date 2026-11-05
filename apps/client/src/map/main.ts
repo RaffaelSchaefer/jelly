@@ -21,6 +21,8 @@ import "./map.css";
 const RELOAD_DELAY_MS = 2000;
 /** Die Karte läuft neben Spielen, also ohne die doppelte Auflösung des Beamers. */
 const SUPERSAMPLING = 1;
+/** Etwas nach dem Ende des Folgens lesen, damit der Server es schon beendet hat. */
+const FOLLOW_END_GRACE_MS = 1000;
 /** So lange bleibt eine Fehlermeldung zum Dazustellen stehen. Das nächste Neuladen löscht sie nicht. */
 const ACTION_PROBLEM_MS = 6000;
 const TEXT_NO_LAN = "Gerade läuft keine LAN.";
@@ -38,6 +40,8 @@ interface MapPage {
   targetId: number | null;
   /** Ein Aufruf zum Dazustellen läuft. Sie laufen einzeln, damit keiner einen neueren überholt. */
   following: boolean;
+  /** Liest neu, wenn das Folgen von selbst endet. Dazu kommt kein Ereignis. */
+  followEnd: ReturnType<typeof setTimeout> | undefined;
   /** Was die Statuszeile zeigt, das Wichtigste zuerst. */
   actionProblem: string;
   readProblem: string;
@@ -67,6 +71,11 @@ function applyState(page: MapPage, state: StageState) {
   const { id, reducedMotion } = page.source.readOwn();
   const own = state.players.find((player) => player.id === id);
   setTarget(page, own?.follow_player_id ?? null);
+  clearTimeout(page.followEnd);
+  if (own?.follow_until) {
+    const remaining = Math.max(0, own.follow_until - state.server_time);
+    page.followEnd = setTimeout(() => page.view?.reload(), remaining + FOLLOW_END_GRACE_MS);
+  }
   page.view?.setReducedMotion(reducedMotion || OS_REDUCED_MOTION.matches);
   page.note = state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "";
   page.readProblem = "";
@@ -84,8 +93,8 @@ function showActionProblem(page: MapPage, problem: string) {
 }
 
 /**
- * Stellt das Jelly dazu oder weg. Das Ziel gilt sofort, damit schon der nächste Klick es kennt, und
- * das Neuladen holt den Weg dorthin.
+ * Stellt das Jelly dazu oder weg. Das Ziel gilt sofort, damit schon der nächste Klick es kennt. Den
+ * Weg dorthin plant der Server und schickt ihn im Stream.
  */
 async function follow(page: MapPage, playerId: number | null) {
   if (page.following) return;
@@ -167,6 +176,7 @@ async function startMap() {
     view: null,
     targetId: null,
     following: false,
+    followEnd: undefined,
     actionProblem: "",
     readProblem: "",
     note: "",

@@ -89,7 +89,7 @@ export default function PetScene({ focus = null, anchors, ...character }: PetSce
           <Character
             role="partner"
             color={character.emote.partner.color}
-            cosmetic={character.emote.partner.cosmetic}
+            equipped={character.emote.partner.equipped}
             pulse={0}
             reducedMotion={character.reducedMotion}
             emote={character.emote}

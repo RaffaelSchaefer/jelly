@@ -18,6 +18,7 @@ export type {
   StageEvent,
   StageMove,
   StagePlayer,
+  StagePoint,
   StageRoom,
   StageStack,
   StageState,

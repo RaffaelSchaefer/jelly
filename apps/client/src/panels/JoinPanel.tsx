@@ -1,5 +1,6 @@
 /**
- * Panel „Mitmachen“: Konto anlegen oder mit einem vorhandenen Konto der laufenden LAN beitreten.
+ * Panel „Mitmachen“: Ein Code bringt ein neues Konto, holt das vorhandene zurück oder setzt es auf
+ * einen Platz der laufenden LAN. Alles läuft über denselben Weg, den Unterschied kennt der Server.
  *
  * @module
  */
@@ -19,7 +20,7 @@ const date = (at: number) =>
     minute: "2-digit",
   });
 
-/** Hinweis, wenn gerade keine LAN läuft. */
+/** Hinweis, wenn gerade keine LAN läuft. Ein Code gilt trotzdem. */
 function NoLan({ game }: { game: Game }) {
   const { next } = game.lan;
   return (
@@ -32,42 +33,57 @@ function NoLan({ game }: { game: Game }) {
   );
 }
 
-/** Formular für Konto und Beitritt. Ohne Konto fragt es auch nach Name und Farbe. */
+/** Was über dem Formular steht. */
+function JoinHint({ game }: { game: Game }) {
+  if (game.secretRejected) {
+    return (
+      <p className="panel-hint">
+        Dein alter Zugang gilt nicht mehr. Hol dir von der Orga einen Code.
+      </p>
+    );
+  }
+  if (!game.lan.current) return <NoLan game={game} />;
+  if (!game.me) return null;
+  return <p className="panel-hint">Die Orga gibt dir einen Code für deinen Platz.</p>;
+}
+
+/**
+ * Das Formular. Ohne Konto fragt es auch nach Name und Farbe. War der Zugang abgelaufen, kommt das
+ * Konto meist mit dem Code zurück, der Name zählt dann nur, wenn der Server ein neues anlegt.
+ */
 export default function JoinPanel({
   game,
   disabled,
-  onRegister,
-  onJoin,
+  onRedeem,
 }: {
   game: Game;
   disabled: boolean;
-  onRegister: (code: string, name: string, color: PetColor) => void;
-  onJoin: (code: string) => void;
+  onRedeem: (code: string, name?: string, color?: PetColor) => void;
 }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [color, setColor] = useState<PetColor>("mint");
   const account = game.me === null;
+  const trimmed = name.trim();
+  const needsName = account && !game.secretRejected;
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (account) onRegister(code, name, color);
-    else onJoin(code);
+    if (account && trimmed) onRedeem(code, trimmed, color);
+    else onRedeem(code);
   }
-  if (!game.lan.current) return <NoLan game={game} />;
+  const lanName = game.lan.current?.name;
   return (
     <form onSubmit={submit}>
-      {game.tokenRejected ? (
-        <p className="panel-hint">Dein alter Zugang gilt nicht mehr. Leg einfach einen neuen an.</p>
-      ) : null}
+      <JoinHint game={game} />
       {account ? (
         <>
           <TextField
             id="join-name"
-            label="Wie heißt dein Begleiter?"
+            label={needsName ? "Wie heißt dein Begleiter?" : "Name, falls du neu anfängst"}
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={24}
-            required
+            required={needsName}
             autoComplete="off"
           />
           <ColorChoice value={color} onChange={setColor} />
@@ -75,14 +91,14 @@ export default function JoinPanel({
       ) : null}
       <TextField
         id="join-code"
-        label={`Code für ${game.lan.current.name}`}
+        label={lanName ? `Code für ${lanName}` : "Dein Code"}
         value={code}
         onChange={(event) => setCode(event.target.value)}
         required
         autoComplete="off"
       />
-      <PrimaryButton disabled={disabled || !code.trim() || (account && !name.trim())} type="submit">
-        {account ? "Los geht’s" : "Beitreten"}
+      <PrimaryButton disabled={disabled || !code.trim() || (needsName && !trimmed)} type="submit">
+        {needsName ? "Los geht’s" : "Einlösen"}
       </PrimaryButton>
     </form>
   );

@@ -47,13 +47,14 @@ export default function PeoplePanel({
       ) : (
         <PartnerTab
           entries={game.catalog.partner_emotes}
-          offer={game.offer}
+          sent={game.sent}
+          players={game.players}
           offset={game.offset}
           allowed={game.partnerAllowed}
           disabled={game.partnerDisabled}
-          onStart={game.startPartner}
-          onJoin={game.joinPartner}
-          onBack={game.dismissOffer}
+          onLoad={game.loadPlayers}
+          onInvite={game.invite}
+          onCancel={game.cancelInvite}
         />
       )}
     </>

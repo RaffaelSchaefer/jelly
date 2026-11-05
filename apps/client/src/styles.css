@@ -128,14 +128,12 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .partner-clock-ticks { stroke-width: 5; opacity: 0.35; }
 .partner-clock-left { stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
 .partner-clock-hand { fill: currentColor; stroke: var(--surface-solid); stroke-width: 3; transform-origin: 100px 100px; transition: transform 1s linear; }
-.partner-code { position: relative; font-size: 31px; font-weight: 650; letter-spacing: 0.1em; margin-right: -0.1em; font-variant-numeric: tabular-nums; animation: redeem-stamp 550ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.partner-waiting { position: relative; max-width: 120px; overflow: hidden; font-size: 17px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .partner-clock small { position: relative; max-width: 100px; font-size: 9px; color: var(--text-muted); text-align: center; }
 .partner-back { padding: 5px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text-muted); font-size: 11px; }
 .partner-back:hover { background: #ffffff0d; color: #f4f8fa; }
 .partner-list { display: grid; grid-template-columns: repeat(3, 1fr); }
 .partner-list .action-button { justify-content: center; padding: 9px 6px; text-align: center; }
-.partner-join { margin-top: 8px; }
-.redeem-form.partner-join input { padding: 0; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; text-align: center; }
 /* Only the list scrolls, so heading and search stay in reach with 70 jellies. */
 .panel:has(.follow-list) { display: flex; flex-direction: column; overflow: hidden; }
 .follow-list { position: relative; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
@@ -278,7 +276,7 @@ input + .primary-button { margin-top: 16px; }
 @keyframes redeem-burst { from { transform: scale(0.5); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
 html[data-reduced-motion] .speech, html[data-reduced-motion] .speech * { animation: none; transition: none; }
 html[data-reduced-motion] .ground-shadow { transition: none; }
-html[data-reduced-motion] .partner-clock, html[data-reduced-motion] .partner-clock-crown, html[data-reduced-motion] .partner-code, html[data-reduced-motion] .partner-clock-left, html[data-reduced-motion] .partner-clock-hand { animation: none; transition: none; }
+html[data-reduced-motion] .partner-clock, html[data-reduced-motion] .partner-clock-crown, html[data-reduced-motion] .partner-clock-left, html[data-reduced-motion] .partner-clock-hand { animation: none; transition: none; }
 html[data-reduced-motion] .redeem-ring, html[data-reduced-motion] .redeem-seal::after, html[data-reduced-motion] .redeem-ticket, html[data-reduced-motion] .redeem-ticket::after, html[data-reduced-motion] .redeem-shimmer { animation: none; }
 html[data-reduced-motion] .redeem-seal::before, html[data-reduced-motion] .redeem-ticket svg, html[data-reduced-motion] .redeem-send, html[data-reduced-motion] .redeem-send svg { transition: none; }
 @media (max-width: 500px) { .preview-header { top: 16px; left: 18px; right: 18px; }.preview-label { display: none; }.preview-header div > span { font-size: 10px; }.preview-footer { font-size: 9px; flex-wrap: wrap; bottom: 16px; }.preview-footer code { font-size: 9px; }.pet-window { width: min(var(--window-width, 384px), 100vw); } }

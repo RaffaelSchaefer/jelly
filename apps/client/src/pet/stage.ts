@@ -4,7 +4,7 @@
  * @module
  */
 
-import type { PetColor, StagePlayer } from "./types";
+import type { Equipped, PetColor, StagePlayer } from "./types";
 
 import { PET_COLORS } from "./colors";
 
@@ -42,7 +42,7 @@ export function stagePlayerHex(color: string) {
 /** Wie ein anderes Jelly aussieht, wenn es für ein Partner-Emote herüberkommt. */
 export interface PartnerLook {
   color: PetColor;
-  cosmetic: string | null;
+  equipped: Equipped;
 }
 
 /**
@@ -53,5 +53,5 @@ export function partnerLook(players: StagePlayer[], id: number): PartnerLook | n
   const player = players.find((item) => item.id === id);
   if (!player) return null;
   const color = stagePlayerHex(player.color) ? (player.color as PetColor) : "mint";
-  return { color, cosmetic: player.cosmetic };
+  return { color, equipped: player.equipped };
 }

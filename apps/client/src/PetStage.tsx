@@ -54,7 +54,7 @@ interface PetStageProps {
   game: PetGame;
   me: Me;
   panel: PanelId | null;
-  /** Erst ein Konto oder ein Beitritt ist nötig: Am Jelly gibt es noch nichts zu bedienen. */
+  /** Erst ein Code ist nötig: Am Jelly gibt es noch nichts zu bedienen. */
   joining: boolean;
   reducedMotion: boolean;
   onToggle: (panel: PanelId) => void;
@@ -89,7 +89,7 @@ function PetVisual({
       <Suspense fallback={<span className="render-fallback">Dein Begleiter wacht auf …</span>}>
         <PetScene
           color={me.color}
-          cosmetic={me.cosmetic}
+          equipped={me.equipped}
           pulse={game.pulse}
           emote={game.activeEmote}
           {...{ reducedMotion, sign, voiced, focus, anchors }}
@@ -171,7 +171,7 @@ function StudioOverlay({
       {...{ me, region, onRegion, onClose }}
       catalog={game.catalog}
       busy={game.busy || !game.ready}
-      onEquip={(id) => void game.equip(id)}
+      onEquip={(slot, id) => void game.equip(slot, id)}
       onColor={(color) => void game.customize({ color })}
       onName={(name) => game.customize({ name })}
     />

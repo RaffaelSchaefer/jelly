@@ -1,23 +1,22 @@
 /**
- * Reiter „Partner-Emote“ im Panel „Dabei“: ein Partner-Emote starten und den Code weitersagen, oder
- * mit einem fremden Code beitreten.
+ * Reiter „Partner-Emote“ im Panel „Dabei“: Geste wählen, ein Jelly auffordern und auf seine Antwort
+ * warten.
  *
  * @module
  */
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useState } from "react";
 
-import type { PartnerOffer } from "../usePartnerEmote";
+import type { SentInvite } from "../usePartnerEmote";
 
 import {
-  emptyPartnerCode,
-  enterPartnerDigits,
-  erasePreviousDigit,
+  filterStagePlayers,
   partnerClock,
-  typedDigit,
+  stagePlayerHex,
   type CatalogEntry,
-  type CodeEntry,
+  type StagePlayer,
 } from "../pet";
+import PlayerSearch, { usePlayerSearch } from "./PlayerSearch";
 
 /**
  * Verbleibende Millisekunden bis `expiresAt`, jede Sekunde neu. `offset` ist der Abstand zur
@@ -84,145 +83,152 @@ function ClockFace({ left }: { left: number }) {
   );
 }
 
-/** Der laufende Code in der Mitte einer Stoppuhr, die leer läuft. */
-function OfferClock({
-  offer,
+/** Die laufende Aufforderung in der Mitte einer Stoppuhr, die leer läuft. */
+function SentClock({
+  sent,
   entries,
   offset,
-  onBack,
+  onCancel,
 }: {
-  offer: PartnerOffer;
+  sent: SentInvite;
   entries: CatalogEntry[];
   offset: number;
-  onBack: () => void;
+  onCancel: () => void;
 }) {
-  const remaining = useRemainingMs(offer.expiresAt, offset);
-  const { left, urgent } = partnerClock(remaining, offer.durationMs);
+  const remaining = useRemainingMs(sent.invite.expires_at, offset);
+  const { left, urgent } = partnerClock(remaining, sent.durationMs);
   return (
     <div className="partner-offer">
       <div className="partner-clock" role="timer" data-urgent={urgent || undefined}>
         <ClockFace left={left} />
-        <strong className="partner-code">{offer.code}</strong>
-        <small>{entries.find((item) => item.key === offer.key)?.label}</small>
-        <span className="sr-only">Der Code gilt noch {Math.ceil(remaining / 1000)} Sekunden.</span>
+        <small>Warte auf</small>
+        <strong className="partner-waiting">{sent.partnerName}</strong>
+        <small>{entries.find((item) => item.key === sent.invite.key)?.label}</small>
+        <span className="sr-only">Noch {Math.ceil(remaining / 1000)} Sekunden.</span>
       </div>
-      <button type="button" className="partner-back" onClick={onBack}>
-        Zurück
+      <button type="button" className="partner-back" onClick={onCancel}>
+        Abbrechen
       </button>
     </div>
   );
 }
 
-/**
- * Je Ziffer ein Feld, die letzte Ziffer schickt den Code ab. Der Fokus wandert mit der Eingabe,
- * Pfeiltasten wechseln das Feld.
- *
- * Nach einem Fehlschlag sind die Felder wieder leer: Versuche sind begrenzt, und das Ändern einer
- * einzelnen Ziffer wäre sonst schon der nächste.
- */
-function JoinCode({
+/** Was anstelle der Liste steht, sonst `null`. */
+function pickNote(players: StagePlayer[] | null, shown: number) {
+  if (!players) return "Noch keine Liste von der Bühne.";
+  if (players.length === 0) return "Niemand sonst auf der Bühne.";
+  return shown === 0 ? "Kein Jelly heißt so." : null;
+}
+
+/** Die Jellies zum Auffordern. Wer zu weit weg steht, erfährt es vom Server. */
+function PartnerPicker({
+  players,
   disabled,
-  onJoin,
+  onLoad,
+  onPick,
+  onBack,
 }: {
+  players: StagePlayer[] | null;
   disabled: boolean;
-  onJoin: (code: string) => Promise<boolean>;
+  onLoad: () => Promise<void>;
+  onPick: (player: StagePlayer) => void;
+  onBack: () => void;
 }) {
-  const [digits, setDigits] = useState(emptyPartnerCode);
-  const fields = useRef<(HTMLInputElement | null)[]>([]);
-  async function join(code: string) {
-    const joined = await onJoin(code);
-    setDigits(emptyPartnerCode());
-    if (!joined) fields.current[0]?.focus();
-  }
-  function apply(entry: CodeEntry) {
-    // Während eines Aufrufs zählt keine Eingabe, sonst ginge eine fertige Ziffernfolge verloren.
-    if (disabled) return;
-    setDigits(entry.digits);
-    fields.current[entry.focus]?.focus();
-    if (entry.digits.every(Boolean)) void join(entry.digits.join(""));
-  }
-  function onKeyDown(event: KeyboardEvent, index: number) {
-    if (event.key === "Backspace" && !digits[index]) apply(erasePreviousDigit(digits, index));
-    else if (event.key === "ArrowLeft") fields.current[index - 1]?.focus();
-    else if (event.key === "ArrowRight") fields.current[index + 1]?.focus();
-    else return;
-    event.preventDefault();
-  }
+  useEffect(() => void onLoad(), [onLoad]);
+  const search = usePlayerSearch();
+  const shown = filterStagePlayers(players ?? [], search.query);
+  const note = pickNote(players, shown.length);
   return (
-    <div className="redeem-form partner-join" role="group" aria-label="Code des Partners">
-      {digits.map((digit, index) => (
-        <input
-          // Die Felder bleiben fest an ihrem Platz, die Stelle ist ihre Identität.
-          key={index}
-          ref={(field) => {
-            fields.current[index] = field;
-          }}
-          aria-label={`Ziffer ${index + 1} von ${digits.length}`}
-          inputMode="numeric"
-          autoComplete="off"
-          value={digit}
-          onFocus={(event) => event.target.select()}
-          onChange={(event) =>
-            apply(enterPartnerDigits(digits, index, typedDigit(digit, event.target.value)))
-          }
-          onKeyDown={(event) => onKeyDown(event, index)}
-          onPaste={(event) => {
-            event.preventDefault();
-            apply(enterPartnerDigits(digits, index, event.clipboardData.getData("text")));
-          }}
-        />
-      ))}
-    </div>
+    <>
+      {players?.length ? <PlayerSearch search={search} /> : null}
+      {note ? (
+        <p className="panel-note">{note}</p>
+      ) : (
+        <div className="action-list follow-list">
+          {shown.map((player) => (
+            <button
+              key={player.id}
+              type="button"
+              className="action-button"
+              aria-disabled={disabled}
+              onClick={() => {
+                if (!disabled) onPick(player);
+              }}
+            >
+              <span
+                className="follow-dot"
+                style={{ background: stagePlayerHex(player.color) }}
+                aria-hidden="true"
+              />
+              <strong>{player.name}</strong>
+            </button>
+          ))}
+        </div>
+      )}
+      <button type="button" className="partner-back" onClick={onBack}>
+        Andere Geste
+      </button>
+    </>
   );
 }
 
-/**
- * Der Reiter: die Gesten zum Starten und der Beitritt, oder die Uhr, solange ein eigener Code
- * läuft.
- */
-export default function PartnerTab({
+/** Die Gesten zur Wahl. */
+function GesturePicker({
   entries,
-  offer,
-  offset,
-  allowed,
-  disabled,
-  onStart,
-  onJoin,
-  onBack,
+  onPick,
 }: {
   entries: CatalogEntry[];
-  /** Der eigene, noch gültige Code. */
-  offer: PartnerOffer | null;
-  /** Abstand zur Server-Uhr, für die Restzeit des Codes. */
-  offset: number;
-  /** Läuft eine LAN, an der das Jelly teilnimmt? */
-  allowed: boolean;
-  disabled: boolean;
-  onStart: (key: string) => Promise<boolean>;
-  onJoin: (code: string) => Promise<boolean>;
-  onBack: () => void;
+  onPick: (key: string) => void;
 }) {
-  if (!allowed) return <p className="panel-note">Nur während einer LAN</p>;
-  if (offer) return <OfferClock {...{ offer, entries, offset, onBack }} />;
   return (
     <>
       <div className="action-list partner-list">
         {entries.map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            className="action-button"
-            aria-disabled={disabled}
-            onClick={() => {
-              if (!disabled) void onStart(key);
-            }}
-          >
+          <button key={key} type="button" className="action-button" onClick={() => onPick(key)}>
             <strong>{label}</strong>
           </button>
         ))}
       </div>
-      <p className="panel-note">Oder du hast einen Code bekommen:</p>
-      <JoinCode disabled={disabled} onJoin={onJoin} />
+      <p className="panel-note">Danach wählst du ein Jelly in deiner Nähe.</p>
     </>
+  );
+}
+
+/** Der Reiter: erst die Geste, dann das Jelly, dann die Uhr, solange die Aufforderung läuft. */
+export default function PartnerTab({
+  entries,
+  sent,
+  players,
+  offset,
+  allowed,
+  disabled,
+  onLoad,
+  onInvite,
+  onCancel,
+}: {
+  entries: CatalogEntry[];
+  /** Die eigene, noch offene Aufforderung. */
+  sent: SentInvite | null;
+  /** `null`, solange die Bühne noch keine Liste geliefert hat. */
+  players: StagePlayer[] | null;
+  /** Abstand zur Server-Uhr, für die Restzeit der Aufforderung. */
+  offset: number;
+  /** Läuft eine LAN, an der das Jelly teilnimmt? */
+  allowed: boolean;
+  disabled: boolean;
+  onLoad: () => Promise<void>;
+  onInvite: (key: string, player: StagePlayer) => Promise<boolean>;
+  onCancel: () => void;
+}) {
+  const [gesture, setGesture] = useState<string | null>(null);
+  if (!allowed) return <p className="panel-note">Nur während einer LAN</p>;
+  if (sent) return <SentClock {...{ sent, entries, offset, onCancel }} />;
+  if (!gesture) return <GesturePicker entries={entries} onPick={setGesture} />;
+  return (
+    <PartnerPicker
+      {...{ players, disabled, onLoad }}
+      onPick={(player) => void onInvite(gesture, player)}
+      onBack={() => setGesture(null)}
+    />
   );
 }

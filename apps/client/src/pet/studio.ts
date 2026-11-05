@@ -11,7 +11,7 @@ import type { IconName } from "../ui/Icon";
 import type { Catalog, Me } from "./types";
 
 import { PET_COLORS } from "./colors";
-import { COSMETICS, isUnlocked, unlockLabel, type Cosmetic } from "./cosmetics";
+import { COSMETICS, isUnlocked, unlockLabel, wornCosmetics, type Cosmetic } from "./cosmetics";
 
 /** Eine anklickbare Region. */
 export type StudioRegionId = "kopf" | "gesicht" | "koerper" | "effekte";
@@ -33,12 +33,12 @@ export interface StudioRegion {
 
 /** Alle Regionen. Die erste bekommt beim Öffnen den Fokus. */
 export const REGIONS: StudioRegion[] = [
-  { id: "kopf", label: "Kopf", icon: "beanie", slot: "Kopf", focus: "head", opens: "up" },
+  { id: "kopf", label: "Kopf", icon: "beanie", slot: "head", focus: "head", opens: "up" },
   {
     id: "gesicht",
     label: "Gesicht",
     icon: "glasses",
-    slot: "Gesicht",
+    slot: "face",
     focus: "face",
     opens: "right",
   },
@@ -46,7 +46,7 @@ export const REGIONS: StudioRegion[] = [
     id: "effekte",
     label: "Effekte",
     icon: "spark",
-    slot: "Effekte",
+    slot: "aura",
     focus: "effects",
     opens: "down",
   },
@@ -68,14 +68,14 @@ export interface StudioItem {
 
 /** Zustand eines Cosmetics für `me`. */
 function cosmeticState(item: Cosmetic, me: Me): StudioItem["state"] {
-  if (me.cosmetic === item.id) return "equipped";
+  if (me.equipped[item.slot]?.key === item.id) return "equipped";
   return isUnlocked(item.id, me) ? "unlocked" : "locked";
 }
 
 /** „Nichts“ und die Cosmetics des Platzes. „Nichts“ gilt, solange hier nichts angelegt ist. */
 function cosmeticRows(slot: Cosmetic["slot"], me: Me, catalog: Catalog): StudioItem[] {
   const parts = COSMETICS.filter((item) => item.slot === slot);
-  const worn = parts.some((item) => item.id === me.cosmetic);
+  const worn = parts.some((item) => item.id === me.equipped[slot]?.key);
   return [
     { id: null, name: "Nichts", icon: "close", state: worn ? "unlocked" : "equipped", note: "" },
     ...parts.map((item) => {
@@ -103,11 +103,12 @@ export function regionItems(region: StudioRegion, me: Me, catalog: Catalog): Stu
   return region.slot ? cosmeticRows(region.slot, me, catalog) : colorRows(me);
 }
 
-/** Die Region, in der gerade ein Cosmetic angelegt ist, falls überhaupt eins. */
-export function equippedRegion(me: Me): StudioRegionId | null {
-  const worn = COSMETICS.find((item) => item.id === me.cosmetic);
-  if (!worn) return null;
-  return REGIONS.find((region) => region.slot === worn.slot)?.id ?? null;
+/** Die Regionen, in denen gerade etwas angelegt ist. */
+export function wornRegions(me: Me): StudioRegionId[] {
+  const worn = wornCosmetics(me.equipped);
+  return REGIONS.filter((region) => worn.some((item) => item.slot === region.slot)).map(
+    (region) => region.id,
+  );
 }
 
 /** `value` auf den Bereich von `margin` bis `size - margin` begrenzt. */

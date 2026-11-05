@@ -12,10 +12,11 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { desktop, resizeWindow } from "./backend";
 import JoinPanel from "./panels/JoinPanel";
 import LevelUpPanel from "./panels/LevelUpPanel";
+import PartnerInvitePopup from "./panels/PartnerInvitePopup";
 import PeoplePanel, { PEOPLE_TABS, type PeopleTab } from "./panels/PeoplePanel";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
-import { PREVIEW_ME, stageLayout, type Me, type Report } from "./pet";
+import { PREVIEW_ME, stageLayout, type Cosmetic, type Me, type Report } from "./pet";
 import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
 import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
@@ -63,7 +64,7 @@ function useWindowFit(size: number) {
   }, [width, height]);
 }
 
-/** Ob erst ein Konto oder ein Beitritt nötig ist, bevor das Pet mitspielt. */
+/** Ob erst ein Code nötig ist, bevor das Pet mitspielt. */
 function needsJoin({ game, ready }: PetGame) {
   if (!desktop || !ready) return false;
   return game.me === null || (game.lan.current !== null && game.lan.joined === false);
@@ -118,8 +119,8 @@ function PanelContent(props: PanelContentProps) {
     );
   }
   if (panel === "levelup") {
-    const equipAndClose = (id: string) => {
-      void game.equip(id);
+    const equipAndClose = (item: Cosmetic) => {
+      void game.equip(item.slot, item.id);
       onClose();
     };
     return <LevelUpPanel {...{ me, catalog, disabled, onClose }} onEquip={equipAndClose} />;
@@ -197,15 +198,14 @@ function Status({ game }: { game: PetGame }) {
   );
 }
 
-/** Konto anlegen oder beitreten, statt Panels und Dock. */
+/** Code einlösen, statt Panels und Dock. */
 function JoinControls({ game }: { game: PetGame }) {
   return (
     <Panel title="Willkommen auf der LAN.">
       <JoinPanel
         game={game.game}
         disabled={game.busy}
-        onRegister={(code, name, color) => void game.register(code, name, color)}
-        onJoin={(code) => void game.joinLan(code)}
+        onRedeem={(code, name, color) => void game.redeemAccess(code, name, color)}
       />
     </Panel>
   );
@@ -227,6 +227,32 @@ function useDocumentTheme(color: Me["color"], reducedMotion: boolean) {
 /** Ob das Panel seinen Inhalt über dem Dock zeigt. */
 function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
   return panel !== null && panel !== "look" && panel !== "emotes" && panel !== "signs";
+}
+
+/** Was über dem Dock steht: der Code, eine Aufforderung oder das offene Panel. */
+function OverDock({
+  panel,
+  joining,
+  ...content
+}: Omit<PanelContentProps, "panel"> & { panel: PanelId | null; joining: boolean }) {
+  const { game, me, xpTab, peopleTab, onClose } = content;
+  if (joining) return <JoinControls game={game} />;
+  // Vor dem Panel: Eine Aufforderung läuft ab, das Panel kann warten.
+  if (game.incoming) {
+    return (
+      <PartnerInvitePopup
+        incoming={game.incoming}
+        disabled={game.partnerDisabled}
+        onAnswer={(accepted) => void game.answerInvite(accepted)}
+      />
+    );
+  }
+  if (!isGlassPanel(panel)) return null;
+  return (
+    <Panel title={panelTitle(panel, xpTab, peopleTab, me)} onClose={onClose}>
+      <PanelContent panel={panel} {...content} />
+    </Panel>
+  );
 }
 
 /** Die ganze App. */
@@ -276,16 +302,11 @@ export default function App() {
           onClose={close}
         />
         <section className="pet-controls" aria-label="Pet-Steuerung">
-          {joining ? <JoinControls game={game} /> : null}
-          {!joining && isGlassPanel(panel) ? (
-            <Panel title={panelTitle(panel, xpTab, peopleTab, me)} onClose={close}>
-              <PanelContent
-                {...{ panel, game, me, xpTab, peopleTab, sliders, onClose: close }}
-                onXpTab={setXpTab}
-                onPeopleTab={setPeopleTab}
-              />
-            </Panel>
-          ) : null}
+          <OverDock
+            {...{ panel, joining, game, me, xpTab, peopleTab, sliders, onClose: close }}
+            onXpTab={setXpTab}
+            onPeopleTab={setPeopleTab}
+          />
           {joining ? null : <PetDock me={me} panel={panel} onToggle={toggle} />}
         </section>
         <Status game={game} />

@@ -9,7 +9,14 @@
  * @module
  */
 
-import type { StageArea } from "@jelly/stage";
+import type {
+  EquippedCosmetic,
+  StageArea,
+  StageMove,
+  StageRoom,
+  StageStack,
+  StageTrip,
+} from "@jelly/stage";
 
 /** Farbvariante des Pets (Rust: `Color`, Server: Katalog `colors`). */
 export type PetColor = "mint" | "lilac" | "peach";
@@ -19,6 +26,12 @@ export type Action = "poke" | "food" | "drink";
 
 /** Selbstmeldungen, also alles außer Stupsern. */
 export type Report = Exclude<Action, "poke">;
+
+/** Die Plätze eines Jellys, je Platz höchstens ein Cosmetic (Server: Katalog `cosmetic_slots`). */
+export type CosmeticSlot = "head" | "hands" | "body" | "face" | "aura";
+
+/** Was ein Jelly trägt, je Platz. Text als Schlüssel: Ein neuerer Server kann Plätze ergänzen. */
+export type Equipped = Record<string, EquippedCosmetic>;
 
 /** Einstellungen, die nur dieses Gerät betreffen (Rust: `Settings`). */
 export interface Settings {
@@ -86,7 +99,7 @@ export interface Me {
   id: number;
   name: string;
   color: PetColor;
-  cosmetic: string | null;
+  equipped: Equipped;
   hidden: boolean;
   lan: LanInfo | null;
   /** XP in der jüngsten LAN. */
@@ -99,6 +112,9 @@ export interface Me {
   reports: Reports | null;
   sign: string | null;
   follow_player_id: number | null;
+  /** Wann das Folgen von selbst endet. Dazu kommt kein Ereignis. */
+  follow_until: number | null;
+  trip: StageTrip | null;
   lans_attended: number;
   badges: { slug: string; name: string }[];
   /** Cosmetics, die der Spieler tragen darf. */
@@ -113,13 +129,17 @@ export interface StagePlayer {
   name: string;
   /** Text statt `PetColor`: Ein neuerer Server kann Farben liefern, die die App nicht kennt. */
   color: string;
-  cosmetic: string | null;
+  equipped: Equipped;
   level: number;
   sign: string | null;
   follow_player_id: number | null;
+  follow_until: number | null;
   last_seen_at: number;
-  /** `null` ohne Bereich und ohne Lounge. */
+  /** `null` ohne eigenen Bereich und ohne Zone für Besucher. */
   area_id: number | null;
+  /** Ein Jelly ohne eigenen Bereich wandert als Besucher. */
+  is_visitor: boolean;
+  trip: StageTrip | null;
   /** Heimplatz in Prozent der Bühne. */
   home_x: number;
   home_y: number;
@@ -132,8 +152,27 @@ export interface StagePlayer {
 export interface Stage {
   last_event_id: number;
   server_time: number;
+  room: StageRoom;
   areas: StageArea[];
   players: StagePlayer[];
+  /** Der aktuelle Weg je Jelly. Wo es läuft, bestimmt nur der Server. */
+  moves: StageMove[];
+  stacks: StageStack[];
+}
+
+/** Wie sich eine Aufforderung zu einem Partner-Emote ändern kann (Rust: `InviteState`). */
+export type InviteAnswer = "accepted" | "declined" | "cancelled";
+
+/** Eine Aufforderung zu einem Partner-Emote, auch im Ereignis `partner_emote.updated`. */
+export interface PartnerInvite {
+  id: number;
+  key: string;
+  from_id: number;
+  /** Wer aufgefordert wird, vorerst genau ein Jelly. */
+  partner_ids: number[];
+  state: "pending" | InviteAnswer;
+  /** Ablauf als Server-Zeit. Dazu kommt kein Ereignis. */
+  expires_at: number;
 }
 
 /** Ein Eintrag einer festen Liste mit Anzeigetext. */
@@ -147,6 +186,9 @@ export interface CatalogCosmetic {
   key: string;
   name: string;
   scope: string;
+  slot: string;
+  /** Ob es eine Farbe aus `cosmetic_colors` annimmt. */
+  colorable: boolean;
   level?: number;
   requires_event?: boolean;
 }
@@ -169,19 +211,22 @@ export interface Catalog {
   partner_emotes: CatalogEntry[];
   signs: CatalogEntry[];
   cosmetics: CatalogCosmetic[];
+  cosmetic_slots: CatalogEntry[];
+  /** Die Farben einfärbbarer Cosmetics als Hex-Werte. */
+  cosmetic_colors: string[];
   achievements: CatalogAchievement[];
 }
 
 /** Was jeder Befehl zurückgibt (Rust: `Game`). */
 export interface Game {
   settings: Settings;
-  /** `null`, solange es kein Konto gibt oder der Server das Token abgelehnt hat. */
+  /** `null`, solange es kein Konto gibt oder der Server das Secret abgelehnt hat. */
   me: Me | null;
   lan: LanStatus;
   /** Adresse des Servers, nur zur Anzeige. */
   serverUrl: string;
-  /** Der Server kennt das gespeicherte Token nicht mehr. */
-  tokenRejected: boolean;
+  /** Der Server kennt das gespeicherte Secret nicht mehr. Dann hilft nur ein neuer Code. */
+  secretRejected: boolean;
 }
 
 /** Ein Ereignis zum eigenen Jelly aus dem Server-Stream. */

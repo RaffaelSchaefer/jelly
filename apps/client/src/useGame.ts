@@ -22,7 +22,7 @@ const MAP_PREVIEW_FEATURES = "width=960,height=800";
 export function inRunningLan(game: Game, ready: boolean) {
   if (!desktop) return true;
   return (
-    ready && !!game.me && !game.tokenRejected && !!game.lan.current && game.lan.joined === true
+    ready && !!game.me && !game.secretRejected && !!game.lan.current && game.lan.joined === true
   );
 }
 
@@ -117,6 +117,23 @@ export function useServerEvents(enabled: boolean, onEvent: (event: ServerEvent) 
       stop?.();
     };
   }, [enabled, onEvent]);
+}
+
+/** Liest den Stand neu, wenn der Server Ereignisse verworfen hat, solange `enabled` gilt. */
+export function useStreamReset(enabled: boolean, onReset: () => void) {
+  useEffect(() => {
+    if (!enabled) return;
+    let active = true;
+    let stop: (() => void) | undefined;
+    void backend.onStreamReset(onReset).then((unlisten) => {
+      if (active) stop = unlisten;
+      else unlisten();
+    });
+    return () => {
+      active = false;
+      stop?.();
+    };
+  }, [enabled, onReset]);
 }
 
 /** Schickt alle {@link PRESENCE_INTERVAL_MS} ein Lebenszeichen, solange `active` gilt. */

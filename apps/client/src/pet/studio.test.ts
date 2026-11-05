@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   COSMETICS,
-  equippedRegion,
   nameToSave,
   PET_COLORS,
   PREVIEW_CATALOG,
@@ -12,6 +11,7 @@ import {
   regionItems,
   shapeGrowth,
   shapeOnCanvas,
+  wornRegions,
 } from ".";
 
 /** Die Region mit dieser ID. */
@@ -44,13 +44,26 @@ describe("studio regions", () => {
     });
   });
   it("wearing something only changes its own region", () => {
-    const me = { ...PREVIEW_ME, cosmetic: "beanie" };
+    const me = { ...PREVIEW_ME, equipped: { head: { key: "beanie", color: null } } };
     expect(items("kopf", me).find((item) => item.id === "beanie")?.state).toBe("equipped");
     expect(items("kopf", me)[0].state).toBe("unlocked");
     expect(items("gesicht", me)[0].state).toBe("equipped");
-    expect(equippedRegion(me)).toBe("kopf");
-    expect(equippedRegion(PREVIEW_ME)).toBeNull();
-    expect(equippedRegion({ ...PREVIEW_ME, cosmetic: "unknown" })).toBeNull();
+    expect(wornRegions(me)).toEqual(["kopf"]);
+    expect(wornRegions(PREVIEW_ME)).toEqual([]);
+    const unknown = { head: { key: "unknown", color: null } };
+    expect(wornRegions({ ...PREVIEW_ME, equipped: unknown })).toEqual([]);
+  });
+  it("wears one cosmetic per slot at the same time", () => {
+    const equipped = {
+      head: { key: "beanie", color: null },
+      face: { key: "pixel-glasses", color: null },
+      hands: { key: "golden-cup", color: null },
+    };
+    const me = { ...PREVIEW_ME, equipped };
+    expect(wornRegions(me)).toEqual(["kopf", "gesicht"]);
+    expect(items("gesicht", me).find((item) => item.id === "pixel-glasses")?.state).toBe(
+      "equipped",
+    );
   });
   it("offers the body colours", () => {
     const colors = items("koerper");

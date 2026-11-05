@@ -8,7 +8,7 @@
  */
 
 import type { IconName } from "../ui/Icon";
-import type { Catalog, Me } from "./types";
+import type { Catalog, Equipped, Me } from "./types";
 
 /** Ein anlegbares Teil. */
 export interface Cosmetic {
@@ -16,22 +16,49 @@ export interface Cosmetic {
   id: string;
   /** Anzeigename. */
   name: string;
-  /** Wo es sitzt. `Kopf` und `Gesicht` wippen mit dem Kopf, `Effekte` bleiben beim Körper. */
-  slot: "Kopf" | "Gesicht" | "Effekte";
+  /**
+   * Der Platz beim Server. `head` und `face` wippen mit dem Kopf, `aura` bleibt beim Körper. Für
+   * die Plätze `hands` und `body` gibt es noch keine Modelle.
+   */
+  slot: "head" | "face" | "aura";
   /** Symbol in der Auswahl. */
   icon: IconName;
 }
 
 /** Alle Cosmetics, die die App darstellen kann. `glow-aura` gibt es nur als Auszeichnung. */
 export const COSMETICS: Cosmetic[] = [
-  { id: "headset", name: "Headset", slot: "Kopf", icon: "headset" },
-  { id: "beanie", name: "Mütze", slot: "Kopf", icon: "beanie" },
-  { id: "party-hat", name: "Party-Hut", slot: "Kopf", icon: "partyhat" },
-  { id: "pixel-glasses", name: "Pixel-Brille", slot: "Gesicht", icon: "glasses" },
-  { id: "hood", name: "Kapuze", slot: "Kopf", icon: "hood" },
-  { id: "crown", name: "Krone", slot: "Kopf", icon: "crown" },
-  { id: "glow-aura", name: "Glüh-Aura", slot: "Effekte", icon: "aura" },
+  { id: "headset", name: "Headset", slot: "head", icon: "headset" },
+  { id: "beanie", name: "Mütze", slot: "head", icon: "beanie" },
+  { id: "party-hat", name: "Party-Hut", slot: "head", icon: "partyhat" },
+  { id: "pixel-glasses", name: "Pixel-Brille", slot: "face", icon: "glasses" },
+  { id: "hood", name: "Kapuze", slot: "head", icon: "hood" },
+  { id: "crown", name: "Krone", slot: "head", icon: "crown" },
+  { id: "glow-aura", name: "Glüh-Aura", slot: "aura", icon: "aura" },
 ];
+
+/** In dieser Reihenfolge entstehen die Teile: Jedes liegt als Sticker auf dem davor. */
+const WORN_ORDER: Cosmetic["slot"][] = ["head", "face", "aura"];
+
+/** Was ein Jelly trägt, soweit die App es darstellen kann. */
+export function wornCosmetics(equipped: Equipped) {
+  return WORN_ORDER.flatMap(
+    (slot) => COSMETICS.find((item) => item.slot === slot && item.id === equipped[slot]?.key) ?? [],
+  );
+}
+
+/**
+ * Die Farbe, die beim Anlegen mitgeht. Einfärbbare Cosmetics bekommen die erste der Palette, bis es
+ * eine Auswahl dafür gibt.
+ */
+export function equipColor(id: string | null, catalog: Catalog) {
+  const entry = catalog.cosmetics.find((item) => item.key === id);
+  return entry?.colorable ? catalog.cosmetic_colors[0] : undefined;
+}
+
+/** Anzeigename eines Platzes aus dem Katalog. */
+export function slotLabel(slot: string, catalog: Catalog) {
+  return catalog.cosmetic_slots.find((item) => item.key === slot)?.label ?? slot;
+}
 
 /** Ob `me` das Cosmetic tragen darf. */
 export function isUnlocked(id: string, me: Me) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   achievementRows,
+  equipColor,
   isUnlocked,
   levelCosmetic,
   levelProgress,
@@ -11,8 +12,10 @@ import {
   PREVIEW_CATALOG,
   PREVIEW_ME,
   reportStatus,
+  slotLabel,
   stageLayout,
   unlockLabel,
+  wornCosmetics,
 } from ".";
 
 describe("self-reports", () => {
@@ -49,6 +52,27 @@ describe("unlocks", () => {
     expect(levelCosmetic(4, PREVIEW_CATALOG)).toBeUndefined();
     expect(nextLevelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("pixel-glasses");
     expect(nextLevelCosmetic(10, PREVIEW_CATALOG)).toBeUndefined();
+  });
+});
+
+describe("slots", () => {
+  it("sends the first colour only for colourable cosmetics", () => {
+    expect(equipColor("beanie", PREVIEW_CATALOG)).toBe(PREVIEW_CATALOG.cosmetic_colors[0]);
+    expect(equipColor("headset", PREVIEW_CATALOG)).toBeUndefined();
+    expect(equipColor(null, PREVIEW_CATALOG)).toBeUndefined();
+  });
+  it("wears what it can draw, head before face", () => {
+    const worn = wornCosmetics({
+      face: { key: "pixel-glasses", color: null },
+      head: { key: "hood", color: null },
+      hands: { key: "golden-cup", color: null },
+    });
+    expect(worn.map((item) => item.id)).toEqual(["hood", "pixel-glasses"]);
+    expect(wornCosmetics({ head: { key: "pixel-glasses", color: null } })).toEqual([]);
+  });
+  it("names a slot from the catalog", () => {
+    expect(slotLabel("head", PREVIEW_CATALOG)).toBe("Kopf");
+    expect(slotLabel("future", PREVIEW_CATALOG)).toBe("future");
   });
 });
 

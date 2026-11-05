@@ -2,7 +2,7 @@
  * Die einzige Stelle, die mit dem Rust-Backend und dem Desktop-Fenster spricht.
  *
  * Jede Funktion entspricht einem Befehl in `src-tauri/src/commands.rs`. Rust spricht mit dem Server
- * und hält das Token, die Oberfläche sieht nur den fertigen {@link Game}. Schlägt ein Befehl fehl,
+ * und hält das Secret, die Oberfläche sieht nur den fertigen {@link Game}. Schlägt ein Befehl fehl,
  * kommt eine fertige deutsche Meldung als Text an und wird mit `String(cause)` angezeigt. Im
  * Browser (`pnpm webpreview:dev`) gibt es kein Backend: Dort ist {@link desktop} `false`, und es
  * darf nichts von hier aufgerufen werden.
@@ -10,14 +10,25 @@
  * @module
  */
 
-import type { StageEvent } from "@jelly/stage";
+import type { StageEvent, StageMove } from "@jelly/stage";
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import type { Action, Catalog, Game, PetColor, ServerEvent, Settings, Stage } from "./pet";
+import type {
+  Action,
+  Catalog,
+  CosmeticSlot,
+  Game,
+  InviteAnswer,
+  PartnerInvite,
+  PetColor,
+  ServerEvent,
+  Settings,
+  Stage,
+} from "./pet";
 
 /** Läuft die Oberfläche in der Desktop-App (sonst: Browser-Vorschau)? */
 export const desktop = isTauri();
@@ -34,19 +45,10 @@ export interface RedeemResult extends ActResult {
   title: string;
 }
 
-/** Ergebnis eines gestarteten Partner-Emotes: der Code für den Partner. */
-export interface PartnerOffer {
-  code: string;
-  key: string;
-  /** Ablauf des Codes als Server-Zeit. */
-  expiresAt: number;
-  game: Game;
-}
-
-/** Ergebnis eines Beitritts zu einem Partner-Emote. */
-export interface PartnerJoin extends ActResult {
-  key: string;
-  partnerId: number;
+/** Ergebnis einer Aufforderung zu einem Partner-Emote oder der Antwort darauf. */
+export interface PartnerOutcome extends ActResult {
+  /** Die Aufforderung nach der Änderung. */
+  invite: PartnerInvite;
 }
 
 /** Lädt Stand und LAN neu (`get_game`). Prüft beim ersten Mal die App-Version. */
@@ -55,12 +57,12 @@ export const getGame = () => invoke<Game>("get_game");
 /** Feste Listen des Servers (`get_catalog`). */
 export const getCatalog = () => invoke<Catalog>("get_catalog");
 
-/** Legt ein Konto an (`register`). */
-export const register = (code: string, name: string, color: PetColor) =>
-  invoke<Game>("register", { code, name, color });
-
-/** Tritt mit einem vorhandenen Konto der laufenden LAN bei (`join_lan`). */
-export const joinLan = (code: string) => invoke<Game>("join_lan", { code });
+/**
+ * Tauscht einen Code gegen einen Zugang (`redeem_access`). Name und Farbe zählen nur, wenn der Code
+ * ein neues Konto anlegt. Ein vorhandenes Konto kommt damit zurück.
+ */
+export const redeemAccess = (code: string, name?: string, color?: PetColor) =>
+  invoke<Game>("redeem_access", { code, name, color });
 
 /** Stupser oder Selbstmeldung (`act`). */
 export const act = (action: Action) => invoke<ActResult>("act", { action });
@@ -93,13 +95,13 @@ export const openMap = () => invoke<void>("open_map");
 /** Löst einen Event-Code ein (`redeem_code`). */
 export const redeemCode = (code: string) => invoke<RedeemResult>("redeem_code", { code });
 
-/** Startet ein Partner-Emote aus dem Server-Katalog (`start_partner_emote`). */
-export const startPartnerEmote = (key: string) =>
-  invoke<PartnerOffer>("start_partner_emote", { key });
+/** Fordert ein Jelly in der Nähe zu einem Partner-Emote auf (`invite_partner`). */
+export const invitePartner = (key: string, partnerId: number) =>
+  invoke<PartnerOutcome>("invite_partner", { key, partnerId });
 
-/** Tritt mit dem Code eines anderen Jellys dessen Partner-Emote bei (`join_partner_emote`). */
-export const joinPartnerEmote = (code: string) =>
-  invoke<PartnerJoin>("join_partner_emote", { code });
+/** Nimmt eine Aufforderung an, lehnt sie ab oder zieht die eigene zurück (`answer_partner`). */
+export const answerPartner = (id: number, answer: InviteAnswer) =>
+  invoke<PartnerOutcome>("answer_partner", { id, answer });
 
 /** Was sich am Profil ändert. Fehlende Felder bleiben, wie sie sind. */
 export interface ProfilePatch {
@@ -110,9 +112,9 @@ export interface ProfilePatch {
 /** Übernimmt Name und/oder Farbe (`update_profile`). */
 export const updateProfile = (patch: ProfilePatch) => invoke<Game>("update_profile", { ...patch });
 
-/** Legt ein Cosmetic an oder mit `null` ab (`equip_cosmetic`). */
-export const equipCosmetic = (cosmetic: string | null) =>
-  invoke<Game>("equip_cosmetic", { cosmetic });
+/** Legt ein Cosmetic auf einen Platz oder leert ihn mit `null` (`equip_cosmetic`). */
+export const equipCosmetic = (slot: CosmeticSlot, key: string | null, color?: string) =>
+  invoke<Game>("equip_cosmetic", { slot, key, color });
 
 /** Übernimmt Größe und Bewegung, nur auf diesem Gerät (`update_settings`). */
 export const updateSettings = (settings: Settings) => invoke<Game>("update_settings", { settings });
@@ -127,6 +129,13 @@ export const onServerEvent = (handler: (event: ServerEvent) => void) =>
 /** Hört für die Karte auf alle Ereignisse der LAN. Liefert die Funktion zum Abmelden. */
 export const onStageEvent = (handler: (event: StageEvent) => void) =>
   listen<StageEvent>("stage-event", (event) => handler(event.payload));
+
+/** Hört für die Karte auf die Wege der Jellies. Liefert die Funktion zum Abmelden. */
+export const onStageMove = (handler: (move: StageMove) => void) =>
+  listen<StageMove>("stage-move", (event) => handler(event.payload));
+
+/** Hört darauf, dass der Server Ereignisse verworfen hat. Dann gilt es, den Stand neu zu lesen. */
+export const onStreamReset = (handler: () => void) => listen("stream-reset", () => handler());
 
 /** Was die Fensterknöpfe tun. Freigegeben in `src-tauri/capabilities/main.json`. */
 export type WindowAction = "drag" | "minimize" | "close";

@@ -1,5 +1,5 @@
 /**
- * React-Hooks rund um den Spielstand: laden, Konto anlegen, Aktionen ans Backend schicken,
+ * React-Hooks rund um den Spielstand: laden, Code einlösen, Aktionen ans Backend schicken,
  * Rückmeldungen des Pets, Tastatur-Stupser und der Größen-Regler.
  *
  * In der Browser-Vorschau gibt es kein Backend. Aussehen, Cosmetics und Einstellungen ändern dann
@@ -14,11 +14,14 @@ import * as backend from "./backend";
 import { desktop } from "./backend";
 import {
   achievementTitle,
+  equipColor,
   levelCosmetic,
   pokeWaitMinutes,
   REPORTS,
   type Action,
   type Catalog,
+  type CosmeticSlot,
+  type Equipped,
   type Me,
   type PetColor,
   type ServerEvent,
@@ -26,7 +29,13 @@ import {
 } from "./pet";
 import { useEmotes } from "./useEmotes";
 import { useFollow } from "./useFollow";
-import { useBackendCall, useGameState, usePresence, useServerEvents } from "./useGame";
+import {
+  useBackendCall,
+  useGameState,
+  usePresence,
+  useServerEvents,
+  useStreamReset,
+} from "./useGame";
 import { usePartnerEmote, usePlayPartner } from "./usePartnerEmote";
 import { useSigns } from "./useSigns";
 
@@ -74,7 +83,7 @@ function eventMessage(event: ServerEvent, catalog: Catalog) {
   return null;
 }
 
-/** Laden, Konto anlegen, beitreten und die Ereignisse vom Server. */
+/** Laden, Code einlösen und die Ereignisse vom Server. */
 function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => void) {
   const { setGame, setCatalog, catalog, reload } = state;
   const [ready, setReady] = useState(!desktop);
@@ -98,22 +107,15 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
   }, [run, setGame, setCatalog]);
   useEffect(() => void load(), [load]);
 
-  /** Legt ein Konto an, mit dem Code der laufenden LAN. */
-  const register = useCallback(
-    async (code: string, name: string, color: PetColor) => {
-      const next = await run(() => backend.register(code, name, color));
-      if (next) setGame(next);
-      if (next) setMessage(`Hallo, ich bin ${name.trim()}!`);
-    },
-    [run, setGame, setMessage],
-  );
-
-  /** Tritt mit einem vorhandenen Konto der laufenden LAN bei. */
-  const joinLan = useCallback(
-    async (code: string) => {
-      const next = await run(() => backend.joinLan(code));
-      if (next) setGame(next);
-      if (next) setMessage("Schön, wieder dabei zu sein!");
+  /** Löst einen Code ein. Mit Name entsteht ein neues Konto, sonst kommt das vorhandene zurück. */
+  const redeemAccess = useCallback(
+    async (code: string, name?: string, color?: PetColor) => {
+      const next = await run(() => backend.redeemAccess(code, name, color));
+      if (!next) return;
+      setGame(next);
+      setMessage(
+        name ? `Hallo, ich bin ${next.me?.name ?? name}!` : "Schön, wieder dabei zu sein!",
+      );
     },
     [run, setGame, setMessage],
   );
@@ -128,6 +130,7 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
     [reload, catalog, onLevelUp, setMessage],
   );
   useServerEvents(desktop && ready, onEvent);
+  useStreamReset(desktop && ready, reload);
   const { game } = state;
   usePresence(desktop && ready && !!game.me?.lan?.active && game.lan.joined === true, setGame);
 
@@ -138,8 +141,7 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
     messageId: said.id,
     setMessage,
     load,
-    register,
-    joinLan,
+    redeemAccess,
   };
 }
 
@@ -196,13 +198,13 @@ export function usePet(onLevelUp: () => void) {
     [run, setGame, hopAndSay],
   );
 
-  const look = useLook({ patchGame, setGame, run, inFlight, setMessage });
+  const look = useLook({ patchGame, setGame, run, inFlight, setMessage, catalog });
   const emotes = useEmotes(state, account, ready);
   const signs = useSigns(state, account, ready, hopAndSay);
   const follow = useFollow(state, account, ready, hopAndSay);
   // Ohne Hüpfer: Er stapelte sich mit dem Duett und holte die Hände heraus.
   const playPartner = usePlayPartner(emotes.showEmote, setMessage);
-  const partner = usePartnerEmote(state, account, ready, playPartner);
+  const partner = usePartnerEmote(state, account, ready, { play: playPartner, say: setMessage });
   return {
     ...account,
     game,
@@ -219,6 +221,12 @@ export function usePet(onLevelUp: () => void) {
   };
 }
 
+/** Was ein Jelly danach trägt, für die Vorschau ohne Server. */
+function withEquipped(equipped: Equipped, slot: string, key: string | null, color?: string) {
+  const { [slot]: _taken, ...others } = equipped;
+  return key ? { ...others, [slot]: { key, color: color ?? null } } : others;
+}
+
 /** Was {@link useLook} braucht. */
 interface LookContext {
   patchGame: ReturnType<typeof useGameState>["patchGame"];
@@ -226,10 +234,11 @@ interface LookContext {
   run: ReturnType<typeof useBackendCall>["run"];
   inFlight: { current: boolean };
   setMessage: (message: string) => void;
+  catalog: Catalog;
 }
 
-/** Name, Farbe, Cosmetic und Geräte-Einstellungen. In der Vorschau nur lokal. */
-function useLook({ patchGame, setGame, run, inFlight, setMessage }: LookContext) {
+/** Name, Farbe, Cosmetics und Geräte-Einstellungen. In der Vorschau nur lokal. */
+function useLook({ patchGame, setGame, run, inFlight, setMessage, catalog }: LookContext) {
   /** Übernimmt Name und/oder Farbe. `true`, wenn es geklappt hat. */
   const customize = useCallback(
     async (patch: backend.ProfilePatch) => {
@@ -246,18 +255,25 @@ function useLook({ patchGame, setGame, run, inFlight, setMessage }: LookContext)
     [patchGame, run, setGame, setMessage],
   );
 
-  /** Legt ein Cosmetic an oder mit `null` ab. */
+  /** Legt ein Cosmetic auf seinen Platz oder leert den Platz mit `null`. */
   const equip = useCallback(
-    async (cosmetic: string | null) => {
+    async (slot: CosmeticSlot, key: string | null) => {
+      const color = equipColor(key, catalog);
       if (!desktop) {
-        patchGame((current) => ({ ...current, me: current.me && { ...current.me, cosmetic } }));
+        patchGame((current) => ({
+          ...current,
+          me: current.me && {
+            ...current.me,
+            equipped: withEquipped(current.me.equipped, slot, key, color),
+          },
+        }));
         return;
       }
-      const next = await run(() => backend.equipCosmetic(cosmetic));
+      const next = await run(() => backend.equipCosmetic(slot, key, color));
       if (next) setGame(next);
-      if (next) setMessage(cosmetic ? "Steht mir, oder?" : "Wieder ganz natürlich.");
+      if (next) setMessage(key ? "Steht mir, oder?" : "Wieder ganz natürlich.");
     },
-    [patchGame, run, setGame, setMessage],
+    [patchGame, run, setGame, setMessage, catalog],
   );
 
   /** Übernimmt Größe und Bewegung. `false` heißt: gerade beschäftigt, später erneut versuchen. */

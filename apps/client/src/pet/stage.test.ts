@@ -42,10 +42,11 @@ describe("stage players", () => {
     expect(stagePlayerHex("constructor")).toBeUndefined();
   });
   it("finds the look of a partner and falls back for an unknown colour", () => {
-    expect(partnerLook(PREVIEW_PLAYERS, 1)).toEqual({ color: "lilac", cosmetic: "beanie" });
+    const beanie = { head: { key: "beanie", color: "#ffffff" } };
+    expect(partnerLook(PREVIEW_PLAYERS, 1)).toEqual({ color: "lilac", equipped: beanie });
     expect(partnerLook(PREVIEW_PLAYERS, 99)).toBeNull();
-    const future = [{ ...PREVIEW_PLAYERS[0], id: 7, color: "future", cosmetic: null }];
-    expect(partnerLook(future, 7)).toEqual({ color: "mint", cosmetic: null });
+    const future = [{ ...PREVIEW_PLAYERS[0], id: 7, color: "future", equipped: {} }];
+    expect(partnerLook(future, 7)).toEqual({ color: "mint", equipped: {} });
   });
   it("comments on a new target, also when the server ends it", () => {
     expect(followMessage(null, 7)).toBe("Ich stell mich dazu.");

@@ -5,10 +5,11 @@
  * @module
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 
 import { filterStagePlayers, signIcon, stagePlayerHex, type Me, type StagePlayer } from "../pet";
-import { Icon, IconButton, PrimaryButton } from "../ui";
+import { Icon, PrimaryButton } from "../ui";
+import PlayerSearch, { usePlayerSearch } from "./PlayerSearch";
 
 /** Was anstelle der Liste steht, sonst `null`. */
 function emptyNote(allowed: boolean, players: StagePlayer[] | null, shown: number) {
@@ -16,58 +17,6 @@ function emptyNote(allowed: boolean, players: StagePlayer[] | null, shown: numbe
   if (!players) return "Noch keine Liste von der Bühne.";
   if (players.length === 0) return "Niemand sonst auf der Bühne.";
   return shown === 0 ? "Kein Jelly heißt so." : null;
-}
-
-/** Das Suchfeld hinter der Lupe. Beim Schließen ist der Text weg und die Lupe hat wieder den Fokus. */
-function useFollowSearch() {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const trigger = useRef<HTMLButtonElement>(null);
-  function close() {
-    setOpen(false);
-    setQuery("");
-    trigger.current?.focus();
-  }
-  return { open, query, setQuery, trigger, close, toggle: open ? close : () => setOpen(true) };
-}
-
-/**
- * Die Lupe in der Kopfzeile des Panels und, solange sie offen ist, das Suchfeld. Escape schließt
- * erst die Suche, das Panel bleibt dabei offen (siehe `App.tsx`).
- */
-function FollowSearch({ search }: { search: ReturnType<typeof useFollowSearch> }) {
-  const { open, query, setQuery, trigger, close, toggle } = search;
-  return (
-    <>
-      <IconButton
-        ref={trigger}
-        icon="search"
-        label="Jelly suchen"
-        title="Jelly suchen"
-        className="follow-search-toggle"
-        aria-expanded={open}
-        onClick={toggle}
-      />
-      {open ? (
-        <input
-          className="follow-search"
-          role="searchbox"
-          aria-label="Jelly nach Namen suchen"
-          placeholder="Name suchen"
-          value={query}
-          autoFocus
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== "Escape") return;
-            event.stopPropagation();
-            close();
-          }}
-        />
-      ) : null}
-    </>
-  );
 }
 
 /**
@@ -132,7 +81,7 @@ export default function FollowTab({
   onPick: (playerId: number | null) => Promise<boolean>;
 }) {
   useEffect(() => void onLoad(), [onLoad]);
-  const search = useFollowSearch();
+  const search = usePlayerSearch();
   const shown = filterStagePlayers(players ?? [], search.query);
   const note = emptyNote(allowed, players, shown.length);
   const target = me.follow_player_id;
@@ -141,7 +90,7 @@ export default function FollowTab({
   }
   return (
     <>
-      {allowed && players?.length ? <FollowSearch search={search} /> : null}
+      {allowed && players?.length ? <PlayerSearch search={search} /> : null}
       {/* Eigener Knopf: Ist das Ziel gerade abwesend, steht es nicht in der Liste. */}
       {allowed && target !== null ? (
         <PrimaryButton className="follow-leave" disabled={disabled} onClick={() => pick(null)}>
