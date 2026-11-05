@@ -22,11 +22,12 @@ const (
 	shortestPause   = 8000
 	longestPause    = 25000
 	replanDistance  = 0.75
-	spotCandidates  = 64
-	spotSpacing     = personalSpace * half
-	placeSpacing    = personalSpace * 1.01
-	goldenAngle     = 2.399963
-	fullShare       = 1.0
+	// Enough to reach across the hall, so a whole LAN that gathers gets spots of its own.
+	spotCandidates = 400
+	spotSpacing    = personalSpace * half
+	placeSpacing   = personalSpace * 1.01
+	goldenAngle    = 2.399963
+	fullShare      = 1.0
 	// A jelly from the far end of the hall still waits this long in the queue.
 	snackWaitMillis = 5000
 	sidesPerJelly   = 2

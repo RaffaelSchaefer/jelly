@@ -9,7 +9,7 @@ Schnittstelle in [docs/api.md](docs/api.md).
 ```sh
 pnpm lint      # golangci-lint und oxlint, müssen ohne Befund durchlaufen
 pnpm format    # golangci-lint fmt und run --fix, dazu oxfmt; vor Handarbeit an Lint-Befunden
-pnpm test      # go test ./... und die Tests der Seiten
+pnpm test      # go test ./..., die Tests der Bühne laufen im Paket packages/jelly-stage
 pnpm check-types  # tsc für web/
 pnpm bench     # Benchmarks der Datenbankzugriffe
 pnpm bench:load  # Lasttest mit dem Simulator, siehe benchmarks/README.md

@@ -384,6 +384,31 @@ func TestFullQueuesLetJelliesStandAroundThem(t *testing.T) {
 	}
 }
 
+func TestAWholeLANGathersWithoutSharingSpots(t *testing.T) {
+	planner := movement.NewPlanner()
+	ids := make([]int64, 0, 70)
+	for id := range int64(70) {
+		ids = append(ids, id+1)
+	}
+	roster := makeRoster(ids...)
+	roster.Areas = append(roster.Areas,
+		rules.Area{X: 50, Y: 60, Width: 10, Height: 5, Kind: rules.AreaKindQueue},
+	)
+	planner.Advance(start, roster)
+	roster.Gathering = &movement.Gathering{Kind: movement.KindFood, WinnerID: 0}
+	planner.Advance(start+1000, roster)
+	ends := map[movement.Point]bool{}
+	for _, move := range planner.ListCurrentMoves() {
+		if move.Kind != movement.KindFood {
+			t.Fatalf("kind = %s", move.Kind)
+		}
+		ends[endOf(move)] = true
+	}
+	if len(ends) != 70 {
+		t.Fatalf("only %d of 70 spots are different", len(ends))
+	}
+}
+
 func TestVisitorsWanderThroughAllVisitorZones(t *testing.T) {
 	planner := movement.NewPlanner()
 	left := rules.Area{X: 5, Y: 60, Width: 20, Height: 20, Kind: rules.AreaKindVisitors}

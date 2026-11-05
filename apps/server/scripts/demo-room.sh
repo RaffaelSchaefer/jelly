@@ -34,7 +34,7 @@ front_zones=(
   "48.33 1.63 3.33 1.75 none true pedestal"
   "5 12 40 10 lounge false lounge-set"
   "65 14 20 3 none true snack-bar-set"
-  "65 17 20 5 queue false"
+  "50 17 45 5 queue false"
 )
 
 # Rows from the back of the hall to the front: top edge, left half, right half, and the side the
