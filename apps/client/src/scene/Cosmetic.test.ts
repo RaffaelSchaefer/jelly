@@ -29,8 +29,9 @@ function load(url: string) {
 }
 
 describe("Cosmetic-Modelle", () => {
-  it("enthält das Headset", () => {
+  it("enthält beide Headsets", () => {
     expect(MODELS).toHaveProperty(["../cosmetics/headset.glb"]);
+    expect(MODELS).toHaveProperty(["../cosmetics/headset-neutral.glb"]);
   });
 
   it.each(Object.entries(MODELS))("%s lädt und hält die Regeln ein", async (_path, url) => {

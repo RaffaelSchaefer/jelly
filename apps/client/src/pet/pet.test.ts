@@ -48,6 +48,8 @@ describe("unlocks", () => {
     expect(unlockLabel("golden-cup", PREVIEW_CATALOG)).toBe("Von der Orga");
   });
   it("finds level rewards in level order", () => {
+    // Level 2 schaltet beide Headsets frei, das Level-up zeigt das erste.
+    expect(levelCosmetic(2, PREVIEW_CATALOG)?.id).toBe("headset");
     expect(levelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("beanie");
     expect(levelCosmetic(4, PREVIEW_CATALOG)).toBeUndefined();
     expect(nextLevelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("pixel-glasses");

@@ -15,7 +15,7 @@ This writes `blender/cosmetics.blend` with:
 - **Referenz**: the pet (`body`, `head`, `hand_left`, `hand_right`) from `pet_reference.obj` and the
   frame **Sichtbereich**, which shows what the app's camera sees. None of it can be selected or is
   exported.
-- **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `beanie`, `party-hat`,
+- **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `headset-neutral`, `beanie`, `party-hat`,
   `pixel-glasses`, `hood`, `crown`, `golden-cup`). The collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
