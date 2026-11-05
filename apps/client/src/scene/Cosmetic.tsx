@@ -10,18 +10,39 @@
 import { useLoader } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo } from "react";
 import { BufferGeometry, Color, Mesh, MeshStandardMaterial, Object3D } from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import { PET_COLORS, type PetColor } from "../pet";
 import GlossyPart from "./GlossyPart";
 import RenderBoundary from "./RenderBoundary";
 
-/** Modell-URLs nach Pfad. Vite löst sie beim Build auf. */
-const MODELS = import.meta.glob<string>("../cosmetics/*.glb", {
-  query: "?url",
+/**
+ * Modelle als Data-URL nach Pfad. Sie liegen im Bundle, denn `connect-src` in `tauri.conf.json`
+ * verbietet der Oberfläche `fetch`, auch auf eigene Dateien. `tauri dev` zeigt das nicht: Dort
+ * kommt die Seite direkt von Vite, ohne CSP. Erst das gebaute Binary würde das Modell still
+ * weglassen.
+ */
+export const MODELS = import.meta.glob<string>("../cosmetics/*.glb", {
+  // ponytail: Alle Modelle liegen im Chunk der Szene. Ohne `eager` bekäme jedes einen eigenen, falls
+  // sie groß werden. `?inline` allein geht nicht, Vite kennt `.glb` nicht als Asset.
+  query: "?url&inline",
   import: "default",
   eager: true,
 });
+
+/** Liest ein Modell aus seiner Data-URL. `GLTFLoader` selbst holt es per `fetch`. */
+export class InlineGLTFLoader extends GLTFLoader {
+  override load(
+    url: string,
+    onLoad: (gltf: GLTF) => void,
+    _onProgress?: unknown,
+    onError?: (error: unknown) => void,
+  ) {
+    const base64 = url.slice(url.indexOf(",") + 1);
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    this.parse(bytes.buffer, "", onLoad, onError);
+  }
+}
 
 /** Ob es für das Cosmetic schon ein Modell gibt. */
 export function hasCosmeticModel(id: string) {
@@ -70,7 +91,7 @@ function glowOf(hex: string) {
  * modelliert werden, was man von vorn sieht.
  */
 function CosmeticModel({ url, color }: { url: string; color: PetColor }) {
-  const gltf = useLoader(GLTFLoader, url);
+  const gltf = useLoader(InlineGLTFLoader, url);
   const parts = useMemo(() => collectParts(gltf.scene), [gltf]);
   useEffect(() => () => parts.forEach((part) => part.geometry.dispose()), [parts]);
   return (
