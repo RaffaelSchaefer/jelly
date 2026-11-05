@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -69,6 +70,11 @@ type querier interface {
 // CreateLAN creates a LAN. Periods must not overlap, so at most one LAN is active.
 func (store *Store) CreateLAN(ctx context.Context, lan NewLAN) error {
 	if lan.Slug == "" || lan.Name == "" || lan.JoinCode == "" || lan.StartsAt >= lan.EndsAt {
+		return ErrInvalidInput
+	}
+	// Achievements read the time zone during the LAN, so an unknown one must not get that far.
+	_, err := time.LoadLocation(lan.Timezone)
+	if err != nil {
 		return ErrInvalidInput
 	}
 	rulesJSON, err := json.Marshal(lan.Rules)
