@@ -16,6 +16,7 @@ fn secret_and_settings_survive_reopening() {
             size: 130,
             sound: false,
             volume: 40,
+            optimized_rendering: true,
         })
         .unwrap();
     let restored = Store::open(path).unwrap();
@@ -24,6 +25,50 @@ fn secret_and_settings_survive_reopening() {
     assert_eq!(restored.local.settings.size, 130);
     assert!(!restored.local.settings.sound);
     assert_eq!(restored.local.settings.volume, 40);
+    assert!(restored.local.settings.optimized_rendering);
+}
+
+#[test]
+fn switching_optimized_rendering_off_survives_reopening_and_keeps_the_secret() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    let mut store = Store::open(path.clone()).unwrap();
+    store.set_secret("geheim".into()).unwrap();
+    let on = Settings {
+        optimized_rendering: true,
+        ..Settings::default()
+    };
+    store.set_settings(on).unwrap();
+    store.set_settings(Settings::default()).unwrap();
+    let restored = Store::open(path).unwrap();
+    assert!(!restored.local.settings.optimized_rendering);
+    assert_eq!(restored.local.secret.as_deref(), Some("geheim"));
+}
+
+#[test]
+fn an_invalid_optimized_rendering_value_is_rejected_and_the_file_preserved() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    let wrong = r#"{"schemaVersion":2,"token":"geheim","settings":{"reducedMotion":false,"size":100,"optimizedRendering":"ja"}}"#;
+    fs::write(&path, wrong).unwrap();
+    assert!(matches!(Store::open(path.clone()), Err(Error::Corrupt(_))));
+    assert_eq!(fs::read_to_string(&path).unwrap(), wrong);
+}
+
+#[test]
+fn a_failed_save_keeps_the_confirmed_optimized_rendering() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    let mut store = Store::open(path.clone()).unwrap();
+    store.set_secret("alt".into()).unwrap();
+    fs::create_dir(path.with_extension("tmp")).unwrap();
+    let on = Settings {
+        optimized_rendering: true,
+        ..Settings::default()
+    };
+    assert!(matches!(store.set_settings(on), Err(Error::Save(_))));
+    assert!(!store.local.settings.optimized_rendering);
+    assert!(!Store::open(path).unwrap().local.settings.optimized_rendering);
 }
 
 #[test]
@@ -38,6 +83,7 @@ fn a_save_file_without_sound_loads_with_sound_on_at_full_volume() {
     assert!(restored.local.settings.reduced_motion);
     assert!(restored.local.settings.sound);
     assert_eq!(restored.local.settings.volume, MAX_VOLUME);
+    assert!(!restored.local.settings.optimized_rendering);
 }
 
 #[test]

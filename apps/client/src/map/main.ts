@@ -60,8 +60,10 @@ interface MapPage {
   status: HTMLElement;
   /** `null`, bis die Bühne läuft. */
   view: StageView | null;
-  /** `null` ohne WebGL: Dann bleiben Knöpfe und Hinweise einfarbig. */
+  /** `null` im optimierten Modus und ohne WebGL: Dann bleiben Knöpfe und Hinweise einfarbig. */
   glass: GlassLayer | null;
+  /** Das Gerät kann kein WebGL, ein neuer Versuch ist zwecklos. */
+  glassFailed: boolean;
   menu: JellyMenu;
   search: JellySearch;
   targetId: number | null;
@@ -123,15 +125,39 @@ function applyAway(page: MapPage, own: StagePlayer | undefined, serverTime: numb
   }
 }
 
+/** Legt das Glas unter die Knöpfe. `data-glass` nimmt ihnen in `map.css` den eigenen Hintergrund. */
+function startButtonGlass(page: MapPage) {
+  try {
+    const canvas = document.querySelector<HTMLCanvasElement>("#glass")!;
+    page.glass = startGlass(canvas, document.querySelector<HTMLElement>("#frame")!);
+  } catch {
+    page.glassFailed = true;
+    document.documentElement.toggleAttribute("data-glass", false);
+  }
+}
+
+/** Zeigt Glas oder, im optimierten Modus und ohne WebGL, die festen Knöpfe aus `map.css`. */
+function applyButtonLook(page: MapPage, optimized: boolean) {
+  if (optimized) {
+    page.glass?.stop();
+    page.glass = null;
+    document.documentElement.toggleAttribute("data-glass", false);
+  } else if (!page.glass && !page.glassFailed) {
+    document.documentElement.toggleAttribute("data-glass", true);
+    startButtonGlass(page);
+  }
+}
+
 /** Übernimmt, was ein neuer Stand für die Seite bedeutet. */
 function applyState(page: MapPage, state: StageState) {
-  const { id, reducedMotion } = page.source.readOwn();
+  const { id, reducedMotion, optimizedRendering } = page.source.readOwn();
   const own = state.players.find((player) => player.id === id);
   page.players = state.players;
   page.clockOffset = state.server_time - Date.now();
   applyAway(page, own, state.server_time);
   const reduced = reducedMotion || OS_REDUCED_MOTION.matches;
   page.view?.setReducedMotion(reduced);
+  applyButtonLook(page, optimizedRendering);
   if (own) page.glass?.setLook(knownPetColor(own.color), reduced);
   page.note = state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "";
   page.readProblem = "";
@@ -278,6 +304,9 @@ function listenToInput(page: MapPage, flow: PartnerFlow) {
     closeWindows(page);
   });
   page.source.onInviteEvent((event) => handleInviteEvent(flow, event, page.source.readOwn().id));
+  // Ponytail: Eine geänderte Einstellung kommt erst beim Lesen an. Wer aus dem Pet-Fenster zurückkommt,
+  // liest neu. Ohne Klick auf die Karte erst beim nächsten Ereignis, sonst bräuchte es eigene Meldungen.
+  window.addEventListener("focus", () => page.view?.reload());
 }
 
 /** Die Fensterknöpfe. In der Vorschau tut das Browser-Fenster, was es kann. */
@@ -295,17 +324,6 @@ function listenToWindowTools() {
   });
 }
 
-/** Legt das Glas unter die Knöpfe. `data-glass` nimmt ihnen in `map.css` den eigenen Hintergrund. */
-function startButtonGlass(page: MapPage) {
-  try {
-    const canvas = document.querySelector<HTMLCanvasElement>("#glass")!;
-    page.glass = startGlass(canvas, document.querySelector<HTMLElement>("#frame")!);
-    document.documentElement.toggleAttribute("data-glass", true);
-  } catch {
-    page.glass = null;
-  }
-}
-
 /** Startet die Bühne. Ohne WebGL bleibt nur der Hinweis. */
 function startView(page: MapPage) {
   try {
@@ -317,11 +335,13 @@ function startView(page: MapPage) {
       onState: (state) => applyState(page, state),
       onError: (cause) => {
         page.readProblem = String(cause);
+        applyButtonLook(page, page.source.readOwn().optimizedRendering);
         renderStatus(page);
       },
     });
   } catch {
     page.readProblem = TEXT_NO_WEBGL;
+    applyButtonLook(page, false);
     renderStatus(page);
   }
 }
@@ -338,6 +358,7 @@ async function startMap() {
     status: document.querySelector<HTMLElement>("#status")!,
     view: null,
     glass: null,
+    glassFailed: false,
     menu: createJellyMenu({
       follow: (playerId) => void follow(page, playerId),
       highlight: (playerId) => void highlight(page, playerId),
@@ -361,7 +382,9 @@ async function startMap() {
   };
   listenToInput(page, createPartnerFlow(page));
   listenToWindowTools();
-  startButtonGlass(page);
+  // Welcher Modus gilt, sagt erst das erste Lesen. Bis dahin steht nur die Schrift da, wie bisher,
+  // bevor das Glas gewachsen ist: So blitzen im normalen Modus keine festen Knöpfe auf.
+  document.documentElement.toggleAttribute("data-glass", true);
   startView(page);
 }
 

@@ -13,8 +13,8 @@ import * as backend from "../backend";
 
 /** Was die Karte zusätzlich zur Bühne braucht. */
 export interface MapSource extends StageSource {
-  /** Das eigene Jelly und die Einstellung „Weniger Bewegung“ vom letzten Lesen. */
-  readOwn: () => { id: number | null; reducedMotion: boolean };
+  /** Das eigene Jelly und die Einstellungen, die die Karte betreffen, vom letzten Lesen. */
+  readOwn: () => { id: number | null; reducedMotion: boolean; optimizedRendering: boolean };
   /** Stellt das Jelly neben ein anderes oder mit `null` weg. Liefert das neue Ziel. */
   setFollow: (playerId: number | null) => Promise<number | null>;
   /** Schickt das Jelly auf einen Ausflug zu einem Punkt der Bühne. */
@@ -41,7 +41,7 @@ export async function createDesktopSource(): Promise<MapSource> {
   const early: StageEvent[] = [];
   const earlyMoves: StageMove[] = [];
   let listener: StreamListener | null = null;
-  let own = { id: null as number | null, reducedMotion: false };
+  let own = { id: null as number | null, reducedMotion: false, optimizedRendering: false };
   let onInvite: ((event: StageEvent) => void) | null = null;
   await backend.onStageEvent((event) => {
     onInvite?.(event);
@@ -57,7 +57,11 @@ export async function createDesktopSource(): Promise<MapSource> {
   return {
     readState: async () => {
       const state = await backend.getMapState();
-      own = { id: state.ownId, reducedMotion: state.reducedMotion };
+      own = {
+        id: state.ownId,
+        reducedMotion: state.reducedMotion,
+        optimizedRendering: state.optimizedRendering,
+      };
       return state.stage;
     },
     readCatalog: backend.getCatalog,

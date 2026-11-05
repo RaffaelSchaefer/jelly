@@ -20,6 +20,7 @@ import {
   restPose,
   type DuetRole,
   type Jelly,
+  type JellyQuality,
 } from "@jelly/scene";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
@@ -41,6 +42,30 @@ import SignBoard from "./SignBoard";
 
 /** Ein Jelly ohne Angabe trägt nichts. */
 const NOTHING_WORN: Equipped = {};
+
+/** So lange läuft ein Stupser nach: Die Hände bleiben 1,6 s draußen, das Strahlen klingt vorher ab. */
+const POKE_SETTLE_MS = 1800;
+
+/** Abstand der Bilder währenddessen, wenn die Animationsuhr steht. */
+const SETTLE_FRAME_MS = 100;
+
+/**
+ * Bei reduzierter Bewegung steht die Uhr, nach einem Stupser müssen Strahlen und Hände aber noch
+ * sichtbar auslaufen. Darum gibt es für diese kurze Zeit eigene Bilder, sonst keine.
+ */
+function useSettlingFrames(pulse: number, reducedMotion: boolean) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    if (!reducedMotion) return;
+    invalidate();
+    const timer = window.setInterval(invalidate, SETTLE_FRAME_MS);
+    const stop = window.setTimeout(() => window.clearInterval(timer), POKE_SETTLE_MS);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(stop);
+    };
+  }, [pulse, reducedMotion, invalidate]);
+}
 
 /** Die Mundform dieses Bildes. Bei reduzierter Bewegung lächelt das Jelly nur. */
 function currentMouth(
@@ -126,6 +151,8 @@ export interface CharacterProps {
   voiced?: RefObject<ActiveVoice | null>;
   /** Welchen Platz es im Duett eines Partner-Emotes einnimmt. */
   role?: DuetRole;
+  /** Welchen Körper-Shader es bekommt. Ein Wechsel baut das Jelly neu auf, wie bei der Farbe. */
+  quality?: JellyQuality;
 }
 
 /** Das Pet mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
@@ -139,18 +166,20 @@ export default function Character({
   emote,
   voiced,
   role = "own",
+  quality = "full",
 }: CharacterProps) {
   const worn = wornCosmetics(equipped);
   // Ohne Modell zeigt ein Cosmetic nichts, dann hielte das Jelly leere Hände hin.
   const holdsModel = worn.some((item) => item.slot === "hands" && hasCosmeticModel(item.id));
   const holding = Boolean(sign) || holdsModel;
-  const jelly = useMemo(() => createJelly(PET_COLORS[color]), [color]);
+  const jelly = useMemo(() => createJelly(PET_COLORS[color], quality), [color, quality]);
   const motion = useRef(createMotion(pulse));
   const stand = useRef<Group>(null);
   const invalidate = useThree((state) => state.invalidate);
 
-  // Beginn und Ende auch zeichnen, wenn reduzierte Bewegung die Animationsuhr anhält.
-  useEffect(() => invalidate(), [emote, sign, holding, invalidate]);
+  // Jede Änderung auch zeichnen, wenn reduzierte Bewegung die Animationsuhr anhält.
+  useEffect(() => invalidate(), [emote, sign, holding, jelly, equipped, invalidate]);
+  useSettlingFrames(pulse, reducedMotion);
 
   // Fiber gibt `<primitive>`-Objekte nie selbst frei.
   useEffect(() => () => disposeJelly(jelly), [jelly]);

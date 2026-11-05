@@ -4,8 +4,11 @@
 // innen wird durch das brechende Jelly gesehen, ein Studio spiegelt sich in der Oberfläche, und wo
 // es dünn ist, scheint etwas vom Desktop durch. Gesicht und Cosmetics sind normale Meshes darüber.
 //
-// HEAD_R (Halbachsen des Kopf-Ellipsoids) kommt als #define aus body.ts, abgeleitet von
-// HEAD in jellyGeometry.ts.
+// HEAD_R (Halbachsen des Kopf-Ellipsoids) und MARCH_STEPS kommen als #define aus body.ts, HEAD_R
+// abgeleitet von HEAD in jellyGeometry.ts.
+//
+// Mit JELLY_OPTIMIZED entfällt der Weg durchs Innere, das Studio wird zu festen Glanzlichtern. Form,
+// Normalen, Kontur und Tiefe bleiben genau gleich.
 
 uniform mat4 uModel;
 uniform mat4 uInvModel;
@@ -22,7 +25,6 @@ uniform float uClarity;
 varying vec3 vObj;
 
 const float OUTLINE = 0.035;
-const float IOR = 1.33;
 
 float smin(float a, float b, float k) {
   float h = max(k - abs(a - b), 0.0) / k;
@@ -80,6 +82,28 @@ float crease(vec3 p) {
   return 1.0 - smoothstep(0.0, 0.28, min(max(b, h), min(max(b, k), max(h, k))));
 }
 
+// Der Boden und der dunkle Raum darüber, in beiden Varianten gleich.
+vec3 room(vec3 d) {
+  vec3 col = mix(uColor * 0.08, vec3(0.06, 0.08, 0.1), smoothstep(-0.4, 0.5, d.y));
+  return col + uGlow * 0.6 * (1.0 - smoothstep(-0.8, -0.1, d.y));
+}
+
+#ifdef JELLY_OPTIMIZED
+
+// Die zwei Lichter des Studios als einfache runde Flecken, ohne Softbox-Rechnung.
+const vec3 KEY_LIGHT = normalize(vec3(-0.45, 0.8, 0.45));
+const vec3 STRIP_LIGHT = normalize(vec3(1.0, 0.2, -0.25));
+vec3 env(vec3 d) {
+  vec3 col = room(d);
+  col += vec3(14.0) * smoothstep(0.87, 0.95, dot(d, KEY_LIGHT));
+  col += vec3(0.7, 0.85, 1.0) * 3.0 * smoothstep(0.95, 0.99, dot(d, STRIP_LIGHT));
+  return col;
+}
+
+#else
+
+const float IOR = 1.33;
+
 // Ein weiches Studio rundherum: Softbox oben links, Streifenlicht rechts, leuchtender Boden.
 float softbox(vec3 d, vec3 axis, vec2 size, float soft) {
   float c = dot(d, axis);
@@ -90,12 +114,14 @@ float softbox(vec3 d, vec3 axis, vec2 size, float soft) {
   return 1.0 - smoothstep(-soft, soft, length(max(q, 0.0)) + min(max(q.x, q.y), 0.0));
 }
 vec3 env(vec3 d) {
-  vec3 col = mix(uColor * 0.08, vec3(0.06, 0.08, 0.1), smoothstep(-0.4, 0.5, d.y));
-  col += uGlow * 0.6 * (1.0 - smoothstep(-0.8, -0.1, d.y));
+  vec3 col = room(d);
   col += vec3(14.0) * softbox(d, normalize(vec3(-0.45, 0.8, 0.45)), vec2(0.6, 0.3), 0.15);
   col += vec3(0.7, 0.85, 1.0) * 3.0 * softbox(d, normalize(vec3(1.0, 0.2, -0.25)), vec2(0.1, 0.8), 0.1);
   return col;
 }
+
+#endif
+
 // Kopf und Körper leuchten jeweils von ihrer eigenen Unterkante aus und werden nach oben dunkler.
 float glowAt(vec3 p) {
   float head = smoothstep(-0.18, 0.18, sdBody(p) - sdHead(p));
@@ -108,7 +134,7 @@ void main() {
   vec3 ro = vObj;
   float t = 0.0, minD = 1e5, tMin = 0.0;
   bool hit = false;
-  for (int i = 0; i < 96; i++) {
+  for (int i = 0; i < MARCH_STEPS; i++) {
     float d = map(ro + rd * t);
     if (d < minD) { minD = d; tMin = t; }
     if (d < 0.0005) { hit = true; break; }
@@ -127,6 +153,13 @@ void main() {
     float ndv = clamp(-dot(nW, vW), 0.0, 1.0);
     float fresnel = 0.04 + 0.96 * pow(1.0 - ndv, 5.0);
 
+#ifdef JELLY_OPTIMIZED
+    // Ohne Weg durchs Innere steht der Blickwinkel für die Dicke: Flach getroffen ist es dünn.
+    float thick = smoothstep(0.0, 0.75, ndv);
+    vec3 jelly = mix(uColor, uGlow, glowAt(p) * 0.85);
+    jelly *= mix(1.12, 0.82, thick);
+    alpha = 1.0 - uClarity * (1.0 - thick) * (1.0 - fresnel);
+#else
     // Hineinbrechen und das Jelly bis zur Rückwand durchqueren. s ist die Dicke entlang des Wegs.
     vec3 inside = refract(rd, n, 1.0 / IOR);
     float s = 0.02;
@@ -142,11 +175,12 @@ void main() {
     float glow = mix(glowAt(p), glowAt(q), 0.6);
     vec3 jelly = mix(uColor, uGlow, glow * 0.85);
     jelly *= mix(1.12, 0.82, smoothstep(0.2, 1.3, s));
+    alpha = 1.0 - uClarity * (1.0 - smoothstep(0.15, 1.1, s)) * (1.0 - fresnel);
+#endif
     jelly *= 0.62 + 0.38 * ndv;
     float ao = 1.0 - 0.5 * crease(p);
     color = jelly * ao + env(reflect(vW, nW)) * fresnel * ao;
     color = mix(color, uColor * 0.22, pow(1.0 - ndv, 2.5) * 0.7);
-    alpha = 1.0 - uClarity * (1.0 - smoothstep(0.15, 1.1, s)) * (1.0 - fresnel);
     // Tinte, wo sich die Oberfläche abwendet: der Toon-Rand und Kantenglättung zur Outline.
     float ink = 1.0 - smoothstep(0.0, 0.14, ndv);
     color = mix(color, uInk, ink);

@@ -34,6 +34,15 @@ import { HAND, HEAD } from "./jellyGeometry.ts";
 import fragmentShader from "./shaders/jelly.frag.glsl?raw";
 import vertexShader from "./shaders/jelly.vert.glsl?raw";
 
+/**
+ * Wie aufwendig der Körper gezeichnet wird. `optimized` lässt den Weg durchs Innere und die
+ * Studio-Reflexion weg. Die Form bleibt gleich, denn beide nutzen dieselben Distanzfunktionen.
+ */
+export type JellyQuality = "full" | "optimized";
+
+/** Höchstzahl der Schritte bei der Suche nach der Oberfläche. */
+const MARCH_STEPS = 96;
+
 /** Wie viel vom Hintergrund dort durchscheint, wo das Jelly dünn ist (0 = undurchsichtig). */
 const CLARITY = 0.3;
 
@@ -76,11 +85,13 @@ function createUniforms() {
 type JellyUniforms = ReturnType<typeof createUniforms>;
 
 /** Erzeugt das Shader-Material. Die Uniforms füllt {@link updateUniforms} vor jedem Bild. */
-function createJellyMaterial(uniforms: JellyUniforms) {
+function createJellyMaterial(uniforms: JellyUniforms, quality: JellyQuality) {
   return new ShaderMaterial({
     defines: {
       // Halbachsen des Kopf-Ellipsoids, siehe HEAD in jellyGeometry.ts.
       HEAD_R: `vec3(${HEAD.radius.toFixed(3)}, ${HEAD.radius.toFixed(3)}, ${(HEAD.radius * HEAD.depth).toFixed(3)})`,
+      MARCH_STEPS,
+      ...(quality === "optimized" ? { JELLY_OPTIMIZED: 1 } : {}),
     },
     uniforms,
     vertexShader,
@@ -131,12 +142,16 @@ function updateUniforms({ mesh, uniforms: u, renderer, camera, parts, drawingBuf
  * Das Jelly in den Farben `palette`. Liegt in der Wurzel des Jellys neben Kopf und Händen und liest
  * deren Lage aus `parts`. Die Kamera muss eine `PerspectiveCamera` sein.
  */
-export function createJellyBody(palette: JellyPalette, parts: BodyParts): Mesh {
+export function createJellyBody(
+  palette: JellyPalette,
+  parts: BodyParts,
+  quality: JellyQuality = "full",
+): Mesh {
   const uniforms = createUniforms();
   uniforms.uColor.value.set(palette.hex);
   uniforms.uGlow.value.set(palette.glow);
   uniforms.uInk.value.set(palette.outline);
-  const material = createJellyMaterial(uniforms);
+  const material = createJellyMaterial(uniforms, quality);
   const mesh = new Mesh(BOUNDS, material);
   const drawingBuffer = new Vector2();
   mesh.onBeforeRender = (renderer, _scene, camera) => {

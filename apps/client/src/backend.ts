@@ -89,6 +89,7 @@ export const getStage = () => invoke<Stage>("get_stage");
 export interface MapState {
   ownId: number;
   reducedMotion: boolean;
+  optimizedRendering: boolean;
   stage: Stage;
 }
 

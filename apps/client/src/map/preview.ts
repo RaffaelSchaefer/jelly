@@ -193,7 +193,12 @@ export function createPreviewSource(): MapSource {
       next.onConnectionChange(true);
       startWalks(players, next);
     },
-    readOwn: () => ({ id: OWN_ID, reducedMotion: false }),
+    // Die Vorschau teilt keine Einstellungen mit dem Pet: `map.html?optimized` zeigt den Modus.
+    readOwn: () => ({
+      id: OWN_ID,
+      reducedMotion: false,
+      optimizedRendering: new URLSearchParams(location.search).has("optimized"),
+    }),
     setFollow: (playerId) => {
       const own = players[0];
       own.follow_player_id = playerId;

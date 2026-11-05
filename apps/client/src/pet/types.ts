@@ -43,6 +43,8 @@ export interface Settings {
   sound: boolean;
   /** Lautstärke in Prozent, siehe {@link VOLUME}. */
   volume: number;
+  /** Einfachere Oberflächen und weniger Grafikeffekte, siehe {@link OPTIMIZED_RENDERING}. */
+  optimizedRendering: boolean;
 }
 
 /** Abklingzeiten und Kontingent der Selbstmeldungen. Zeiten in Unix-Millisekunden. */

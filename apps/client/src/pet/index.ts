@@ -13,6 +13,7 @@ export * from "./mouth";
 export * from "./partner";
 export * from "./preview";
 export * from "./progress";
+export * from "./rendering";
 export * from "./reports";
 export * from "./signs";
 export * from "./stage";

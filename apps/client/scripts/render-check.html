@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de" data-surface="preview">
+  <head>
+    <meta charset="utf-8" />
+    <title>Render-Prüfung</title>
+    <style>
+      #result {
+        position: fixed;
+        inset: 8px auto auto 8px;
+        z-index: 9;
+        max-width: calc(100vw - 16px);
+        margin: 0;
+        font: 11px/1.4 ui-monospace, monospace;
+        color: #fff;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="result">Render-Prüfung läuft …</pre>
+    <div id="root"></div>
+    <script type="module" src="./render-check.mjs"></script>
+  </body>
+</html>

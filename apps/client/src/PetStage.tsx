@@ -6,7 +6,7 @@
 
 import { EMOTE_GLYPHS, isEmoteKey } from "@jelly/scene/emotes";
 import { isPartnerMotionKey } from "@jelly/scene/partner-emotes";
-import { lazy, Suspense, useRef, useState, type RefObject } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from "react";
 
 import type { ActiveEmote } from "./useEmotes";
 import type { PetGame } from "./usePet";
@@ -14,7 +14,14 @@ import type { PetGame } from "./usePet";
 import { desktop } from "./backend";
 import EmotePicker from "./EmotePicker";
 import MapDrop from "./MapDrop";
-import { REGIONS, signLabel, type Me, type StudioRegionId, type StudioFocus } from "./pet";
+import {
+  REGIONS,
+  signLabel,
+  type Me,
+  type RenderProfile,
+  type StudioRegionId,
+  type StudioFocus,
+} from "./pet";
 import SignPicker from "./SignPicker";
 import Studio from "./Studio";
 import { SpeechBubble } from "./ui";
@@ -22,6 +29,9 @@ import { useJellyVoice, type ActiveVoice } from "./useJellyVoice";
 
 /** Three.js erst laden, wenn die Bühne gebraucht wird. */
 const PetScene = lazy(() => import("./scene/PetScene"));
+
+/** So lange wartet das Jelly höchstens auf die gespeicherten Einstellungen, in Millisekunden. */
+const SETTINGS_WAIT_MS = 1500;
 
 /** Welches Panel über dem Dock oder direkt am Jelly offen ist. */
 export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "signs";
@@ -57,15 +67,37 @@ interface PetStageProps {
   /** Erst ein Code ist nötig: Am Jelly gibt es noch nichts zu bedienen. */
   joining: boolean;
   reducedMotion: boolean;
+  /** Wie aufwendig die Szene gezeichnet wird. */
+  rendering: RenderProfile;
   onToggle: (panel: PanelId) => void;
   onClose: () => void;
 }
+
+/**
+ * Ob die Szene starten darf. Erst der geladene Stand sagt, welcher Modus gilt: Sonst kompilierte
+ * ein alter PC bei jedem Start die teuren Shader, die ihm der optimierte Modus ersparen soll. Ein
+ * hängender Server hält das Jelly trotzdem nicht auf.
+ *
+ * @param settled - Ob der Stand geladen ist oder das Laden gescheitert.
+ */
+function useSceneStart(settled: boolean) {
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setWaited(true), SETTINGS_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return settled || waited;
+}
+
+/** Was statt des Jellys dasteht, solange es noch nicht gezeichnet wird. */
+const WAKING_UP = <span className="render-fallback">Dein Begleiter wacht auf …</span>;
 
 /** Das anklickbare Jelly mit verzögert geladener Canvas. */
 function PetVisual({
   game,
   me,
   reducedMotion,
+  rendering,
   sign,
   voiced,
   focus,
@@ -74,11 +106,13 @@ function PetVisual({
   game: PetGame;
   me: Me;
   reducedMotion: boolean;
+  rendering: RenderProfile;
   sign: string | null;
   voiced: RefObject<ActiveVoice | null>;
   focus?: StudioFocus;
   anchors?: RefObject<HTMLElement | null>;
 }) {
+  const started = useSceneStart(game.ready || game.error !== "");
   return (
     <button
       className="pet-touch"
@@ -86,14 +120,18 @@ function PetVisual({
       disabled={!desktop || !game.ready || game.busy || !game.game.me}
       onClick={() => void game.interact("poke")}
     >
-      <Suspense fallback={<span className="render-fallback">Dein Begleiter wacht auf …</span>}>
-        <PetScene
-          color={me.color}
-          equipped={me.equipped}
-          pulse={game.pulse}
-          emote={game.activeEmote}
-          {...{ reducedMotion, sign, voiced, focus, anchors }}
-        />
+      <Suspense fallback={WAKING_UP}>
+        {started ? (
+          <PetScene
+            color={me.color}
+            equipped={me.equipped}
+            pulse={game.pulse}
+            emote={game.activeEmote}
+            {...{ reducedMotion, rendering, sign, voiced, focus, anchors }}
+          />
+        ) : (
+          WAKING_UP
+        )}
       </Suspense>
     </button>
   );
@@ -110,7 +148,9 @@ function StageDrops({
   onToggle,
   onClose,
   onPreview,
-}: Omit<PetStageProps, "joining" | "reducedMotion"> & { onPreview: (key: string | null) => void }) {
+}: Omit<PetStageProps, "joining" | "reducedMotion" | "rendering"> & {
+  onPreview: (key: string | null) => void;
+}) {
   return (
     <>
       <EmotePicker
@@ -193,7 +233,7 @@ function useSignPreview(open: boolean) {
 
 /** Sprechblase, Jelly und das gerade zugängliche Overlay. */
 export default function PetStage(props: PetStageProps) {
-  const { game, me, panel, joining, reducedMotion, onToggle, onClose } = props;
+  const { game, me, panel, joining, reducedMotion, rendering, onToggle, onClose } = props;
   const stage = useRef<HTMLDivElement>(null);
   const [region, setRegion] = useState<StudioRegionId | null>(null);
   const [preview, setPreview] = useSignPreview(panel === "signs");
@@ -204,7 +244,7 @@ export default function PetStage(props: PetStageProps) {
   return (
     <div className="pet-stage" ref={stage} data-duet={duetMode(game.activeEmote)}>
       <PetVisual
-        {...{ game, me, reducedMotion, voiced }}
+        {...{ game, me, reducedMotion, rendering, voiced }}
         sign={studio ? null : signLabel(preview ?? me.sign, game.catalog)}
         focus={REGIONS.find((item) => item.id === region)?.focus}
         anchors={studio || dropsVisible ? stage : undefined}
