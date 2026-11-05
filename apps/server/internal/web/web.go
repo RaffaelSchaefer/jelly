@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-//go:generate go tool esbuild ../../web/stage/index.html ../../web/stage/main.ts ../../web/stage/page.css --bundle --minify --target=es2022 --loader:.html=copy --loader:.glsl=text --outbase=../../web --outdir=dist --log-level=warning
+//go:generate go tool esbuild ../../web/stage/index.html ../../web/stage/main.ts ../../web/stage/page.css --bundle --minify --target=es2022 --loader:.html=copy --loader:.glsl=text --loader:.glb=dataurl --outbase=../../web --outdir=dist --log-level=warning
 
 const (
 	// Scripts, styles and requests stay on this server, even if a player name holds markup.
