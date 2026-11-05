@@ -233,7 +233,7 @@ func TestStageShowsSignsFollowsAndPresence(t *testing.T) {
 	if len(stage.Players) != 2 || stage.Players[0].Sign == nil || *stage.Players[0].Sign != "cs2" {
 		t.Fatalf("stage: %+v", stage)
 	}
-	if stage.Players[0].FollowPlayerID == nil || *stage.Players[0].FollowPlayerID != secondID {
+	if stage.Players[0].Follow == nil || stage.Players[0].Follow.PlayerID != secondID {
 		t.Fatalf("follow: %+v", stage.Players[0])
 	}
 

@@ -75,7 +75,7 @@ func (walker *walker) setRoute(kind string, startAt int64, route []routePoint) {
 	walker.route = route
 	walker.move = Move{
 		PlayerID: walker.playerID, Kind: kind, StartAt: startAt, Points: points,
-		Level: walker.plan.stack.Level,
+		StackLevel: walker.plan.stack.Level,
 	}
 }
 

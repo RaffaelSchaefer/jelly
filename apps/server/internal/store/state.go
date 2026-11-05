@@ -46,27 +46,26 @@ type PlayerState struct {
 	// ServerTime lets a client with a wrong clock show correct countdowns.
 	ServerTime int64 `json:"server_time"`
 	// LastEventID is where a client opens the stream to miss nothing after this state.
-	LastEventID    int64                       `json:"last_event_id"`
-	ID             int64                       `json:"id"`
-	Name           string                      `json:"name"`
-	Color          string                      `json:"color"`
-	Equipped       map[string]EquippedCosmetic `json:"equipped"`
-	Hidden         bool                        `json:"hidden"`
-	LAN            *LANInfo                    `json:"lan"`
-	XP             int                         `json:"xp"`
-	Level          int                         `json:"level"`
-	TotalXP        int                         `json:"total_xp"`
-	NextPokeAt     *int64                      `json:"next_poke_at"`
-	Reports        *rules.ReportStatus         `json:"reports"`
-	Sign           *string                     `json:"sign"`
-	FollowPlayerID *int64                      `json:"follow_player_id"`
-	FollowUntil    *int64                      `json:"follow_until"`
-	Trip           *Trip                       `json:"trip"`
-	LANsAttended   int                         `json:"lans_attended"`
-	Badges         []Badge                     `json:"badges"`
-	Cosmetics      []string                    `json:"cosmetics"`
-	Achievements   []EarnedAchievement         `json:"achievements"`
-	Awards         []PlayerAward               `json:"awards"`
+	LastEventID  int64                       `json:"last_event_id"`
+	ID           int64                       `json:"id"`
+	Name         string                      `json:"name"`
+	Color        string                      `json:"color"`
+	Equipped     map[string]EquippedCosmetic `json:"equipped"`
+	Hidden       bool                        `json:"hidden"`
+	LAN          *LANInfo                    `json:"lan"`
+	XP           int                         `json:"xp"`
+	Level        int                         `json:"level"`
+	TotalXP      int                         `json:"total_xp"`
+	NextPokeAt   *int64                      `json:"next_poke_at"`
+	Reports      *rules.ReportStatus         `json:"reports"`
+	Sign         *string                     `json:"sign"`
+	Follow       *Follow                     `json:"follow"`
+	Trip         *Trip                       `json:"trip"`
+	LANsAttended int                         `json:"lans_attended"`
+	Badges       []Badge                     `json:"badges"`
+	Cosmetics    []string                    `json:"cosmetics"`
+	Achievements []EarnedAchievement         `json:"achievements"`
+	Awards       []PlayerAward               `json:"awards"`
 }
 
 // entryRow is the latest entry as stored in the database.
@@ -199,8 +198,7 @@ func loadActiveTimers(
 	}
 	nextPokeAt := rules.CalculateNextPokeTime(gameRules, lastPokeAt, row.joinedAt)
 	state.NextPokeAt = &nextPokeAt
-	follow := findRunningFollow(gameRules, row.follow, row.followStartedAt, now)
-	state.FollowPlayerID, state.FollowUntil = follow.playerID, follow.until
+	state.Follow = findRunningFollow(gameRules, row.follow, row.followStartedAt, now)
 	history, err := loadReportHistory(ctx, database, row.lanID, state.ID)
 	if err != nil {
 		return err

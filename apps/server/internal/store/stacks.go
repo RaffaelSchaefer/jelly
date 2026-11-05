@@ -243,7 +243,7 @@ func (store *Store) ApplyHighlight(
 		}
 		err = appendVisibleEvent(ctx, action, EventHighlight, map[string]any{
 			payloadTargetID: targetID,
-			"until":         rules.CalculateHighlightEnd(action.lan.gameRules, now),
+			"ends_at":       rules.CalculateHighlightEnd(action.lan.gameRules, now),
 			"cosmetic_key":  rules.CosmeticHighlightAura,
 		})
 		if err != nil {

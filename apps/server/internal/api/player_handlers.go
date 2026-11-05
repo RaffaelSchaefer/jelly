@@ -222,7 +222,7 @@ func (server *apiServer) addActionRoutes(contract huma.API) {
 	addPlayerOperation(server, contract, huma.Operation{
 		OperationID: "followPlayer", Method: http.MethodPost, Path: "/trips/follow",
 		Summary: "Follow another jelly",
-		Description: "The jelly walks back after `follow_seconds`, see `follow_until`. " +
+		Description: "The jelly walks back after `follow_seconds`, see `follow.ends_at`. " +
 			"The server may end this by itself, " +
 			"so read `follow_player_id` instead of assuming it stays set.",
 	}, server.handleSetFollow)

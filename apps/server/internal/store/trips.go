@@ -12,28 +12,28 @@ import (
 // payloadTargetID names the jelly in `follow.changed` and `highlight`.
 const payloadTargetID = "target_id"
 
-// Trip is a running walk to a point on the stage. At `until` the jelly walks back to its place.
+// Trip is a running walk to a point on the stage. At `ends_at` the jelly walks back to its place.
 type Trip struct {
-	X     float64 `json:"x"`
-	Y     float64 `json:"y"`
-	Until int64   `json:"until"`
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	EndsAt int64   `json:"ends_at"`
 }
 
-// runningFollow says whom a jelly follows and until when. Both are nil without a running follow.
-type runningFollow struct {
-	playerID *int64
-	until    *int64
+// Follow says whom a jelly follows and when that ends by itself.
+type Follow struct {
+	PlayerID int64 `json:"player_id"`
+	EndsAt   int64 `json:"ends_at"`
 }
 
 // findRunningFollow leaves out a follow whose time is over.
 func findRunningFollow(
 	gameRules rules.Rules, follow sql.NullInt64, startedAt, now int64,
-) runningFollow {
-	until := rules.CalculateFollowEnd(gameRules, startedAt)
-	if !follow.Valid || until <= now {
-		return runningFollow{playerID: nil, until: nil}
+) *Follow {
+	endsAt := rules.CalculateFollowEnd(gameRules, startedAt)
+	if !follow.Valid || endsAt <= now {
+		return nil
 	}
-	return runningFollow{playerID: &follow.Int64, until: &until}
+	return &Follow{PlayerID: follow.Int64, EndsAt: endsAt}
 }
 
 // tripColumns holds the stored trip of a jelly, which may be missing or already over.
@@ -48,7 +48,7 @@ func (columns tripColumns) findRunningTrip(now int64) *Trip {
 	if !columns.until.Valid || columns.until.Int64 <= now {
 		return nil
 	}
-	return &Trip{X: columns.x.Float64, Y: columns.y.Float64, Until: columns.until.Int64}
+	return &Trip{X: columns.x.Float64, Y: columns.y.Float64, EndsAt: columns.until.Int64}
 }
 
 // requireFreeFloor rejects a point inside a zone that blocks. Anything else is a valid goal, also a
@@ -86,13 +86,13 @@ func (store *Store) StartTrip(
 		}
 		trip := Trip{
 			X: point.X, Y: point.Y,
-			Until: rules.CalculateTripEnd(action.lan.gameRules, now),
+			EndsAt: rules.CalculateTripEnd(action.lan.gameRules, now),
 		}
 		const updateTripSQL = `UPDATE lan_entries
 			SET trip_x = ?, trip_y = ?, trip_until = ?, follow_player_id = NULL
 			WHERE lan_id = ? AND player_id = ?`
 		_, err = action.transaction.ExecContext(ctx, updateTripSQL,
-			trip.X, trip.Y, trip.Until, action.lan.id, playerID)
+			trip.X, trip.Y, trip.EndsAt, action.lan.id, playerID)
 		if err != nil {
 			return fmt.Errorf("update trip: %w", err)
 		}

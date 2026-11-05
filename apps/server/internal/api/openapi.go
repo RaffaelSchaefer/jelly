@@ -245,8 +245,9 @@ func finishContract(contract huma.API) {
 // listNullableFields names the object fields that can be null. Go tags cannot express this.
 func listNullableFields() []string {
 	return []string{
-		"PlayerState.lan", "PlayerState.reports", "PlayerState.trip", "LANStatus.current",
-		"LANStatus.next", "StagePlayer.trip", "StageAnswer.gathering",
+		"PlayerState.lan", "PlayerState.reports", "PlayerState.trip", "PlayerState.follow",
+		"LANStatus.current",
+		"LANStatus.next", "StagePlayer.follow", "StageAnswer.gathering",
 	}
 }
 

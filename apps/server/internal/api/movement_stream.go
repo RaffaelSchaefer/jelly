@@ -179,8 +179,8 @@ func buildRoster(state store.StageState) movement.Roster {
 			Home:       movement.Point{X: player.X, Y: player.Y},
 			SnackUntil: player.SnackUntil,
 		}
-		if player.FollowPlayerID != nil {
-			planned.FollowID = *player.FollowPlayerID
+		if player.Follow != nil {
+			planned.FollowID = player.Follow.PlayerID
 		}
 		if player.Trip != nil {
 			planned.Trip = &movement.Point{X: player.Trip.X, Y: player.Trip.Y}

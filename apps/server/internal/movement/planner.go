@@ -46,8 +46,8 @@ type Move struct {
 	Kind     string     `json:"kind"`
 	StartAt  int64      `json:"start_at"`
 	Points   []Waypoint `json:"points"`
-	// Level counts the jellies below this one, once it has arrived on a stack.
-	Level int `json:"level"`
+	// StackLevel counts the jellies below this one, once it has arrived on a stack.
+	StackLevel int `json:"stack_level"`
 }
 
 // Player is what the planner has to know about a jelly on the stage.

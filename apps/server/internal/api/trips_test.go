@@ -34,7 +34,7 @@ func TestTripWalksThereAndBackAfterItsTime(t *testing.T) {
 	response := testFixture.callAPI("POST", "/v1/trips/goto", token, `{"x":40,"y":60}`)
 	state := decodeBody[store.PlayerState](t, response)
 	want := testFixture.clock.Load() + (5 * time.Minute).Milliseconds()
-	if state.Trip == nil || state.Trip.X != 40 || state.Trip.Until != want {
+	if state.Trip == nil || state.Trip.X != 40 || state.Trip.EndsAt != want {
 		t.Fatalf("trip = %+v", state.Trip)
 	}
 	testFixture.advanceClock(time.Second)
@@ -77,8 +77,8 @@ func TestFollowingEndsAfterItsTimeAndTheJellyWalksBack(t *testing.T) {
 	testFixture.advanceClock(time.Second)
 	state := decodeBody[store.PlayerState](t, testFixture.follow(token, target))
 	want := testFixture.clock.Load() + (30 * time.Minute).Milliseconds()
-	if state.FollowUntil == nil || *state.FollowUntil != want {
-		t.Fatalf("follow until = %v, want %d", state.FollowUntil, want)
+	if state.Follow == nil || state.Follow.EndsAt != want {
+		t.Fatalf("follow = %+v, want %d", state.Follow, want)
 	}
 	testFixture.advanceClock(time.Second)
 	playerID := state.ID
@@ -96,8 +96,8 @@ func TestFollowingEndsAfterItsTimeAndTheJellyWalksBack(t *testing.T) {
 	if kind := findMoveOf(t, answer, playerID).Kind; kind != movement.KindWander {
 		t.Fatalf("after the time, kind = %s", kind)
 	}
-	if me := testFixture.loadMe(token); me.FollowPlayerID != nil || me.FollowUntil != nil {
-		t.Fatalf("follow = %v until %v", me.FollowPlayerID, me.FollowUntil)
+	if me := testFixture.loadMe(token); me.Follow != nil {
+		t.Fatalf("follow = %+v", me.Follow)
 	}
 }
 
@@ -111,8 +111,8 @@ func TestFollowingSomeoneElseStartsANewTime(t *testing.T) {
 		testFixture.follow(token, testFixture.registerPlayer("C")),
 	)
 	want := testFixture.clock.Load() + (30 * time.Minute).Milliseconds()
-	if state.FollowUntil == nil || *state.FollowUntil != want {
-		t.Fatalf("follow until = %v, want %d", state.FollowUntil, want)
+	if state.Follow == nil || state.Follow.EndsAt != want {
+		t.Fatalf("follow = %+v, want %d", state.Follow, want)
 	}
 }
 
@@ -123,8 +123,8 @@ func TestFollowingTheSameJellyAgainKeepsTheTime(t *testing.T) {
 	first := decodeBody[store.PlayerState](t, testFixture.follow(token, target))
 	testFixture.advanceClock(time.Minute)
 	second := decodeBody[store.PlayerState](t, testFixture.follow(token, target))
-	if *first.FollowUntil != *second.FollowUntil {
-		t.Fatalf("until moved from %d to %d", *first.FollowUntil, *second.FollowUntil)
+	if first.Follow.EndsAt != second.Follow.EndsAt {
+		t.Fatalf("the end moved from %d to %d", first.Follow.EndsAt, second.Follow.EndsAt)
 	}
 }
 
@@ -154,8 +154,8 @@ func TestStartingATripEndsFollowing(t *testing.T) {
 	token := testFixture.registerPlayer("A")
 	testFixture.follow(token, testFixture.registerPlayer("B"))
 	response := testFixture.callAPI("POST", "/v1/trips/goto", token, `{"x":40,"y":60}`)
-	if state := decodeBody[store.PlayerState](t, response); state.FollowPlayerID != nil {
-		t.Fatalf("still follows %d", *state.FollowPlayerID)
+	if state := decodeBody[store.PlayerState](t, response); state.Follow != nil {
+		t.Fatalf("still follows %+v", state.Follow)
 	}
 }
 
