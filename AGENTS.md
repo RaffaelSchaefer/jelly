@@ -69,15 +69,16 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `packages/jelly-stage/src/framePacing.ts` entscheidet für Jelly, Karte und Karten-Glas, welche
   Bildschirmaktualisierung ein Bild wird.
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
-  Cosmetics, ihre Shader), `src/ui/` (Design-System).
+  Cosmetics), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
   `body.ts` (geraymarchter Körper, Shader in `shaders/`, volle und optimierte Variante per `JellyQuality`), `face.ts`, `mouthShapes.ts`, `animation.ts`,
   `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `partnerEmotes.ts` (Duett-Posen der
-  Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben).
+  Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben), `cosmetic.ts` (Cosmetics
+  laden und zeichnen, Modelle in `cosmetics/`).
 - `packages/jelly-stage/src/`: die Bühne als reines Three.js. `view.ts` startet sie auf einer Canvas,
   `source.ts` beschreibt ihre Daten, `labels.ts` und `picking.ts` zeichnen Namen und finden das Jelly
   unter dem Zeiger, `floorPicking.ts` den Punkt auf dem Boden, `pointer.ts` markiert das Ziel eines
-  Ausflugs, `beams.ts` zeichnet das Licht beim Hervorheben, `choiceRings.ts` die Ringe beim Auswählen, `moves.ts` und `walking.ts` spielen die Wege
+  Ausflugs, `beams.ts` zeichnet das Licht beim Hervorheben, `choiceRings.ts` die Ringe beim Auswählen, `worn.ts` merkt sich, was ein Jelly trägt, `moves.ts` und `walking.ts` spielen die Wege
   des Servers ab, der Rest ist der Raum.
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
@@ -109,6 +110,10 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - **Jelly ändern** heißt `packages/jelly-scene` ändern und App und Server-Bühne im Browser ansehen.
   Im Jelly gibt es nur `Object3D`, keine `Group`: Die Bühne sortiert ganze Jellies über ihre äußere
   `Group`. `three` hat in Client, Server und Paket dieselbe Version.
+- **Neues Cosmetic:** Export aus `apps/client/blender/` nach `packages/jelly-scene/src/cosmetics/`, dazu eine
+  Import-Zeile in `COSMETIC_MODELS` (`cosmetic.ts`). App, Karte und Beamer zeigen es dann, in der App als Sticker,
+  auf der Bühne mit echter Tiefe. Die Modelle liegen im Bundle: Die CSP der App verbietet `fetch`, und `tauri dev`
+  zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary.
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.
   Das Paket spricht nicht mit dem Netz: Jeder Nutzer bringt seine `StageSource` mit, die App holt
   alles über Rust. Was nur die Karte braucht (Markierungen, Treffer), bleibt auf dem Beamer aus.

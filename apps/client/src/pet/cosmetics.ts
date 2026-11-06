@@ -2,7 +2,7 @@
  * Cosmetics: wie sie aussehen und wie man sie freischaltet.
  *
  * Was freigeschaltet ist, sagt der Server (`me.cosmetics`), wie man es bekommt, sein Katalog. Hier
- * stehen nur Anzeigename, Platz und Symbol. Die 3D-Modelle liegen als `src/cosmetics/<id>.glb`.
+ * stehen nur Anzeigename, Platz und Symbol. Die 3D-Modelle liegen in `@jelly/scene`.
  *
  * @module
  */
