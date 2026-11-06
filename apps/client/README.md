@@ -272,12 +272,25 @@ pnpm run tauri build -- --debug --no-bundle
 Befehl erstellt einen nativen Debug-Build ohne Installer, unter Windows in
 `src-tauri/target/debug/jelly.exe`. Ein normales `pnpm run tauri build` baut die fertigen Bundles
 und Installer (`.dmg`/`.app` für macOS, `.msi`/`.exe` für Windows, `.deb`/`.rpm`/`.AppImage` für
-Linux). In GitHub Actions macht das `.github/workflows/client.yml`: Pull Requests laufen nur durch
-die Prüfungen, gebaut wird auf `main` und beim manuellen Start. Die Server-Adresse kommt dort aus der
+Linux). In GitHub Actions macht das `.github/workflows/client.yml`: Pull Requests laufen nur durch die
+Prüfungen, gebaut wird beim manuellen Start und bei einem Tag. Die Server-Adresse kommt dort aus der
 Eingabe des manuellen Starts, sonst aus der Repository-Variable `JELLY_SERVER_URL`. Ohne beide zeigen
-die Bundles auf `http://localhost:8080` und taugen nicht für die LAN. Signierung und automatische
-Updates sind noch nicht konfiguriert. `pnpm run check` kombiniert die Frontend-Tests, den
-Frontend-Build und die Rust-Tests.
+die Bundles auf `http://localhost:8080` und taugen nicht für die LAN.
+
+Ein Release entsteht aus einem Tag. Vorher die Version in `src-tauri/tauri.conf.json` anheben, dann:
+
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Der Lauf bricht ab, wenn der Tag nicht zur Version passt oder `JELLY_SERVER_URL` fehlt. Ein Bindestrich
+im Tag (`v0.2.0-alpha.1`) macht daraus eine Vorabversion. Die macOS-Bundles sind nur ad-hoc signiert:
+Beim ersten Start blockiert macOS Jelly, freigeben geht unter Systemeinstellungen, Datenschutz &
+Sicherheit, „Trotzdem öffnen“. Echte Signierung und automatische Updates sind noch nicht
+konfiguriert.
+
+`pnpm run check` kombiniert die Frontend-Tests, den Frontend-Build und die Rust-Tests.
 
 Die Emote- und Schild-Hooks und die Stimme lassen sich ohne zusätzliche Test-Bibliothek im Browser prüfen: Nach
 `pnpm webpreview:dev` die Seiten `http://127.0.0.1:1420/scripts/emotes-check.html` und

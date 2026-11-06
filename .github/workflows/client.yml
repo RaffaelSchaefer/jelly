@@ -1,20 +1,18 @@
 name: Build Client
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "**"
-      - "!apps/server/**"
-      # propNames.test.ts in @jelly/stage liest diese Datei.
-      - "apps/server/internal/rules/maps.go"
   pull_request:
     paths:
       - "**"
       - "!apps/server/**"
+      - "!**.md"
       # propNames.test.ts in @jelly/stage liest diese Datei.
       - "apps/server/internal/rules/maps.go"
+  # Ein Tag baut alles und veröffentlicht das Release.
+  push:
+    tags:
+      - "v*"
+  # Testbuild ohne Release, die Bundles liegen danach als Artefakte am Lauf.
   workflow_dispatch:
     inputs:
       jelly_server_url:
@@ -55,6 +53,19 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+
+      - name: Check release settings
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(node -p "require('./apps/client/src-tauri/tauri.conf.json').version")
+          if [ "${GITHUB_REF_NAME%%-*}" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME passt nicht zur App-Version $version."
+            exit 1
+          fi
+          if [ "$JELLY_SERVER_URL" = "http://localhost:8080" ]; then
+            echo "::error::Repository-Variable JELLY_SERVER_URL fehlt, das Release zeigte auf localhost."
+            exit 1
+          fi
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
@@ -101,7 +112,7 @@ jobs:
   build:
     name: Build (${{ matrix.label }})
     needs: check
-    # Pull Requests laufen nur durch die Prüfungen, die vier Builds kosten zu viele Minuten.
+    # Pull Requests laufen nur durch die Prüfungen, die vier Builds dauern zu lange.
     if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
@@ -197,3 +208,28 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_paths }}
           if-no-files-found: error
+
+  release:
+    name: Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi
+          # Nur Installer: Die rohen Binärdateien und .app.tar.gz bleiben Artefakte des Laufs.
+          find artifacts -type f \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
+            -o -name '*.msi' -o -name '*-setup.exe' -o -name '*.dmg' \) -print0 |
+            xargs -0 gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --generate-notes "${flags[@]}"
