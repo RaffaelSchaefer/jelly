@@ -32,7 +32,10 @@ import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
 import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
 import "./optimized.css";
 
-/** Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt zusätzlich zur Einstellung im Pet. */
+/**
+ * Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt, solange die Einstellung im Pet nicht
+ * gesetzt ist.
+ */
 const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Panels im Glas-Stil. „Aussehen“, Emotes, Schilder und der Aufstieg liegen direkt auf der Bühne. */
@@ -104,13 +107,15 @@ interface PanelContentProps {
   me: Me;
   xpTab: XpTab;
   sliders: ReturnType<typeof useSettingSliders>;
+  /** Wirksame Einstellung „Weniger Bewegung“: die eigene oder die des Betriebssystems. */
+  reducedMotion: boolean;
   onXpTab: (tab: XpTab) => void;
   onClose: () => void;
 }
 
 /** Inhalt des offenen Panels. */
 function PanelContent(props: PanelContentProps) {
-  const { panel, game, me, xpTab, sliders, onXpTab } = props;
+  const { panel, game, me, xpTab, sliders, reducedMotion, onXpTab } = props;
   const { catalog, ready, busy } = game;
   const disabled = busy || !ready;
   if (panel === "lan") {
@@ -130,7 +135,7 @@ function PanelContent(props: PanelContentProps) {
   const { settings } = game.game;
   return (
     <SettingsPanel
-      {...{ settings, ready, busy, ...sliders }}
+      {...{ settings, reducedMotion, ready, busy, ...sliders }}
       name={me.name}
       onReducedMotion={(reducedMotion) => void game.saveSettings({ ...settings, reducedMotion })}
       onOptimizedRendering={(optimizedRendering) =>
@@ -292,6 +297,7 @@ export default function App() {
   const openLevelUp = useCallback(() => setPanel("levelup"), []);
   const game = usePet(openLevelUp);
   const { settings } = game.game;
+  const reducedMotion = settings.reducedMotion ?? OS_REDUCED_MOTION;
   const [joinColor, setJoinColor] = useState<PetColor>("mint");
   // Ohne Konto zeigt die Bühne das Jelly im Entwurf: Die Farbe wirkt schon vor dem Einlösen.
   const me = game.game.me ?? { ...PREVIEW_ME, name: "Dein Begleiter", color: joinColor };
@@ -300,11 +306,7 @@ export default function App() {
   const joining = needsJoin(game);
   usePokeKeys(game.interact, panel === null && !joining && !game.hatching);
 
-  useDocumentTheme(
-    me.color,
-    settings.reducedMotion || OS_REDUCED_MOTION,
-    settings.optimizedRendering,
-  );
+  useDocumentTheme(me.color, reducedMotion, settings.optimizedRendering);
 
   const close = useCallback(() => setPanel(null), []);
   useDuetClosesPanel(game, panel, close);
@@ -326,7 +328,7 @@ export default function App() {
         <PetStage
           {...{ game, me, panel, joining, joinColor, onSlowDevice }}
           onJoinColor={setJoinColor}
-          reducedMotion={settings.reducedMotion || OS_REDUCED_MOTION}
+          reducedMotion={reducedMotion}
           rendering={settings.optimizedRendering ? OPTIMIZED_RENDERING : FULL_RENDERING}
           frameLimit={stopToFrameLimit(sliders.frameStop)}
           onToggle={toggle}
@@ -334,7 +336,7 @@ export default function App() {
         />
         <section className="pet-controls" aria-label="Pet-Steuerung">
           <OverDock
-            {...{ panel, joining, game, me, xpTab, sliders, onClose: close }}
+            {...{ panel, joining, game, me, xpTab, sliders, reducedMotion, onClose: close }}
             onXpTab={setXpTab}
           />
           {/* Beim Einstieg und beim Aufstieg steht eine Kapsel an der Stelle des Docks. */}

@@ -18,7 +18,7 @@ type MapOwn = Omit<backend.MapState, "ownId" | "stage"> & { id: number | null };
 /** Bis zum ersten Lesen: noch kein Jelly, Einstellungen und Regeln stehen auf ihrem Standard. */
 const UNREAD_OWN: MapOwn = {
   id: null,
-  reducedMotion: false,
+  reducedMotion: null,
   optimizedRendering: false,
   frameLimit: FRAME_RATE.default,
   nearDistance: PREVIEW_RULES.near_distance,

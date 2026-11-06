@@ -37,8 +37,8 @@ export type Equipped = Record<string, EquippedCosmetic>;
 
 /** Einstellungen, die nur dieses Gerät betreffen (Rust: `Settings`). */
 export interface Settings {
-  /** Animation auf eine ruhige Darstellung reduzieren. */
-  reducedMotion: boolean;
+  /** Animation auf eine ruhige Darstellung reduzieren. `null` folgt dem Betriebssystem. */
+  reducedMotion: boolean | null;
   /** Größe in Prozent, siehe {@link PET_SIZE}. */
   size: number;
   /** Ob das Jelly Geräusche macht. */

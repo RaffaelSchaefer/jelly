@@ -99,7 +99,8 @@ export const getStage = () => invoke<Stage>("get_stage");
 /** Was die Karte bei jedem Lesen bekommt (Rust: `MapState`). */
 export interface MapState {
   ownId: number;
-  reducedMotion: boolean;
+  /** `null` folgt dem Betriebssystem. */
+  reducedMotion: boolean | null;
   optimizedRendering: boolean;
   frameLimit: number | null;
   /** Regel `near_distance` der LAN, in Jelly-Einheiten. */

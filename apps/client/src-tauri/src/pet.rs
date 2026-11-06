@@ -76,8 +76,10 @@ pub enum InviteState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Settings {
-    /// Animation auf eine ruhige Darstellung reduzieren.
-    pub reduced_motion: bool,
+    /// Animation auf eine ruhige Darstellung reduzieren. `None` folgt dem Betriebssystem
+    /// (`prefers-reduced-motion`), bis jemand den Schalter stellt. Fehlt in älteren Dateien.
+    #[serde(default)]
+    pub reduced_motion: Option<bool>,
     /// Größe in Prozent, [`MIN_SIZE`]…[`MAX_SIZE`].
     pub size: u8,
     /// Ob das Jelly Geräusche macht. Fehlt in älteren Dateien und gilt dort als an.
@@ -114,7 +116,7 @@ fn default_frame_limit() -> Option<u16> {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            reduced_motion: false,
+            reduced_motion: None,
             size: DEFAULT_SIZE,
             sound: default_sound(),
             volume: default_volume(),
