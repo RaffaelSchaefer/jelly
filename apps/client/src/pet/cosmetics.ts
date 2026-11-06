@@ -91,6 +91,20 @@ export function levelCosmetic(level: number, catalog: Catalog) {
   return levelCosmetics(catalog).find((item) => item.level === level);
 }
 
+/** Das Teil, das `me` mit seinem jetzigen Level bekommen hat, falls es eins gibt. */
+export function levelReward(me: Me, catalog: Catalog) {
+  const reward = levelCosmetic(me.level, catalog);
+  return reward && isUnlocked(reward.id, me) ? reward : undefined;
+}
+
+/** Was `me` zur Probe trägt, solange es den Aufstieg feiert: sein neues Teil und den Rest. */
+export function wearingLevelReward(me: Me, catalog: Catalog): Equipped {
+  const reward = levelReward(me, catalog);
+  if (!reward) return me.equipped;
+  const color = equipColor(reward.id, catalog) ?? null;
+  return { ...me.equipped, [reward.slot]: { key: reward.id, color } };
+}
+
 /** Das erste Level-Cosmetic oberhalb von `level`, also die nächste Belohnung. */
 export function nextLevelCosmetic(level: number, catalog: Catalog) {
   return levelCosmetics(catalog).find((item) => item.level > level);

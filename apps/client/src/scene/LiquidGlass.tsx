@@ -31,6 +31,7 @@ import { createGlass, FULLSCREEN, readShapes, type GlassUniforms } from "./glass
  * Plätze in der Reihenfolge des DOM. Im Studio: Namensschild, Fertig-Knopf, sechs Blobs und ein
  * Popover. Am Jelly: Emote-Tropfen, Emote-Auswahl (geschlossen leer), Karten-Tropfen,
  * Schild-Tropfen, Füllung der Säule und ihre Kapseln, zuletzt die Sprechblase mit ihrem Schwanz.
+ * Beim Aufstieg: Kapsel, XP-Tropfen und, falls es sie gibt, die nächste Belohnung.
  *
  * Ponytail: Platz für zehn Kapseln, solange die Blase weg ist. Darüber fehlt das Glas, zuerst der
  * Blase, während die Säule zurückläuft. Mehr Plätze kosten jedes Pixel einen Blick mehr, also erst

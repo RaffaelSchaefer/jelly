@@ -44,8 +44,8 @@ export function useGameState() {
   }, []);
 
   /** Liest den Stand still neu, etwa nach einem Ereignis oder einem Fehler. */
-  const reload = useCallback(() => {
-    if (desktop) void backend.getGame().then(setGame, () => null);
+  const reload = useCallback(async () => {
+    if (desktop) await backend.getGame().then(setGame, () => null);
   }, [setGame]);
 
   return { game, setGame, patchGame, catalog, setCatalog, offset, reload };

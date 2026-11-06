@@ -19,6 +19,9 @@ export type StudioRegionId = "kopf" | "gesicht" | "haende" | "koerper" | "aura" 
 /** Worauf die Kamera fährt, wenn eine Region offen ist. */
 export type StudioFocus = "head" | "face" | "body" | "hands" | "aura";
 
+/** Worauf die Kamera fahren kann: eine Region des Studios oder der Levelaufstieg. */
+export type CameraFocus = StudioFocus | "levelup";
+
 /** Eine Region des Jellys mit ihrem Blob. */
 export interface StudioRegion {
   id: StudioRegionId;

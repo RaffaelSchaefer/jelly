@@ -1,0 +1,142 @@
+/*
+ * Der Levelaufstieg auf der Bühne (`LevelUp.tsx`). Hinter der Canvas liegen Licht und Zahl, das Jelly
+ * steht also davor. Vor der Canvas liegen Tropfen, Kapsel und die Hälfte der Spritzer. Das Glas zeichnet
+ * `scene/LiquidGlass.tsx`, ohne WebGL bleibt wie bei der Sprechblase ein fester Hintergrund.
+ *
+ * Alles zielt auf `--boom`, den letzten Ton der Fanfare. Jede Regel beschreibt das fertige Bild, die
+ * Animationen führen nur dorthin. So reicht reduzierter Bewegung und optimiertem Modus `animation: none`.
+ */
+@property --levelup-fill { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+.levelup {
+  /* Scheitel und Körpermitte des Jellys, von der Sprechblase und den Füßen aus gerechnet. */
+  --head: calc(var(--bubble-top, 20px) + 75px);
+  --center: calc(var(--feet, 299px) - 104px * var(--pet-scale, 1));
+  /* Die Tropfen weichen einem großen Jelly aus und bleiben trotzdem im Fenster. */
+  --side: clamp(118px, calc(96px * var(--pet-scale, 1) + 34px), 158px);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Dieselben Farben wie die Haut der Tropfen. */
+  --film: #8dffbf, #ff9bd8, #9fd4ff, #ffe79a, #8dffbf;
+  --glass-fallback: color-mix(in srgb, var(--surface-solid) calc((1 - var(--studio-ready, 0)) * 100%), transparent);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.levelup-back, .levelup-front { position: absolute; inset: 0; }
+/* Ohne Stapelkontext in `.levelup`: Die Canvas (`.pet-touch`, z-index 1) liegt genau dazwischen. */
+.levelup-back { z-index: 0; }
+.levelup-front { z-index: 2; }
+
+/* Licht. Das Fenster ist durchsichtig: Alles läuft vor seinem Rand aus, das Dunkel trägt die helle Schrift auch auf hellem Desktop. */
+.levelup-bed { position: absolute; top: -38px; left: calc(50% - 192px); width: 384px; height: var(--window-height, 430px); background: radial-gradient(closest-side, color-mix(in srgb, var(--backdrop-deep) 82%, transparent) 35%, transparent); animation: levelup-fade 420ms ease-out both; }
+.levelup-halo, .levelup-rays, .levelup-flash, .levelup-wave { position: absolute; left: 50%; top: var(--center); border-radius: 50%; translate: -50% -50%; }
+.levelup-halo { width: 340px; height: 340px; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 52%, transparent), color-mix(in srgb, var(--accent) 16%, transparent) 58%, transparent); animation: levelup-halo-in 700ms ease-out calc(var(--boom) - 120ms) both, levelup-breathe 3.4s ease-in-out var(--boom) infinite alternate; }
+/* Zwei gegenläufige Fächer: Wo sie sich kreuzen, flackert das Licht wie echte Strahlen. Die Periode muss in 360° aufgehen, sonst steht oben eine harte Kante. */
+.levelup-rays, .levelup-rays::after { width: 500px; height: 500px; background: repeating-conic-gradient(color-mix(in srgb, var(--accent) 50%, transparent) 0deg, transparent 8deg 20deg, #ffffff38 24deg, transparent 28deg 38deg, color-mix(in srgb, #ff9bd8 26%, transparent) 41deg, transparent 44deg 52deg, color-mix(in srgb, var(--accent) 50%, transparent) 60deg); }
+.levelup-rays { mask: radial-gradient(closest-side, transparent 16%, #000 36%, transparent 76%); animation: levelup-rays-in 900ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--boom) both, levelup-spin 46s linear infinite; }
+.levelup-rays::after { content: ''; position: absolute; inset: 0; border-radius: 50%; opacity: 0.7; animation: levelup-spin 23s linear infinite reverse; }
+.levelup-flash { width: 300px; height: 300px; opacity: 0; background: radial-gradient(closest-side, #fff, color-mix(in srgb, var(--accent) 60%, #fff) 35%, transparent); animation: levelup-flash 520ms ease-out var(--boom) both; }
+.levelup-wave { width: 120px; height: 120px; opacity: 0; background: conic-gradient(var(--film)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); animation: levelup-wave 950ms cubic-bezier(0.1, 0.7, 0.3, 1) var(--boom) both; }
+.levelup-wave.late { animation-delay: calc(var(--boom) + 130ms); }
+
+/* Das Jelly steht auf seinem eigenen Licht statt auf seinem Schatten. Ohne Blur (optimierter Modus) wäre das eine harte Scheibe. */
+html:not([data-optimized-rendering]) .pet-stage:has(.levelup) .ground-shadow { background: color-mix(in srgb, var(--accent) 65%, transparent); }
+
+/* Spritzer: Jelly-Tropfen mit Glanzpunkt, jeder dritte ein Funke, jeder fünfte golden. Flug und Fall laufen getrennt, so entsteht der Bogen. */
+.levelup-burst i, .levelup-rise i, .levelup-twinkles i { position: absolute; opacity: 0; }
+.levelup-burst i { left: 50%; top: var(--center); width: var(--size); height: var(--size); margin: calc(var(--size) / -2); border-radius: 50%; background: radial-gradient(circle at 34% 30%, #fff 0 16%, var(--accent) 44%, color-mix(in srgb, var(--accent) 55%, #0b3b78)); animation: levelup-burst 1200ms cubic-bezier(0.08, 0.75, 0.25, 1) calc(var(--boom) + var(--delay)) both, levelup-fall 1200ms cubic-bezier(0.5, 0, 0.9, 0.4) calc(var(--boom) + var(--delay)) both; }
+.levelup-burst i:nth-child(5n) { background: radial-gradient(circle at 34% 30%, #fff 0 16%, #ffe79a 44%, #e8a93c); }
+.levelup-burst i:nth-child(3n) { width: calc(var(--size) * 1.8); height: calc(var(--size) * 1.8); border-radius: 0; background: #fff; clip-path: polygon(50% 0, 57% 43%, 100% 50%, 57% 57%, 50% 100%, 43% 57%, 0 50%, 43% 43%); }
+.levelup-rise i { left: calc(50% + var(--x)); top: var(--feet, 299px); width: var(--size); height: var(--size); border-radius: 50%; background: radial-gradient(circle at 34% 30%, #ffffffe0 0 14%, transparent 42%), color-mix(in srgb, var(--accent) 38%, transparent); box-shadow: inset 0 0 0 1px #ffffff70; animation: levelup-rise var(--time) ease-in calc(var(--boom) + var(--delay)) infinite; }
+.levelup-twinkles i { left: calc(50% + var(--x)); top: calc(var(--head) - 44px + var(--y)); width: 14px; height: 14px; margin: -7px; background: #fff; clip-path: polygon(50% 0, 57% 43%, 100% 50%, 57% 57%, 50% 100%, 43% 57%, 0 50%, 43% 43%); animation: levelup-twinkle 2.6s ease-in-out calc(var(--boom) + 500ms + var(--delay)) infinite; }
+
+/* Die Zahl */
+.levelup-title { position: absolute; left: 50%; top: calc(var(--head) - 121px); translate: -50% 0; margin: 0; width: max-content; display: flex; flex-direction: column; align-items: center; font-weight: inherit; }
+.levelup-eyebrow { font-size: 10px; font-weight: 700; line-height: 13px; letter-spacing: 0.34em; margin-right: -0.34em; text-transform: uppercase; color: #fff; text-shadow: var(--glass-ink-shadow), 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent); animation: levelup-eyebrow 800ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--boom) + 60ms) both; }
+.levelup-digits { display: grid; place-items: center; height: 112px; font-family: 'Segoe UI Black', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; font-size: 148px; font-weight: 900; line-height: 112px; letter-spacing: -0.05em; filter: drop-shadow(0 6px 18px #0009) drop-shadow(0 0 26px color-mix(in srgb, var(--accent) 55%, transparent)); }
+.levelup-digits > span { grid-area: 1 / 1; padding: 0 0.08em; }
+/* Ein Lichtstreifen in den Farben der Tropfen zieht über die Zahl, unten taucht sie in das Leuchten des Jellys. */
+.levelup-new { background: linear-gradient(105deg, transparent 38%, #8dffbf 45%, #ff9bd8 50%, #9fd4ff 55%, transparent 62%) 130% 0 / 260% 100% no-repeat, linear-gradient(180deg, #fff 22%, color-mix(in srgb, var(--accent) 86%, #fff) 58%, color-mix(in srgb, var(--accent) 45%, transparent) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; animation: levelup-slam 620ms cubic-bezier(0.2, 0.9, 0.3, 1) var(--boom) both, levelup-foil 5s ease-in-out calc(var(--boom) + 900ms) infinite; }
+.levelup-old { opacity: 0; color: #ffffffb0; animation: levelup-old var(--boom) linear both; }
+.levelup-echo { opacity: 0; color: transparent; -webkit-text-stroke: 2px color-mix(in srgb, var(--accent) 70%, #fff); animation: levelup-echo 760ms ease-out var(--boom) both; }
+
+/* Tropfen neben dem Jelly */
+.levelup-side { position: absolute; top: calc(var(--head) + 42px); left: calc(50% + var(--side) * var(--dir)); translate: -50% 0; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 7px; color: #fff; text-align: center; animation: levelup-pop 560ms var(--spring) calc(var(--boom) + 640ms) both, levelup-float 4.8s ease-in-out calc(var(--boom) + 1200ms) infinite alternate; }
+.levelup-side.left { --dir: -1; }
+.levelup-side.right { --dir: 1; animation-delay: calc(var(--boom) + 760ms), calc(var(--boom) + 1600ms); }
+.levelup-side small { font-size: 10px; font-weight: 600; line-height: 13px; text-shadow: var(--glass-ink-shadow); }
+.levelup-drop { position: relative; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: var(--glass-fallback); }
+.levelup-drop b { font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums; text-shadow: var(--glass-ink-shadow); }
+.levelup-drop svg { width: 24px; height: 24px; opacity: 0.85; filter: drop-shadow(0 1px 2px #0008); }
+.levelup-ring { position: absolute; inset: 6px; border-radius: 50%; background: conic-gradient(#fff calc(var(--levelup-fill) * 1turn), #ffffff33 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px)); filter: drop-shadow(0 0 3px var(--accent)); animation: levelup-fill 1300ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--boom) + 900ms) both; }
+.levelup-lock { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #ffffffe8; color: #1a2630; }
+.levelup-lock svg { width: 10px; height: 10px; opacity: 1; filter: none; }
+
+/* Kapsel an der Stelle des Docks */
+.levelup-capsule { position: absolute; left: 50%; bottom: -50px; translate: -50% 0; display: flex; align-items: center; gap: 10px; width: min(340px, 100%); height: 58px; padding: 4px 10px 0; border-radius: 29px; background: var(--glass-fallback); color: #fff; pointer-events: auto; transform-origin: 50% 100%; animation: levelup-capsule 620ms var(--spring) calc(var(--boom) + 420ms) both; }
+.levelup-capsule > * { animation: levelup-fade 280ms ease-out calc(var(--boom) + 640ms) both; }
+.levelup-seal { position: relative; flex: none; margin-top: -4px; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #ffffff5c, color-mix(in srgb, var(--accent) 34%, transparent)); box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent); }
+.levelup-seal::before { content: ''; position: absolute; inset: -1px; border-radius: 50%; background: conic-gradient(var(--film)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); animation: levelup-spin 6s linear infinite; }
+.levelup-seal svg { width: 21px; height: 21px; filter: drop-shadow(0 1px 2px #0008); }
+.levelup-reward { flex: 1; min-width: 0; text-shadow: var(--glass-ink-shadow); }
+.levelup-reward strong, .levelup-reward small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.levelup-reward strong { font-size: 13px; font-weight: 650; letter-spacing: -0.1px; }
+.levelup-reward small { margin-top: 1px; font-size: 10px; font-weight: 500; }
+.levelup-later { flex: none; height: 36px; padding: 0 8px; border: 0; border-radius: 18px; background: none; font-size: 11px; font-weight: 600; text-shadow: var(--glass-ink-shadow); transition: background 140ms; }
+.levelup-later:hover { background: #ffffff24; }
+/* Zwei Klassen: Die Knopf-Regeln aus `styles.css` gelten sonst je nach Ladereihenfolge. */
+.levelup .levelup-go { position: relative; overflow: hidden; flex: none; width: auto; height: 36px; padding: 0 16px; border: 0; border-radius: 18px; font-size: 11.5px; font-weight: 700; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 62%, #fff), var(--accent)); box-shadow: inset 0 1px 0 #ffffffc0, 0 5px 18px color-mix(in srgb, var(--accent) 55%, transparent); transition: translate 180ms var(--spring), scale 120ms, box-shadow 180ms; }
+.levelup .levelup-go:hover:enabled { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 38%, #fff), color-mix(in srgb, var(--accent) 88%, #fff)); translate: 0 -1px; box-shadow: inset 0 1px 0 #fff, 0 8px 24px color-mix(in srgb, var(--accent) 75%, transparent); }
+.levelup .levelup-go:active:enabled { scale: 0.96; }
+.levelup-go::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, #ffffffc0 50%, transparent 65%); translate: -120% 0; animation: levelup-sheen 3.6s ease-in-out calc(var(--boom) + 1500ms) infinite; }
+
+@keyframes levelup-fade { from { opacity: 0; } }
+@keyframes levelup-spin { to { rotate: 360deg; } }
+@keyframes levelup-halo-in { from { opacity: 0; scale: 0.4; } }
+@keyframes levelup-breathe { to { scale: 1.07; } }
+@keyframes levelup-rays-in { from { opacity: 0; scale: 0.5; } }
+@keyframes levelup-flash { 0% { opacity: 0; scale: 0.5; } 18% { opacity: 0.95; } 100% { opacity: 0; scale: 1.25; } }
+@keyframes levelup-wave { 0% { opacity: 0; scale: 0.3; } 1% { opacity: 1; } 100% { opacity: 0; scale: 3.3; } }
+@keyframes levelup-burst {
+  0% { opacity: 0; transform: rotate(var(--angle)) translateY(0) rotate(calc(var(--angle) * -1)) scale(0.3); }
+  1%, 70% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--angle)) translateY(calc(var(--reach) * -1)) rotate(calc(var(--angle) * -1)) scale(1); }
+}
+@keyframes levelup-fall { to { translate: 0 44px; } }
+@keyframes levelup-rise { 0% { opacity: 0; translate: 0 0; } 18% { opacity: 0.9; } 80% { opacity: 0.6; } 100% { opacity: 0; translate: 10px -250px; } }
+/* Auf dem Höhepunkt aufrecht: Über Eck sähe der Funke aus wie ein zweiter Schließen-Knopf. */
+@keyframes levelup-twinkle { 0%, 72%, 100% { opacity: 0; scale: 0.2; rotate: -45deg; } 84% { opacity: 1; scale: 1; rotate: 0deg; } }
+@keyframes levelup-eyebrow { from { opacity: 0; letter-spacing: 0.9em; margin-right: -0.9em; } }
+/* Die alte Zahl hebt sich mit jedem Ton der Fanfare ein Stück, die Prozente sind die Einsätze ihrer Noten. */
+@keyframes levelup-old {
+  0% { opacity: 0; scale: 0.72; }
+  3% { opacity: 0.8; scale: 0.8; }
+  19% { scale: 0.76; }
+  22% { scale: 0.86; }
+  38% { scale: 0.82; }
+  41% { scale: 0.92; }
+  58% { scale: 0.88; }
+  61% { scale: 0.98; }
+  79% { scale: 0.94; }
+  82% { scale: 1.04; }
+  99% { opacity: 0.8; scale: 1; }
+  100% { opacity: 0; scale: 1; }
+}
+@keyframes levelup-slam {
+  0% { opacity: 0; scale: 2.3; }
+  45% { opacity: 1; scale: 0.92; }
+  72% { scale: 1.04; }
+  100% { scale: 1; }
+}
+@keyframes levelup-foil { 0% { background-position: 130% 0, 0 0; } 34%, 100% { background-position: -30% 0, 0 0; } }
+@keyframes levelup-echo { 0% { opacity: 0; scale: 1; } 1% { opacity: 0.9; } 100% { opacity: 0; scale: 1.5; } }
+@keyframes levelup-pop { from { scale: 0; } }
+@keyframes levelup-float { to { transform: translateY(-4px); } }
+@keyframes levelup-fill { from { --levelup-fill: 0; } }
+/* Ganz ohne Fläche: Eine Form nur ohne Höhe zeichnet das Glas noch als Schattenstrich. */
+@keyframes levelup-capsule { from { scale: 0; } }
+@keyframes levelup-sheen { 0% { translate: -120% 0; } 34%, 100% { translate: 120% 0; } }
+
+/* Pseudo-Elemente einzeln: `:is()` kann sie nicht treffen. */
+html[data-reduced-motion] :is(.levelup, .levelup *) { animation: none; transition: none; }
+html[data-reduced-motion] .levelup-rays::after, html[data-reduced-motion] .levelup-seal::before, html[data-reduced-motion] .levelup-go::after { animation: none; }

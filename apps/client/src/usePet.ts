@@ -154,10 +154,11 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
 
   const onEvent = useCallback(
     (event: ServerEvent) => {
-      reload();
+      const reloaded = reload();
       const text = eventMessage(event, catalog);
       if (text) setMessage(text);
-      if (event.type === "level.up") onLevelUp();
+      // Erst mit dem neuen Stand: Der Aufstieg zeigt das neue Level und läuft mit der Fanfare los.
+      if (event.type === "level.up") void reloaded.then(onLevelUp);
     },
     [reload, catalog, onLevelUp, setMessage],
   );
@@ -180,8 +181,8 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
 /**
  * Hält den Spielstand und alles, was die Oberfläche damit tun kann.
  *
- * @param onLevelUp - Wird nach einem Levelaufstieg aufgerufen, zum Beispiel um das Level-Panel zu
- *   öffnen. Sollte stabil sein (`useCallback`), sonst entstehen die Aktionen bei jedem Rendern
+ * @param onLevelUp - Wird nach einem Levelaufstieg aufgerufen, zum Beispiel um ihn auf der Bühne zu
+ *   zeigen. Sollte stabil sein (`useCallback`), sonst entstehen die Aktionen bei jedem Rendern
  *   neu.
  */
 export function usePet(onLevelUp: () => void) {

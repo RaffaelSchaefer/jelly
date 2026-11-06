@@ -13,7 +13,7 @@ import { advance, Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useState, type RefObject } from "react";
 import { MathUtils } from "three";
 
-import { CANVAS_OVERSCAN, type RenderProfile, type StudioFocus } from "../pet";
+import { CANVAS_OVERSCAN, type CameraFocus, type RenderProfile } from "../pet";
 import CameraRig from "./CameraRig";
 import Character, { type CharacterProps } from "./Character";
 import LiquidGlass from "./LiquidGlass";
@@ -82,7 +82,7 @@ export interface PetSceneProps extends Omit<CharacterProps, "quality"> {
   /** Bilder pro Sekunde, `null` heißt unbegrenzt. */
   frameLimit: number | null;
   /** Worauf die Kamera fährt. Ohne Wert steht sie in der Grundansicht. */
-  focus?: StudioFocus | null;
+  focus?: CameraFocus | null;
   /** Element für die Anker des Studios. Ohne Element wird nichts projiziert. */
   anchors?: RefObject<HTMLElement | null>;
 }

@@ -13,14 +13,16 @@ import type { PetGame } from "./usePet";
 
 import { desktop } from "./backend";
 import EmotePicker from "./EmotePicker";
+import LevelUp, { useCelebration } from "./LevelUp";
 import MapDrop from "./MapDrop";
 import {
   REGIONS,
   signLabel,
+  wearingLevelReward,
   type Me,
   type RenderProfile,
   type StudioRegionId,
-  type StudioFocus,
+  type CameraFocus,
 } from "./pet";
 import SignPicker from "./SignPicker";
 import Studio from "./Studio";
@@ -51,12 +53,22 @@ function duetMode(emote: ActiveEmote | null) {
 /** Welche Bedienung direkt am Jelly sichtbar ist. */
 function stageModes(panel: PanelId | null, joining: boolean) {
   const dropsVisible = !joining && (panel === null || panel === "emotes" || panel === "signs");
+  const studio = !joining && panel === "look";
+  const levelUp = !joining && panel === "levelup";
   return {
-    studio: !joining && panel === "look",
+    studio,
+    levelUp,
     dropsVisible,
+    // Wo Glas liegt, braucht es die Lage des Jellys und die Flächen aus dem DOM.
+    glass: studio || levelUp || dropsVisible,
     // Die Säule der Schilder bräuchte den Platz. In den anderen Fällen läuft das Glas gar nicht.
     bubble: dropsVisible && panel !== "signs",
   };
+}
+
+/** Worauf die Kamera fährt. */
+function cameraFocus(levelUp: boolean, region: StudioRegionId | null) {
+  return levelUp ? "levelup" : REGIONS.find((item) => item.id === region)?.focus;
 }
 
 /** Eigenschaften der Bühne samt ihrer Overlays. */
@@ -102,6 +114,8 @@ function PetVisual({
   rendering,
   frameLimit,
   sign,
+  emote,
+  equipped,
   voiced,
   focus,
   anchors,
@@ -112,8 +126,10 @@ function PetVisual({
   rendering: RenderProfile;
   frameLimit: number | null;
   sign: string | null;
+  emote: ActiveEmote | null;
+  equipped: Me["equipped"];
   voiced: RefObject<ActiveVoice | null>;
-  focus?: StudioFocus;
+  focus?: CameraFocus;
   anchors?: RefObject<HTMLElement | null>;
 }) {
   const started = useSceneStart(game.ready || game.error !== "");
@@ -128,10 +144,9 @@ function PetVisual({
         {started ? (
           <PetScene
             color={me.color}
-            equipped={me.equipped}
             pulse={game.pulse}
-            emote={game.activeEmote}
-            {...{ reducedMotion, rendering, frameLimit, sign, voiced, focus, anchors }}
+            {...{ emote, equipped, reducedMotion, rendering, frameLimit, sign, voiced }}
+            {...{ focus, anchors }}
           />
         ) : (
           WAKING_UP
@@ -225,6 +240,23 @@ function StudioOverlay({
   );
 }
 
+/** Der Aufstieg mit den Aktionen des Spielstands. Ein weiteres Level spielt ihn noch einmal ab. */
+function LevelUpOverlay({ game, me, onClose }: { game: PetGame; me: Me; onClose: () => void }) {
+  return (
+    <LevelUp
+      key={me.level}
+      {...{ me, onClose }}
+      catalog={game.catalog}
+      rules={game.game.lan.rules}
+      disabled={game.busy || !game.ready}
+      onEquip={(item) => {
+        void game.equip(item.slot, item.id);
+        onClose();
+      }}
+    />
+  );
+}
+
 /**
  * Was das Jelly zur Probe auf der Tafel zeigt. Ohne offene Auswahl gibt es keine Probe: Auch ein
  * Level-up kann sie schließen, und das Verlassen der Säule käme dann nie an.
@@ -242,8 +274,9 @@ export default function PetStage(props: PetStageProps) {
   const stage = useRef<HTMLDivElement>(null);
   const [region, setRegion] = useState<StudioRegionId | null>(null);
   const [preview, setPreview] = useSignPreview(panel === "signs");
-  const { studio, dropsVisible, bubble } = stageModes(panel, joining);
+  const { studio, levelUp, dropsVisible, glass, bubble } = stageModes(panel, joining);
   const { saidAt, voiced } = useJellyVoice(game);
+  const { cheer, revealed } = useCelebration(levelUp);
   // Beim nächsten Öffnen soll keine Region mehr offen sein und die Kamera wieder zurückfahren.
   if (!studio && region) setRegion(null);
   return (
@@ -251,10 +284,13 @@ export default function PetStage(props: PetStageProps) {
       <PetVisual
         {...{ game, me, reducedMotion, rendering, frameLimit, voiced }}
         sign={studio ? null : signLabel(preview ?? me.sign, game.catalog)}
-        focus={REGIONS.find((item) => item.id === region)?.focus}
-        anchors={studio || dropsVisible ? stage : undefined}
+        emote={game.activeEmote ?? cheer}
+        equipped={revealed ? wearingLevelReward(me, game.catalog) : me.equipped}
+        focus={cameraFocus(levelUp, region)}
+        anchors={glass ? stage : undefined}
       />
       {studio ? <StudioOverlay {...{ game, me, region, onClose }} onRegion={setRegion} /> : null}
+      {levelUp ? <LevelUpOverlay {...{ game, me, onClose }} /> : null}
       {dropsVisible ? (
         <StageDrops {...{ game, me, panel, onToggle, onClose }} onPreview={setPreview} />
       ) : null}

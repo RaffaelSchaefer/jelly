@@ -138,3 +138,25 @@ html[data-optimized-rendering] .redeem-ticket svg,
 html[data-optimized-rendering] .redeem-seal:hover .redeem-ticket svg {
   filter: none;
 }
+
+/* Der Aufstieg: Die Zahl bleibt, Licht und Spritzer fallen weg, Kapsel und Tropfen tragen ihre Fläche selbst. */
+html[data-optimized-rendering] :is(.levelup, .levelup *) {
+  animation: none;
+  filter: none;
+  transition: none;
+}
+html[data-optimized-rendering] .levelup-seal::before,
+html[data-optimized-rendering] .levelup-go::after {
+  display: none;
+}
+html[data-optimized-rendering] :is(.levelup-rays, .levelup-rise, .levelup-burst, .levelup-twinkles, .levelup-flash, .levelup-wave, .levelup-old, .levelup-echo) {
+  display: none;
+}
+html[data-optimized-rendering] :is(.levelup-capsule, .levelup-drop) {
+  background: var(--surface-solid);
+  border: 1px solid var(--solid-line);
+}
+html[data-optimized-rendering] .levelup .levelup-go {
+  background: var(--accent);
+  box-shadow: none;
+}

@@ -51,6 +51,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
   `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
   `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
+  `src/LevelUp.tsx`, `src/levelup.css`: der Levelaufstieg auf der Bühne, im Takt der Fanfare (`LEVEL_UP`). In der
+  Browser-Vorschau zeigt ihn `/#levelup`.
 - Dazustellen, Ausflug und Hervorheben gehen auf der Karte (`src/map/main.ts`, `src/map/actions.ts`),
   `src/useFollow.ts` lässt das Pet auf Dazustellen und Ausflug reagieren. Partner-Emotes als Aufforderung
   (`POST` und `PATCH /v1/partner-emotes`): Auffordern geht in `src/map/partner.ts`, Antworten und Duett im Pet
