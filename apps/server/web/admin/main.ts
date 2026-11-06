@@ -7,7 +7,7 @@
 import { AdminApiError, logOut } from "./api.ts";
 import { createElement } from "./dom.ts";
 import { createLoginView, type LoginReason } from "./login.ts";
-import { createWorkArea } from "./workArea.ts";
+import { createShell } from "./shell.ts";
 
 const view = document.querySelector<HTMLElement>("#view");
 const logoutButton = document.querySelector<HTMLButtonElement>("#logout");
@@ -28,7 +28,7 @@ function showLogin(reason: LoginReason): void {
 /** Asks the server whether a session exists, because scripts cannot read its cookie. */
 async function openWorkArea(): Promise<void> {
   try {
-    const workArea = await createWorkArea(() => showLogin("session-ended"));
+    const workArea = await createShell(() => showLogin("session-ended"));
     if (logoutButton !== null) {
       logoutButton.hidden = false;
     }

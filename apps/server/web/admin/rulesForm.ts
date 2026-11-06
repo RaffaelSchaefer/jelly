@@ -6,6 +6,7 @@
  */
 
 import { patchRules, type GameRules, type LANSummary } from "./api.ts";
+import type { FailureHandler } from "./failure.ts";
 import { createElement, createField, createMessage, type Field, type Message } from "./dom.ts";
 import {
   allowsDecimals,
@@ -18,9 +19,6 @@ import {
 
 const TEXT_FILL_ALL = "Bitte fülle alle Regeln aus.";
 const CLASS_CHANGED = "is-changed";
-
-/** Reports a failed request to the work area. */
-export type FailureHandler = (error: unknown, showMessage: (text: string) => void) => void;
 
 /** One rule on the page. */
 interface RuleField {

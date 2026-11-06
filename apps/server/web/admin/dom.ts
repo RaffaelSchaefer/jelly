@@ -112,3 +112,45 @@ export function createConfirmButton(text: string, confirmText: string, onConfirm
   });
   return button;
 }
+
+/** Creates a table that scrolls sideways on its own when it is wider than the screen. */
+export function createTable(headers: string[], rows: Child[][]): HTMLElement {
+  const head = createElement("tr", "", ...headers.map((header) => createElement("th", "", header)));
+  const body = rows.map((cells) =>
+    createElement("tr", "", ...cells.map((cell) => createElement("td", "", cell))),
+  );
+  return createElement(
+    "div",
+    "table-wrap",
+    createElement(
+      "table",
+      "",
+      createElement("thead", "", head),
+      createElement("tbody", "", ...body),
+    ),
+  );
+}
+
+/** Creates a dropdown. The first option is selected unless `selected` names another. */
+export function createSelect(
+  id: string,
+  options: [value: string, text: string][],
+  selected?: string,
+): HTMLSelectElement {
+  const select = createElement("select", "");
+  select.id = id;
+  for (const [value, text] of options) {
+    const option = createElement("option", "", text);
+    option.value = value;
+    option.selected = value === selected;
+    select.append(option);
+  }
+  return select;
+}
+
+/** Creates a label above a control that is not a text input. */
+export function createLabelled(id: string, label: string, control: HTMLElement): HTMLElement {
+  const caption = createElement("label", "", label);
+  caption.htmlFor = id;
+  return createElement("div", "field", caption, control);
+}

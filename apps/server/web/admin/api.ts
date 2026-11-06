@@ -5,6 +5,7 @@
  */
 
 const API_PREFIX = "/admin/api";
+const PUBLIC_PREFIX = "/v1";
 const REQUEST_TIMEOUT_MS = 10_000;
 const CODE_FORBIDDEN = "forbidden";
 const CODE_OFFLINE = "offline";
@@ -26,13 +27,19 @@ export class AdminApiError extends Error {
   }
 }
 
-/** Sends a request and returns the parsed answer. */
-export async function sendRequest<Answer>(
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<Answer> {
-  const response = await fetchAnswer(method, path, body);
+/** Sends a request to the admin API and returns the parsed answer. */
+export function sendRequest<Answer>(method: string, path: string, body?: unknown): Promise<Answer> {
+  return sendTo<Answer>(method, API_PREFIX + path, body);
+}
+
+/** Reads from the public API, for example the catalog, which needs no session. */
+export function readPublic<Answer>(path: string): Promise<Answer> {
+  return sendTo<Answer>("GET", PUBLIC_PREFIX + path, undefined);
+}
+
+/** Sends a request and returns the parsed answer, or throws the problem the server named. */
+async function sendTo<Answer>(method: string, url: string, body: unknown): Promise<Answer> {
+  const response = await fetchAnswer(method, url, body);
   const answer: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     throw readError(answer);
@@ -41,9 +48,9 @@ export async function sendRequest<Answer>(
 }
 
 /** Sends the request and turns a broken connection into a text the page can show. */
-async function fetchAnswer(method: string, path: string, body: unknown): Promise<Response> {
+async function fetchAnswer(method: string, url: string, body: unknown): Promise<Response> {
   try {
-    return await fetch(API_PREFIX + path, {
+    return await fetch(url, {
       method,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       ...(body === undefined

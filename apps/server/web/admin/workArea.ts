@@ -4,8 +4,9 @@
  * @module
  */
 
-import { AdminApiError, listLANs, type LANSummary } from "./api.ts";
+import { listLANs, type LANSummary } from "./api.ts";
 import { createButton, createElement } from "./dom.ts";
+import { createFailureHandler } from "./failure.ts";
 import { formatDateTime } from "./format.ts";
 import { createLANDetail, createPhaseChip } from "./lanDetail.ts";
 import { createLANForm } from "./lanForm.ts";
@@ -19,7 +20,8 @@ type Selection = "new" | number;
 
 /** Reads the selection from the address, so that it survives a reload. */
 function readSelection(lans: LANSummary[]): Selection {
-  const lanID = Number(location.hash.slice(HASH_LAN_PREFIX.length));
+  // A tab of the LAN follows its ID: `#lan-3/raum`.
+  const lanID = Number(location.hash.slice(HASH_LAN_PREFIX.length).split("/")[0]);
   if (location.hash.startsWith(HASH_LAN_PREFIX) && lans.some((lan) => lan.id === lanID)) {
     return lanID;
   }
@@ -72,13 +74,7 @@ export async function createWorkArea(onSessionEnded: () => void): Promise<HTMLEl
   const root = createElement("div", "work-area");
   let lans = await listLANs();
 
-  const onFailure = (error: unknown, showMessage: (text: string) => void) => {
-    if (error instanceof AdminApiError && error.isForbidden) {
-      onSessionEnded();
-      return;
-    }
-    showMessage(error instanceof AdminApiError ? error.message : String(error));
-  };
+  const onFailure = createFailureHandler(onSessionEnded);
   const render = () => {
     const selection = readSelection(lans);
     const selected = lans.find((lan) => lan.id === selection);
