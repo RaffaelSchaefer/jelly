@@ -81,6 +81,60 @@ func TestAdminCannotControlRealPlayers(t *testing.T) {
 	}
 }
 
+func TestAdminGivesRealPlayersXP(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.registerPlayer("Echt")
+	for _, body := range []string{`{"xp":0}`, `{"xp":10001}`} {
+		response := testFixture.callAdmin("POST", "/admin/api/players/1/xp", body)
+		if response.status != http.StatusBadRequest {
+			t.Errorf("%s: %d %s", body, response.status, response.body)
+		}
+	}
+	response := testFixture.callAdmin("POST", "/admin/api/players/1/xp", `{"xp":300}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("gift: %d %s", response.status, response.body)
+	}
+	players := testFixture.callAdmin("GET", "/admin/api/players?search=Echt", "")
+	if !strings.Contains(string(players.body), `"total_xp":300`) {
+		t.Errorf("players after the gift: %s", players.body)
+	}
+	actions := testFixture.callAdmin("GET", "/admin/api/actions", "")
+	if !strings.Contains(string(actions.body), `"player.xp"`) {
+		t.Errorf("admin log: %s", actions.body)
+	}
+	// Like every player action, an account outside the running LAN has not joined it.
+	missing := testFixture.callAdmin("POST", "/admin/api/players/99/xp", `{"xp":10}`)
+	if missing.status != http.StatusConflict {
+		t.Errorf("unknown player: %d %s", missing.status, missing.body)
+	}
+}
+
+func TestAdminGrantsAchievements(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Echt")
+	catalog := testFixture.callAdmin("GET", "/admin/api/achievements", "")
+	if !strings.Contains(string(catalog.body), `"key":"hydrated"`) {
+		t.Fatalf("catalog: %d %s", catalog.status, catalog.body)
+	}
+	unknown := testFixture.callAdmin("POST", "/admin/api/players/1/achievements", `{"key":"nope"}`)
+	if unknown.status != http.StatusBadRequest {
+		t.Errorf("unknown key: %d %s", unknown.status, unknown.body)
+	}
+	// Granting twice keeps the one achievement.
+	for range 2 {
+		response := testFixture.callAdmin(
+			"POST", "/admin/api/players/1/achievements", `{"key":"hydrated"}`,
+		)
+		if response.status != http.StatusOK {
+			t.Fatalf("grant: %d %s", response.status, response.body)
+		}
+	}
+	player := testFixture.callAPI("GET", "/v1/players/me", token, "")
+	if strings.Count(string(player.body), `"key":"hydrated"`) != 1 {
+		t.Errorf("achievements after the grant: %s", player.body)
+	}
+}
+
 func TestAutomaticBotsActAndStopWhenDeleted(t *testing.T) {
 	testFixture := newFixture(t)
 	if created := testFixture.callAdmin(

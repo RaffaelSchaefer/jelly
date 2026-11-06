@@ -117,19 +117,6 @@ func (store *Store) RequireBot(ctx context.Context, playerID int64) error {
 	return nil
 }
 
-// GiveXP grants XP to a bot in its current LAN, as if it had earned it.
-func (store *Store) GiveXP(ctx context.Context, playerID int64, amount int, now int64) error {
-	if amount < 1 || amount > rules.MaxGivenXP {
-		return ErrInvalidInput
-	}
-	_, err := store.runPlayerAction(ctx, playerID, now, false, func(action actionContext) error {
-		return grantXP(ctx, action, xpEntry{
-			action: xpSourceAdmin, amount: amount, eventCodeID: sql.NullInt64{},
-		})
-	})
-	return err
-}
-
 // DeleteBots deletes every bot with everything it did, and returns how many there were.
 func (store *Store) DeleteBots(ctx context.Context, now int64) (int, error) {
 	botIDs, err := store.listBotIDs(ctx)

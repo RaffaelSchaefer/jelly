@@ -42,6 +42,9 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"DELETE /admin/api/lans/{id}/gathering":          server.handleEndGathering,
 		"GET /admin/api/lans/{id}/gathering":             server.handleLoadGathering,
 		"POST /admin/api/event-codes/{id}/end":           server.handleEndEventCode,
+		"POST /admin/api/players/{id}/xp":                server.handleGiveXP,
+		"POST /admin/api/players/{id}/achievements":      server.handleGrantAchievement,
+		"GET /admin/api/achievements":                    server.handleListAchievements,
 	}
 	maps.Copy(routes, server.listBotRoutes())
 	for pattern, handler := range routes {

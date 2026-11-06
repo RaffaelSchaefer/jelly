@@ -17,6 +17,8 @@ function listActionNames(): Record<string, [text: string, target: string]> {
     "player.reset_name": ["Name zurückgesetzt", "Konto"],
     "player.delete": ["Konto gelöscht", "Konto"],
     "player.recovery_code": ["Wiederherstellungs-Code erzeugt", "Konto"],
+    "player.xp": ["XP vergeben", "Konto"],
+    "player.achievement": ["Achievement freigeschaltet", "Konto"],
     "award.give": ["Preis vergeben", "Konto"],
     "lan.rules": ["Regeln geändert", "LAN"],
     "lan.join_code": ["LAN-Code ersetzt", "LAN"],

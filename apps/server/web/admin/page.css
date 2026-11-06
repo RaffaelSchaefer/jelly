@@ -398,6 +398,17 @@ td > button {
   font-size: 0.875rem;
 }
 
+.xp-form {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.xp-amount {
+  width: 5.5rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.875rem;
+}
+
 .inline-form {
   display: flex;
   flex-wrap: wrap;

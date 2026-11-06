@@ -52,6 +52,27 @@ export function resetPlayerName(playerID: number): Promise<unknown> {
   return sendRequest("POST", `/players/${playerID}/reset-name`);
 }
 
+/** Gives an account XP in its current LAN, as if it had earned it. XP is never taken away. */
+export function giveXP(playerID: number, xp: number): Promise<unknown> {
+  return sendRequest("POST", `/players/${playerID}/xp`, { xp });
+}
+
+/** An achievement of the catalog. */
+export interface Achievement {
+  key: string;
+  title: string;
+}
+
+/** Lists every achievement, the secret ones too. */
+export function listAchievements(): Promise<Achievement[]> {
+  return sendRequest("GET", "/achievements");
+}
+
+/** Gives an account an achievement in its current LAN. One it already has stays as it is. */
+export function grantAchievement(playerID: number, key: string): Promise<unknown> {
+  return sendRequest("POST", `/players/${playerID}/achievements`, { key });
+}
+
 /** Deletes an account for good. */
 export function deletePlayer(playerID: number): Promise<unknown> {
   return sendRequest("DELETE", `/players/${playerID}`);

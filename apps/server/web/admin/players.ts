@@ -7,6 +7,7 @@
 import {
   createRecoveryCode,
   deletePlayer,
+  giveXP,
   resetPlayerName,
   searchPlayers,
   setPlayerHidden,
@@ -41,6 +42,30 @@ function runAction(context: RowContext, action: Promise<unknown>, done: string):
     .catch((error: unknown) => context.onFailure(error, context.message.showBad));
 }
 
+/** XP a gift starts with, and the most the server allows at once. */
+const DEFAULT_GIFT_XP = 100;
+const MAX_GIFT_XP = 10000;
+
+/** Creates the small form that gives an account XP in its current LAN. */
+function createXPForm(player: PlayerSummary, context: RowContext): HTMLElement {
+  const amount = createElement("input", "xp-amount");
+  Object.assign(amount, { type: "number", min: "1", max: String(MAX_GIFT_XP) });
+  amount.value = String(DEFAULT_GIFT_XP);
+  amount.setAttribute("aria-label", `XP für ${player.name}`);
+  const form = createElement(
+    "form",
+    "xp-form",
+    amount,
+    createElement("button", "quiet", "XP geben"),
+  );
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const xp = Number(amount.value);
+    runAction(context, giveXP(player.id, xp), `${player.name} bekommt ${xp} XP.`);
+  });
+  return form;
+}
+
 /** Creates the buttons of one account. */
 function createRowActions(player: PlayerSummary, context: RowContext): HTMLElement {
   const recover = createButton("Wiederherstellungs-Code", "quiet", () => {
@@ -70,7 +95,15 @@ function createRowActions(player: PlayerSummary, context: RowContext): HTMLEleme
   const remove = createConfirmButton("Löschen", "Konto wirklich löschen?", () =>
     runAction(context, deletePlayer(player.id), `${player.name} ist gelöscht.`),
   );
-  return createElement("div", "row-actions", recover, visibility, rename, remove);
+  return createElement(
+    "div",
+    "row-actions",
+    createXPForm(player, context),
+    recover,
+    visibility,
+    rename,
+    remove,
+  );
 }
 
 /** Creates one row of the table. */

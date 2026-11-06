@@ -8,6 +8,7 @@ import { createActionLogSection } from "./actionLog.ts";
 import { createButton, createElement } from "./dom.ts";
 import { createFailureHandler } from "./failure.ts";
 import { createPlayersSection } from "./players.ts";
+import { createUnlockForm } from "./unlocks.ts";
 import { createWorkArea } from "./workArea.ts";
 
 const HASH_PLAYERS = "#konten";
@@ -55,7 +56,7 @@ export async function createShell(onSessionEnded: () => void): Promise<HTMLEleme
       }),
     );
     if (section === "players") {
-      content.replaceChildren(createPlayersSection(onFailure));
+      content.replaceChildren(createPlayersSection(onFailure), createUnlockForm(onFailure));
     } else if (section === "log") {
       content.replaceChildren(createActionLogSection(onFailure));
     } else {
