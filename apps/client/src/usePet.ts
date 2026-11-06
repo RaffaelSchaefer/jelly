@@ -3,7 +3,8 @@
  * Rückmeldungen des Pets, Tastatur-Stupser und der Größen-Regler.
  *
  * In der Browser-Vorschau gibt es kein Backend. Aussehen, Cosmetics und Einstellungen ändern dann
- * nur den lokalen Zustand, alles mit XP oder Konto ist gesperrt.
+ * nur den lokalen Zustand, der Einstieg läuft ohne Server über `previewAccess`, alles mit XP ist
+ * gesperrt.
  *
  * @module
  */
@@ -16,12 +17,15 @@ import {
   achievementTitle,
   equipColor,
   levelCosmetic,
+  needsCode,
   pokeWaitMinutes,
+  previewAccess,
   REPORTS,
   type Action,
   type Catalog,
   type CosmeticSlot,
   type Equipped,
+  type Game,
   type Me,
   type PetColor,
   type ServerEvent,
@@ -41,6 +45,8 @@ import { useSigns } from "./useSigns";
 
 /** Mindestabstand zwischen zwei Stupsern in Millisekunden, damit Tastenhämmern nichts verstopft. */
 const POKE_INTERVAL_MS = 1000;
+/** Was das Pet sagt, wenn der Code keinen Sitz gebracht hat. Die Orga braucht dafür die Nummer. */
+const SEAT_HINT = "Einen Platz trägt mir die Orga noch ein, meine Nummer steht in der Übersicht.";
 
 /** Was das Pet nach einem Stupser sagt, je nachdem, ob es XP gab. */
 function pokeMessage(xpGained: number, after: Me | null) {
@@ -83,6 +89,59 @@ function eventMessage(event: ServerEvent, catalog: Catalog) {
   return null;
 }
 
+/** Der Weg in die LAN: Code einlösen oder ein Konto zurückholen. */
+function useAccess(
+  setGame: (game: Game) => void,
+  run: ReturnType<typeof useBackendCall>["run"],
+  setMessage: (text: string) => void,
+) {
+  // Im selben Takt wie der neue Stand: Sonst stünde für ein Bild schon das Dock da. Gesetzt nur hier
+  // beim Einlösen: Auch das Ende einer LAN nimmt die Frage nach dem Code weg, ohne dass jemand schlüpft.
+  const [hatching, setHatching] = useState(false);
+  const endHatch = useCallback(() => setHatching(false), []);
+
+  /**
+   * Löst einen LAN- oder Sitzplatz-Code ein. Ohne Konto entsteht mit Name und Farbe ein neues,
+   * sonst nimmt das vorhandene teil. `true`, wenn der Code gegolten hat.
+   */
+  const redeemAccess = useCallback(
+    async (code: string, name?: string, color?: PetColor) => {
+      const result = await run(() =>
+        desktop ? backend.redeemAccess(code, name, color) : previewAccess(code, name, color),
+      );
+      if (!result) return false;
+      setGame(result.game);
+      setHatching(!needsCode(result.game));
+      const greeting = name ? `Hallo, ich bin ${result.game.me?.name ?? name}!` : "Ich bin dabei!";
+      setMessage(
+        result.seatAssigned ? `${greeting} Mein Platz steht.` : `${greeting} ${SEAT_HINT}`,
+      );
+      return true;
+    },
+    [run, setGame, setMessage],
+  );
+
+  /**
+   * Holt das Konto mit einem Wiederherstellungs-Code zurück. Das alte Secret gilt danach nicht
+   * mehr. `true`, wenn der Code gegolten hat.
+   */
+  const recoverAccess = useCallback(
+    async (code: string) => {
+      const next = await run(async () =>
+        desktop ? backend.recoverAccess(code) : (await previewAccess(code)).game,
+      );
+      if (!next) return false;
+      setGame(next);
+      setHatching(!needsCode(next));
+      setMessage(`Da bin ich wieder, ${next.me?.name ?? "du"}!`);
+      return true;
+    },
+    [run, setGame, setMessage],
+  );
+
+  return { hatching, endHatch, redeemAccess, recoverAccess };
+}
+
 /** Laden, Code einlösen und die Ereignisse vom Server. */
 function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => void) {
   const { setGame, setCatalog, catalog, reload } = state;
@@ -107,25 +166,15 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
   }, [run, setGame, setCatalog]);
   useEffect(() => void load(), [load]);
 
-  /** Löst einen Code ein. Mit Name entsteht ein neues Konto, sonst kommt das vorhandene zurück. */
-  const redeemAccess = useCallback(
-    async (code: string, name?: string, color?: PetColor) => {
-      const next = await run(() => backend.redeemAccess(code, name, color));
-      if (!next) return;
-      setGame(next);
-      setMessage(
-        name ? `Hallo, ich bin ${next.me?.name ?? name}!` : "Schön, wieder dabei zu sein!",
-      );
-    },
-    [run, setGame, setMessage],
-  );
+  const access = useAccess(setGame, run, setMessage);
 
   const onEvent = useCallback(
     (event: ServerEvent) => {
-      reload();
+      const reloaded = reload();
       const text = eventMessage(event, catalog);
       if (text) setMessage(text);
-      if (event.type === "level.up") onLevelUp();
+      // Erst mit dem neuen Stand: Der Aufstieg zeigt das neue Level und läuft mit der Fanfare los.
+      if (event.type === "level.up") void reloaded.then(onLevelUp);
     },
     [reload, catalog, onLevelUp, setMessage],
   );
@@ -141,15 +190,15 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
     messageId: said.id,
     setMessage,
     load,
-    redeemAccess,
+    ...access,
   };
 }
 
 /**
  * Hält den Spielstand und alles, was die Oberfläche damit tun kann.
  *
- * @param onLevelUp - Wird nach einem Levelaufstieg aufgerufen, zum Beispiel um das Level-Panel zu
- *   öffnen. Sollte stabil sein (`useCallback`), sonst entstehen die Aktionen bei jedem Rendern
+ * @param onLevelUp - Wird nach einem Levelaufstieg aufgerufen, zum Beispiel um ihn auf der Bühne zu
+ *   zeigen. Sollte stabil sein (`useCallback`), sonst entstehen die Aktionen bei jedem Rendern
  *   neu.
  */
 export function usePet(onLevelUp: () => void) {
@@ -211,6 +260,7 @@ export function usePet(onLevelUp: () => void) {
     catalog,
     offset: state.offset,
     pulse,
+    hopAndSay,
     interact,
     redeem,
     ...look,

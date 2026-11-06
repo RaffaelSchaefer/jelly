@@ -117,6 +117,29 @@ impl Session {
         self.me = Some((me, Instant::now()));
     }
 
+    /// Übernimmt ein Secret samt Stand, speichert es und startet den Stream neu.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Save`], wenn `jelly.json` nicht zu schreiben ist, oder ein Netzwerk- oder
+    /// Serverfehler beim Lesen der laufenden LAN.
+    pub(super) async fn adopt_secret(
+        &mut self,
+        app: &AppHandle,
+        secret: String,
+        me: Me,
+    ) -> Result<()> {
+        // Erst im Speicher übernehmen: Scheitert das Speichern, läuft wenigstens diese Sitzung weiter.
+        self.api.set_secret(secret.clone());
+        self.secret_rejected = false;
+        self.set_me(me);
+        self.stream.stop();
+        self.store.set_secret(secret)?;
+        self.lan = self.api.current_lan().await?;
+        self.follow_events(app);
+        Ok(())
+    }
+
     /// Der aktuelle Stand, oder [`Error::NotRegistered`] ohne Konto.
     ///
     /// # Fehler

@@ -87,6 +87,14 @@ func ListCosmetics() []Cosmetic {
 			Level:  levelHeadset,
 		},
 		{
+			Key:    "headset-neutral",
+			Name:   "Headset schlicht",
+			Scope:  ScopePermanent,
+			Slot:   SlotHead,
+			Unlock: UnlockLevel,
+			Level:  levelHeadset,
+		},
+		{
 			Key: "beanie", Name: "Mütze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
 			Unlock: UnlockLevel, Level: levelBeanie,
 		},

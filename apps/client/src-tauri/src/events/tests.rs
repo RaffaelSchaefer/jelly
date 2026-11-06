@@ -30,7 +30,7 @@ fn only_own_progress_passes() {
         &event("follow.changed", Some(8), walked_away),
         7
     ));
-    let trip = json!({ "x": 10.0, "y": 20.0, "until": 1000 });
+    let trip = json!({ "x": 10.0, "y": 20.0, "ends_at": 1000 });
     assert!(is_own_event(
         &event("trip.changed", Some(7), trip.clone()),
         7
@@ -65,7 +65,7 @@ fn an_invite_reaches_both_sides_and_nobody_else() {
         event(
             PARTNER_INVITE,
             Some(from),
-            json!({ "id": 1, "key": "hop", "from_id": from, "partner_ids": [partner],
+            json!({ "id": 1, "key": "hop", "from_id": from, "partner_id": partner,
                 "state": "pending", "expires_at": 0 }),
         )
     };
@@ -111,7 +111,7 @@ fn the_map_closes_for_a_new_invite_and_for_the_duet() {
         event(
             PARTNER_INVITE,
             Some(7),
-            json!({ "id": 1, "key": "hop", "from_id": 7, "partner_ids": [8], "state": state }),
+            json!({ "id": 1, "key": "hop", "from_id": 7, "partner_id": 8, "state": state }),
         )
     };
     assert!(closes_map(&invite("pending"), 8));
@@ -130,4 +130,10 @@ fn the_map_closes_for_a_new_invite_and_for_the_duet() {
         "wer annimmt, hat keine Karte mehr offen"
     );
     assert!(!closes_map(&event("xp.gained", Some(7), json!({})), 7));
+}
+
+#[test]
+fn changed_rules_reach_everyone() {
+    let rules = event("rules.changed", None, json!({}));
+    assert!(is_own_event(&rules, 7));
 }

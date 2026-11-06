@@ -5,6 +5,7 @@ import type { StageMove, StagePlayer } from "./types.ts";
 
 import {
   findLevels,
+  findWinner,
   findPositions,
   listHighlighted,
   pruneMoves,
@@ -20,11 +21,9 @@ function makePlayer(id: number): StagePlayer {
     equipped: {},
     level: 1,
     sign: null,
-    follow_player_id: null,
-    follow_until: null,
+    follow: null,
     area_id: null,
     is_visitor: false,
-    trip: null,
     home_x: 10,
     home_y: 20,
   };
@@ -33,7 +32,7 @@ function makePlayer(id: number): StagePlayer {
 const move: StageMove = {
   player_id: 1,
   kind: "stack",
-  level: 2,
+  stack_level: 2,
   start_at: 1000,
   points: [
     { x: 30, y: 30, t: 0 },
@@ -89,4 +88,12 @@ test("without the own jelly on the stage nobody counts as near", () => {
   const positions = new Map([[2, { x: 0, z: 0 }]]);
   assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 5 })], []);
   assert.deepEqual([...listHighlighted(positions, null, { kind: "others" })], [2]);
+});
+
+test("the winner grows while the ceremony runs", () => {
+  const ceremony = { kind: "ceremony", winner_id: 4, ends_at: 5000 };
+  assert.equal(findWinner(ceremony, 4999), 4);
+  assert.equal(findWinner(ceremony, 5000), null);
+  assert.equal(findWinner({ ...ceremony, kind: "food" }, 100), null);
+  assert.equal(findWinner(null, 100), null);
 });

@@ -98,17 +98,17 @@ func TestListUnlockedCosmetics(t *testing.T) {
 		{
 			"permanent cosmetics stay after a LAN",
 			rules.UnlockFacts{CurrentLevel: 1, BestLevel: 3},
-			[]string{"headset", "beanie"},
+			[]string{"headset", "headset-neutral", "beanie"},
 		},
 		{
 			"crown needs the level in this LAN",
 			rules.UnlockFacts{CurrentLevel: 1, BestLevel: 10},
-			[]string{"headset", "beanie", "pixel-glasses", "hood"},
+			[]string{"headset", "headset-neutral", "beanie", "pixel-glasses", "hood"},
 		},
 		{
 			"crown counts at level 10 now",
 			rules.UnlockFacts{CurrentLevel: 10, BestLevel: 10},
-			[]string{"headset", "beanie", "pixel-glasses", "hood", "crown"},
+			[]string{"headset", "headset-neutral", "beanie", "pixel-glasses", "hood", "crown"},
 		},
 		{
 			"an event from an earlier LAN keeps the party hat",
@@ -120,7 +120,7 @@ func TestListUnlockedCosmetics(t *testing.T) {
 			rules.UnlockFacts{
 				CurrentLevel: 1, BestLevel: 2, AwardCosmetics: []string{"golden-cup", "headset"},
 			},
-			[]string{"headset", "golden-cup"},
+			[]string{"headset", "headset-neutral", "golden-cup"},
 		},
 	}
 	for _, testCase := range testCases {

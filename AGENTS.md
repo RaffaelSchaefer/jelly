@@ -48,9 +48,14 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/Studio.tsx`, `src/studio/`, `src/studio.css`: Anpassen direkt am Jelly. Die Tropfen zeichnet
   `src/scene/LiquidGlass.tsx` per Shader in die Canvas, das DOM liefert Knöpfe und mit `data-liquid`
   die Vorlagen für ihre Form.
+- `src/Hatch.tsx`, `src/hatch.css`, `src/pet/hatch.ts`: der Einstieg auf der Bühne. Das Jelly sitzt in einem Ei aus Glas
+  (`data-liquid="thin"`), fragt nach Name, Farbe und Code und schlüpft mit Licht und Spritzern aus `LevelUp.tsx`. In der
+  Browser-Vorschau zeigen ihn `/#join`, `/#join-again`, `/#join-lost` und `/#join-nolan`, der Code `falsch` zeigt den Fehler, `offen` lässt die laufende LAN offen.
 - `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
   `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
   `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
+  `src/LevelUp.tsx`, `src/levelup.css`: der Levelaufstieg auf der Bühne, im Takt der Fanfare (`LEVEL_UP`). In der
+  Browser-Vorschau zeigt ihn `/#levelup`.
 - Dazustellen, Ausflug und Hervorheben gehen auf der Karte (`src/map/main.ts`, `src/map/actions.ts`),
   `src/useFollow.ts` lässt das Pet auf Dazustellen und Ausflug reagieren. Partner-Emotes als Aufforderung
   (`POST` und `PATCH /v1/partner-emotes`): Auffordern geht in `src/map/partner.ts`, Antworten und Duett im Pet
@@ -61,21 +66,23 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (Noten, reine Logik): die Stimme des Jellys. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
 - `src/pet/rendering.ts`, `src/optimized.css`: der optimierte Modus (`Settings.optimizedRendering`). Das Profil
-  sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Messung und Shader-Prüfung:
+  sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Beim Einstieg schaltet ein zu langsames Gerät
+  selbst um (`createSlowFrameMeter`). Messung und Shader-Prüfung:
   `scripts/render-check.html` (`render-report.mjs` wertet aus), Ergebnisse in `apps/client/docs/optimized-rendering.md`.
 - `src/pet/frameRate.ts`: der Regler der Bildrate (`Settings.frameLimit`, `null` heißt unbegrenzt).
   `packages/jelly-stage/src/framePacing.ts` entscheidet für Jelly, Karte und Karten-Glas, welche
   Bildschirmaktualisierung ein Bild wird.
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
-  Cosmetics, ihre Shader), `src/ui/` (Design-System).
+  Cosmetics), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
   `body.ts` (geraymarchter Körper, Shader in `shaders/`, volle und optimierte Variante per `JellyQuality`), `face.ts`, `mouthShapes.ts`, `animation.ts`,
   `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `partnerEmotes.ts` (Duett-Posen der
-  Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben).
+  Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben), `cosmetic.ts` (Cosmetics
+  laden und zeichnen, Modelle in `cosmetics/`).
 - `packages/jelly-stage/src/`: die Bühne als reines Three.js. `view.ts` startet sie auf einer Canvas,
   `source.ts` beschreibt ihre Daten, `labels.ts` und `picking.ts` zeichnen Namen und finden das Jelly
   unter dem Zeiger, `floorPicking.ts` den Punkt auf dem Boden, `pointer.ts` markiert das Ziel eines
-  Ausflugs, `beams.ts` zeichnet das Licht beim Hervorheben, `choiceRings.ts` die Ringe beim Auswählen, `moves.ts` und `walking.ts` spielen die Wege
+  Ausflugs, `beams.ts` zeichnet das Licht beim Hervorheben, `choiceRings.ts` die Ringe beim Auswählen, `worn.ts` merkt sich, was ein Jelly trägt, `moves.ts` und `walking.ts` spielen die Wege
   des Servers ab, der Rest ist der Raum.
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
@@ -107,6 +114,10 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - **Jelly ändern** heißt `packages/jelly-scene` ändern und App und Server-Bühne im Browser ansehen.
   Im Jelly gibt es nur `Object3D`, keine `Group`: Die Bühne sortiert ganze Jellies über ihre äußere
   `Group`. `three` hat in Client, Server und Paket dieselbe Version.
+- **Neues Cosmetic:** Export aus `apps/client/blender/` nach `packages/jelly-scene/src/cosmetics/`, dazu eine
+  Import-Zeile in `COSMETIC_MODELS` (`cosmetic.ts`). App, Karte und Beamer zeigen es dann, in der App als Sticker,
+  auf der Bühne mit echter Tiefe. Die Modelle liegen im Bundle: Die CSP der App verbietet `fetch`, und `tauri dev`
+  zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary.
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.
   Das Paket spricht nicht mit dem Netz: Jeder Nutzer bringt seine `StageSource` mit, die App holt
   alles über Rust. Was nur die Karte braucht (Markierungen, Treffer), bleibt auf dem Beamer aus.

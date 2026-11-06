@@ -17,14 +17,13 @@ import {
 } from "three";
 
 import type { StageMove, StagePoint } from "./types.ts";
-import type { FloorRect } from "./world.ts";
 
 import { findPalette } from "./jellies.ts";
 import { FLAT_ORDER } from "./props.ts";
 import { createShadow } from "./shadow.ts";
 import { isOnTheWay } from "./walking.ts";
 import { toFloorPoint } from "./world.ts";
-import { findFloorHeight } from "./zones.ts";
+import { findFloorHeight, type Placement } from "./zones.ts";
 
 /** The crystal in jelly units: a long tip pointing at the floor and a short cap above it. */
 const CRYSTAL = { radius: 0.5, tip: 1.3, cap: 0.38, facets: 6 };
@@ -69,7 +68,8 @@ export interface PointerFrame {
   /** The newest move of the own jelly. */
   move: StageMove | undefined;
   color: string;
-  stages: FloorRect[];
+  /** The stage platforms, where the floor is raised. */
+  platforms: Placement[];
   serverTime: number;
   seconds: number;
   reducedMotion: boolean;
@@ -147,7 +147,7 @@ export function updatePointer(pointer: StagePointer, frame: PointerFrame): void 
   pointer.root.visible = pointer.size > SMALLEST_SIZE;
   if (!pointer.root.visible) return;
   // Without a goal it shrinks where it stands.
-  if (goal) pointer.root.position.set(goal.x, findFloorHeight(goal, frame.stages), goal.z);
+  if (goal) pointer.root.position.set(goal.x, findFloorHeight(goal, frame.platforms), goal.z);
   pointer.root.scale.setScalar(pointer.size);
   paintPointer(pointer, frame.color);
   if (!frame.reducedMotion) pointer.time += frame.seconds;

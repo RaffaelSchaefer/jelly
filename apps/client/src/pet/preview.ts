@@ -7,7 +7,18 @@
  */
 
 import { FRAME_RATE } from "./frameRate";
-import { PET_SIZE, VOLUME, type Catalog, type Game, type Me } from "./types";
+import {
+  PET_SIZE,
+  VOLUME,
+  type Catalog,
+  type Game,
+  type Me,
+  type PetColor,
+  type Rules,
+} from "./types";
+
+/** Die Standardregeln des Servers, soweit die App sie kennt. */
+export const PREVIEW_RULES: Rules = { near_distance: 6, xp_per_level: 100 };
 
 /** Auszug aus dem Server-Katalog. */
 export const PREVIEW_CATALOG: Catalog = {
@@ -46,16 +57,34 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "head",
       colorable: false,
+      unlock: "level",
       level: 2,
     },
-    { key: "beanie", name: "Mütze", scope: "permanent", slot: "head", colorable: true, level: 3 },
+    {
+      key: "headset-neutral",
+      name: "Headset schlicht",
+      scope: "permanent",
+      slot: "head",
+      colorable: false,
+      unlock: "level",
+      level: 2,
+    },
+    {
+      key: "beanie",
+      name: "Mütze",
+      scope: "permanent",
+      slot: "head",
+      colorable: true,
+      unlock: "level",
+      level: 3,
+    },
     {
       key: "party-hat",
       name: "Party-Hut",
       scope: "permanent",
       slot: "head",
       colorable: false,
-      requires_event: true,
+      unlock: "event",
     },
     {
       key: "pixel-glasses",
@@ -63,16 +92,34 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "face",
       colorable: false,
+      unlock: "level",
       level: 5,
     },
-    { key: "hood", name: "Kapuze", scope: "permanent", slot: "head", colorable: true, level: 6 },
-    { key: "crown", name: "Krone", scope: "lan", slot: "head", colorable: false, level: 10 },
+    {
+      key: "hood",
+      name: "Kapuze",
+      scope: "permanent",
+      slot: "head",
+      colorable: true,
+      unlock: "level",
+      level: 6,
+    },
+    {
+      key: "crown",
+      name: "Krone",
+      scope: "lan",
+      slot: "head",
+      colorable: false,
+      unlock: "level",
+      level: 10,
+    },
     {
       key: "golden-cup",
       name: "Goldener Pokal",
       scope: "permanent",
       slot: "hands",
       colorable: false,
+      unlock: "award",
     },
   ],
   cosmetic_slots: [
@@ -136,12 +183,11 @@ export const PREVIEW_ME: Me = {
   next_poke_at: 0,
   reports: { food_ready_at: 0, drink_ready_at: 0, reports_left: 8 },
   sign: null,
-  follow_player_id: null,
-  follow_until: null,
+  follow: null,
   trip: null,
   lans_attended: 1,
   badges: [],
-  cosmetics: ["headset", "beanie"],
+  cosmetics: ["headset", "headset-neutral", "beanie"],
   achievements: [{ key: "hatched", title: "Frisch geschlüpft", lan_slug: null, earned_at: 0 }],
   awards: [],
 };
@@ -161,8 +207,53 @@ export const PREVIEW_GAME: Game = {
     server_time: 0,
     current: { slug: "vorschau", name: "Vorschau-LAN", starts_at: 0, ends_at: 0 },
     next: null,
+    rules: PREVIEW_RULES,
     joined: true,
   },
   serverUrl: "",
   secretRejected: false,
 };
+
+/** Die nächste LAN in `#join-nolan`. */
+const PREVIEW_NEXT_LAN = {
+  slug: "vorschau-2",
+  name: "Vorschau-LAN 2",
+  starts_at: Date.UTC(2027, 3, 16, 10),
+  ends_at: Date.UTC(2027, 3, 18, 10),
+};
+
+/**
+ * Der Stand, mit dem die Vorschau startet. Die Zustände des Einstiegs gibt es sonst nur mit Server,
+ * ein Hash in der Adresse holt sie in den Browser.
+ */
+export function previewGame(hash: string): Game {
+  const { lan } = PREVIEW_GAME;
+  switch (hash) {
+    case "#join":
+      return { ...PREVIEW_GAME, me: null, lan: { ...lan, joined: null } };
+    case "#join-again":
+      return { ...PREVIEW_GAME, lan: { ...lan, joined: false } };
+    case "#join-lost":
+      return { ...PREVIEW_GAME, me: null, secretRejected: true, lan: { ...lan, joined: null } };
+    case "#join-nolan":
+      return {
+        ...PREVIEW_GAME,
+        me: null,
+        lan: { ...lan, current: null, next: PREVIEW_NEXT_LAN, joined: null },
+      };
+    default:
+      return PREVIEW_GAME;
+  }
+}
+
+/**
+ * Der Beitritt in der Vorschau, ohne Server: Jeder Code gilt. „falsch“ zeigt die Fehlermeldung, die
+ * wie aus Rust als Text kommt, und „offen“ bringt das Konto nicht in die laufende LAN. Ohne Name
+ * bleibt das vorhandene Jelly.
+ */
+export function previewAccess(code: string, name?: string, color?: PetColor) {
+  if (code === "falsch") return Promise.reject<never>("Dieser Code gilt nicht.");
+  const me = name && color ? { ...PREVIEW_ME, name, color } : PREVIEW_ME;
+  const lan = code === "offen" ? { ...PREVIEW_GAME.lan, joined: false } : PREVIEW_GAME.lan;
+  return Promise.resolve({ seatAssigned: true, game: { ...PREVIEW_GAME, me, lan } });
+}

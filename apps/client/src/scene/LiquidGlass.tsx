@@ -31,6 +31,8 @@ import { createGlass, FULLSCREEN, readShapes, type GlassUniforms } from "./glass
  * Plätze in der Reihenfolge des DOM. Im Studio: Namensschild, Fertig-Knopf, sechs Blobs und ein
  * Popover. Am Jelly: Emote-Tropfen, Emote-Auswahl (geschlossen leer), Karten-Tropfen,
  * Schild-Tropfen, Füllung der Säule und ihre Kapseln, zuletzt die Sprechblase mit ihrem Schwanz.
+ * Beim Aufstieg: Kapsel, XP-Tropfen und, falls es sie gibt, die nächste Belohnung. Beim Einstieg:
+ * das Ei und die Kapsel, die beide für sich bleiben, dann die Sprechblase mit ihrem Schwanz.
  *
  * Ponytail: Platz für zehn Kapseln, solange die Blase weg ist. Darüber fehlt das Glas, zuerst der
  * Blase, während die Säule zurückläuft. Mehr Plätze kosten jedes Pixel einen Blick mehr, also erst
@@ -54,14 +56,15 @@ const STILL_REFRESH_MS = 100;
  * Was von Bild zu Bild bleibt. Liegt nicht im React-Zustand, das gäbe 30 Renderdurchläufe je
  * Sekunde.
  */
-function createFrameState({ uCalm }: GlassUniforms) {
+function createFrameState({ uCalm, uThin }: GlassUniforms) {
   return {
     /** 0 = verschwunden, 1 = ganz da. */
     presence: 0,
     /** Wo die Flächen zuletzt lagen. Beim Verschwinden gibt es sie im DOM schon nicht mehr. */
     shapes: Array.from({ length: MAX_SHAPES }, () => new Vector4()),
-    /** Dasselbe Feld wie im Shader: Was hier steht, kommt dort an. */
+    /** Dieselben Felder wie im Shader: Was hier steht, kommt dort an. */
     calm: uCalm.value,
+    thin: uThin.value,
     color: new Color(),
     glow: new Color(),
     ink: new Color(),

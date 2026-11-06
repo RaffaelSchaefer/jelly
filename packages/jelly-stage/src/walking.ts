@@ -89,7 +89,7 @@ export function keepNewerMove(moves: Map<number, StageMove>, move: StageMove): v
 /** Returns how many jellies stand below this one right now. On the way it stays on the floor. */
 export function findStackLevel(move: StageMove, serverTime: number): number {
   const arrival = move.points.at(-1)?.t ?? 0;
-  return serverTime - move.start_at >= arrival ? move.level : 0;
+  return serverTime - move.start_at >= arrival ? move.stack_level : 0;
 }
 
 /** Returns the jellies on a snack run. */

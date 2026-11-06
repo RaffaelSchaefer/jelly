@@ -16,6 +16,7 @@ import {
   type Catalog,
   type Me,
   type Report,
+  type Rules,
 } from "../pet";
 import { ReportButton, XpProgress } from "../ui";
 
@@ -88,12 +89,15 @@ function ReportSection({
 export default function OverviewTab({
   me,
   catalog,
+  rules,
   offset,
   disabled,
   onReport,
 }: {
   me: Me;
   catalog: Catalog;
+  /** Die Regeln der LAN, für den Fortschritt zum nächsten Level. */
+  rules: Rules;
   /** Abstand zur Uhr des Servers, siehe `useGameState`. */
   offset: number;
   /** Knöpfe sperren, etwa während ein Aufruf läuft oder in der Browser-Vorschau. */
@@ -101,18 +105,19 @@ export default function OverviewTab({
   onReport: (action: Report) => void;
 }) {
   const now = useServerNow(offset, me);
-  const next = nextLevelCosmetic(levelProgress(me.xp).level, catalog);
+  const next = nextLevelCosmetic(levelProgress(me.xp, rules.xp_per_level).level, catalog);
   const locked = disabled || !me.lan?.active;
   return (
     <div className="xp-sections">
       <XpProgress
         name={me.name}
         xp={me.xp}
+        xpPerLevel={rules.xp_per_level}
         next={next ? `Bei ${unlockLabel(next.id, catalog)}: ${next.name}` : undefined}
       />
       <p className="panel-hint">
         {pokeHint(me, now)} Insgesamt {me.total_xp} XP auf {me.lans_attended}{" "}
-        {me.lans_attended === 1 ? "LAN" : "LANs"}.
+        {me.lans_attended === 1 ? "LAN" : "LANs"}. Deine Nummer bei der Orga: {me.id}.
       </p>
       <ReportSection me={me} now={now} disabled={locked} onReport={onReport} />
     </div>

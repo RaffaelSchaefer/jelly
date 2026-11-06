@@ -13,7 +13,12 @@ import { advance, Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useState, type RefObject } from "react";
 import { MathUtils } from "three";
 
-import { CANVAS_OVERSCAN, type RenderProfile, type StudioFocus } from "../pet";
+import {
+  CANVAS_OVERSCAN,
+  createSlowFrameMeter,
+  type CameraFocus,
+  type RenderProfile,
+} from "../pet";
 import CameraRig from "./CameraRig";
 import Character, { type CharacterProps } from "./Character";
 import LiquidGlass from "./LiquidGlass";
@@ -75,6 +80,27 @@ function AnimationClock({ paused, frameLimit }: { paused: boolean; frameLimit: n
   return null;
 }
 
+/**
+ * Meldet, wenn das Gerät nicht hinterherkommt. Zählt die Bildschirmaktualisierungen statt der
+ * gezeichneten Bilder: Ein niedrig gestellter Bildraten-Regler ist kein schwaches Gerät. Startet
+ * erst mit der Szene, das Laden von Three.js zählt also nicht.
+ *
+ * @param onSlow - Ohne Wert wird nicht gemessen.
+ */
+function useSlowDevice(onSlow?: () => void) {
+  useEffect(() => {
+    if (!onSlow) return;
+    const isSlow = createSlowFrameMeter();
+    let frame = 0;
+    function tick(now: number) {
+      frame = requestAnimationFrame(tick);
+      if (!document.hidden && isSlow(now)) onSlow?.();
+    }
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [onSlow]);
+}
+
 /** Eigenschaften von {@link PetScene}. */
 export interface PetSceneProps extends Omit<CharacterProps, "quality"> {
   /** Wie aufwendig die Szene gezeichnet wird. */
@@ -82,9 +108,11 @@ export interface PetSceneProps extends Omit<CharacterProps, "quality"> {
   /** Bilder pro Sekunde, `null` heißt unbegrenzt. */
   frameLimit: number | null;
   /** Worauf die Kamera fährt. Ohne Wert steht sie in der Grundansicht. */
-  focus?: StudioFocus | null;
+  focus?: CameraFocus | null;
   /** Element für die Anker des Studios. Ohne Element wird nichts projiziert. */
   anchors?: RefObject<HTMLElement | null>;
+  /** Wird gerufen, wenn das Gerät zu langsam ist. Ohne Wert wird nicht gemessen. */
+  onSlowDevice?: () => void;
 }
 
 /** Das Pet auf transparentem Hintergrund. Ohne WebGL erscheint ein Hinweis statt eines Fehlers. */
@@ -93,9 +121,11 @@ export default function PetScene({
   frameLimit,
   focus = null,
   anchors,
+  onSlowDevice,
   ...character
 }: PetSceneProps) {
   const [jelly, setJelly] = useState<Jelly | null>(null);
+  useSlowDevice(onSlowDevice);
   return (
     <RenderBoundary>
       <Canvas

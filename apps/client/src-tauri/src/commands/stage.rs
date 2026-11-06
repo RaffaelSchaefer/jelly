@@ -5,7 +5,7 @@ use tauri::{AppHandle, State};
 
 use super::{session::session, Game, GameState};
 use crate::{
-    api::Stage,
+    api::{Stage, Trip},
     error::{Error, Result},
     map,
 };
@@ -22,6 +22,10 @@ pub struct MapState {
     optimized_rendering: bool,
     /// Einstellung „Bildrate“, `None` heißt unbegrenzt.
     frame_limit: Option<u16>,
+    /// Regel `near_distance` der LAN: Bis dahin reicht eine Aufforderung, in Jelly-Einheiten.
+    near_distance: f64,
+    /// Der laufende Ausflug des eigenen Jellys. Die Bühne nennt ihn nicht, nur der eigene Stand.
+    trip: Option<Trip>,
     /// Raumkarte und Jellies vom Server.
     stage: Stage,
 }
@@ -84,7 +88,7 @@ pub async fn highlight_player(
 /// [`Error::NotRegistered`] ohne geladene Sitzung oder Konto, sonst Netzwerk- oder Serverfehler.
 #[tauri::command]
 pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Result<MapState> {
-    let (api, own_id, settings) = {
+    let (api, own_id, trip, settings, near_distance) = {
         let mut slot = state.0.lock().await;
         let session = slot.as_mut().ok_or(Error::NotRegistered)?;
         // Über `refresh`, damit der neue Stream beim frischen Stand beginnt und das Pet nichts
@@ -92,8 +96,14 @@ pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Resul
         if !session.stream.is_running() {
             session.refresh(&app).await?;
         }
-        let own_id = session.registered()?.id;
-        (session.api.clone(), own_id, session.store.local.settings)
+        let me = session.registered()?;
+        (
+            session.api.clone(),
+            me.id,
+            me.trip.clone(),
+            session.store.local.settings,
+            session.lan.rules.near_distance,
+        )
     };
     let stage = api.stage().await?;
     Ok(MapState {
@@ -101,6 +111,8 @@ pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Resul
         reduced_motion: settings.reduced_motion,
         optimized_rendering: settings.optimized_rendering,
         frame_limit: settings.frame_limit,
+        near_distance,
+        trip,
         stage,
     })
 }

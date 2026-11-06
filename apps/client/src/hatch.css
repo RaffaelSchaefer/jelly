@@ -1,0 +1,359 @@
+/*
+ * Der Einstieg (`Hatch.tsx`). Die Wurzel trägt auch `.levelup`: Lage, Licht und Spritzer kommen aus
+ * `levelup.css`, und reduzierte Bewegung und optimierter Modus greifen dort schon für alles darin.
+ *
+ * Das Ei und die Kapsel zeichnet `scene/LiquidGlass.tsx`. Wie dort beschreibt jede Regel das fertige Bild,
+ * die Animationen führen nur dorthin.
+ */
+
+/*
+ * Das Ei: nur die Vorlage. Der Shader macht daraus eine Seifenblase um das Jelly (`data-liquid="thin"`).
+ * Hier und unten bleibt das Einblenden in jeder Liste von Animationen: Fiele es weg, liefe es danach neu.
+ */
+.hatch-egg {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--center) + 2px * var(--pet-scale, 1));
+  width: calc(216px * var(--pet-scale, 1));
+  height: calc(236px * var(--pet-scale, 1));
+  translate: -50% -50%;
+  border-radius: 50%;
+  pointer-events: none;
+  animation:
+    hatch-egg-in 700ms var(--spring) both,
+    hatch-egg-float 4.8s ease-in-out 700ms infinite alternate;
+}
+.hatch[data-busy] .hatch-egg {
+  animation:
+    hatch-egg-in 700ms var(--spring) both,
+    hatch-shiver 280ms linear infinite;
+}
+/* Zittert auf den Einschlag zu und platzt. Am Ende ohne Fläche: Der Shader überspringt sie dann. */
+.hatch[data-hatching] .hatch-egg {
+  scale: 0;
+  animation:
+    hatch-tremble var(--boom) ease-in both,
+    hatch-pop 150ms ease-in var(--boom) both;
+}
+
+/* Die Kapsel an der Stelle des Docks. `width` und nicht `scale`: Sie fließt von Schritt zu Schritt, der Shader folgt ihr von selbst. */
+.hatch-capsule {
+  position: absolute;
+  left: 50%;
+  bottom: -36px;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(var(--capsule), 100%);
+  height: 52px;
+  padding: 0 7px 0 18px;
+  border-radius: 26px;
+  background: var(--glass-fallback);
+  color: #fff;
+  pointer-events: auto;
+  transform-origin: 50% 100%;
+  transition:
+    width 460ms var(--spring),
+    padding 200ms ease-out,
+    box-shadow 160ms;
+  animation: hatch-capsule-in 620ms var(--spring) 240ms both;
+  --capsule: 248px;
+}
+.hatch-capsule[data-back] {
+  padding-left: 7px;
+}
+.hatch-capsule[data-step="color"] {
+  --capsule: 228px;
+}
+.hatch-capsule[data-step="code"],
+.hatch-capsule[data-step="recover"] {
+  --capsule: 300px;
+}
+.hatch-capsule > * {
+  animation: hatch-fade 260ms ease-out both;
+}
+.hatch-capsule:has(input:focus-visible) {
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--accent) 70%, #fff),
+    0 0 20px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.hatch-capsule[data-error] {
+  animation:
+    hatch-capsule-in 620ms var(--spring) 240ms both,
+    hatch-shake 420ms ease-in-out both;
+}
+
+/* Zwei Klassen: Sonst gewinnt die allgemeine Regel für Textfelder aus `styles.css`. Codes brauchen Luft zwischen den Zeichen. */
+.hatch .hatch-input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  height: 38px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: #fff;
+  caret-color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  text-shadow: var(--glass-ink-shadow);
+}
+.hatch .hatch-input:focus-visible {
+  outline: 0;
+}
+.hatch .hatch-input::placeholder {
+  color: #ffffffb8;
+  font-weight: 500;
+}
+.hatch-capsule:is([data-step="code"], [data-step="recover"]) .hatch-input {
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+.hatch-capsule:is([data-step="code"], [data-step="recover"]) .hatch-input::placeholder {
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.hatch-ticket {
+  flex: none;
+  display: grid;
+  color: #fff;
+  filter: drop-shadow(0 1px 2px #0008);
+}
+.hatch-ticket svg {
+  rotate: -14deg;
+}
+.hatch-back {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  transition: background 140ms;
+}
+.hatch-back svg {
+  filter: drop-shadow(0 1px 2px #0008);
+}
+.hatch-back:hover {
+  background: #ffffff24;
+}
+.hatch-next {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 62%, #fff), var(--accent));
+  color: var(--accent-ink);
+  box-shadow:
+    inset 0 1px 0 #ffffffc0,
+    0 5px 18px color-mix(in srgb, var(--accent) 55%, transparent);
+  transition:
+    translate 180ms var(--spring),
+    scale 120ms,
+    box-shadow 180ms,
+    opacity 180ms;
+}
+.hatch-next svg {
+  stroke-width: 2.2;
+  transition: translate 220ms var(--spring);
+}
+.hatch-next:hover:enabled {
+  translate: 0 -1px;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 8px 24px color-mix(in srgb, var(--accent) 75%, transparent);
+}
+.hatch-next:hover:enabled svg {
+  translate: 2px 0;
+}
+.hatch-next:active:enabled {
+  scale: 0.92;
+}
+.hatch-next:disabled {
+  box-shadow: inset 0 1px 0 #ffffff60;
+}
+[aria-busy="true"] > .hatch-next {
+  animation:
+    hatch-fade 260ms ease-out both,
+    hatch-pulse 700ms ease-in-out infinite alternate;
+}
+
+/* Die kleinen Jellies. Die gewählte Farbe trägt den schillernden Ring der Tropfen. */
+.hatch-colors {
+  flex: 1;
+  display: flex;
+  justify-content: space-evenly;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.hatch-color {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    scale 200ms var(--spring),
+    background 150ms;
+}
+.hatch-color svg {
+  filter: drop-shadow(0 1px 2px #0008);
+}
+.hatch-color:hover {
+  scale: 1.12;
+  background: #ffffff26;
+}
+.hatch-color:has(input:checked) {
+  background: #ffffff1f;
+}
+.hatch-color:has(input:checked)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--film));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  animation: levelup-spin 6s linear infinite;
+}
+.hatch-color:has(input:focus-visible) {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+/* Unter der Kapsel endet das Fenster. */
+.hatch .hatch-lost {
+  position: absolute;
+  left: 50%;
+  bottom: -60px;
+  translate: -50% 0;
+  margin: 0;
+  padding: 3px 8px;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 500;
+  text-shadow: var(--glass-ink-shadow);
+  pointer-events: auto;
+  animation: hatch-fade 300ms ease-out 700ms both;
+}
+.hatch .hatch-lost:hover {
+  color: var(--accent);
+}
+/* Mit dem üblichen Abstand läge der untere Rand des Rings außerhalb des Fensters. */
+.hatch .hatch-lost:focus-visible {
+  outline-offset: 0;
+}
+
+/* Die Welle kommt hier sofort: Für die Farbwahl wartet nichts auf den Takt der Fanfare. */
+.levelup-wave.hatch-ripple {
+  animation-delay: 0s;
+}
+
+@keyframes hatch-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes hatch-egg-in {
+  from {
+    scale: 0;
+  }
+}
+@keyframes hatch-egg-float {
+  to {
+    translate: -50% calc(-50% - 3px);
+  }
+}
+@keyframes hatch-shiver {
+  0%,
+  100% {
+    translate: -50% -50%;
+  }
+  25% {
+    translate: calc(-50% - 1.5px) -50%;
+  }
+  75% {
+    translate: calc(-50% + 1.5px) -50%;
+  }
+}
+@keyframes hatch-tremble {
+  0% {
+    translate: -50% -50%;
+  }
+  20% {
+    translate: calc(-50% - 2px) -50%;
+  }
+  40% {
+    translate: calc(-50% + 3px) calc(-50% - 1px);
+  }
+  60% {
+    translate: calc(-50% - 5px) -50%;
+  }
+  80% {
+    translate: calc(-50% + 7px) calc(-50% + 1px);
+  }
+  100% {
+    translate: -50% -50%;
+  }
+}
+@keyframes hatch-pop {
+  0% {
+    scale: 1;
+  }
+  60% {
+    scale: 1.16;
+  }
+  100% {
+    scale: 0;
+  }
+}
+@keyframes hatch-capsule-in {
+  from {
+    scale: 0;
+  }
+}
+@keyframes hatch-shake {
+  0%,
+  100% {
+    translate: -50% 0;
+  }
+  20% {
+    translate: calc(-50% - 9px) 0;
+  }
+  40% {
+    translate: calc(-50% + 7px) 0;
+  }
+  60% {
+    translate: calc(-50% - 5px) 0;
+  }
+  80% {
+    translate: calc(-50% + 3px) 0;
+  }
+}
+@keyframes hatch-pulse {
+  to {
+    scale: 0.9;
+    opacity: 0.7;
+  }
+}
+
+/* `levelup.css` schaltet alles in `.levelup` ab. Pseudo-Elemente trifft `:is()` nicht, und die Zustände des Eis wiegen mehr. */
+html[data-reduced-motion] .hatch .hatch-egg,
+html[data-reduced-motion] .hatch-color::after {
+  animation: none;
+}

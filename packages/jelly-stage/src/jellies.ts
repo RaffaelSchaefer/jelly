@@ -8,11 +8,14 @@
 import {
   animateJelly,
   BODY_BOTTOM,
+  createCosmetic,
   createJelly,
   createMotion,
+  disposeCosmetic,
   disposeJelly,
   HEAD,
   JELLY_COLORS,
+  loadCosmetic,
   type Jelly,
   type JellyPalette,
   type Motion,
@@ -21,7 +24,7 @@ import { Euler, Group, Matrix4, Object3D, Quaternion, Vector3, type InstancedMes
 
 import type { StageEffect } from "./effects.ts";
 import type { StagePlayer } from "./types.ts";
-import type { FloorPoint, FloorRect, ScenePoint } from "./world.ts";
+import type { FloorPoint, ScenePoint } from "./world.ts";
 
 import { findEmote, findMotionPose } from "./effects.ts";
 import { calculateRandomValue } from "./random.ts";
@@ -33,7 +36,8 @@ import {
   type WalkPose,
   type Walker,
 } from "./walking.ts";
-import { findFloorHeight } from "./zones.ts";
+import { syncWorn, type Worn } from "./worn.ts";
+import { findFloorHeight, type Placement } from "./zones.ts";
 
 /** From the feet to the top of the head, in jelly units. */
 export const JELLY_HEIGHT = HEAD.y + HEAD.radius - BODY_BOTTOM;
@@ -59,8 +63,13 @@ export const FIRST_JELLY_ORDER = 1;
 const STACK_STEP = JELLY_HEIGHT * 0.7;
 /** How fast a jelly steps up onto the stage or down from it, per second. */
 const STEP_RATE = 10;
+/** The winner of a ceremony grows to this size, and this fast per second. */
+const WINNER_SCALE = 1.8;
+const GROW_RATE = 2;
 /** With reduced motion a jelly glides along its move, without hopping or leaning. */
 const STILL_WALK: WalkPose = { lift: 0, lean: 0 };
+/** The slots that move with the head. Hands need the logic of the app and no model exists yet. */
+const WORN_SLOTS = ["head", "face"];
 
 /** One jelly on the stage. */
 interface StageJelly {
@@ -76,6 +85,9 @@ interface StageJelly {
   shadowScale: number;
   /** How high the floor under the jelly is, eased so it steps up instead of jumping. */
   elevation: number;
+  /** Size of the jelly, 1 usually and larger for the winner of a ceremony. */
+  scale: number;
+  worn: Worn<Object3D>;
 }
 
 /** All jellies on the stage. */
@@ -95,8 +107,10 @@ export interface JellyFrame {
   effects: StageEffect[];
   /** Jellies on a snack run carry their snack with both hands. */
   visitors: Set<number>;
-  /** Raised floors: jellies on them stand higher. */
-  stages: FloorRect[];
+  /** The stage platforms: jellies on them stand higher. */
+  platforms: Placement[];
+  /** The winner of a running ceremony, who grows on the stage. */
+  winnerId: number | null;
   /** How many jellies stand below each jelly, by player ID. */
   levels: Map<number, number>;
   /** Seconds since the last frame and since the page opened. */
@@ -143,14 +157,39 @@ function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): v
     walker: createWalker(position),
     shadowScale: 1,
     elevation: 0,
+    scale: 1,
+    worn: new Map(),
   });
 }
 
 /** Removes a jelly and frees what it holds. */
 function removeJelly(cast: JellyCast, shown: StageJelly): void {
   cast.root.remove(shown.group);
+  shown.worn.clear();
   disposeJelly(shown.jelly);
   cast.jellies.delete(shown.player.id);
+}
+
+/** Dresses a jelly in what its player wears, without building the jelly again. */
+function dressJelly({ jelly, player, worn }: StageJelly): void {
+  const wanted = new Map<string, string>();
+  for (const slot of WORN_SLOTS) {
+    const key = player.equipped[slot]?.key;
+    if (key) wanted.set(slot, key);
+  }
+  syncWorn(worn, wanted, {
+    load: loadCosmetic,
+    put: (model) => {
+      // Real depth here: with the sticker of the app a jelly would stand in front of the couch.
+      const cosmetic = createCosmetic(model, findPalette(player.color).outline, "depth");
+      jelly.faceAnchor.add(cosmetic);
+      return cosmetic;
+    },
+    remove: (cosmetic) => {
+      jelly.faceAnchor.remove(cosmetic);
+      disposeCosmetic(cosmetic);
+    },
+  });
 }
 
 /** Adds new players, removes those who left and rebuilds jellies that changed their color. */
@@ -173,6 +212,8 @@ export function syncJellies(
     } else {
       addJelly(cast, player, positions.get(player.id) ?? { x: 0, z: 0 });
     }
+    const current = cast.jellies.get(player.id);
+    if (current) dressJelly(current);
   }
 }
 
@@ -191,7 +232,7 @@ function updateJelly(shown: StageJelly, frame: JellyFrame): void {
     seconds: frame.seconds,
   });
   const level = frame.levels.get(shown.player.id) ?? 0;
-  const floor = findFloorHeight(walker.position, frame.stages) + level * STACK_STEP;
+  const floor = findFloorHeight(walker.position, frame.platforms) + level * STACK_STEP;
   shown.elevation += (floor - shown.elevation) * (1 - Math.exp(-STEP_RATE * frame.seconds));
   const walk = frame.reducedMotion ? STILL_WALK : calculateWalkPose(walker);
   const motion = findMotionPose(
@@ -200,9 +241,13 @@ function updateJelly(shown: StageJelly, frame: JellyFrame): void {
     frame.now,
   );
   const lift = walk.lift + motion.lift * JELLY_HEIGHT;
-  group.position.set(walker.position.x, shown.elevation - BODY_BOTTOM + lift, walker.position.z);
+  const wantedScale = frame.winnerId === shown.player.id ? WINNER_SCALE : 1;
+  shown.scale += (wantedScale - shown.scale) * (1 - Math.exp(-GROW_RATE * frame.seconds));
+  group.scale.setScalar(shown.scale);
+  const bottom = shown.elevation - BODY_BOTTOM * shown.scale + lift;
+  group.position.set(walker.position.x, bottom, walker.position.z);
   group.rotation.set(walk.lean, walker.yaw + motion.turn, motion.tilt, "YXZ");
-  shown.shadowScale = 1 - SHADOW_SHRINK * Math.min(1, lift / JELLY_HEIGHT);
+  shown.shadowScale = shown.scale * (1 - SHADOW_SHRINK * Math.min(1, lift / JELLY_HEIGHT));
   animateJelly(shown.jelly, shown.motion, {
     time: frame.time + shown.timeOffset,
     rawDelta: frame.seconds,
@@ -255,7 +300,7 @@ export function updateJellies(cast: JellyCast, frame: JellyFrame): JellySpot[] {
     return {
       player: shown.player,
       feet: { x, y: shown.elevation, z },
-      head: { x, y: shown.group.position.y + JELLY_HEIGHT + BODY_BOTTOM, z },
+      head: { x, y: shown.group.position.y + (JELLY_HEIGHT + BODY_BOTTOM) * shown.scale, z },
     };
   });
 }

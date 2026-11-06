@@ -6,6 +6,7 @@ import {
   isUnlocked,
   levelCosmetic,
   levelProgress,
+  levelReward,
   nextLevelCosmetic,
   PET_SIZE,
   pokeWaitMinutes,
@@ -15,8 +16,26 @@ import {
   slotLabel,
   stageLayout,
   unlockLabel,
+  wearingLevelReward,
   wornCosmetics,
 } from ".";
+
+describe("level reward", () => {
+  it("tries the new part on without taking off the rest", () => {
+    const me = { ...PREVIEW_ME, equipped: { face: { key: "pixel-glasses", color: null } } };
+    expect(wearingLevelReward(me, PREVIEW_CATALOG)).toEqual({
+      face: { key: "pixel-glasses", color: null },
+      head: { key: "beanie", color: PREVIEW_CATALOG.cosmetic_colors[0] },
+    });
+  });
+
+  it("changes nothing on a level without a part, or one the server did not unlock", () => {
+    const quiet = { ...PREVIEW_ME, level: 4 };
+    const locked = { ...PREVIEW_ME, cosmetics: [] };
+    expect(levelReward(quiet, PREVIEW_CATALOG)).toBeUndefined();
+    expect(wearingLevelReward(locked, PREVIEW_CATALOG)).toBe(locked.equipped);
+  });
+});
 
 describe("self-reports", () => {
   const reports = { food_ready_at: 0, drink_ready_at: 1_000_000, reports_left: 5 };
@@ -46,8 +65,15 @@ describe("unlocks", () => {
     expect(unlockLabel("pixel-glasses", PREVIEW_CATALOG)).toBe("Level 5");
     expect(unlockLabel("party-hat", PREVIEW_CATALOG)).toBe("Bei einem Event");
     expect(unlockLabel("golden-cup", PREVIEW_CATALOG)).toBe("Von der Orga");
+    const sealed = {
+      ...PREVIEW_CATALOG,
+      cosmetics: [{ ...PREVIEW_CATALOG.cosmetics[0], unlock: "none" }],
+    };
+    expect(unlockLabel("headset", sealed)).toBe("Nicht freischaltbar");
   });
   it("finds level rewards in level order", () => {
+    // Level 2 schaltet beide Headsets frei, das Level-up zeigt das erste.
+    expect(levelCosmetic(2, PREVIEW_CATALOG)?.id).toBe("headset");
     expect(levelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("beanie");
     expect(levelCosmetic(4, PREVIEW_CATALOG)).toBeUndefined();
     expect(nextLevelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("pixel-glasses");
@@ -94,12 +120,15 @@ describe("achievements", () => {
 
 describe("level progress", () => {
   it("starts at level one with the full next level ahead", () => {
-    expect(levelProgress(0)).toEqual({ level: 1, current: 0, remaining: 100 });
+    expect(levelProgress(0, 100)).toEqual({ level: 1, current: 0, remaining: 100 });
   });
   it("carries excess XP across level boundaries", () => {
-    expect(levelProgress(99)).toEqual({ level: 1, current: 99, remaining: 1 });
-    expect(levelProgress(100)).toEqual({ level: 2, current: 0, remaining: 100 });
-    expect(levelProgress(235)).toEqual({ level: 3, current: 35, remaining: 65 });
+    expect(levelProgress(99, 100)).toEqual({ level: 1, current: 99, remaining: 1 });
+    expect(levelProgress(100, 100)).toEqual({ level: 2, current: 0, remaining: 100 });
+    expect(levelProgress(235, 100)).toEqual({ level: 3, current: 35, remaining: 65 });
+  });
+  it("follows the rule of the LAN", () => {
+    expect(levelProgress(235, 50)).toEqual({ level: 5, current: 35, remaining: 15 });
   });
 });
 

@@ -27,7 +27,7 @@ describe("studio regions", () => {
       items(id).flatMap((item) => (item.id ? [item.id] : [])),
     );
     expect(offered.sort()).toEqual(COSMETICS.map((item) => item.id).sort());
-    expect(items("kopf")).toHaveLength(6);
+    expect(items("kopf")).toHaveLength(7);
     expect(items("gesicht")).toHaveLength(2);
     expect(items("haende")).toHaveLength(2);
   });

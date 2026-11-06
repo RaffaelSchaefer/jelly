@@ -12,6 +12,8 @@
 import type {
   EquippedCosmetic,
   StageArea,
+  StageFollow,
+  StageGathering,
   StageMove,
   StageRoom,
   StageStack,
@@ -75,11 +77,24 @@ export interface LanPeriod {
   ends_at: number;
 }
 
+/**
+ * Die Regeln der LAN, soweit die App sie anzeigt (`PublicRules`). Entscheiden tut immer der Server.
+ * Ein neuerer Server darf Regeln ergänzen.
+ */
+export interface Rules {
+  /** Bis zu diesem Abstand in Jelly-Einheiten stehen zwei Jellies nebeneinander. */
+  near_distance: number;
+  /** XP je Level, linear. */
+  xp_per_level: number;
+}
+
 /** Welche LAN läuft und welche kommt (`GET /v1/lans/current`). */
 export interface LanStatus {
   server_time: number;
   current: LanPeriod | null;
   next: LanPeriod | null;
+  /** Regeln der laufenden LAN, sonst der nächsten, sonst die Standardwerte. */
+  rules: Rules;
   /** Ob dieses Konto an der laufenden LAN teilnimmt. `null` ohne Konto oder ohne LAN. */
   joined: boolean | null;
 }
@@ -115,9 +130,8 @@ export interface Me {
   next_poke_at: number | null;
   reports: Reports | null;
   sign: string | null;
-  follow_player_id: number | null;
-  /** Wann das Folgen von selbst endet. Dazu kommt kein Ereignis. */
-  follow_until: number | null;
+  /** Wem das Jelly nachläuft. Das Ende meldet `follow.changed`, auch wenn die Zeit abläuft. */
+  follow: StageFollow | null;
   trip: StageTrip | null;
   lans_attended: number;
   badges: { slug: string; name: string }[];
@@ -136,14 +150,11 @@ export interface StagePlayer {
   equipped: Equipped;
   level: number;
   sign: string | null;
-  follow_player_id: number | null;
-  follow_until: number | null;
-  last_seen_at: number;
+  follow: StageFollow | null;
   /** `null` ohne eigenen Bereich und ohne Zone für Besucher. */
   area_id: number | null;
   /** Ein Jelly ohne eigenen Bereich wandert als Besucher. */
   is_visitor: boolean;
-  trip: StageTrip | null;
   /** Heimplatz in Prozent der Bühne. */
   home_x: number;
   home_y: number;
@@ -162,6 +173,8 @@ export interface Stage {
   /** Der aktuelle Weg je Jelly. Wo es läuft, bestimmt nur der Server. */
   moves: StageMove[];
   stacks: StageStack[];
+  /** Essens-Event oder Siegerehrung, sonst `null`. */
+  gathering: StageGathering | null;
 }
 
 /** Wie sich eine Aufforderung zu einem Partner-Emote ändern kann (Rust: `InviteState`). */
@@ -172,8 +185,8 @@ export interface PartnerInvite {
   id: number;
   key: string;
   from_id: number;
-  /** Wer aufgefordert wird, vorerst genau ein Jelly. */
-  partner_ids: number[];
+  /** Wer aufgefordert wird. */
+  partner_id: number;
   state: "pending" | InviteAnswer;
   /** Ablauf als Server-Zeit. Dazu kommt kein Ereignis. */
   expires_at: number;
@@ -185,7 +198,11 @@ export interface CatalogEntry {
   label: string;
 }
 
-/** Ein Cosmetic im Katalog. Ohne `level` und `requires_event` gibt es es nur von der Orga. */
+/**
+ * Ein Cosmetic im Katalog. `unlock` sagt, wie man es bekommt: `level` ab `level`, `event` über
+ * einen Event-Code, `award` als Preis der Orga, `none` gar nicht. Unbekannte Werte gelten wie
+ * `none`.
+ */
 export interface CatalogCosmetic {
   key: string;
   name: string;
@@ -193,8 +210,9 @@ export interface CatalogCosmetic {
   slot: string;
   /** Ob es eine Farbe aus `cosmetic_colors` annimmt. */
   colorable: boolean;
+  unlock: string;
+  /** Das Level, ab dem es frei ist, nur bei `unlock` `level`. */
   level?: number;
-  requires_event?: boolean;
 }
 
 /** Ein Erfolg im Katalog. Geheime fehlen dort, bis man sie verdient hat. */

@@ -2,7 +2,7 @@
  * Cosmetics: wie sie aussehen und wie man sie freischaltet.
  *
  * Was freigeschaltet ist, sagt der Server (`me.cosmetics`), wie man es bekommt, sein Katalog. Hier
- * stehen nur Anzeigename, Platz und Symbol. Die 3D-Modelle liegen als `src/cosmetics/<id>.glb`.
+ * stehen nur Anzeigename, Platz und Symbol. Die 3D-Modelle liegen in `@jelly/scene`.
  *
  * @module
  */
@@ -27,7 +27,8 @@ export interface Cosmetic {
 
 /** Alle Cosmetics, die die App darstellen kann. `golden-cup` gibt es nur als Auszeichnung. */
 export const COSMETICS: Cosmetic[] = [
-  { id: "headset", name: "Headset", slot: "head", icon: "headset" },
+  { id: "headset", name: "Headset", slot: "head", icon: "teddyheadset" },
+  { id: "headset-neutral", name: "Headset schlicht", slot: "head", icon: "headset" },
   { id: "beanie", name: "Mütze", slot: "head", icon: "beanie" },
   { id: "party-hat", name: "Party-Hut", slot: "head", icon: "partyhat" },
   { id: "pixel-glasses", name: "Pixel-Brille", slot: "face", icon: "glasses" },
@@ -65,18 +66,19 @@ export function isUnlocked(id: string, me: Me) {
   return me.cosmetics.includes(id);
 }
 
-/** Wie man das Cosmetic freischaltet, in wenigen Worten (`"Level 5"`). */
+/** Wie man das Cosmetic freischaltet, in wenigen Worten (`"Level 5"`). Unbekanntes gilt wie `none`. */
 export function unlockLabel(id: string, catalog: Catalog) {
   const entry = catalog.cosmetics.find((item) => item.key === id);
-  if (entry?.level) return `Level ${entry.level}`;
-  if (entry?.requires_event) return "Bei einem Event";
-  return "Von der Orga";
+  if (entry?.unlock === "level" && entry.level) return `Level ${entry.level}`;
+  if (entry?.unlock === "event") return "Bei einem Event";
+  if (entry?.unlock === "award") return "Von der Orga";
+  return "Nicht freischaltbar";
 }
 
 /** Die Level-Cosmetics des Katalogs, aufsteigend nach Level, soweit die App sie darstellen kann. */
 function levelCosmetics(catalog: Catalog) {
   return catalog.cosmetics
-    .filter((item) => item.level)
+    .filter((item) => item.unlock === "level" && item.level)
     .sort((a, b) => a.level! - b.level!)
     .flatMap((item) => {
       const shown = COSMETICS.find((cosmetic) => cosmetic.id === item.key);
@@ -87,6 +89,20 @@ function levelCosmetics(catalog: Catalog) {
 /** Das Cosmetic, das genau mit `level` freigeschaltet wird, falls es eins gibt. */
 export function levelCosmetic(level: number, catalog: Catalog) {
   return levelCosmetics(catalog).find((item) => item.level === level);
+}
+
+/** Das Teil, das `me` mit seinem jetzigen Level bekommen hat, falls es eins gibt. */
+export function levelReward(me: Me, catalog: Catalog) {
+  const reward = levelCosmetic(me.level, catalog);
+  return reward && isUnlocked(reward.id, me) ? reward : undefined;
+}
+
+/** Was `me` zur Probe trägt, solange es den Aufstieg feiert: sein neues Teil und den Rest. */
+export function wearingLevelReward(me: Me, catalog: Catalog): Equipped {
+  const reward = levelReward(me, catalog);
+  if (!reward) return me.equipped;
+  const color = equipColor(reward.id, catalog) ?? null;
+  return { ...me.equipped, [reward.slot]: { key: reward.id, color } };
 }
 
 /** Das erste Level-Cosmetic oberhalb von `level`, also die nächste Belohnung. */

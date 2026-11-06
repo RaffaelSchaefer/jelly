@@ -13,14 +13,19 @@ import type { PetGame } from "./usePet";
 
 import { desktop } from "./backend";
 import EmotePicker from "./EmotePicker";
+import Hatch, { useHatchWave } from "./Hatch";
+import LevelUp, { useCelebration } from "./LevelUp";
 import MapDrop from "./MapDrop";
 import {
+  hatchesNew,
   REGIONS,
   signLabel,
+  wearingLevelReward,
   type Me,
+  type PetColor,
   type RenderProfile,
   type StudioRegionId,
-  type StudioFocus,
+  type CameraFocus,
 } from "./pet";
 import SignPicker from "./SignPicker";
 import Studio from "./Studio";
@@ -48,15 +53,31 @@ function duetMode(emote: ActiveEmote | null) {
   return emote.partner ? "pair" : "solo";
 }
 
-/** Welche Bedienung direkt am Jelly sichtbar ist. */
-function stageModes(panel: PanelId | null, joining: boolean) {
-  const dropsVisible = !joining && (panel === null || panel === "emotes" || panel === "signs");
+/**
+ * Welche Bedienung direkt am Jelly sichtbar ist.
+ *
+ * @param hatch - Ob der Einstieg läuft, samt dem Schlüpfen danach. Dann gibt es nichts anderes.
+ */
+function stageModes(panel: PanelId | null, hatch: boolean) {
+  const dropsVisible = !hatch && (panel === null || panel === "emotes" || panel === "signs");
+  const studio = !hatch && panel === "look";
+  const levelUp = !hatch && panel === "levelup";
   return {
-    studio: !joining && panel === "look",
+    hatch,
+    studio,
+    levelUp,
     dropsVisible,
+    // Wo Glas liegt, braucht es die Lage des Jellys und die Flächen aus dem DOM.
+    glass: hatch || studio || levelUp || dropsVisible,
     // Die Säule der Schilder bräuchte den Platz. In den anderen Fällen läuft das Glas gar nicht.
-    bubble: dropsVisible && panel !== "signs",
+    bubble: hatch || (dropsVisible && panel !== "signs"),
   };
+}
+
+/** Worauf die Kamera fährt. Beim Schlüpfen bleibt sie stehen, wo der Einstieg sie hingefahren hat. */
+function cameraFocus(hatch: boolean, levelUp: boolean, region: StudioRegionId | null) {
+  if (hatch) return "hatch";
+  return levelUp ? "levelup" : REGIONS.find((item) => item.id === region)?.focus;
 }
 
 /** Eigenschaften der Bühne samt ihrer Overlays. */
@@ -64,8 +85,13 @@ interface PetStageProps {
   game: PetGame;
   me: Me;
   panel: PanelId | null;
-  /** Erst ein Code ist nötig: Am Jelly gibt es noch nichts zu bedienen. */
+  /** Erst ein Code ist nötig: Am Jelly läuft nur der Einstieg. */
   joining: boolean;
+  /** Die Farbe im Entwurf, solange es noch kein Konto gibt. */
+  joinColor: PetColor;
+  onJoinColor: (color: PetColor) => void;
+  /** Wird gerufen, wenn das Gerät zu langsam ist. Ohne Wert wird nicht gemessen. */
+  onSlowDevice?: () => void;
   reducedMotion: boolean;
   /** Wie aufwendig die Szene gezeichnet wird. */
   rendering: RenderProfile;
@@ -102,9 +128,12 @@ function PetVisual({
   rendering,
   frameLimit,
   sign,
+  emote,
+  equipped,
   voiced,
   focus,
   anchors,
+  onSlowDevice,
 }: {
   game: PetGame;
   me: Me;
@@ -112,9 +141,12 @@ function PetVisual({
   rendering: RenderProfile;
   frameLimit: number | null;
   sign: string | null;
+  emote: ActiveEmote | null;
+  equipped: Me["equipped"];
   voiced: RefObject<ActiveVoice | null>;
-  focus?: StudioFocus;
+  focus?: CameraFocus;
   anchors?: RefObject<HTMLElement | null>;
+  onSlowDevice?: () => void;
 }) {
   const started = useSceneStart(game.ready || game.error !== "");
   return (
@@ -128,10 +160,9 @@ function PetVisual({
         {started ? (
           <PetScene
             color={me.color}
-            equipped={me.equipped}
             pulse={game.pulse}
-            emote={game.activeEmote}
-            {...{ reducedMotion, rendering, frameLimit, sign, voiced, focus, anchors }}
+            {...{ emote, equipped, reducedMotion, rendering, frameLimit, sign, voiced }}
+            {...{ focus, anchors, onSlowDevice }}
           />
         ) : (
           WAKING_UP
@@ -152,7 +183,7 @@ function StageDrops({
   onToggle,
   onClose,
   onPreview,
-}: Omit<PetStageProps, "joining" | "reducedMotion" | "rendering" | "frameLimit"> & {
+}: Pick<PetStageProps, "game" | "me" | "panel" | "onToggle" | "onClose"> & {
   onPreview: (key: string | null) => void;
 }) {
   return (
@@ -225,6 +256,23 @@ function StudioOverlay({
   );
 }
 
+/** Der Aufstieg mit den Aktionen des Spielstands. Ein weiteres Level spielt ihn noch einmal ab. */
+function LevelUpOverlay({ game, me, onClose }: { game: PetGame; me: Me; onClose: () => void }) {
+  return (
+    <LevelUp
+      key={me.level}
+      {...{ me, onClose }}
+      catalog={game.catalog}
+      rules={game.game.lan.rules}
+      disabled={game.busy || !game.ready}
+      onEquip={(item) => {
+        void game.equip(item.slot, item.id);
+        onClose();
+      }}
+    />
+  );
+}
+
 /**
  * Was das Jelly zur Probe auf der Tafel zeigt. Ohne offene Auswahl gibt es keine Probe: Auch ein
  * Level-up kann sie schließen, und das Verlassen der Säule käme dann nie an.
@@ -235,15 +283,53 @@ function useSignPreview(open: boolean) {
   return [preview, setPreview] as const;
 }
 
+/** Das gerade zugängliche Overlay am Jelly. */
+function StageOverlays({
+  modes,
+  region,
+  onRegion,
+  onPreview,
+  joinColor,
+  onJoinColor,
+  ...props
+}: Pick<
+  PetStageProps,
+  "game" | "me" | "panel" | "joinColor" | "onJoinColor" | "onToggle" | "onClose"
+> & {
+  modes: ReturnType<typeof stageModes>;
+  region: StudioRegionId | null;
+  onRegion: (region: StudioRegionId | null) => void;
+  onPreview: (key: string | null) => void;
+}) {
+  const { game, me, onClose } = props;
+  return (
+    <>
+      {modes.studio ? <StudioOverlay {...{ game, me, region, onRegion, onClose }} /> : null}
+      {modes.levelUp ? <LevelUpOverlay {...{ game, me, onClose }} /> : null}
+      {modes.hatch ? <Hatch game={game} color={joinColor} onColor={onJoinColor} /> : null}
+      {modes.dropsVisible ? <StageDrops {...props} onPreview={onPreview} /> : null}
+    </>
+  );
+}
+
+/** Die Überschrift für Screenreader. Ein neues Jelly hat noch keinen Namen und kein Level. */
+function stageTitle(me: Me, isNew: boolean) {
+  return isNew ? "Dein neuer Begleiter" : `${me.name}, Level ${me.level}`;
+}
+
 /** Sprechblase, Jelly und das gerade zugängliche Overlay. */
 export default function PetStage(props: PetStageProps) {
   const { game, me, panel, joining, reducedMotion, rendering, frameLimit, onToggle, onClose } =
     props;
+  const { joinColor, onJoinColor } = props;
   const stage = useRef<HTMLDivElement>(null);
   const [region, setRegion] = useState<StudioRegionId | null>(null);
   const [preview, setPreview] = useSignPreview(panel === "signs");
-  const { studio, dropsVisible, bubble } = stageModes(panel, joining);
+  const modes = stageModes(panel, joining || game.hatching);
+  const { hatch, studio, levelUp, glass, bubble } = modes;
   const { saidAt, voiced } = useJellyVoice(game);
+  const { cheer, revealed } = useCelebration(levelUp || game.hatching);
+  const wave = useHatchWave(joining);
   // Beim nächsten Öffnen soll keine Region mehr offen sein und die Kamera wieder zurückfahren.
   if (!studio && region) setRegion(null);
   return (
@@ -251,18 +337,21 @@ export default function PetStage(props: PetStageProps) {
       <PetVisual
         {...{ game, me, reducedMotion, rendering, frameLimit, voiced }}
         sign={studio ? null : signLabel(preview ?? me.sign, game.catalog)}
-        focus={REGIONS.find((item) => item.id === region)?.focus}
-        anchors={studio || dropsVisible ? stage : undefined}
+        emote={game.activeEmote ?? cheer ?? wave}
+        // Nur beim Aufstieg: Zum Schlüpfen trägt es, was es hat, auch auf einem höheren Level.
+        equipped={revealed && levelUp ? wearingLevelReward(me, game.catalog) : me.equipped}
+        focus={cameraFocus(hatch, levelUp, region)}
+        anchors={glass ? stage : undefined}
+        onSlowDevice={props.onSlowDevice}
       />
-      {studio ? <StudioOverlay {...{ game, me, region, onClose }} onRegion={setRegion} /> : null}
-      {dropsVisible ? (
-        <StageDrops {...{ game, me, panel, onToggle, onClose }} onPreview={setPreview} />
-      ) : null}
+      <StageOverlays
+        {...{ game, me, panel, modes, region, joinColor, onJoinColor, onToggle, onClose }}
+        onRegion={setRegion}
+        onPreview={setPreview}
+      />
       <StageBubble {...{ game, saidAt }} hidden={!bubble} />
       <div className="ground-shadow" />
-      <h1 className="sr-only">
-        {me.name}, Level {me.level}
-      </h1>
+      <h1 className="sr-only">{stageTitle(me, hatchesNew(game.game))}</h1>
     </div>
   );
 }

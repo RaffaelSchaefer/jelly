@@ -43,8 +43,6 @@ import "./map.css";
 const RELOAD_DELAY_MS = 2000;
 /** Die Karte läuft neben Spielen, also ohne die doppelte Auflösung des Beamers. */
 const SUPERSAMPLING = 1;
-/** Etwas nach dem Ende von Folgen oder Ausflug lesen, damit der Server es schon beendet hat. */
-const AWAY_END_GRACE_MS = 1000;
 /** So lange bleibt eine Fehlermeldung zu einem Klick stehen. Das nächste Neuladen löscht sie nicht. */
 const ACTION_PROBLEM_MS = 6000;
 const TEXT_NO_LAN = "Gerade läuft keine LAN.";
@@ -77,8 +75,6 @@ interface MapPage {
   clockOffset: number;
   /** Ein Aufruf läuft. Sie laufen einzeln, damit keiner einen neueren überholt. */
   acting: boolean;
-  /** Liest neu, wenn Folgen oder Ausflug von selbst enden. Dazu kommt kein Ereignis. */
-  awayEnd: ReturnType<typeof setTimeout> | undefined;
   /** Was die Statuszeile zeigt, das Wichtigste zuerst. */
   actionProblem: string;
   readProblem: string;
@@ -111,18 +107,12 @@ function setTarget(page: MapPage, targetId: number | null) {
 }
 
 /**
- * Übernimmt Ziel und Ausflug aus dem eigenen Eintrag und liest neu, wenn eines davon von selbst
- * endet. Wird ein Ziel gelöscht, fällt es ohne Ereignis weg.
+ * Übernimmt Ziel und Ausflug aus dem eigenen Stand. Enden sie von selbst, meldet das der Server mit
+ * `follow.changed` und `trip.changed`, und die Bühne liest neu.
  */
-function applyAway(page: MapPage, own: StagePlayer | undefined, serverTime: number) {
-  page.destination = own?.trip ?? null;
-  setTarget(page, own?.follow_player_id ?? null);
-  clearTimeout(page.awayEnd);
-  const endsAt = own?.follow_until ?? own?.trip?.until;
-  if (endsAt) {
-    const remaining = Math.max(0, endsAt - serverTime);
-    page.awayEnd = setTimeout(() => page.view?.reload(), remaining + AWAY_END_GRACE_MS);
-  }
+function applyAway(page: MapPage, own: StagePlayer | undefined, trip: StagePoint | null) {
+  page.destination = trip;
+  setTarget(page, own?.follow?.player_id ?? null);
 }
 
 /** Legt das Glas unter die Knöpfe. `data-glass` nimmt ihnen in `map.css` den eigenen Hintergrund. */
@@ -150,11 +140,11 @@ function applyButtonLook(page: MapPage, optimized: boolean) {
 
 /** Übernimmt, was ein neuer Stand für die Seite bedeutet. */
 function applyState(page: MapPage, state: StageState) {
-  const { id, reducedMotion, optimizedRendering, frameLimit } = page.source.readOwn();
+  const { id, reducedMotion, optimizedRendering, frameLimit, trip } = page.source.readOwn();
   const own = state.players.find((player) => player.id === id);
   page.players = state.players;
   page.clockOffset = state.server_time - Date.now();
-  applyAway(page, own, state.server_time);
+  applyAway(page, own, trip);
   const reduced = reducedMotion || OS_REDUCED_MOTION.matches;
   page.view?.setReducedMotion(reduced);
   page.view?.setFrameLimit(frameLimit);
@@ -377,7 +367,6 @@ async function startMap() {
     players: [],
     clockOffset: 0,
     acting: false,
-    awayEnd: undefined,
     actionProblem: "",
     readProblem: "",
     note: "",

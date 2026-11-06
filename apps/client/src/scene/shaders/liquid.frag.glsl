@@ -14,6 +14,7 @@ uniform vec2 uCanvas;
 uniform float uTime;
 uniform vec4 uShapes[MAX_SHAPES];
 uniform float uCalm[MAX_SHAPES];
+uniform float uThin[MAX_SHAPES];
 uniform vec3 uColor;
 uniform vec3 uGlow;
 uniform vec3 uInk;
@@ -36,6 +37,13 @@ const float BULGE = 0.55;
 const float BLOB_RADIUS = 40.0;
 // Ohne Grenze für den Radius, wie bei der runden Emote-Auswahl.
 const float ANY_RADIUS = 1e5;
+// Wie viel Jelly-Farbe eine dünne Fläche (`data-liquid="thin"`) am Rand trägt. In der Mitte keine.
+const float THIN_BODY_EDGE = 0.5;
+// Wie stark sie in der Mitte das Licht spiegelt. Sonst läge ein weißes Fenster über dem Gesicht.
+const float THIN_MIRROR = 0.012;
+
+// Ob die Fläche, die `fieldAt` zuletzt gefunden hat, dünn ist. Der Vektor dort ist schon voll.
+float fieldThin = 0.0;
 
 // Eine Kapsel, die langsam atmet. Liefert den Abstand zum Rand, den Radius und in zw, wie weit die
 // Stelle zum Ende einer langen Fläche liegt.
@@ -59,15 +67,19 @@ vec4 shapeAt(vec2 p, vec4 shape, float seed, float wobble, float maxRadius) {
 }
 
 // Alle Flächen als eine. Nur die Blobs fließen ineinander. Namensschild und Fertig-Knopf gehören
-// nicht dazu, sie bleiben für sich.
+// nicht dazu, sie bleiben für sich. Nur sie können auch dünn sein.
 vec4 fieldAt(vec2 p) {
   vec4 blobs = vec4(1e5, 1.0, 0.0, 0.0);
   vec4 solo = blobs;
+  float soloThin = 0.0;
   for (int i = 0; i < MAX_SHAPES; i++) {
     if (uShapes[i].z <= 0.0) continue;
     if (i < SOLO_SHAPES) {
       vec4 alone = shapeAt(p, uShapes[i], float(i), SOLO_WOBBLE, ANY_RADIUS);
-      if (alone.x < solo.x) solo = alone;
+      if (alone.x < solo.x) {
+        solo = alone;
+        soloThin = uThin[i];
+      }
       continue;
     }
     vec4 next = shapeAt(p, uShapes[i], float(i), mix(WOBBLE, SOLO_WOBBLE, uCalm[i]), BLOB_RADIUS);
@@ -75,6 +87,7 @@ vec4 fieldAt(vec2 p) {
     blobs = mix(next, blobs, h);
     blobs.x -= KNEE * h * (1.0 - h);
   }
+  fieldThin = solo.x < blobs.x ? soloThin : 0.0;
   return solo.x < blobs.x ? solo : blobs;
 }
 
@@ -129,7 +142,7 @@ float edgeLine(float d) {
 }
 
 // Der Tropfen an dieser Stelle, mit vormultipliziertem Alpha wie das Bild dahinter.
-vec4 glassAt(vec2 uv, vec2 p, vec4 field) {
+vec4 glassAt(vec2 uv, vec2 p, vec4 field, float thin) {
   float d = field.x;
   float radius = field.y;
   vec2 outward = outwardAt(p);
@@ -141,8 +154,10 @@ vec4 glassAt(vec2 uv, vec2 p, vec4 field) {
   float rim = length(normal.xy);
 
   // Wie eine Linse: in der Mitte leicht vergrößert, zum Rand hin stark verzerrt. Jede Farbe wird
-  // etwas anders gebrochen, das ist die chromatische Aberration.
-  vec2 bend = -normal.xy * radius * (0.28 + 0.55 * rim * rim * rim) / uCanvas;
+  // etwas anders gebrochen, das ist die chromatische Aberration. Eine dünne Fläche bricht nur ganz
+  // am Rand: Eine Seifenblase verzerrt nicht, was in ihr sitzt.
+  float lens = mix(1.0, smoothstep(0.8, 1.0, rim), thin);
+  vec2 bend = -normal.xy * radius * (0.28 + 0.55 * rim * rim * rim) * lens / uCanvas;
   float spread = 0.05 + 0.22 * rim * rim;
   vec4 through = backdropAt(uv + bend);
   through.r = backdropAt(uv + bend * (1.0 - spread)).r;
@@ -151,14 +166,14 @@ vec4 glassAt(vec2 uv, vec2 p, vec4 field) {
   // Die Farbe des Jellys: oben Grundfarbe, unten das Leuchten.
   float low = smoothstep(-0.9, 0.7, -normal.y);
   vec3 jelly = mix(uColor, uGlow, low * 0.85);
-  float body = mix(BODY_EDGE, BODY_CENTER, facing);
+  float body = mix(mix(BODY_EDGE, BODY_CENTER, facing), THIN_BODY_EDGE * (1.0 - facing), thin);
   vec3 color = through.rgb * (1.0 - body) + toDisplay(jelly) * body;
   float alpha = through.a * (1.0 - body) + body;
 
   // Wie beim Jelly dunkelt der äußerste Rand ab, das hält die Form zusammen.
   color = mix(color, toDisplay(uInk), smoothstep(-2.0, -0.2, d) * 0.55);
 
-  float fresnel = 0.04 + 0.96 * pow(1.0 - facing, 5.0);
+  float fresnel = mix(0.04, THIN_MIRROR, thin) + 0.96 * pow(1.0 - facing, 5.0);
   vec3 mirrored = toDisplay(studioLight(reflect(vec3(0.0, 0.0, -1.0), normal)) * fresnel);
 
   // Seifenhaut: schillert zum Rand hin, die Dicke fließt langsam über die Fläche.
@@ -172,7 +187,7 @@ vec4 glassAt(vec2 uv, vec2 p, vec4 field) {
   fringe *= 0.3 + 0.35 * abs(along);
 
   // Von unten leuchtet der Tropfen von innen, wie das Jelly selbst.
-  vec3 inner = toDisplay(uGlow) * low * low * facing * 0.3;
+  vec3 inner = toDisplay(uGlow) * low * low * facing * mix(0.3, 0.08, thin);
 
   color = 1.0 - (1.0 - color) * (1.0 - inner) * (1.0 - mirrored) * (1.0 - film) * (1.0 - fringe);
   return vec4(color, max(alpha, max(color.r, max(color.g, color.b))));
@@ -188,9 +203,11 @@ void main() {
   vec2 uv = gl_FragCoord.xy / uBuffer;
   vec2 p = vec2(uv.x, 1.0 - uv.y) * uCanvas;
   vec4 field = fieldAt(p);
+  // Sofort sichern: `outwardAt` und `shadowed` fragen gleich an anderen Stellen nach.
+  float thin = fieldThin;
   vec4 outside = backdropAt(uv);
   if (field.x < FAR) outside = shadowed(outside, p);
   float pixel = uCanvas.x / uBuffer.x;
   float cover = 1.0 - smoothstep(-pixel, pixel, field.x);
-  gl_FragColor = cover > 0.0 ? mix(outside, glassAt(uv, p, field), cover) : outside;
+  gl_FragColor = cover > 0.0 ? mix(outside, glassAt(uv, p, field, thin), cover) : outside;
 }

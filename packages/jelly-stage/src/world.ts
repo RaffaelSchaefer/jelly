@@ -90,8 +90,11 @@ export function isOnStage(point: StagePoint): boolean {
   return point.x >= 0 && point.x <= STAGE_SIZE && point.y >= 0 && point.y <= STAGE_SIZE;
 }
 
-/** Converts an area to its rectangle on the floor. */
-export function toFloorRect(area: StageArea): FloorRect {
+/** A rectangle on the stage in percent, such as an area before its rotation. */
+export type StageRect = Pick<StageArea, "x" | "y" | "width" | "height">;
+
+/** Converts a rectangle in percent to its rectangle on the floor, without any rotation. */
+export function toFloorRect(area: StageRect): FloorRect {
   const start = toFloorPoint({ x: area.x, y: area.y });
   const end = toFloorPoint({ x: area.x + area.width, y: area.y + area.height });
   return { minX: start.x, minZ: start.z, maxX: end.x, maxZ: end.z };

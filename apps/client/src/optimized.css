@@ -17,7 +17,7 @@ html[data-optimized-rendering] .pet-touch canvas {
 }
 
 /* Vorlagen, die nur der Shader liest. Jedes andere `data-liquid`-Element ist selbst sichtbar. */
-html[data-optimized-rendering] :is(.studio-shapes, .sign-fill) {
+html[data-optimized-rendering] :is(.studio-shapes, .sign-fill, .hatch-egg) {
   display: none;
 }
 
@@ -137,4 +137,44 @@ html[data-optimized-rendering] .redeem-ring {
 html[data-optimized-rendering] .redeem-ticket svg,
 html[data-optimized-rendering] .redeem-seal:hover .redeem-ticket svg {
   filter: none;
+}
+
+/* Der Aufstieg: Die Zahl bleibt, Licht und Spritzer fallen weg, Kapsel und Tropfen tragen ihre Fläche selbst. */
+html[data-optimized-rendering] :is(.levelup, .levelup *) {
+  animation: none;
+  filter: none;
+  transition: none;
+}
+html[data-optimized-rendering] .levelup-seal::before,
+html[data-optimized-rendering] .levelup-go::after {
+  display: none;
+}
+html[data-optimized-rendering] :is(.levelup-rays, .levelup-rise, .levelup-burst, .levelup-twinkles, .levelup-flash, .levelup-wave, .levelup-old, .levelup-echo) {
+  display: none;
+}
+html[data-optimized-rendering] :is(.levelup-capsule, .levelup-drop) {
+  background: var(--surface-solid);
+  border: 1px solid var(--solid-line);
+}
+html[data-optimized-rendering] .levelup .levelup-go {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+/* Der Einstieg: Die Kapsel trägt ihre Fläche selbst. Der Link braucht auch eine: Ohne Schatten bliebe weiße Schrift auf hellem Desktop unlesbar. */
+html[data-optimized-rendering] .hatch-capsule {
+  background: var(--surface-solid);
+  border: 1px solid var(--solid-line);
+}
+html[data-optimized-rendering] .hatch-lost {
+  background: var(--surface-solid);
+  border: 1px solid var(--solid-line);
+  border-radius: 10px;
+}
+html[data-optimized-rendering] .hatch-next {
+  background: var(--accent);
+  box-shadow: none;
+}
+html[data-optimized-rendering] .hatch-color::after {
+  animation: none;
 }
