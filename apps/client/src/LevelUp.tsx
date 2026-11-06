@@ -29,13 +29,16 @@ import "./levelup.css";
 /** Sekunden bis zum letzten Ton der Fanfare. Dann schlägt alles ein. */
 const BOOM_SECONDS = LEVEL_UP.at(-1)!.at;
 
+/** Ab wann die Kapsel und ihre Knöpfe zu sehen sind, siehe `.levelup-capsule > *` in `levelup.css`. */
+export const CAPSULE_READY_MS = BOOM_SECONDS * 1000 + 640;
+
 /** Für `levelup.css`, damit Bild und Ton nicht auseinanderlaufen, wenn sich die Fanfare ändert. */
-const BOOM_STYLE = { "--boom": `${BOOM_SECONDS}s` } as CSSProperties;
+export const BOOM_STYLE = { "--boom": `${BOOM_SECONDS}s` } as CSSProperties;
 
 /** Die Hände blenden 0,3 s lang ein und sollen beim Einschlag oben sein. */
 const CHEER_DELAY_MS = BOOM_SECONDS * 1000 - 300;
 
-/** Die Jubel-Geste. Ihr Text bleibt ungelesen, die Sprechblase ist währenddessen weg. */
+/** Die Jubel-Geste. Ihr Text bleibt ungelesen: Die Sprechblase zeigt nur Gesten aus dem Spielstand. */
 const CHEER = { key: "cheer", label: "Jubeln" };
 
 /** Goldener Winkel: Die Spritzer verteilen sich gleichmäßig und ohne Zufall im Rendern. */
@@ -105,6 +108,31 @@ function Pieces({ className, pieces }: { className: string; pieces: CSSPropertie
         <i key={index} style={style} />
       ))}
     </span>
+  );
+}
+
+/** Licht und Spritzer hinter dem Jelly. Auch das Schlüpfen in `Hatch.tsx` zündet sie. */
+export function BoomBehind() {
+  return (
+    <>
+      <span className="levelup-halo" />
+      <span className="levelup-rays" />
+      <Pieces className="levelup-rise" pieces={RISING} />
+      <span className="levelup-flash" />
+      <span className="levelup-wave" />
+      <span className="levelup-wave late" />
+      <Pieces className="levelup-burst" pieces={BURST_BEHIND} />
+    </>
+  );
+}
+
+/** Die Spritzer und Funken vor dem Jelly. */
+export function BoomFront() {
+  return (
+    <>
+      <Pieces className="levelup-burst" pieces={BURST_FRONT} />
+      <Pieces className="levelup-twinkles" pieces={TWINKLES} />
+    </>
   );
 }
 
@@ -231,13 +259,7 @@ export default function LevelUp({
     <section className="levelup" style={BOOM_STYLE} aria-labelledby="levelup-title">
       <div className="levelup-back">
         <span className="levelup-bed" />
-        <span className="levelup-halo" />
-        <span className="levelup-rays" />
-        <Pieces className="levelup-rise" pieces={RISING} />
-        <span className="levelup-flash" />
-        <span className="levelup-wave" />
-        <span className="levelup-wave late" />
-        <Pieces className="levelup-burst" pieces={BURST_BEHIND} />
+        <BoomBehind />
         <LevelNumber level={me.level} />
       </div>
       <div className="levelup-front">
@@ -248,8 +270,7 @@ export default function LevelUp({
         />
         <XpDrop xp={me.xp} xpPerLevel={rules.xp_per_level} />
         {next ? <NextDrop item={next} catalog={catalog} /> : null}
-        <Pieces className="levelup-burst" pieces={BURST_FRONT} />
-        <Pieces className="levelup-twinkles" pieces={TWINKLES} />
+        <BoomFront />
       </div>
     </section>
   );

@@ -48,6 +48,9 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/Studio.tsx`, `src/studio/`, `src/studio.css`: Anpassen direkt am Jelly. Die Tropfen zeichnet
   `src/scene/LiquidGlass.tsx` per Shader in die Canvas, das DOM liefert Knöpfe und mit `data-liquid`
   die Vorlagen für ihre Form.
+- `src/Hatch.tsx`, `src/hatch.css`, `src/pet/hatch.ts`: der Einstieg auf der Bühne. Das Jelly sitzt in einem Ei aus Glas
+  (`data-liquid="thin"`), fragt nach Name, Farbe und Code und schlüpft mit Licht und Spritzern aus `LevelUp.tsx`. In der
+  Browser-Vorschau zeigen ihn `/#join`, `/#join-again`, `/#join-lost` und `/#join-nolan`, der Code `falsch` zeigt den Fehler, `offen` lässt die laufende LAN offen.
 - `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
   `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
   `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
@@ -63,7 +66,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (Noten, reine Logik): die Stimme des Jellys. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
 - `src/pet/rendering.ts`, `src/optimized.css`: der optimierte Modus (`Settings.optimizedRendering`). Das Profil
-  sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Messung und Shader-Prüfung:
+  sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Beim Einstieg schaltet ein zu langsames Gerät
+  selbst um (`createSlowFrameMeter`). Messung und Shader-Prüfung:
   `scripts/render-check.html` (`render-report.mjs` wertet aus), Ergebnisse in `apps/client/docs/optimized-rendering.md`.
 - `src/pet/frameRate.ts`: der Regler der Bildrate (`Settings.frameLimit`, `null` heißt unbegrenzt).
   `packages/jelly-stage/src/framePacing.ts` entscheidet für Jelly, Karte und Karten-Glas, welche

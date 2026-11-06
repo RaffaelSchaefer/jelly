@@ -9,7 +9,7 @@
 
 import { useState, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 
-import { PET_COLORS, speechSyllables, type PetColor } from "../pet";
+import { speechSyllables } from "../pet";
 import { cx } from "./cx";
 import Icon, { type IconName } from "./Icon";
 
@@ -170,61 +170,6 @@ export function ErrorAlert({ message, onRetry }: { message: string; onRetry?: ()
       <span>{message}</span>
       {onRetry ? <button onClick={onRetry}>Erneut versuchen</button> : null}
     </div>
-  );
-}
-
-/** Eigenschaften von {@link TextField}. */
-export interface TextFieldProps extends ComponentProps<"input"> {
-  /** Verknüpft Beschriftung und Eingabe. */
-  id: string;
-  label: string;
-}
-
-/** Beschriftetes Textfeld. */
-export function TextField({ id, label, ...rest }: TextFieldProps) {
-  return (
-    <>
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
-      <input id={id} {...rest} />
-    </>
-  );
-}
-
-/** Auswahl der Farbvariante als Radio-Gruppe mit Farbfeldern. */
-export function ColorChoice({
-  value,
-  onChange,
-  legend = "Lieblingsfarbe",
-}: {
-  value: PetColor;
-  onChange: (color: PetColor) => void;
-  legend?: string;
-}) {
-  return (
-    <fieldset className="colors">
-      <legend>{legend}</legend>
-      {(Object.entries(PET_COLORS) as [PetColor, (typeof PET_COLORS)[PetColor]][]).map(
-        ([key, color]) => (
-          <label
-            key={key}
-            className="color-choice"
-            style={{ "--swatch-fill": color.hex } as React.CSSProperties}
-          >
-            <input
-              type="radio"
-              name="color"
-              value={key}
-              checked={value === key}
-              onChange={() => onChange(key)}
-            />
-            <span className="swatch" />
-            <span>{color.label}</span>
-          </label>
-        ),
-      )}
-    </fieldset>
   );
 }
 

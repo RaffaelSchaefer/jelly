@@ -45,7 +45,10 @@ pnpm run webpreview:dev
 
 Die Vorschau liegt unter [localhost:1420](http://127.0.0.1:1420). Dort lassen sich die Panels und
 das Aussehen mit Beispieldaten ausprobieren. **Konto, XP-Aktionen und Speicherung laufen
-ausschließlich über das native Rust-Backend** und sind im Browser deaktiviert.
+ausschließlich über das native Rust-Backend.** Im Browser sind XP-Aktionen deaktiviert und nichts
+wird gespeichert. Den Einstieg spielt die Vorschau ohne Server durch: `/#join`, `/#join-again`,
+`/#join-lost` und `/#join-nolan`. Der Code `falsch` zeigt den Fehler, der Code `offen` lässt die
+laufende LAN offen.
 
 ## Server
 
@@ -195,10 +198,11 @@ src/
   Studio.tsx          Anpassen direkt am Jelly: Blobs, Popovers, Namensschild
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
   SignPicker.tsx      Schild-Tropfen und Kapsel-Säule
+  Hatch.tsx           Einstieg auf der Bühne: Ei aus Glas, Name, Farbe, Code und das Schlüpfen
   MapDrop.tsx         Karten-Tropfen
   map/                Karte im eigenen Fenster (map.html), ohne React: Seite, Daten, Partner-Emotes, Vorschau
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
-  panels/             Inhalte der Glas-Panels (Beitritt, XP mit Reitern, Level, Einstellungen)
+  panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
                       Jelly, Animation und Modelle aus packages/jelly-scene
     shaders/          GLSL des Studio-Glases, per `?raw` importiert

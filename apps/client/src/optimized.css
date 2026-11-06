@@ -17,7 +17,7 @@ html[data-optimized-rendering] .pet-touch canvas {
 }
 
 /* Vorlagen, die nur der Shader liest. Jedes andere `data-liquid`-Element ist selbst sichtbar. */
-html[data-optimized-rendering] :is(.studio-shapes, .sign-fill) {
+html[data-optimized-rendering] :is(.studio-shapes, .sign-fill, .hatch-egg) {
   display: none;
 }
 
@@ -159,4 +159,22 @@ html[data-optimized-rendering] :is(.levelup-capsule, .levelup-drop) {
 html[data-optimized-rendering] .levelup .levelup-go {
   background: var(--accent);
   box-shadow: none;
+}
+
+/* Der Einstieg: Die Kapsel trägt ihre Fläche selbst. Der Link braucht auch eine: Ohne Schatten bliebe weiße Schrift auf hellem Desktop unlesbar. */
+html[data-optimized-rendering] .hatch-capsule {
+  background: var(--surface-solid);
+  border: 1px solid var(--solid-line);
+}
+html[data-optimized-rendering] .hatch-lost {
+  background: var(--surface-solid);
+  border: 1px solid var(--solid-line);
+  border-radius: 10px;
+}
+html[data-optimized-rendering] .hatch-next {
+  background: var(--accent);
+  box-shadow: none;
+}
+html[data-optimized-rendering] .hatch-color::after {
+  animation: none;
 }

@@ -39,9 +39,11 @@ export function useFollow(
 ) {
   const me = state.game.me;
   // Vor dem ersten Laden steht hier der Vorschau-Stand, und ein gespeichertes Ziel ist nichts Neues.
+  // Ohne Konto auch nicht: Der Einstieg stellt gerade seine Frage, und das Jelly ist nirgends hin.
+  const known = ready && me;
   useAwayReaction(
-    ready ? (me?.follow?.player_id ?? null) : undefined,
-    ready ? (me?.trip?.ends_at ?? null) : undefined,
+    known ? (me.follow?.player_id ?? null) : undefined,
+    known ? (me.trip?.ends_at ?? null) : undefined,
     onChanged,
   );
 }

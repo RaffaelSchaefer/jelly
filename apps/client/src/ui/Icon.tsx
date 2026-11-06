@@ -34,6 +34,8 @@ export type IconName =
   | "shirt"
   | "ticket"
   | "send"
+  | "back"
+  | "next"
   | "sign"
   | "users"
   | "target"
@@ -80,6 +82,8 @@ const paths: Record<IconName, string> = {
   ticket:
     "M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a1.5 1.5 0 0 0 0 3V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.5a1.5 1.5 0 0 0 0-3V8Zm12-2v2m0 3v2m0 3v2",
   send: "M21 3 3 9.5l7.5 4 4 7.5L21 3Zm0 0L10.5 13.5",
+  back: "m15 5-7 7 7 7",
+  next: "M5 12h14m-6-6 6 6-6 6",
   search: "M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm2 10-4.35-4.35",
   map: "M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5ZM9 4v13.5m6-11V20",
   sign: "M5 3h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 14H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 3Zm7 11v8M8 8.5h8",
