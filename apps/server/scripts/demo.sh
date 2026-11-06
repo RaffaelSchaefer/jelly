@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Starts a demo server with room areas and simulated jellies, to look at the stage and the admin page.
-# Usage: scripts/demo.sh [players] [address]    Ends with Ctrl+C.
+# Usage: scripts/demo.sh [players] [address]    Ends with Ctrl+C. 0 players leaves only the bots.
 # The data stays in .demo/ or in JELLY_DEMO_DIR, so accounts, LANs and settings survive a restart.
 # Remove that folder to start over.
 set -u
@@ -62,17 +62,21 @@ fi
 admin_call -X PATCH "$base_url/admin/api/lans/$lan_id/rules" \
   -d "{\"max_players\":$demo_max_players}" || echo "Could not raise max_players of the demo LAN."
 
-# Without -run-id every start picks new names, because the old ones are taken.
-"$work_dir/jelly-server" simulate -url "$base_url" -players "$players" \
-  -min-delay 5s -max-delay 30s -duration 24h </dev/null >"$data_dir/simulator.log" 2>&1 &
-simulator_pid=$!
-sleep 3
+# Without -run-id every start picks new names, because the old ones are taken. With 0 players only
+# the bots of the server play.
+if [ "$players" -gt 0 ]; then
+  "$work_dir/jelly-server" simulate -url "$base_url" -players "$players" \
+    -min-delay 5s -max-delay 30s -duration 24h </dev/null >"$data_dir/simulator.log" 2>&1 &
+  simulator_pid=$!
+  sleep 3
+fi
 
-scripts/demo-room.sh assign "$base_url" "$JELLY_ADMIN_SECRET"
+# The bots come before the seats, so that they get places like everyone else.
 if $is_new; then
   admin_call -X POST "$base_url/admin/api/lans/$lan_id/bots" -d "{\"count\":$demo_bots}" ||
     echo "Could not create the demo bots."
 fi
+scripts/demo-room.sh assign "$base_url" "$JELLY_ADMIN_SECRET"
 # A restart stops the bots of the server, so every start lets them play again.
 admin_call -X PUT "$base_url/admin/api/bots/auto" -d "{\"count\":$demo_bots}" ||
   echo "Could not start the demo bots."
