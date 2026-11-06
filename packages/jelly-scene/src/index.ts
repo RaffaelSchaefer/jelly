@@ -6,6 +6,13 @@
 
 export { createMotion, type Motion } from "./animation.ts";
 export {
+  createCosmetic,
+  disposeCosmetic,
+  hasCosmeticModel,
+  loadCosmetic,
+  type CosmeticMode,
+} from "./cosmetic.ts";
+export {
   EMOTE_GLYPHS,
   EMOTE_SECONDS,
   isEmoteKey,

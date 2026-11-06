@@ -29,7 +29,7 @@ COSMETICS = [
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"
 FRAME = "Sichtbereich"
-OUTPUT = "//../src/cosmetics/"  # relative to cosmetics.blend
+OUTPUT = "//../../../packages/jelly-scene/src/cosmetics/"  # relative to cosmetics.blend
 TEXT_NAME = "cosmetics_pipeline.py"
 
 
@@ -120,7 +120,7 @@ def build_scene(save_path):
 class COSMETICS_OT_export(bpy.types.Operator):
     bl_idname = "cosmetics.export"
     bl_label = "Cosmetics exportieren"
-    bl_description = "Schreibt die Collections unter „Cosmetics“ als .glb nach src/cosmetics"
+    bl_description = "Schreibt die Collections unter „Cosmetics“ als .glb nach packages/jelly-scene/src/cosmetics"
     only: bpy.props.StringProperty(default="")
 
     def execute(self, context):

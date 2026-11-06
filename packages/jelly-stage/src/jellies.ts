@@ -8,11 +8,14 @@
 import {
   animateJelly,
   BODY_BOTTOM,
+  createCosmetic,
   createJelly,
   createMotion,
+  disposeCosmetic,
   disposeJelly,
   HEAD,
   JELLY_COLORS,
+  loadCosmetic,
   type Jelly,
   type JellyPalette,
   type Motion,
@@ -33,6 +36,7 @@ import {
   type WalkPose,
   type Walker,
 } from "./walking.ts";
+import { syncWorn, type Worn } from "./worn.ts";
 import { findFloorHeight, type Placement } from "./zones.ts";
 
 /** From the feet to the top of the head, in jelly units. */
@@ -64,6 +68,8 @@ const WINNER_SCALE = 1.8;
 const GROW_RATE = 2;
 /** With reduced motion a jelly glides along its move, without hopping or leaning. */
 const STILL_WALK: WalkPose = { lift: 0, lean: 0 };
+/** The slots that move with the head. Hands need the logic of the app and no model exists yet. */
+const WORN_SLOTS = ["head", "face"];
 
 /** One jelly on the stage. */
 interface StageJelly {
@@ -81,6 +87,7 @@ interface StageJelly {
   elevation: number;
   /** Size of the jelly, 1 usually and larger for the winner of a ceremony. */
   scale: number;
+  worn: Worn<Object3D>;
 }
 
 /** All jellies on the stage. */
@@ -151,14 +158,38 @@ function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): v
     shadowScale: 1,
     elevation: 0,
     scale: 1,
+    worn: new Map(),
   });
 }
 
 /** Removes a jelly and frees what it holds. */
 function removeJelly(cast: JellyCast, shown: StageJelly): void {
   cast.root.remove(shown.group);
+  shown.worn.clear();
   disposeJelly(shown.jelly);
   cast.jellies.delete(shown.player.id);
+}
+
+/** Dresses a jelly in what its player wears, without building the jelly again. */
+function dressJelly({ jelly, player, worn }: StageJelly): void {
+  const wanted = new Map<string, string>();
+  for (const slot of WORN_SLOTS) {
+    const key = player.equipped[slot]?.key;
+    if (key) wanted.set(slot, key);
+  }
+  syncWorn(worn, wanted, {
+    load: loadCosmetic,
+    put: (model) => {
+      // Real depth here: with the sticker of the app a jelly would stand in front of the couch.
+      const cosmetic = createCosmetic(model, findPalette(player.color).outline, "depth");
+      jelly.faceAnchor.add(cosmetic);
+      return cosmetic;
+    },
+    remove: (cosmetic) => {
+      jelly.faceAnchor.remove(cosmetic);
+      disposeCosmetic(cosmetic);
+    },
+  });
 }
 
 /** Adds new players, removes those who left and rebuilds jellies that changed their color. */
@@ -181,6 +212,8 @@ export function syncJellies(
     } else {
       addJelly(cast, player, positions.get(player.id) ?? { x: 0, z: 0 });
     }
+    const current = cast.jellies.get(player.id);
+    if (current) dressJelly(current);
   }
 }
 
