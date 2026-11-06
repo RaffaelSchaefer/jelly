@@ -73,3 +73,19 @@ func TestOnlyALANWithoutPlayersCanBeDeleted(t *testing.T) {
 		t.Errorf("twice: %d %s", response.status, response.body)
 	}
 }
+
+func TestAdminSeesTheLANCode(t *testing.T) {
+	testFixture := newFixture(t)
+	listed := testFixture.callAdmin("GET", "/admin/api/lans", "")
+	if !strings.Contains(string(listed.body), `"join_code":"`+joinCode+`"`) {
+		t.Fatalf("code after creating: %s", listed.body)
+	}
+	response := testFixture.callAdmin("PUT", "/admin/api/lans/1/join-code", `{"join_code":" neu "}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("replace: %d %s", response.status, response.body)
+	}
+	listed = testFixture.callAdmin("GET", "/admin/api/lans", "")
+	if !strings.Contains(string(listed.body), `"join_code":"neu"`) {
+		t.Errorf("code after replacing: %s", listed.body)
+	}
+}

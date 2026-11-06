@@ -26,13 +26,15 @@ type NewLAN struct {
 
 // LANSummary is a LAN as the admin page shows it.
 type LANSummary struct {
-	ID       int64       `json:"id"`
-	Slug     string      `json:"slug"`
-	Name     string      `json:"name"`
-	Timezone string      `json:"timezone"`
-	StartsAt int64       `json:"starts_at"`
-	EndsAt   int64       `json:"ends_at"`
-	Active   bool        `json:"active"`
+	ID       int64  `json:"id"`
+	Slug     string `json:"slug"`
+	Name     string `json:"name"`
+	Timezone string `json:"timezone"`
+	StartsAt int64  `json:"starts_at"`
+	EndsAt   int64  `json:"ends_at"`
+	Active   bool   `json:"active"`
+	// JoinCode is empty for LANs whose code was only stored as a hash, until it is replaced.
+	JoinCode *string     `json:"join_code"`
 	Rules    rules.Rules `json:"rules"`
 }
 
@@ -91,7 +93,7 @@ func (store *Store) ListLANs(ctx context.Context, now int64) ([]LANSummary, erro
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
 	const selectLANsSQL = `SELECT id, slug, name, timezone, starts_at,
-		ends_at, rules FROM lans ORDER BY starts_at DESC`
+		ends_at, join_code, rules FROM lans ORDER BY starts_at DESC`
 	rows, err := store.readDB.QueryContext(queryCtx, selectLANsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("list LANs: %w", err)
@@ -102,7 +104,7 @@ func (store *Store) ListLANs(ctx context.Context, now int64) ([]LANSummary, erro
 		var lan LANSummary
 		var rulesJSON string
 		err = rows.Scan(&lan.ID, &lan.Slug, &lan.Name, &lan.Timezone, &lan.StartsAt, &lan.EndsAt,
-			&rulesJSON)
+			&lan.JoinCode, &rulesJSON)
 		if err != nil {
 			return nil, fmt.Errorf("read LAN: %w", err)
 		}
@@ -172,8 +174,15 @@ func (store *Store) UpdateJoinCode(
 		return ErrInvalidInput
 	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		const updateJoinCodeSQL = `UPDATE lans SET join_code_hash = ? WHERE id = ?`
-		result, err := transaction.ExecContext(ctx, updateJoinCodeSQL, hashSecret(joinCode), lanID)
+		const updateJoinCodeSQL = `UPDATE lans SET join_code_hash = ?, join_code = ?
+			WHERE id = ?`
+		result, err := transaction.ExecContext(
+			ctx,
+			updateJoinCodeSQL,
+			hashSecret(joinCode),
+			joinCode,
+			lanID,
+		)
 		if err != nil {
 			return fmt.Errorf("update join code: %w", err)
 		}
@@ -318,11 +327,11 @@ func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON s
 		return err
 	}
 	const insertLANSQL = `INSERT INTO lans
-		(slug, name, starts_at, ends_at, timezone, join_code_hash, rules)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
+		(slug, name, starts_at, ends_at, timezone, join_code_hash, join_code, rules)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 	_, err = transaction.ExecContext(ctx, insertLANSQL,
 		lan.Slug, lan.Name, lan.StartsAt, lan.EndsAt, lan.Timezone,
-		hashSecret(lan.JoinCode), rulesJSON)
+		hashSecret(lan.JoinCode), lan.JoinCode, rulesJSON)
 	if err != nil && strings.Contains(err.Error(), "lans.slug") {
 		return ErrLANSlugTaken
 	}
