@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # Starts a demo server with room areas and simulated jellies, to look at the stage and the admin page.
 # Usage: scripts/demo.sh [players] [address]    Ends with Ctrl+C.
-# The data stays in .demo/, so accounts, LANs and settings survive a restart. Remove that folder to
-# start over.
+# The data stays in .demo/ or in JELLY_DEMO_DIR, so accounts, LANs and settings survive a restart.
+# Remove that folder to start over.
 set -u
 cd "$(dirname "$0")/.."
 
 players="${1:-70}"
 address="${2:-127.0.0.1:18092}"
 base_url="http://$address"
-data_dir=.demo
+data_dir="${JELLY_DEMO_DIR:-.demo}"
 lan_id=1
 # Every start adds new simulated jellies, so the demo LAN needs room for many runs.
 demo_max_players=1000
+# Bots of the server play next to the simulated jellies, which shows them and builds stacks.
+demo_bots=10
 day_millis=86400000
 
 # GNU date takes -d, BSD date on macOS takes -v.
@@ -67,6 +69,13 @@ simulator_pid=$!
 sleep 3
 
 scripts/demo-room.sh assign "$base_url" "$JELLY_ADMIN_SECRET"
+if $is_new; then
+  admin_call -X POST "$base_url/admin/api/lans/$lan_id/bots" -d "{\"count\":$demo_bots}" ||
+    echo "Could not create the demo bots."
+fi
+# A restart stops the bots of the server, so every start lets them play again.
+admin_call -X PUT "$base_url/admin/api/bots/auto" -d "{\"count\":$demo_bots}" ||
+  echo "Could not start the demo bots."
 
 echo "Stage: $base_url/stage/?key=$JELLY_STAGE_KEY"
 echo "Admin: $base_url/admin/ (password: $JELLY_ADMIN_SECRET)"
