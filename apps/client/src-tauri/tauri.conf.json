@@ -29,5 +29,5 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data:; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     }
   },
-  "bundle": { "active": true, "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"] }
+  "bundle": { "active": true, "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"], "macOS": { "signingIdentity": "-" } }
 }
