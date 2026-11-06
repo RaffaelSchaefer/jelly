@@ -3,7 +3,8 @@
  * Rückmeldungen des Pets, Tastatur-Stupser und der Größen-Regler.
  *
  * In der Browser-Vorschau gibt es kein Backend. Aussehen, Cosmetics und Einstellungen ändern dann
- * nur den lokalen Zustand, alles mit XP oder Konto ist gesperrt.
+ * nur den lokalen Zustand, der Einstieg läuft ohne Server über `previewAccess`, alles mit XP ist
+ * gesperrt.
  *
  * @module
  */
@@ -16,7 +17,9 @@ import {
   achievementTitle,
   equipColor,
   levelCosmetic,
+  needsCode,
   pokeWaitMinutes,
+  previewAccess,
   REPORTS,
   type Action,
   type Catalog,
@@ -92,38 +95,51 @@ function useAccess(
   run: ReturnType<typeof useBackendCall>["run"],
   setMessage: (text: string) => void,
 ) {
+  // Im selben Takt wie der neue Stand: Sonst stünde für ein Bild schon das Dock da. Gesetzt nur hier
+  // beim Einlösen: Auch das Ende einer LAN nimmt die Frage nach dem Code weg, ohne dass jemand schlüpft.
+  const [hatching, setHatching] = useState(false);
+  const endHatch = useCallback(() => setHatching(false), []);
+
   /**
    * Löst einen LAN- oder Sitzplatz-Code ein. Ohne Konto entsteht mit Name und Farbe ein neues,
-   * sonst nimmt das vorhandene teil.
+   * sonst nimmt das vorhandene teil. `true`, wenn der Code gegolten hat.
    */
   const redeemAccess = useCallback(
     async (code: string, name?: string, color?: PetColor) => {
-      const result = await run(() => backend.redeemAccess(code, name, color));
-      if (!result) return;
+      const result = await run(() =>
+        desktop ? backend.redeemAccess(code, name, color) : previewAccess(code, name, color),
+      );
+      if (!result) return false;
       setGame(result.game);
+      setHatching(!needsCode(result.game));
       const greeting = name ? `Hallo, ich bin ${result.game.me?.name ?? name}!` : "Ich bin dabei!";
       setMessage(
         result.seatAssigned ? `${greeting} Mein Platz steht.` : `${greeting} ${SEAT_HINT}`,
       );
+      return true;
     },
     [run, setGame, setMessage],
   );
 
   /**
    * Holt das Konto mit einem Wiederherstellungs-Code zurück. Das alte Secret gilt danach nicht
-   * mehr.
+   * mehr. `true`, wenn der Code gegolten hat.
    */
   const recoverAccess = useCallback(
     async (code: string) => {
-      const next = await run(() => backend.recoverAccess(code));
-      if (!next) return;
+      const next = await run(async () =>
+        desktop ? backend.recoverAccess(code) : (await previewAccess(code)).game,
+      );
+      if (!next) return false;
       setGame(next);
+      setHatching(!needsCode(next));
       setMessage(`Da bin ich wieder, ${next.me?.name ?? "du"}!`);
+      return true;
     },
     [run, setGame, setMessage],
   );
 
-  return { redeemAccess, recoverAccess };
+  return { hatching, endHatch, redeemAccess, recoverAccess };
 }
 
 /** Laden, Code einlösen und die Ereignisse vom Server. */
@@ -244,6 +260,7 @@ export function usePet(onLevelUp: () => void) {
     catalog,
     offset: state.offset,
     pulse,
+    hopAndSay,
     interact,
     redeem,
     ...look,

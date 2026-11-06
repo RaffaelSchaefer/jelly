@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import * as backend from "./backend";
 import { desktop } from "./backend";
-import { PREVIEW_CATALOG, PREVIEW_GAME, type Catalog, type Game, type ServerEvent } from "./pet";
+import { PREVIEW_CATALOG, previewGame, type Catalog, type Game, type ServerEvent } from "./pet";
 
 /** Abstand der Lebenszeichen. Der Server wartet `presence_window` (90 min), bis er abwesend meldet. */
 const PRESENCE_INTERVAL_MS = 5 * 60_000;
@@ -33,7 +33,8 @@ export function inRunningLan(game: Game, ready: boolean) {
  * des Servers, gegen die alle Countdowns laufen.
  */
 export function useGameState() {
-  const [game, patchGame] = useState<Game>(PREVIEW_GAME);
+  // Die App kennt keinen Hash, nur die Vorschau startet damit in einem anderen Zustand.
+  const [game, patchGame] = useState<Game>(() => previewGame(location.hash));
   const [catalog, setCatalog] = useState<Catalog>(PREVIEW_CATALOG);
   const [offset, setOffset] = useState(0);
 
@@ -63,6 +64,9 @@ export function useBackendCall(onFailure: () => void) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const inFlight = useRef(false);
+
+  /** Nimmt die letzte Fehlermeldung zurück, etwa wenn der Nutzer weitergeht. */
+  const clearError = useCallback(() => setError(""), []);
 
   /** Führt `task` aus. Liefert sein Ergebnis, oder `undefined`, wenn nichts übernommen wurde. */
   const run = useCallback(
@@ -99,7 +103,7 @@ export function useBackendCall(onFailure: () => void) {
     await backend.openMap().catch((cause) => setError(String(cause)));
   }, []);
 
-  return { busy, error, inFlight, run, windowAction, openMap };
+  return { busy, error, clearError, inFlight, run, windowAction, openMap };
 }
 
 /** Hört auf Ereignisse zum eigenen Jelly, solange `enabled` gilt. */

@@ -11,18 +11,19 @@ import { isPartnerMotionKey } from "@jelly/scene/partner-emotes";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { desktop, resizeWindow } from "./backend";
-import JoinPanel from "./panels/JoinPanel";
 import PartnerInvitePopup from "./panels/PartnerInvitePopup";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
 import {
   frameLimitToStop,
   FULL_RENDERING,
+  needsCode,
   OPTIMIZED_RENDERING,
   PREVIEW_ME,
   stageLayout,
   stopToFrameLimit,
   type Me,
+  type PetColor,
   type Report,
 } from "./pet";
 import PetStage, { type PanelId } from "./PetStage";
@@ -71,10 +72,9 @@ function useWindowFit(size: number) {
   }, [width, height]);
 }
 
-/** Ob erst ein Code nötig ist, bevor das Pet mitspielt. */
+/** Ob erst ein Code nötig ist, bevor das Pet mitspielt. Die Vorschau kommt per Hash dorthin. */
 function needsJoin({ game, ready }: PetGame) {
-  if (!desktop || !ready) return false;
-  return game.me === null || (game.lan.current !== null && game.lan.joined === false);
+  return ready && needsCode(game);
 }
 
 /**
@@ -178,8 +178,19 @@ function PetDock({
   );
 }
 
-/** Fehlermeldung oder Ladehinweis unter dem Dock. Scheitert das Laden, gibt es einen Neuversuch. */
-function Status({ game }: { game: PetGame }) {
+/**
+ * Fehlermeldung oder Ladehinweis unter dem Dock. Scheitert das Laden, gibt es einen Neuversuch.
+ * Beim Einstieg sagt das Jelly die Fehlermeldung selbst. Für Screenreader bleibt sie hier stehen:
+ * Kommt derselbe Fehler noch einmal, ändert sich die Sprechblase nicht und niemand liest sie vor.
+ */
+function Status({ game, joining }: { game: PetGame; joining: boolean }) {
+  if (joining) {
+    return (
+      <p className="sr-only" role="alert">
+        {game.error}
+      </p>
+    );
+  }
   if (game.error) {
     const retry = game.ready ? undefined : () => void game.load();
     return <ErrorAlert message={game.error} onRetry={retry} />;
@@ -189,20 +200,6 @@ function Status({ game }: { game: PetGame }) {
     <p className="loading" role="status">
       Verbinde mit dem Server …
     </p>
-  );
-}
-
-/** Code einlösen, statt Panels und Dock. */
-function JoinControls({ game }: { game: PetGame }) {
-  return (
-    <Panel title="Willkommen auf der LAN.">
-      <JoinPanel
-        game={game.game}
-        disabled={game.busy}
-        onRedeem={(code, name, color) => void game.redeemAccess(code, name, color)}
-        onRecover={(code) => void game.recoverAccess(code)}
-      />
-    </Panel>
   );
 }
 
@@ -231,14 +228,14 @@ function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
   return panel === "lan" || panel === "settings";
 }
 
-/** Was über dem Dock steht: der Code, eine Aufforderung oder das offene Panel. */
+/** Was über dem Dock steht: eine Aufforderung oder das offene Panel. Beim Einstieg nichts. */
 function OverDock({
   panel,
   joining,
   ...content
 }: Omit<PanelContentProps, "panel"> & { panel: PanelId | null; joining: boolean }) {
   const { game, xpTab, onClose } = content;
-  if (joining) return <JoinControls game={game} />;
+  if (joining || game.hatching) return null;
   // Vor dem Panel: Eine Aufforderung läuft ab, das Panel kann warten.
   if (game.incoming) {
     return (
@@ -257,6 +254,15 @@ function OverDock({
   );
 }
 
+/** Panel und Aufstieg verdecken das Jelly: Sonst sähe man vom Partner-Emote nichts. */
+function useDuetClosesPanel(game: PetGame, panel: PanelId | null, close: () => void) {
+  const duet = game.activeEmote !== null && isPartnerMotionKey(game.activeEmote.key);
+  const panelOpen = isGlassPanel(panel) || panel === "levelup";
+  useEffect(() => {
+    if (duet && panelOpen) close();
+  }, [duet, panelOpen, close]);
+}
+
 /**
  * Was beim Start offen ist. In der Vorschau gibt es keine XP, `#levelup` zeigt den Aufstieg
  * trotzdem.
@@ -270,11 +276,13 @@ export default function App() {
   const openLevelUp = useCallback(() => setPanel("levelup"), []);
   const game = usePet(openLevelUp);
   const { settings } = game.game;
-  const me = game.game.me ?? PREVIEW_ME;
+  const [joinColor, setJoinColor] = useState<PetColor>("mint");
+  // Ohne Konto zeigt die Bühne das Jelly im Entwurf: Die Farbe wirkt schon vor dem Einlösen.
+  const me = game.game.me ?? { ...PREVIEW_ME, name: "Dein Begleiter", color: joinColor };
   const sliders = useSettingSliders(game);
   useWindowFit(sliders.size);
   const joining = needsJoin(game);
-  usePokeKeys(game.interact, panel === null && !joining);
+  usePokeKeys(game.interact, panel === null && !joining && !game.hatching);
 
   useDocumentTheme(
     me.color,
@@ -283,12 +291,7 @@ export default function App() {
   );
 
   const close = useCallback(() => setPanel(null), []);
-  // Panel und Aufstieg verdecken das Jelly: Sonst sähe man vom Partner-Emote nichts.
-  const duet = game.activeEmote !== null && isPartnerMotionKey(game.activeEmote.key);
-  const panelOpen = isGlassPanel(panel) || panel === "levelup";
-  useEffect(() => {
-    if (duet && panelOpen) close();
-  }, [duet, panelOpen, close]);
+  useDuetClosesPanel(game, panel, close);
   const toggle = (next: PanelId) => setPanel((current) => (current === next ? null : next));
 
   return (
@@ -304,7 +307,8 @@ export default function App() {
       >
         <WindowTools onAction={(action) => void game.windowAction(action)} />
         <PetStage
-          {...{ game, me, panel, joining }}
+          {...{ game, me, panel, joining, joinColor }}
+          onJoinColor={setJoinColor}
           reducedMotion={settings.reducedMotion || OS_REDUCED_MOTION}
           rendering={settings.optimizedRendering ? OPTIMIZED_RENDERING : FULL_RENDERING}
           frameLimit={stopToFrameLimit(sliders.frameStop)}
@@ -316,12 +320,12 @@ export default function App() {
             {...{ panel, joining, game, me, xpTab, sliders, onClose: close }}
             onXpTab={setXpTab}
           />
-          {/* Beim Aufstieg steht die Kapsel an der Stelle des Docks. */}
-          {joining || panel === "levelup" ? null : (
+          {/* Beim Einstieg und beim Aufstieg steht eine Kapsel an der Stelle des Docks. */}
+          {joining || game.hatching || panel === "levelup" ? null : (
             <PetDock me={me} panel={panel} onToggle={toggle} />
           )}
         </section>
-        <Status game={game} />
+        <Status game={game} joining={joining} />
       </main>
       {desktop ? null : <PreviewFooter />}
     </>

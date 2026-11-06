@@ -47,6 +47,7 @@ function createUniforms(color: PetColor, maxShapes: number) {
     uTime: { value: 0 },
     uShapes: { value: Array.from({ length: maxShapes }, () => new Vector4()) },
     uCalm: { value: Array.from({ length: maxShapes }, () => 0) },
+    uThin: { value: Array.from({ length: maxShapes }, () => 0) },
     uColor: { value: new Color(palette.hex) },
     uGlow: { value: new Color(palette.glow) },
     uInk: { value: new Color(palette.outline) },
@@ -82,19 +83,23 @@ export function createGlass(color: PetColor, { maxShapes, soloShapes, shadow, bo
 
 /**
  * Liest die Lage aller `data-liquid`-Elemente in `stage` in Pixeln auf der Canvas und merkt sich in
- * `calm`, welche davon `data-liquid="calm"` tragen und sich deshalb kaum verformen.
+ * `calm`, welche davon `data-liquid="calm"` tragen und sich deshalb kaum verformen, und in `thin`,
+ * welche `data-liquid="thin"` tragen und wie eine Seifenblase klar bleiben. Das wirkt nur auf den
+ * Plätzen, die für sich bleiben (`soloShapes`).
  */
 export function readShapes(
   stage: HTMLElement,
   canvas: HTMLCanvasElement,
   width: number,
-  { shapes, calm }: { shapes: Vector4[]; calm: number[] },
+  { shapes, calm, thin }: { shapes: Vector4[]; calm: number[]; thin?: number[] },
 ) {
   const box = canvas.getBoundingClientRect();
   const found = stage.querySelectorAll("[data-liquid]");
   shapes.forEach((shape, index) => {
     const element = found[index];
-    calm[index] = element?.getAttribute("data-liquid") === "calm" ? 1 : 0;
+    const kind = element?.getAttribute("data-liquid");
+    calm[index] = kind === "calm" ? 1 : 0;
+    if (thin) thin[index] = kind === "thin" ? 1 : 0;
     if (!element) {
       shape.setScalar(0);
       return;
