@@ -12,7 +12,6 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 
 import { desktop, resizeWindow } from "./backend";
 import JoinPanel from "./panels/JoinPanel";
-import LevelUpPanel from "./panels/LevelUpPanel";
 import PartnerInvitePopup from "./panels/PartnerInvitePopup";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
@@ -23,7 +22,6 @@ import {
   PREVIEW_ME,
   stageLayout,
   stopToFrameLimit,
-  type Cosmetic,
   type Me,
   type Report,
 } from "./pet";
@@ -36,14 +34,13 @@ import "./optimized.css";
 /** Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt zusätzlich zur Einstellung im Pet. */
 const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Panels im Glas-Stil. „Aussehen“, Emotes und Schilder sind keine, sie liegen direkt auf der Bühne. */
-type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs">;
+/** Panels im Glas-Stil. „Aussehen“, Emotes, Schilder und der Aufstieg liegen direkt auf der Bühne. */
+type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs" | "levelup">;
 
 /** Überschrift des offenen Panels. Bei XP setzt sie der gewählte Reiter. */
-function panelTitle(panel: GlassPanelId, xpTab: XpTab, me: Me) {
+function panelTitle(panel: GlassPanelId, xpTab: XpTab) {
   const titles: Record<GlassPanelId, string> = {
     lan: XP_TABS.find((tab) => tab.id === xpTab)!.title,
-    levelup: `${me.name} ist eine Stufe weiter.`,
     settings: "Ein bisschen Feintuning.",
   };
   return titles[panel];
@@ -113,7 +110,7 @@ interface PanelContentProps {
 
 /** Inhalt des offenen Panels. */
 function PanelContent(props: PanelContentProps) {
-  const { panel, game, me, xpTab, sliders, onXpTab, onClose } = props;
+  const { panel, game, me, xpTab, sliders, onXpTab } = props;
   const { catalog, ready, busy } = game;
   const disabled = busy || !ready;
   if (panel === "lan") {
@@ -127,19 +124,6 @@ function PanelContent(props: PanelContentProps) {
         onTab={onXpTab}
         onReport={report}
         onRedeem={game.redeem}
-      />
-    );
-  }
-  if (panel === "levelup") {
-    const equipAndClose = (item: Cosmetic) => {
-      void game.equip(item.slot, item.id);
-      onClose();
-    };
-    return (
-      <LevelUpPanel
-        {...{ me, catalog, disabled, onClose }}
-        rules={game.game.lan.rules}
-        onEquip={equipAndClose}
       />
     );
   }
@@ -157,7 +141,7 @@ function PanelContent(props: PanelContentProps) {
   );
 }
 
-/** Die Dock-Knöpfe. Der XP-Knopf gilt auch für das Level-Panel als „offen“. */
+/** Die Dock-Knöpfe. */
 function PetDock({
   me,
   panel,
@@ -167,14 +151,13 @@ function PetDock({
   panel: PanelId | null;
   onToggle: (panel: PanelId) => void;
 }) {
-  const xpOpen = panel === "lan" || panel === "levelup";
   return (
     <Dock label="Pet-Menü">
       <DockButton
         icon="spark"
         label="XP und Fortschritt"
         title={`${me.name} · Level ${me.level} · ${me.xp} XP`}
-        expanded={xpOpen}
+        expanded={panel === "lan"}
         onClick={() => onToggle("lan")}
       />
       <DockButton
@@ -245,7 +228,7 @@ function useDocumentTheme(color: Me["color"], reducedMotion: boolean, optimized:
 
 /** Ob das Panel seinen Inhalt über dem Dock zeigt. */
 function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
-  return panel !== null && panel !== "look" && panel !== "emotes" && panel !== "signs";
+  return panel === "lan" || panel === "settings";
 }
 
 /** Was über dem Dock steht: der Code, eine Aufforderung oder das offene Panel. */
@@ -254,7 +237,7 @@ function OverDock({
   joining,
   ...content
 }: Omit<PanelContentProps, "panel"> & { panel: PanelId | null; joining: boolean }) {
-  const { game, me, xpTab, onClose } = content;
+  const { game, xpTab, onClose } = content;
   if (joining) return <JoinControls game={game} />;
   // Vor dem Panel: Eine Aufforderung läuft ab, das Panel kann warten.
   if (game.incoming) {
@@ -268,15 +251,21 @@ function OverDock({
   }
   if (!isGlassPanel(panel)) return null;
   return (
-    <Panel title={panelTitle(panel, xpTab, me)} onClose={onClose}>
+    <Panel title={panelTitle(panel, xpTab)} onClose={onClose}>
       <PanelContent panel={panel} {...content} />
     </Panel>
   );
 }
 
+/**
+ * Was beim Start offen ist. In der Vorschau gibt es keine XP, `#levelup` zeigt den Aufstieg
+ * trotzdem.
+ */
+const FIRST_PANEL: PanelId | null = !desktop && location.hash === "#levelup" ? "levelup" : null;
+
 /** Die ganze App. */
 export default function App() {
-  const [panel, setPanel] = useState<PanelId | null>(null);
+  const [panel, setPanel] = useState<PanelId | null>(FIRST_PANEL);
   const [xpTab, setXpTab] = useState<XpTab>("overview");
   const openLevelUp = useCallback(() => setPanel("levelup"), []);
   const game = usePet(openLevelUp);
@@ -294,17 +283,13 @@ export default function App() {
   );
 
   const close = useCallback(() => setPanel(null), []);
-  // Das Panel verdeckt Jelly und Sprechblase: Sonst sähe man vom Partner-Emote nichts.
+  // Panel und Aufstieg verdecken das Jelly: Sonst sähe man vom Partner-Emote nichts.
   const duet = game.activeEmote !== null && isPartnerMotionKey(game.activeEmote.key);
-  const panelOpen = isGlassPanel(panel);
+  const panelOpen = isGlassPanel(panel) || panel === "levelup";
   useEffect(() => {
     if (duet && panelOpen) close();
   }, [duet, panelOpen, close]);
-  // Das Level-Panel gehört zum XP-Knopf: Der schließt es auch.
-  const toggle = (next: PanelId) =>
-    setPanel((current) =>
-      current === next || (current === "levelup" && next === "lan") ? null : next,
-    );
+  const toggle = (next: PanelId) => setPanel((current) => (current === next ? null : next));
 
   return (
     <>
@@ -331,7 +316,10 @@ export default function App() {
             {...{ panel, joining, game, me, xpTab, sliders, onClose: close }}
             onXpTab={setXpTab}
           />
-          {joining ? null : <PetDock me={me} panel={panel} onToggle={toggle} />}
+          {/* Beim Aufstieg steht die Kapsel an der Stelle des Docks. */}
+          {joining || panel === "levelup" ? null : (
+            <PetDock me={me} panel={panel} onToggle={toggle} />
+          )}
         </section>
         <Status game={game} />
       </main>

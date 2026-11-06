@@ -9,7 +9,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { Vector3, type Camera } from "three";
 
-import { CANVAS_OVERSCAN, stageLayout, type StudioFocus } from "../pet";
+import { CANVAS_OVERSCAN, stageLayout, type CameraFocus } from "../pet";
 
 /** Standort und Blickziel der Kamera. */
 type Shot = { position: Vector3; look: Vector3 };
@@ -17,8 +17,12 @@ type Shot = { position: Vector3; look: Vector3 };
 /** Die Grundansicht. Muss zu `camera` in `PetScene.tsx` passen, Fiber blickt dort auf den Ursprung. */
 const DEFAULT_SHOT: Shot = { position: new Vector3(0, 0.1, 5.8), look: new Vector3(0, 0, 0) };
 
-/** Die Ansicht je Region. Die Kamera steht meist etwas seitlich, damit es nach Raum aussieht. */
-const SHOTS: Record<StudioFocus, Shot> = {
+/**
+ * Die Ansicht je Region. Die Kamera steht meist etwas seitlich, damit es nach Raum aussieht. Beim
+ * Aufstieg fährt sie zurück: So bleibt die Zahl auch über dem jubelnden Jelly lesbar.
+ */
+const SHOTS: Record<CameraFocus, Shot> = {
+  levelup: { position: new Vector3(0, 0.25, 6.6), look: new Vector3(0, 0.15, 0) },
   head: { position: new Vector3(0.35, 0.9, 3.6), look: new Vector3(0, HEAD.y, HEAD.z) },
   face: { position: new Vector3(0.3, 0.7, 3.2), look: new Vector3(0.15, HEAD.y - 0.05, HEAD.z) },
   body: { position: new Vector3(0, -0.2, 6.2), look: new Vector3(0, -0.3, 0) },
@@ -54,7 +58,7 @@ export default function CameraRig({
   focus,
   reducedMotion,
 }: {
-  focus: StudioFocus | null;
+  focus: CameraFocus | null;
   reducedMotion: boolean;
 }) {
   const invalidate = useThree((state) => state.invalidate);

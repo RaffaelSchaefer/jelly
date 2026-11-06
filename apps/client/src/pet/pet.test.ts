@@ -6,6 +6,7 @@ import {
   isUnlocked,
   levelCosmetic,
   levelProgress,
+  levelReward,
   nextLevelCosmetic,
   PET_SIZE,
   pokeWaitMinutes,
@@ -15,8 +16,26 @@ import {
   slotLabel,
   stageLayout,
   unlockLabel,
+  wearingLevelReward,
   wornCosmetics,
 } from ".";
+
+describe("level reward", () => {
+  it("tries the new part on without taking off the rest", () => {
+    const me = { ...PREVIEW_ME, equipped: { face: { key: "pixel-glasses", color: null } } };
+    expect(wearingLevelReward(me, PREVIEW_CATALOG)).toEqual({
+      face: { key: "pixel-glasses", color: null },
+      head: { key: "beanie", color: PREVIEW_CATALOG.cosmetic_colors[0] },
+    });
+  });
+
+  it("changes nothing on a level without a part, or one the server did not unlock", () => {
+    const quiet = { ...PREVIEW_ME, level: 4 };
+    const locked = { ...PREVIEW_ME, cosmetics: [] };
+    expect(levelReward(quiet, PREVIEW_CATALOG)).toBeUndefined();
+    expect(wearingLevelReward(locked, PREVIEW_CATALOG)).toBe(locked.equipped);
+  });
+});
 
 describe("self-reports", () => {
   const reports = { food_ready_at: 0, drink_ready_at: 1_000_000, reports_left: 5 };
