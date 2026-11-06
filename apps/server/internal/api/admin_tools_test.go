@@ -84,9 +84,14 @@ func TestEndedEventCodeCannotBeRedeemed(t *testing.T) {
 	); ended.status != http.StatusOK {
 		t.Fatalf("end: %d %s", ended.status, ended.body)
 	}
-	redeemed := testFixture.callAPI("POST", "/v1/event-codes/redeem", token, `{"code":"pizza"}`)
-	if redeemed.status == http.StatusOK {
-		t.Errorf("an ended code still gave XP: %s", redeemed.body)
+	redeemed := testFixture.callAPI(
+		"POST",
+		"/v1/event-codes/redemptions",
+		token,
+		`{"code":"pizza"}`,
+	)
+	if redeemed.status != http.StatusForbidden {
+		t.Errorf("an ended code: %d %s", redeemed.status, redeemed.body)
 	}
 	if missing := testFixture.callAdmin(
 		"POST",
