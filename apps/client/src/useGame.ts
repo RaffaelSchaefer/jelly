@@ -40,7 +40,8 @@ export function useGameState() {
 
   /** Übernimmt einen neuen Stand aus Rust. */
   const setGame = useCallback((next: Game) => {
-    patchGame(next);
+    // Die Beispieldaten der Vorschau sollen nicht zurücksetzen, was dort gerade eingestellt ist.
+    patchGame(desktop ? next : (current) => ({ ...next, settings: current.settings }));
     if (next.me) setOffset(next.me.server_time - Date.now());
   }, []);
 

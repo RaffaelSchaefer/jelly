@@ -90,6 +90,8 @@ interface PetStageProps {
   /** Die Farbe im Entwurf, solange es noch kein Konto gibt. */
   joinColor: PetColor;
   onJoinColor: (color: PetColor) => void;
+  /** Wird gerufen, wenn das Gerät zu langsam ist. Ohne Wert wird nicht gemessen. */
+  onSlowDevice?: () => void;
   reducedMotion: boolean;
   /** Wie aufwendig die Szene gezeichnet wird. */
   rendering: RenderProfile;
@@ -131,6 +133,7 @@ function PetVisual({
   voiced,
   focus,
   anchors,
+  onSlowDevice,
 }: {
   game: PetGame;
   me: Me;
@@ -143,6 +146,7 @@ function PetVisual({
   voiced: RefObject<ActiveVoice | null>;
   focus?: CameraFocus;
   anchors?: RefObject<HTMLElement | null>;
+  onSlowDevice?: () => void;
 }) {
   const started = useSceneStart(game.ready || game.error !== "");
   return (
@@ -158,7 +162,7 @@ function PetVisual({
             color={me.color}
             pulse={game.pulse}
             {...{ emote, equipped, reducedMotion, rendering, frameLimit, sign, voiced }}
-            {...{ focus, anchors }}
+            {...{ focus, anchors, onSlowDevice }}
           />
         ) : (
           WAKING_UP
@@ -338,6 +342,7 @@ export default function PetStage(props: PetStageProps) {
         equipped={revealed && levelUp ? wearingLevelReward(me, game.catalog) : me.equipped}
         focus={cameraFocus(hatch, levelUp, region)}
         anchors={glass ? stage : undefined}
+        onSlowDevice={props.onSlowDevice}
       />
       <StageOverlays
         {...{ game, me, panel, modes, region, joinColor, onJoinColor, onToggle, onClose }}

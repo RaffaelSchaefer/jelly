@@ -264,6 +264,22 @@ function useDuetClosesPanel(game: PetGame, panel: PanelId | null, close: () => v
 }
 
 /**
+ * Beim Einstieg schaltet ein zu langsames Gerät von selbst auf den optimierten Modus: An die
+ * Einstellungen kommt es erst danach, und wer bei 5 FPS seinen Namen tippt, gibt vielleicht vorher
+ * auf. Nur hier, nicht beim Schlüpfen: Dessen Licht darf ein Gerät kurz ins Stocken bringen.
+ *
+ * @returns Für die Szene. Ohne Wert misst sie nicht.
+ */
+function useSlowDeviceSwitch({ game, saveSettings }: PetGame, joining: boolean) {
+  const { settings } = game;
+  const onSlow = useCallback(
+    () => void saveSettings({ ...settings, optimizedRendering: true }),
+    [saveSettings, settings],
+  );
+  return joining && !settings.optimizedRendering ? onSlow : undefined;
+}
+
+/**
  * Was beim Start offen ist. In der Vorschau gibt es keine XP, `#levelup` zeigt den Aufstieg
  * trotzdem.
  */
@@ -292,6 +308,7 @@ export default function App() {
 
   const close = useCallback(() => setPanel(null), []);
   useDuetClosesPanel(game, panel, close);
+  const onSlowDevice = useSlowDeviceSwitch(game, joining);
   const toggle = (next: PanelId) => setPanel((current) => (current === next ? null : next));
 
   return (
@@ -307,7 +324,7 @@ export default function App() {
       >
         <WindowTools onAction={(action) => void game.windowAction(action)} />
         <PetStage
-          {...{ game, me, panel, joining, joinColor }}
+          {...{ game, me, panel, joining, joinColor, onSlowDevice }}
           onJoinColor={setJoinColor}
           reducedMotion={settings.reducedMotion || OS_REDUCED_MOTION}
           rendering={settings.optimizedRendering ? OPTIMIZED_RENDERING : FULL_RENDERING}

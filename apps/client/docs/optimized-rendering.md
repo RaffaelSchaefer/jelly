@@ -3,6 +3,11 @@
 „Optimierter Modus“ in den Einstellungen senkt die Grafiklast für ältere PCs. Die Einstellung liegt lokal
 in `jelly.json` (`optimizedRendering`), ist standardmäßig aus und wirkt ohne Neustart.
 
+An die Einstellungen kommt man erst nach dem Einstieg. Darum misst die App, solange sie nach dem Code fragt:
+Bleibt sie nach einer Sekunde Anlauf zwei Sekunden in Folge unter 20 Bildschirmaktualisierungen pro Sekunde,
+schaltet sie den Modus selbst ein und speichert ihn (`createSlowFrameMeter` in `src/pet/rendering.ts`). Ausschalten
+geht danach wie immer in den Einstellungen.
+
 ## Was sich ändert
 
 | Hebel                  | Normal                 | Optimiert                                     |
