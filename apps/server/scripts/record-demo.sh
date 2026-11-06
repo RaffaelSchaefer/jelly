@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 
 out_dir="${1:?Usage: scripts/record-demo.sh <out-dir> [seconds]}"
 seconds="${2:-20}"
-stage_url="http://127.0.0.1:18093/stage/?key=demo-stage"
+stage_url="http://127.0.0.1:${JELLY_DEMO_PORT:-18092}/stage/?key=demo-stage"
 rush_seconds=25
 gif_width=800
 gif_rate=12

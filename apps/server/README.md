@@ -24,9 +24,11 @@ curl -X POST localhost:8080/v1/auth/redeem -H 'Content-Type: application/json' \
 
 ## Bühne ansehen
 
-`scripts/demo.sh` startet einen Demo-Server mit 70 simulierten Jellies und nennt die Links zu Bühne
-und Admin-Seite. Die Daten liegen im ignorierten Ordner `.demo/` und überstehen einen Neustart, jeder
-Start bringt 70 neue Jellies dazu. Wer neu anfangen will, löscht den Ordner. Dazu spielen 10 Bots des
+`scripts/demo-docker.sh start` startet einen Demo-Server aus dem echten Image mit 70 simulierten
+Jellies auf `127.0.0.1:18092` und nennt die Links zu Bühne und Admin-Seite. Die Daten liegen in einem
+Docker-Volume und überstehen `stop` und `start`, jeder Start bringt 70 neue Jellies dazu. `reset`
+fängt neu an. `scripts/demo.sh` (`pnpm demo`) macht dasselbe direkt mit Go, mit den Daten im
+ignorierten Ordner `.demo/`. Dazu spielen 10 Bots des
 Servers selbst und bauen auch Stapel, und jedes sechste Jelly hat keinen festen Platz und läuft als
 Besucher durch die Besucher-Zone ganz vorn. Der Raum folgt dem Hallenplan der LAN: hinten die Bühne
 (`stage`) mit zwei Beamern für Turniere und Public Gaming, davor links die Chillout-Lounge
@@ -43,8 +45,9 @@ der alten Zuweisung und muss `prop` erst übernehmen, Tische und Theke fehlen bi
 ![Die 3D-Bühne mit 70 simulierten Jellies](docs/images/stage-3d.jpg)
 
 ```sh
-pnpm demo                          # direkt mit Go
-scripts/demo-docker.sh start       # aus dem echten Image, Ende mit: scripts/demo-docker.sh stop
+scripts/demo-docker.sh start       # aus dem echten Image, Ende mit stop, Neuanfang mit reset
+scripts/demo-docker.sh start 0     # nur die 10 Bots des Servers, ohne Simulator
+pnpm demo                          # direkt mit Go, Daten in .demo/
 scripts/record-demo.sh videos 20   # nimmt 20 Sekunden als MP4 und GIF auf, braucht Firefox und ffmpeg
 ```
 
