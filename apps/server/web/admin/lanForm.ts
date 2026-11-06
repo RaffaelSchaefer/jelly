@@ -40,7 +40,7 @@ function createFields(): LANFormFields {
     joinCode: createField({
       id: "lan-join-code",
       label: "LAN-Code",
-      hint: "Damit treten Spieler bei. Der Server speichert ihn verschlüsselt und kann ihn nicht mehr anzeigen.",
+      hint: "Damit treten Spieler bei. Du findest ihn später bei der LAN.",
     }),
     startsAt: createField({ id: "lan-starts", label: "Beginn", type: "datetime-local" }),
     endsAt: createField({ id: "lan-ends", label: "Ende", type: "datetime-local" }),

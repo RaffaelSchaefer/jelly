@@ -303,6 +303,17 @@ button:focus-visible {
   font-weight: 600;
 }
 
+button.is-armed {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
 .is-changed input {
   border-color: var(--accent);
   background: var(--accent-soft);

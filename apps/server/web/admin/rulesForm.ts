@@ -99,6 +99,12 @@ function nameRules(entries: RuleField[], changes: GameRules): string {
     .join(", ");
 }
 
+/** Puts the label in place of the technical name that starts the error of the server. */
+function explainRuleError(text: string, entries: RuleField[]): string {
+  const entry = entries.find(({ rule }) => text.startsWith(`${rule.key} `));
+  return entry === undefined ? text : entry.rule.label + text.slice(entry.rule.key.length);
+}
+
 /** Sends the changes and takes over what the server saved. */
 function submitRules(parts: RulesFormParts, onFailure: FailureHandler): void {
   const { lan, entries, message, save } = parts;
@@ -117,9 +123,7 @@ function submitRules(parts: RulesFormParts, onFailure: FailureHandler): void {
     })
     .catch((error: unknown) => {
       save.disabled = false;
-      onFailure(error, (text) => {
-        message.showBad(`${text} Geändert: ${nameRules(entries, changes)}.`);
-      });
+      onFailure(error, (text) => message.showBad(explainRuleError(text, entries)));
     });
 }
 

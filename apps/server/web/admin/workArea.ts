@@ -90,11 +90,22 @@ export async function createWorkArea(onSessionEnded: () => void): Promise<HTMLEl
             onCreated: (slug) => void reload(slug).catch(() => location.reload()),
             onFailure,
           })
-        : createLANDetail(selected, onFailure),
+        : createLANDetail(selected, {
+            onFailure,
+            onChanged: () => void refresh().catch(() => location.reload()),
+            onDeleted: () => {
+              location.hash = "";
+              void refresh().catch(() => location.reload());
+            },
+          }),
     );
   };
   const open = (target: Selection) => {
     location.hash = target === "new" ? HASH_NEW : `${HASH_LAN_PREFIX}${target}`;
+    render();
+  };
+  const refresh = async () => {
+    lans = await listLANs();
     render();
   };
   const reload = async (slug: string) => {

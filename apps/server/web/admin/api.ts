@@ -83,6 +83,8 @@ export interface LANSummary {
   starts_at: number;
   ends_at: number;
   active: boolean;
+  /** Empty for older LANs whose code was only stored as a hash, until it is replaced. */
+  join_code: string | null;
   rules: GameRules;
 }
 
@@ -114,4 +116,26 @@ export function patchRules(lanID: number, changes: GameRules): Promise<GameRules
 /** Replaces the code that players join a LAN with. */
 export function updateJoinCode(lanID: number, joinCode: string): Promise<unknown> {
   return sendRequest("PUT", `/lans/${lanID}/join-code`, { join_code: joinCode });
+}
+
+/** What an admin can correct about a LAN. Missing fields stay as they are. */
+export interface LANChanges {
+  name?: string;
+  starts_at?: number;
+  ends_at?: number;
+}
+
+/** Corrects the name or period of a LAN. */
+export function updateLAN(lanID: number, changes: LANChanges): Promise<unknown> {
+  return sendRequest("PATCH", `/lans/${lanID}`, changes);
+}
+
+/** Deletes a LAN that nobody has joined yet. */
+export function deleteLAN(lanID: number): Promise<unknown> {
+  return sendRequest("DELETE", `/lans/${lanID}`);
+}
+
+/** Replaces all rules. Rules that are missing go back to their defaults. */
+export function replaceRules(lanID: number, rules: GameRules): Promise<GameRules> {
+  return sendRequest("PUT", `/lans/${lanID}/rules`, rules);
 }

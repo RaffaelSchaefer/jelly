@@ -17,6 +17,12 @@ export function readLocalDateTime(value: string): number {
   return new Date(value).getTime();
 }
 
+/** Writes a time of the API as the value of a date and time input, in this browser's time zone. */
+export function toLocalDateTimeValue(millis: number): string {
+  const offsetMillis = new Date(millis).getTimezoneOffset() * 60_000;
+  return new Date(millis - offsetMillis).toISOString().slice(0, 16);
+}
+
 /** Says whether the browser knows a time zone like `Europe/Berlin`. */
 export function isTimeZoneKnown(timeZone: string): boolean {
   try {

@@ -6,16 +6,14 @@
 
 import { updateJoinCode, type LANSummary } from "./api.ts";
 import { createElement, createField, createMessage } from "./dom.ts";
-import type { FailureHandler } from "./rulesForm.ts";
+import type { LANActions } from "./lanDetail.ts";
 
-const TEXT_CHANGED = "Der neue LAN-Code gilt ab sofort, der alte nicht mehr.";
-
-/** Creates the panel. The server keeps only a hash, so the current code cannot be shown. */
-export function createJoinCodeForm(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
+/** Creates the panel. The new code appears at the top of the LAN after saving. */
+export function createJoinCodeForm(lan: LANSummary, actions: LANActions): HTMLElement {
   const code = createField({
     id: "join-code",
     label: "Neuer LAN-Code",
-    hint: "Der aktuelle Code lässt sich nicht anzeigen. Du kannst ihn nur ersetzen.",
+    hint: "Der alte Code gilt danach nicht mehr. Wer schon teilnimmt, bleibt dabei.",
   });
   code.input.required = true;
   code.input.autocomplete = "off";
@@ -33,13 +31,10 @@ export function createJoinCodeForm(lan: LANSummary, onFailure: FailureHandler): 
     event.preventDefault();
     submit.disabled = true;
     updateJoinCode(lan.id, code.input.value.trim())
-      .then(() => {
-        code.input.value = "";
-        message.showGood(TEXT_CHANGED);
-      })
-      .catch((error: unknown) => onFailure(error, message.showBad))
-      .finally(() => {
+      .then(actions.onChanged)
+      .catch((error: unknown) => {
         submit.disabled = false;
+        actions.onFailure(error, message.showBad);
       });
   });
   return form;

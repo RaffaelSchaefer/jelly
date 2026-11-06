@@ -83,3 +83,32 @@ export function createMessage(): Message {
     },
   };
 }
+
+const CONFIRM_MILLIS = 5000;
+
+/**
+ * Creates a button that asks for a second click before it acts. The page has no dialogs, so the
+ * button itself says what will happen and turns back after a few seconds.
+ */
+export function createConfirmButton(text: string, confirmText: string, onConfirm: () => void) {
+  const button = createElement("button", "quiet", text);
+  button.type = "button";
+  let timer = 0;
+  const reset = () => {
+    window.clearTimeout(timer);
+    timer = 0;
+    button.textContent = text;
+    button.classList.remove("is-armed");
+  };
+  button.addEventListener("click", () => {
+    if (timer === 0) {
+      button.textContent = confirmText;
+      button.classList.add("is-armed");
+      timer = window.setTimeout(reset, CONFIRM_MILLIS);
+      return;
+    }
+    reset();
+    onConfirm();
+  });
+  return button;
+}
