@@ -107,6 +107,7 @@ func (service *Service) RunMovement(ctx context.Context) {
 			return
 		case <-ticker.C:
 			service.server.advanceMovement(ctx)
+			service.server.playBots(ctx)
 		}
 	}
 }

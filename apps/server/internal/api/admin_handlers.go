@@ -1,6 +1,7 @@
 package api
 
 import (
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -42,6 +43,7 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"GET /admin/api/lans/{id}/gathering":             server.handleLoadGathering,
 		"POST /admin/api/event-codes/{id}/end":           server.handleEndEventCode,
 	}
+	maps.Copy(routes, server.listBotRoutes())
 	for pattern, handler := range routes {
 		mux.HandleFunc(pattern, server.requireAdmin(handler))
 	}

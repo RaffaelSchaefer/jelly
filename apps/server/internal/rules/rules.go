@@ -52,8 +52,10 @@ const (
 	// but none is older than this.
 	earliestLANStart = 946_684_800_000
 	maxLANMillis     = 60 * 24 * 60 * 60 * 1000
-	// maxEventCodeXP is plenty for one event, and small enough that a typo cannot end the game.
-	maxEventCodeXP = 10_000
+	// MaxGivenXP is plenty for one event or one gift by an admin, and small enough that a typo
+	// cannot
+	// end the game.
+	MaxGivenXP = 10_000
 )
 
 // ErrInvalidRules reports rules with a value that would break the game.
@@ -164,7 +166,7 @@ func IsLANPeriodValid(startsAt, endsAt int64) bool {
 
 // IsEventCodeValid reports whether a code gives a sensible amount of XP for a time that fits a LAN.
 func IsEventCodeValid(xp int, validFrom, validUntil int64) bool {
-	return xp >= 0 && xp <= maxEventCodeXP && validFrom < validUntil &&
+	return xp >= 0 && xp <= MaxGivenXP && validFrom < validUntil &&
 		validUntil-validFrom <= maxLANMillis
 }
 

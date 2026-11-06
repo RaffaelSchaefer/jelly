@@ -52,7 +52,15 @@ func (testFixture *fixture) loginAdmin() string {
 
 func (testFixture *fixture) callAdmin(method, path, body string) apiResponse {
 	testFixture.t.Helper()
-	response, _ := testFixture.sendWithCookie(method, path, testFixture.loginAdmin(), body)
+	// The login is limited for everyone, so a test with many admin calls reuses its session as long
+	// as the fake clock leaves it valid.
+	const sessionReuseMillis = 20 * 60 * 1000
+	now := testFixture.clock.Load()
+	if testFixture.adminCookie == "" || now-testFixture.adminLoginAt > sessionReuseMillis {
+		testFixture.adminCookie = testFixture.loginAdmin()
+		testFixture.adminLoginAt = now
+	}
+	response, _ := testFixture.sendWithCookie(method, path, testFixture.adminCookie, body)
 	return response
 }
 

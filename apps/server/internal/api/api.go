@@ -4,6 +4,7 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -55,6 +56,9 @@ type apiServer struct {
 	streams *streamSlots
 	// planner decides where the jellies walk.
 	planner *movement.Planner
+	// autoBots is how many bots play by themselves. It lives in memory only, so a restart stops
+	// them.
+	autoBots atomic.Int64
 }
 
 // newAPIServer creates the state that all routes share.

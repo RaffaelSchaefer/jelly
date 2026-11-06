@@ -88,38 +88,28 @@ type knownError struct {
 // listKnownErrors returns all errors the client may learn about.
 func listKnownErrors() []knownError {
 	return slices.Concat(
-		listPlayerErrors(), listSeatErrors(), listCosmeticErrors(), listInviteErrors(),
-		listGameErrors(), listStackErrors(),
+		listPlayerErrors(),
+		listAdminErrors(),
+		listSeatErrors(),
+		listCosmeticErrors(),
+		listInviteErrors(),
+		listGameErrors(),
+		listStackErrors(),
 	)
 }
 
-// listPlayerErrors covers accounts, access and admin input.
-func listPlayerErrors() []knownError {
+// listAdminErrors returns the errors that only the admin page meets.
+func listAdminErrors() []knownError {
 	return []knownError{
-		{store.ErrUnauthorized, problem{
-			http.StatusUnauthorized, "unauthorized", "Dieses Konto ist nicht bekannt.",
-		}},
-		{errForbidden, problem{http.StatusForbidden, "forbidden", "Zugriff verweigert."}},
-		{store.ErrInvalidCode, problem{
-			http.StatusForbidden, "invalid_code", "Der Anmeldecode stimmt nicht.",
-		}},
-		{store.ErrNameTaken, problem{
-			http.StatusConflict, "name_taken", "Dieser Name ist schon vergeben.",
-		}},
-		{store.ErrPlayerNotFound, problem{
-			http.StatusNotFound, "player_not_found", "Dieses Konto gibt es nicht.",
-		}},
-		{store.ErrLANNotFound, problem{
-			http.StatusNotFound, "lan_not_found", "Diese LAN gibt es nicht.",
-		}},
-		{store.ErrLANFull, problem{
-			http.StatusConflict, "lan_full", "Diese LAN ist schon voll.",
-		}},
-		{store.ErrLANOverlap, problem{
-			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
-		}},
-		{store.ErrInvalidInput, problemInvalidRequest()},
 		{store.ErrEventCodeNotFound, problemNotFound()},
+		{
+			store.ErrNotABot,
+			problem{
+				http.StatusBadRequest,
+				"not_a_bot",
+				"Das ist kein Bot. Echte Spieler steuert niemand von außen.",
+			},
+		},
 		{store.ErrLANHasPlayers, problem{
 			http.StatusConflict, "lan_has_players",
 			"An dieser LAN nehmen schon Spieler teil, deshalb lässt sie sich nicht löschen.",
@@ -151,6 +141,35 @@ func listPlayerErrors() []knownError {
 		{rules.ErrInvalidColor, problem{
 			http.StatusBadRequest, "invalid_color", "Diese Farbe gibt es nicht.",
 		}},
+	}
+}
+
+// listPlayerErrors covers accounts, access and admin input.
+func listPlayerErrors() []knownError {
+	return []knownError{
+		{store.ErrUnauthorized, problem{
+			http.StatusUnauthorized, "unauthorized", "Dieses Konto ist nicht bekannt.",
+		}},
+		{errForbidden, problem{http.StatusForbidden, "forbidden", "Zugriff verweigert."}},
+		{store.ErrInvalidCode, problem{
+			http.StatusForbidden, "invalid_code", "Der Anmeldecode stimmt nicht.",
+		}},
+		{store.ErrNameTaken, problem{
+			http.StatusConflict, "name_taken", "Dieser Name ist schon vergeben.",
+		}},
+		{store.ErrPlayerNotFound, problem{
+			http.StatusNotFound, "player_not_found", "Dieses Konto gibt es nicht.",
+		}},
+		{store.ErrLANNotFound, problem{
+			http.StatusNotFound, "lan_not_found", "Diese LAN gibt es nicht.",
+		}},
+		{store.ErrLANFull, problem{
+			http.StatusConflict, "lan_full", "Diese LAN ist schon voll.",
+		}},
+		{store.ErrLANOverlap, problem{
+			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
+		}},
+		{store.ErrInvalidInput, problemInvalidRequest()},
 	}
 }
 
