@@ -57,30 +57,42 @@ func (server *apiServer) handleHighlight(
 func (server *apiServer) handleStartStack(
 	ctx context.Context, playerID int64, _ *noInput,
 ) (*jsonOutput[store.StackAnswer], error) {
-	now := server.currentMillis()
+	return answerWith(server.startStackHere(ctx, playerID, server.currentMillis()))
+}
+
+// startStackHere starts a stack where the jelly stands right now. Bots use it too.
+func (server *apiServer) startStackHere(
+	ctx context.Context, playerID, now int64,
+) (store.StackAnswer, error) {
 	server.refreshMovement(ctx, now)
 	position, ok := server.planner.FindPosition(playerID, now)
 	if !ok {
-		return nil, store.ErrTooFar
+		return store.StackAnswer{}, store.ErrTooFar
 	}
 	point := rules.StagePoint{X: position.X, Y: position.Y}
-	return answerWith(server.Store.StartStack(ctx, playerID, point, now))
+	return server.Store.StartStack(ctx, playerID, point, now)
 }
 
 // handleJoinStack puts the jelly on top of a stack nearby.
 func (server *apiServer) handleJoinStack(
 	ctx context.Context, playerID int64, input *jsonInput[StackMemberBody],
 ) (*jsonOutput[store.StackAnswer], error) {
-	now := server.currentMillis()
+	return answerWith(server.climbStack(ctx, playerID, input.Body.StackID, server.currentMillis()))
+}
+
+// climbStack puts the jelly on a stack, if it stands close enough. Bots use it too.
+func (server *apiServer) climbStack(
+	ctx context.Context, playerID, stackID, now int64,
+) (store.StackAnswer, error) {
 	server.refreshMovement(ctx, now)
-	return answerWith(server.Store.JoinStack(ctx, store.StackJoin{
-		PlayerID: playerID, StackID: input.Body.StackID, Now: now,
+	return server.Store.JoinStack(ctx, store.StackJoin{
+		PlayerID: playerID, StackID: stackID, Now: now,
 		IsNear: func(point rules.StagePoint, reach float64) bool {
 			target := movement.Point{X: point.X, Y: point.Y}
 			distance, known := server.planner.MeasureDistanceTo(playerID, target, now)
 			return known && distance <= reach
 		},
-	}))
+	})
 }
 
 // handleLeaveStack takes the jelly off its stack.

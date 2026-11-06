@@ -126,6 +126,8 @@ func (server *apiServer) runBotAction(ctx context.Context, botID int64, action b
 		_, err = server.Store.StartTrip(ctx, botID, pickTripPoint(), now)
 	case rules.BotActionFollow:
 		err = server.followSomeone(ctx, botID, now)
+	case rules.BotActionStack:
+		err = server.stackSomewhere(ctx, botID, now)
 	case rules.BotActionXP:
 		err = server.Store.GiveXP(ctx, botID, action.XP, now)
 	default:
@@ -148,6 +150,22 @@ func (server *apiServer) followSomeone(ctx context.Context, botID, now int64) er
 	}
 	target := others[pickNumber(len(others))]
 	_, err = server.Store.StartFollow(ctx, botID, target.ID, now)
+	return err
+}
+
+// stackSomewhere climbs a running stack, or starts one where the bot stands. A stack too far away
+// refuses the bot like a player.
+func (server *apiServer) stackSomewhere(ctx context.Context, botID, now int64) error {
+	state, err := server.Store.LoadStageState(ctx, now)
+	if err != nil {
+		return err
+	}
+	if len(state.Stacks) > 0 {
+		stack := state.Stacks[pickNumber(len(state.Stacks))]
+		_, err = server.climbStack(ctx, botID, stack.ID, now)
+		return err
+	}
+	_, err = server.startStackHere(ctx, botID, now)
 	return err
 }
 

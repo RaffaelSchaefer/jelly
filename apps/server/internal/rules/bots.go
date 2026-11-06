@@ -7,6 +7,7 @@ const (
 	BotActionSign   = "sign"
 	BotActionTrip   = "trip"
 	BotActionFollow = "follow"
+	BotActionStack  = "stack"
 	BotActionXP     = "xp"
 	// BotActionOdds is one in how many seconds an automatic bot acts, so a crowd stays calm.
 	BotActionOdds = 20
@@ -27,6 +28,7 @@ func listBotChoices() []botChoice {
 		weightReport = 5
 		weightTrip   = 15
 		weightFollow = 10
+		weightStack  = 5
 	)
 	return []botChoice{
 		{BotActionEmote, weightEmote},
@@ -36,6 +38,7 @@ func listBotChoices() []botChoice {
 		{ActionDrink, weightReport},
 		{BotActionTrip, weightTrip},
 		{BotActionFollow, weightFollow},
+		{BotActionStack, weightStack},
 	}
 }
 
@@ -57,15 +60,4 @@ func ChooseBotAction(roll int) string {
 		roll -= choice.weight
 	}
 	return BotActionEmote
-}
-
-// IsBotAction reports whether an admin can let a bot do this.
-func IsBotAction(action string) bool {
-	switch action {
-	case BotActionPoke, BotActionEmote, BotActionSign, BotActionTrip, BotActionFollow,
-		BotActionXP, ActionFood, ActionDrink:
-		return true
-	default:
-		return false
-	}
 }

@@ -45,7 +45,7 @@ func TestAdminCreatesBotsThatPlayLikePlayers(t *testing.T) {
 		t.Fatalf("bots: %+v", bots)
 	}
 	path := "/admin/api/bots/" + strconv.FormatInt(bots[0].ID, 10) + "/actions"
-	for _, kind := range []string{"emote", "sign", "poke", "food", "trip", "follow"} {
+	for _, kind := range []string{"emote", "sign", "poke", "food", "trip", "follow", "stack"} {
 		response := testFixture.callAdmin("POST", path, `{"kind":"`+kind+`"}`)
 		// A trip may hit an obstacle, which a player could do as well.
 		if response.status != http.StatusOK && kind != "trip" {

@@ -38,6 +38,7 @@ function listBotActions(): [kind: string, text: string][] {
     ["drink", "Trinken melden"],
     ["trip", "Ausflug"],
     ["follow", "Zu jemandem stellen"],
+    ["stack", "Stapeln"],
     ["xp", `${GIFT_XP} XP schenken`],
   ];
 }
