@@ -381,6 +381,9 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
 - Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur nächsten Zone der Art `queue` und danach zurück. War
   der Weg lang, wartet es ab seiner Ankunft noch kurz. Jellies füllen die ganze Fläche der Zone. Ist sie voll, geht das
   Jelly zur nächsten mit Platz. Sind alle voll, stellt es sich nah dazu. Ohne solche Zonen bleibt es, wo es ist.
+  Plätze liegen etwa 1,8 Jelly-Einheiten auseinander, eine Zone fasst also so viele Jellies, wie in diesem Raster
+  hineinpassen. Beispiel: 45 % × 5 % der Bühne sind etwa 9,5 × 2 Einheiten, das sind 5 Plätze in einer Reihe. Für ein
+  Essens-Event mit allen braucht die Theke deshalb tiefere oder mehrere Zonen.
 - Wo ein Jelly läuft, bestimmt nur der Server. Er merkt sich die Positionen alle 30 Sekunden. Nach einem Neustart macht
   jedes Jelly dort weiter, ein neuer `move` kann also um bis zu 30 Sekunden Weg springen. Ausflug, Folgen, Stapel und
   Thekenlauf laufen auch während eines Ausfalls ab. Danach läuft das Jelly von selbst zurück zu seinem Platz.
