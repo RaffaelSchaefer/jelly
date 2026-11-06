@@ -19,6 +19,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/players/{id}/recovery-code":     server.handleCreateRecoveryCode,
 		"DELETE /admin/api/players/{id}":                 server.handleDeletePlayer,
 		"GET /admin/api/lans":                            server.handleListLANs,
+		"PATCH /admin/api/lans/{id}":                     server.handleUpdateLAN,
+		"DELETE /admin/api/lans/{id}":                    server.handleDeleteLAN,
 		"POST /admin/api/lans":                           server.handleCreateLAN,
 		"PUT /admin/api/lans/{id}/rules":                 server.handleUpdateRules,
 		"PATCH /admin/api/lans/{id}/rules":               server.handlePatchRules,
@@ -119,6 +121,30 @@ func (server *apiServer) handleCreateLAN(writer http.ResponseWriter, request *ht
 	body.Rules = rules.DefaultRules()
 	err := server.Store.CreateLAN(request.Context(), body)
 	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
+}
+
+// handleUpdateLAN corrects the name or period of a LAN.
+func (server *apiServer) handleUpdateLAN(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var changes store.LANChanges
+	if !server.readJSON(writer, request, &changes) {
+		return
+	}
+	err := server.Store.UpdateLAN(request.Context(), lanID, changes, server.currentMillis())
+	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
+}
+
+// handleDeleteLAN removes a LAN that nobody has joined yet.
+func (server *apiServer) handleDeleteLAN(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	err := server.Store.DeleteLAN(request.Context(), lanID, server.currentMillis())
+	server.writeOutcome(writer, request, map[string]bool{fieldDeleted: true}, err)
 }
 
 // handlePatchRules changes only the rules that the body names, also while the LAN is running.

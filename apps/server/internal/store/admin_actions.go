@@ -20,6 +20,8 @@ const (
 	AdminActionRecovery  = "player.recovery_code"
 	AdminActionMapImport = "lan.map_import"
 	AdminActionGathering = "lan.gathering"
+	AdminActionLANUpdate = "lan.update"
+	AdminActionLANDelete = "lan.delete"
 
 	maxAdminActionRows = 200
 )

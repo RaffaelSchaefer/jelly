@@ -311,15 +311,11 @@ func loadLANPeriod(
 
 // insertLAN writes the LAN if its period is free.
 func insertLAN(ctx context.Context, transaction *sql.Tx, lan NewLAN, rulesJSON string) error {
-	var overlapCount int
-	const countOverlapsSQL = `SELECT COUNT(*) FROM lans WHERE starts_at < ? AND ends_at > ?`
-	err := transaction.QueryRowContext(ctx, countOverlapsSQL, lan.EndsAt, lan.StartsAt).
-		Scan(&overlapCount)
+	// A new LAN has no ID yet, so every other LAN counts.
+	const noLAN = 0
+	err := requireFreePeriod(ctx, transaction, lan.StartsAt, lan.EndsAt, noLAN)
 	if err != nil {
-		return fmt.Errorf("check period: %w", err)
-	}
-	if overlapCount > 0 {
-		return ErrLANOverlap
+		return err
 	}
 	const insertLANSQL = `INSERT INTO lans
 		(slug, name, starts_at, ends_at, timezone, join_code_hash, rules)
