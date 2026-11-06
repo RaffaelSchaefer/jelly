@@ -1,112 +1,28 @@
 /**
- * Lädt und zeichnet das 3D-Modell eines Cosmetics.
- *
- * Die Modelle entstehen in `blender/cosmetics.blend` und werden von `blender/setup_cosmetics.py`
- * als `src/cosmetics/<id>.glb` exportiert. Cosmetics ohne Datei zeigen einfach nichts.
+ * Zeichnet das 3D-Modell eines Cosmetics. Laden und Bauen stehen in `@jelly/scene`, die Bühne nutzt
+ * dieselben Modelle.
  *
  * @module
  */
 
-import { useLoader } from "@react-three/fiber";
-import { Suspense, useEffect, useMemo } from "react";
-import { BufferGeometry, Color, Mesh, MeshStandardMaterial, Object3D } from "three";
-import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { createCosmetic, disposeCosmetic, hasCosmeticModel, loadCosmetic } from "@jelly/scene";
+import { Suspense, use, useEffect, useMemo } from "react";
 
 import { PET_COLORS, type PetColor } from "../pet";
-import GlossyPart from "./GlossyPart";
 import RenderBoundary from "./RenderBoundary";
 
 /**
- * Modelle als Data-URL nach Pfad. Sie liegen im Bundle, denn `connect-src` in `tauri.conf.json`
- * verbietet der Oberfläche `fetch`, auch auf eigene Dateien. `tauri dev` zeigt das nicht: Dort
- * kommt die Seite direkt von Vite, ohne CSP. Erst das gebaute Binary würde das Modell still
- * weglassen.
- */
-export const MODELS = import.meta.glob<string>("../cosmetics/*.glb", {
-  // ponytail: Alle Modelle liegen im Chunk der Szene. Ohne `eager` bekäme jedes einen eigenen, falls
-  // sie groß werden. `?inline` allein geht nicht, Vite kennt `.glb` nicht als Asset.
-  query: "?url&inline",
-  import: "default",
-  eager: true,
-});
-
-/** Liest ein Modell aus seiner Data-URL. `GLTFLoader` selbst holt es per `fetch`. */
-export class InlineGLTFLoader extends GLTFLoader {
-  override load(
-    url: string,
-    onLoad: (gltf: GLTF) => void,
-    _onProgress?: unknown,
-    onError?: (error: unknown) => void,
-  ) {
-    const base64 = url.slice(url.indexOf(",") + 1);
-    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-    this.parse(bytes.buffer, "", onLoad, onError);
-  }
-}
-
-/** Ob es für das Cosmetic schon ein Modell gibt. */
-export function hasCosmeticModel(id: string) {
-  return `../cosmetics/${id}.glb` in MODELS;
-}
-
-/** Zeichenebene für Cosmetics: Render-Order 8–9, also über dem Gesicht (6–7). */
-const COSMETIC_LAYER = 4;
-
-/** Ein Mesh aus der glTF-Datei, bereit für {@link GlossyPart}. */
-interface Part {
-  geometry: BufferGeometry;
-  hex: string;
-  range: [number, number];
-}
-
-/** Sammelt alle Meshes einer Szene in Weltkoordinaten, jeweils mit Grundfarbe und y-Bereich. */
-function collectParts(scene: Object3D): Part[] {
-  scene.updateMatrixWorld(true);
-  const parts: Part[] = [];
-  scene.traverse((object) => {
-    if (!(object instanceof Mesh)) return;
-    const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
-    geometry.computeBoundingBox();
-    const material = (
-      Array.isArray(object.material) ? object.material[0] : object.material
-    ) as MeshStandardMaterial;
-    parts.push({
-      geometry,
-      hex: `#${material.color.getHexString()}`,
-      range: [geometry.boundingBox!.min.y, geometry.boundingBox!.max.y],
-    });
-  });
-  return parts;
-}
-
-/** Hellt `hex` zu 45 % in Richtung Weiß auf, als Leuchtfarbe des Teils. */
-function glowOf(hex: string) {
-  return `#${new Color(hex).lerp(new Color("#ffffff"), 0.45).getHexString()}`;
-}
-
-/**
  * Ein Cosmetic in den Koordinaten des Pets, wie es um `blender/pet_reference.obj` modelliert wurde.
- * Jedes Material wird in seiner Grundfarbe mit dem Toon-Shader gezeichnet und in der Tintenfarbe
- * des Pets umrandet. Es löscht vorher die Tiefe und liegt als Sticker obenauf. Deshalb muss nur
- * modelliert werden, was man von vorn sieht.
+ * Hier liegt es als Sticker obenauf, deshalb muss nur modelliert werden, was man von vorn sieht.
  */
-function CosmeticModel({ url, color }: { url: string; color: PetColor }) {
-  const gltf = useLoader(InlineGLTFLoader, url);
-  const parts = useMemo(() => collectParts(gltf.scene), [gltf]);
-  useEffect(() => () => parts.forEach((part) => part.geometry.dispose()), [parts]);
-  return (
-    <>
-      {parts.map((part, index) => (
-        <GlossyPart
-          key={index}
-          geometry={part.geometry}
-          layer={COSMETIC_LAYER}
-          range={part.range}
-          paint={{ hex: part.hex, glow: glowOf(part.hex), outline: PET_COLORS[color].outline }}
-        />
-      ))}
-    </>
+function CosmeticModel({ id, color }: { id: string; color: PetColor }) {
+  const model = use(loadCosmetic(id));
+  const cosmetic = useMemo(
+    () => model && createCosmetic(model, PET_COLORS[color].outline, "sticker"),
+    [model, color],
   );
+  useEffect(() => () => void (cosmetic && disposeCosmetic(cosmetic)), [cosmetic]);
+  return cosmetic ? <primitive object={cosmetic} /> : null;
 }
 
 /**
@@ -114,12 +30,11 @@ function CosmeticModel({ url, color }: { url: string; color: PetColor }) {
  * statt das ganze Pet zu verlieren.
  */
 export default function Cosmetic({ id, color }: { id: string; color: PetColor }) {
-  const url = MODELS[`../cosmetics/${id}.glb`];
-  if (!url) return null;
+  if (!hasCosmeticModel(id)) return null;
   return (
     <RenderBoundary fallback={null}>
       <Suspense fallback={null}>
-        <CosmeticModel url={url} color={color} />
+        <CosmeticModel id={id} color={color} />
       </Suspense>
     </RenderBoundary>
   );

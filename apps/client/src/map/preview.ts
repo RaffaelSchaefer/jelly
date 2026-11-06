@@ -32,6 +32,9 @@ const SIGN = "cs2";
 const PLACES_PER_SEAT = [0.25, 0.75];
 const SIGN_EVERY = 4;
 const LEVELS = 9;
+/** Was die Jellies tragen, je zwei von dreien eines der Headsets. */
+const HEADSETS = ["headset", "headset-neutral"];
+const BARE_EVERY = 3;
 /** Alle paar Augenblicke läuft das nächste Jelly los, so lange und so weit. */
 const WALK_EVERY_MS = 500;
 const WALK_MS = 2000;
@@ -50,6 +53,12 @@ function previewFrameLimit() {
   return fps ? Number(fps) : FRAME_RATE.default;
 }
 
+/** Was das Jelly mit dieser Nummer trägt. */
+function previewEquipped(index: number): StagePlayer["equipped"] {
+  if (index % BARE_EVERY === 0) return {};
+  return { head: { key: HEADSETS[index % HEADSETS.length] ?? "headset", color: null } };
+}
+
 /** Die Jellies auf den Plätzen der Halle, das erste ist das eigene. */
 function listPlayers(areas: StageArea[]): StagePlayer[] {
   const seats = areas.filter((area) => area.kind === "seats");
@@ -58,7 +67,7 @@ function listPlayers(areas: StageArea[]): StagePlayer[] {
     id: OWN_ID + index,
     name: index === 0 ? PREVIEW_ME.name : `Jelly ${index}`,
     color: COLORS[index % COLORS.length],
-    equipped: {},
+    equipped: previewEquipped(index),
     level: 1 + (index % LEVELS),
     sign: index % SIGN_EVERY === 1 ? SIGN : null,
     follow: null,
