@@ -130,7 +130,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - **Identifier** `de.ucb.jelly` nicht ändern, sonst findet die App vorhandene Spielstände nicht mehr.
 - **Kein TypeDoc**, solange es TypeScript 7 nicht unterstützt (Begründung in der README).
 - **App-Icon** kommt aus `apps/client/public/pet.svg`. Neu erzeugen mit
-  `pnpm tauri icon public/pet.svg -o <tmp>` und nur `icon.png` und `icon.ico` nach
+  `pnpm tauri icon public/pet.svg -o <tmp>` und nur `icon.png`, `icon.ico` und `icon.icns` nach
   `src-tauri/icons/` kopieren.
 
 ## Skills
