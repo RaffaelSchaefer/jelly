@@ -62,7 +62,7 @@ Server. Ohne Server startet die App weiter und zeigt den letzten Stand, vergibt 
 - [ ] Systemweite Aktivität (Eingabezähler, keine Inhalte) prüfen: Windows zuerst, Linux/X11/Wayland
       getrennt, Anti-Cheat-Verträglichkeit testen.
 - [ ] Linux und macOS auf echter Hardware testen.
-- [ ] Bundling: `icon.icns` für macOS, Installer, Signierung, Updates.
+- [ ] Bundling: Signierung, Updates.
 - [ ] Cosmetic-Modelle (`.glb`) in Blender bauen und nach `apps/client/src/cosmetics/` exportieren. Die
       Headsets stehen, es fehlen `beanie`, `party-hat`, `pixel-glasses`, `hood`, `crown` und `golden-cup`.
 - [ ] TypeDoc nachrüsten, sobald es TypeScript 7 unterstützt.

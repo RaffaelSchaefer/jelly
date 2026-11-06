@@ -269,9 +269,15 @@ pnpm run tauri build -- --debug --no-bundle
 ```
 
 `pnpm lint` prüft TypeScript mit oxlint und Rust mit clippy (Warnungen sind Fehler). Der letzte
-Befehl erstellt einen nativen Debug-Build, unter Windows in `src-tauri/target/debug/jelly.exe`.
-Installer, Signierung und Updates sind noch nicht konfiguriert. `pnpm run check` kombiniert die
-Frontend-Tests, den Frontend-Build und die Rust-Tests.
+Befehl erstellt einen nativen Debug-Build ohne Installer, unter Windows in
+`src-tauri/target/debug/jelly.exe`. Ein normales `pnpm run tauri build` baut die fertigen Bundles
+und Installer (`.dmg`/`.app` für macOS, `.msi`/`.exe` für Windows, `.deb`/`.rpm`/`.AppImage` für
+Linux). In GitHub Actions macht das `.github/workflows/client.yml`: Pull Requests laufen nur durch
+die Prüfungen, gebaut wird auf `main` und beim manuellen Start. Die Server-Adresse kommt dort aus der
+Eingabe des manuellen Starts, sonst aus der Repository-Variable `JELLY_SERVER_URL`. Ohne beide zeigen
+die Bundles auf `http://localhost:8080` und taugen nicht für die LAN. Signierung und automatische
+Updates sind noch nicht konfiguriert. `pnpm run check` kombiniert die Frontend-Tests, den
+Frontend-Build und die Rust-Tests.
 
 Die Emote- und Schild-Hooks und die Stimme lassen sich ohne zusätzliche Test-Bibliothek im Browser prüfen: Nach
 `pnpm webpreview:dev` die Seiten `http://127.0.0.1:1420/scripts/emotes-check.html` und
