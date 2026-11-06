@@ -157,8 +157,9 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   denselben Spielstand überschreiben.
 - Animation mit 30 Bildern pro Sekunde, einstellbar unter „Bildrate“ von 5 bis 144 FPS oder unbegrenzt,
   begrenzter Pixeldichte und Pause bei verborgenem
-  WebView. Die Option „Weniger Bewegung“ und die entsprechende Systemeinstellung reduzieren die
-  Animation auf eine statische Darstellung.
+  WebView. Die Option „Weniger Bewegung“ reduziert die Animation auf eine statische Darstellung.
+  Solange niemand sie gestellt hat, folgt sie der Systemeinstellung (`prefers-reduced-motion`, unter
+  Windows „Animationseffekte“); der Schalter zeigt den wirksamen Wert und übersteuert das System.
 - „Optimierter Modus“ in den Einstellungen senkt die Grafiklast für ältere PCs: Das flüssige Glas
   entfällt, die Bedienelemente werden feste Flächen, die Pixeldichte bleibt bei 1 und der Körper-Shader
   verzichtet auf den Weg durchs Innere. Jelly behält Form, Mimik, Cosmetics und die eingestellte Bildrate.
