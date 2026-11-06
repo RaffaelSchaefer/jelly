@@ -53,6 +53,15 @@ export const PREVIEW_CATALOG: Catalog = {
       level: 2,
     },
     {
+      key: "headset-neutral",
+      name: "Headset schlicht",
+      scope: "permanent",
+      slot: "head",
+      colorable: false,
+      unlock: "level",
+      level: 2,
+    },
+    {
       key: "beanie",
       name: "Mütze",
       scope: "permanent",
@@ -170,7 +179,7 @@ export const PREVIEW_ME: Me = {
   trip: null,
   lans_attended: 1,
   badges: [],
-  cosmetics: ["headset", "beanie"],
+  cosmetics: ["headset", "headset-neutral", "beanie"],
   achievements: [{ key: "hatched", title: "Frisch geschlüpft", lan_slug: null, earned_at: 0 }],
   awards: [],
 };

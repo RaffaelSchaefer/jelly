@@ -18,6 +18,7 @@ import bpy
 # pre-creates the collection, any collection under "Cosmetics" is exported by its name.
 COSMETICS = [
     ("headset", "Kopf"),
+    ("headset-neutral", "Kopf"),
     ("beanie", "Kopf"),
     ("party-hat", "Kopf"),
     ("pixel-glasses", "Gesicht"),
