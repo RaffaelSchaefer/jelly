@@ -77,7 +77,12 @@ function createRowActions(player: PlayerSummary, context: RowContext): HTMLEleme
 function createRow(player: PlayerSummary, context: RowContext) {
   return [
     String(player.id),
-    createElement("strong", "", player.name),
+    createElement(
+      "span",
+      "",
+      createElement("strong", "", player.name),
+      player.is_bot ? createElement("span", "chip", "Bot") : null,
+    ),
     String(player.total_xp),
     String(player.lans),
     player.last_seen_at > 0 ? formatDateTime(player.last_seen_at) : "nie",

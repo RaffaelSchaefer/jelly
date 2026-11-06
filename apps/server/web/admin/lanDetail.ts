@@ -5,6 +5,7 @@
  */
 
 import type { LANSummary } from "./api.ts";
+import { createBotsTab } from "./bots.ts";
 import { createButton, createElement } from "./dom.ts";
 import { createEventCodesTab } from "./eventCodes.ts";
 import type { FailureHandler } from "./failure.ts";
@@ -31,6 +32,7 @@ function listTabs(): [hash: string, text: string][] {
     ["raum", "Raum"],
     ["codes", "Event-Codes"],
     ["ablauf", "Ablauf"],
+    ["bots", "Bots"],
   ];
 }
 
@@ -75,6 +77,9 @@ function createTab(tab: string, lan: LANSummary, actions: LANActions): HTMLEleme
   }
   if (tab === "ablauf") {
     return createScheduleTab(lan, actions.onFailure);
+  }
+  if (tab === "bots") {
+    return createBotsTab(lan, actions.onFailure);
   }
   return createElement(
     "div",

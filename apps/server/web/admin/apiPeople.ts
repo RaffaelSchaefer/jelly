@@ -11,6 +11,7 @@ export interface PlayerSummary {
   id: number;
   name: string;
   color: string;
+  is_bot: boolean;
   hidden: boolean;
   total_xp: number;
   lans: number;
