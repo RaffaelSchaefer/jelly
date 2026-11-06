@@ -22,6 +22,8 @@ const (
 	AdminActionGathering = "lan.gathering"
 	AdminActionLANUpdate = "lan.update"
 	AdminActionLANDelete = "lan.delete"
+	// AdminActionEventCodeEnd targets the event code, not the LAN.
+	AdminActionEventCodeEnd = "event_code.end"
 
 	maxAdminActionRows = 200
 )

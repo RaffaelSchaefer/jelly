@@ -468,6 +468,8 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","rotation","kind","name","blocks","prop"}` |
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
+| `GET /admin/api/lans/{id}/gathering`             | Antwort: `{"gathering"}`, das laufende Gathering oder `null` |
+| `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben |
 | `DELETE /admin/api/lans/{id}/gathering`          | Beendet es vorzeitig                      |
 | `PUT /admin/api/lans/{id}/map`                   | Kartendatei, siehe unten. Antwort: `{"created","updated","removed","unknown_props","unassigned_players"}` |
 | `POST /admin/api/lans/{id}/areas/{area}/code`    | `{"player_id"}`, optional, bindet den Code ans Konto |
@@ -536,6 +538,8 @@ Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der 
   Von Hand angelegte Zonen bleiben unberührt.
 - `rotation` ist optional, von 0 bis unter 360 Grad, Nachkommastellen sind erlaubt. Fehlt sie, zeigt das Modell zur Kamera.
   Alle vier Ecken müssen nach dem Drehen im Raum liegen. Hindernis und Plätze der Zone drehen sich mit.
+- Mit `?dry_run=true` antwortet der Import mit demselben Bericht, ändert aber nichts. So sieht die Orga vorher, welche Zonen
+  verschwinden und wie viele Jellies ihren Platz verlieren.
 - `zones` ist Pflicht, damit eine falsche Datei nicht alle Zonen entfernt. `"zones": []` entfernt sie mit Absicht.
 - Der Import läuft auch während einer LAN und sendet `stage.changed`.
 - Ist eine Zone ungültig, ändert sich nichts, und es folgt `400 invalid_map`. Unbekannte Props hindern den Import nicht,

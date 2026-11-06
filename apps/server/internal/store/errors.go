@@ -24,6 +24,8 @@ var (
 	ErrUnauthorized = errors.New("unknown token")
 	// ErrLevelsLocked reports a new XP per level after the start of a LAN.
 	ErrLevelsLocked = errors.New("XP per level is locked")
+	// ErrEventCodeNotFound reports an unknown event code.
+	ErrEventCodeNotFound = errors.New("event code not found")
 	// ErrLANHasPlayers reports a LAN that cannot be deleted, because players have joined it.
 	ErrLANHasPlayers = errors.New("LAN has players")
 	// ErrLANSlugTaken reports a short name that another LAN already has.

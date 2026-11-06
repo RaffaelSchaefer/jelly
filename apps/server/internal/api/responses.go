@@ -119,6 +119,7 @@ func listPlayerErrors() []knownError {
 			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
 		}},
 		{store.ErrInvalidInput, problemInvalidRequest()},
+		{store.ErrEventCodeNotFound, problemNotFound()},
 		{store.ErrLANHasPlayers, problem{
 			http.StatusConflict, "lan_has_players",
 			"An dieser LAN nehmen schon Spieler teil, deshalb lässt sie sich nicht löschen.",

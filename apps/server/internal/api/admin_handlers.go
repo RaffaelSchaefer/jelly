@@ -39,6 +39,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"PUT /admin/api/lans/{id}/map":                   server.handleImportMap,
 		"POST /admin/api/lans/{id}/gathering":            server.handleStartGathering,
 		"DELETE /admin/api/lans/{id}/gathering":          server.handleEndGathering,
+		"GET /admin/api/lans/{id}/gathering":             server.handleLoadGathering,
+		"POST /admin/api/event-codes/{id}/end":           server.handleEndEventCode,
 	}
 	for pattern, handler := range routes {
 		mux.HandleFunc(pattern, server.requireAdmin(handler))
@@ -331,6 +333,11 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 			http.StatusBadRequest, codeInvalidMap,
 			"Diese Zonen sind ungültig: " + strings.Join(invalid, ", "),
 		})
+		return
+	}
+	if request.URL.Query().Get(queryDryRun) == "true" {
+		report, err := server.Store.PreviewMap(request.Context(), lanID, roomMap)
+		server.writeOutcome(writer, request, report, err)
 		return
 	}
 	report, err := server.Store.ImportMap(
