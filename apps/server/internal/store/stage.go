@@ -25,6 +25,8 @@ type StagePlayer struct {
 	AreaID   *int64                      `json:"area_id"`
 	// IsVisitor marks a jelly without a place of its own, which wanders through the visitor zones.
 	IsVisitor bool `json:"is_visitor"`
+	// IsBot marks an account of the organizers, so that the stage can show it.
+	IsBot bool `json:"is_bot"`
 	// Trip and LastSeenAt tell the movement planner and the presence check what is going on.
 	// Clients
 	// see the same in the moves and in who is listed at all.
@@ -177,7 +179,7 @@ func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 func loadStagePlayers(
 	ctx context.Context, database querier, lan activeLAN, now int64,
 ) ([]StagePlayer, error) {
-	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, e.xp,
+	const selectStagePlayersSQL = `SELECT p.id, p.name, p.color, p.is_bot, e.xp,
 			e.sign_key, e.follow_player_id, e.follow_started_at, e.last_seen_at, e.area_id,
 			e.trip_x, e.trip_y, e.trip_until, e.spot_x, e.spot_y,
 			COALESCE((SELECT MAX(x.created_at) FROM xp_log x
@@ -217,6 +219,7 @@ func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePla
 		&player.ID,
 		&player.Name,
 		&player.Color,
+		&player.IsBot,
 		&lanXP,
 		&sign,
 		&follow,

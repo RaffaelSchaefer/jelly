@@ -108,6 +108,9 @@ func TestAutomaticBotsActAndStopWhenDeleted(t *testing.T) {
 	stage := testFixture.loadStage()
 	acted := 0
 	for _, player := range stage.Players {
+		if !player.IsBot {
+			t.Errorf("%s is no bot on the stage", player.Name)
+		}
 		if player.Sign != nil || player.Follow != nil {
 			acted++
 		}
