@@ -471,7 +471,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
 | `GET`, `POST /admin/api/lans/{id}/bots`          | Antwort: `{"bots","auto_count"}`. `POST` mit `{"count"}` legt bis zu 100 Bots an, siehe unten |
 | `PUT /admin/api/bots/auto`                       | `{"count"}`: so viele Bots der laufenden LAN spielen selbst, `0` stoppt sie |
-| `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack` oder `xp` |
+| `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp` oder `redeem` mit `"code"` |
 | `DELETE /admin/api/bots`                         | Löscht alle Bots mit allem, was sie getan haben, und stoppt die automatischen |
 | `GET /admin/api/lans/{id}/gathering`             | Antwort: `{"gathering"}`, das laufende Gathering oder `null` |
 | `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben |
@@ -494,7 +494,7 @@ lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Serv
 
 - **Von Hand:** `POST /admin/api/bots/{id}/actions` lässt einen Bot eine Aktion ausführen. Emote, Schild, Ziel eines
   Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf einen laufenden Stapel in der Nähe oder
-  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt.
+  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler.
 - **Automatisch:** Die ersten `auto_count` Bots der laufenden LAN handeln im Takt der Bewegung, jeder etwa alle 20
   Sekunden. Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
   loslaufen.

@@ -126,3 +126,31 @@ func TestAutomaticBotsActAndStopWhenDeleted(t *testing.T) {
 		t.Errorf("after deleting: %+v", answer)
 	}
 }
+
+func TestBotsRedeemEventCodesLikePlayers(t *testing.T) {
+	testFixture := newFixture(t)
+	if created := testFixture.callAdmin(
+		"POST",
+		"/admin/api/lans/1/bots",
+		`{"count":2}`,
+	); created.status != http.StatusOK {
+		t.Fatalf("create: %d %s", created.status, created.body)
+	}
+	testFixture.createEventCode("kuchen")
+	bots := testFixture.listBots().Bots
+	path := "/admin/api/bots/" + strconv.FormatInt(bots[0].ID, 10) + "/actions"
+	if response := testFixture.callAdmin(
+		"POST",
+		path,
+		`{"kind":"redeem","code":"kuchen"}`,
+	); response.status != http.StatusOK {
+		t.Fatalf("redeem: %d %s", response.status, response.body)
+	}
+	if response := testFixture.callAdmin(
+		"POST",
+		path,
+		`{"kind":"redeem","code":"kuchen"}`,
+	); response.status != http.StatusConflict {
+		t.Errorf("second redeem: %d %s", response.status, response.body)
+	}
+}

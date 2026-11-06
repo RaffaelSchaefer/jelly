@@ -24,10 +24,11 @@ type botList struct {
 	AutoCount int64              `json:"auto_count"`
 }
 
-// botAction is what an admin lets a bot do. XP is only read for `xp`.
+// botAction is what an admin lets a bot do. XP is only read for `xp`, the code only for `redeem`.
 type botAction struct {
 	Kind string `json:"kind"`
 	XP   int    `json:"xp"`
+	Code string `json:"code"`
 }
 
 // listBotRoutes returns the admin routes for bots.
@@ -130,6 +131,8 @@ func (server *apiServer) runBotAction(ctx context.Context, botID int64, action b
 		err = server.stackSomewhere(ctx, botID, now)
 	case rules.BotActionXP:
 		err = server.Store.GiveXP(ctx, botID, action.XP, now)
+	case rules.BotActionRedeem:
+		_, err = server.Store.RedeemEventCode(ctx, botID, action.Code, now)
 	default:
 		err = store.ErrInvalidInput
 	}
@@ -187,7 +190,7 @@ func (server *apiServer) playBots(ctx context.Context) {
 		}
 		kind := rules.ChooseBotAction(pickNumber(rules.CountBotChoices()))
 		// Cooldowns and limits refuse many actions, which is how a player would fare too.
-		err = server.runBotAction(ctx, bot.ID, botAction{Kind: kind, XP: 0})
+		err = server.runBotAction(ctx, bot.ID, botAction{Kind: kind, XP: 0, Code: ""})
 		if err != nil && ctx.Err() == nil {
 			server.Logger.DebugContext(ctx, "bot action", "kind", kind, "error", err)
 		}

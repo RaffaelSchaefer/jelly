@@ -5,8 +5,10 @@
  */
 
 import type { LANSummary } from "./api.ts";
+import { redeemWithBots } from "./apiBots.ts";
 import { createEventCode, endEventCode, listEventCodes, type EventCode } from "./apiEvents.ts";
 import {
+  createButton,
   createConfirmButton,
   createElement,
   createField,
@@ -27,6 +29,29 @@ function describeState(code: EventCode, now: number): string {
   return names[phase];
 }
 
+/** Creates the buttons of a code that still works or will work. */
+function createCodeActions(
+  code: EventCode,
+  message: Message,
+  onFailure: FailureHandler,
+  reload: () => void,
+): HTMLElement {
+  const end = createConfirmButton("Beenden", "Wirklich beenden?", () => {
+    endEventCode(code.id)
+      .then(reload)
+      .catch((error: unknown) => onFailure(error, message.showBad));
+  });
+  const redeem = createButton("Bots lösen ein", "quiet", () => {
+    redeemWithBots(code.lan_id, code.code)
+      .then(([redeemed, all]) => {
+        message.showGood(`${redeemed} von ${all} Bots haben „${code.code}“ eingelöst.`);
+        reload();
+      })
+      .catch((error: unknown) => onFailure(error, message.showBad));
+  });
+  return createElement("div", "row-actions", redeem, end);
+}
+
 /** Creates the rows, with a button to end every code that still works or will work. */
 function createRows(
   codes: EventCode[],
@@ -42,13 +67,7 @@ function createRows(
     `${formatDateTime(code.valid_from)} bis ${formatDateTime(code.valid_until)}`,
     String(code.redeemed_count),
     describeState(code, now),
-    code.valid_until <= now
-      ? ""
-      : createConfirmButton("Beenden", "Wirklich beenden?", () => {
-          endEventCode(code.id)
-            .then(reload)
-            .catch((error: unknown) => onFailure(error, message.showBad));
-        }),
+    code.valid_until <= now ? "" : createCodeActions(code, message, onFailure, reload),
   ]);
 }
 

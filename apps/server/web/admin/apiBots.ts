@@ -34,9 +34,27 @@ export function setAutoBots(count: number): Promise<unknown> {
   return sendRequest("PUT", "/bots/auto", { count });
 }
 
-/** Lets one bot act. `xp` only counts for the action `xp`. */
-export function runBotAction(botID: number, kind: string, xp: number): Promise<unknown> {
-  return sendRequest("POST", `/bots/${botID}/actions`, { kind, xp });
+/** Lets one bot act. `xp` only counts for the action `xp`, `code` only for `redeem`. */
+export function runBotAction(botID: number, kind: string, xp: number, code = ""): Promise<unknown> {
+  return sendRequest("POST", `/bots/${botID}/actions`, { kind, xp, code });
+}
+
+/** Lets every bot of a LAN redeem a code, one after the other, and counts who managed. */
+export async function redeemWithBots(
+  lanID: number,
+  code: string,
+): Promise<[ok: number, all: number]> {
+  const { bots } = await listBots(lanID);
+  let redeemed = 0;
+  for (const bot of bots) {
+    // A bot that already redeemed the code is refused like a player, which is fine here.
+    const isRedeemed = await runBotAction(bot.id, "redeem", 0, code).then(
+      () => true,
+      () => false,
+    );
+    redeemed += isRedeemed ? 1 : 0;
+  }
+  return [redeemed, bots.length];
 }
 
 /** Deletes all bots and stops the automatic ones. */

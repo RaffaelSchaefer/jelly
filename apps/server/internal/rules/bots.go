@@ -9,6 +9,7 @@ const (
 	BotActionFollow = "follow"
 	BotActionStack  = "stack"
 	BotActionXP     = "xp"
+	BotActionRedeem = "redeem"
 	// BotActionOdds is one in how many seconds an automatic bot acts, so a crowd stays calm.
 	BotActionOdds = 20
 )
