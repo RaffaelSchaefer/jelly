@@ -24,8 +24,9 @@ curl -X POST localhost:8080/v1/auth/redeem -H 'Content-Type: application/json' \
 
 ## Bühne ansehen
 
-`scripts/demo.sh` startet einen Wegwerf-Server mit 70 simulierten Jellies und nennt den Link zur
-Bühne. Mit Strg+C ist alles wieder weg. Der Raum folgt dem Hallenplan der LAN: hinten die Bühne
+`scripts/demo.sh` startet einen Demo-Server mit 70 simulierten Jellies und nennt die Links zu Bühne
+und Admin-Seite. Die Daten liegen im ignorierten Ordner `.demo/` und überstehen einen Neustart, jeder
+Start bringt 70 neue Jellies dazu. Wer neu anfangen will, löscht den Ordner. Der Raum folgt dem Hallenplan der LAN: hinten die Bühne
 (`stage`) mit zwei Beamern für Turniere und Public Gaming, davor links die Chillout-Lounge
 (`lounge`) und rechts die Theke der Snackbar mit einer Anstellzone (`queue`). Dann in der Mitte eine Reihe Tische mit Server und
 Bodentank, links und rechts Tischreihen mit Gängen dazwischen. Meist
