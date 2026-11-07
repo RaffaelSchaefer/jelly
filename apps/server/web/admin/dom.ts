@@ -113,11 +113,22 @@ export function createConfirmButton(text: string, confirmText: string, onConfirm
   return button;
 }
 
-/** Creates a table that scrolls sideways on its own when it is wider than the screen. */
+/**
+ * Creates a table that scrolls sideways on its own when it is wider than the screen. Every cell
+ * carries its header, because phones show each row as a card.
+ */
 export function createTable(headers: string[], rows: Child[][]): HTMLElement {
   const head = createElement("tr", "", ...headers.map((header) => createElement("th", "", header)));
   const body = rows.map((cells) =>
-    createElement("tr", "", ...cells.map((cell) => createElement("td", "", cell))),
+    createElement(
+      "tr",
+      "",
+      ...cells.map((cell, index) => {
+        const data = createElement("td", "", cell);
+        data.dataset["label"] = headers[index] ?? "";
+        return data;
+      }),
+    ),
   );
   return createElement(
     "div",

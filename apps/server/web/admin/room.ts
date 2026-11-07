@@ -1,19 +1,38 @@
 /**
- * The room of a LAN: import the map file, assign zones, give out seat codes and seats.
+ * The room of a LAN: import the map file, set up zones and give out seat codes. Seats go to
+ * players in the players section.
  *
  * @module
  */
 
-import type { LANSummary } from "./api.ts";
 import { listAreas, listSeatCodes } from "./apiRoom.ts";
-import { createAssignForm } from "./assignForm.ts";
-import { createElement, createMessage } from "./dom.ts";
-import type { FailureHandler } from "./failure.ts";
+import { createButton, createElement, createMessage } from "./dom.ts";
+import type { SectionContext } from "./lanContext.ts";
 import { createMapImportPanel } from "./mapImport.ts";
 import { createZonePanel } from "./zoneTable.ts";
 
+/** Points to where seats are given by hand. */
+function createSeatsHint(context: SectionContext): HTMLElement {
+  return createElement(
+    "section",
+    "panel",
+    createElement("h3", "", "Plätze von Hand"),
+    createElement(
+      "p",
+      "hint",
+      "Einen Platz gibst du einer Person direkt in ihrer Zeile unter Spieler. Sie muss der LAN schon beigetreten sein.",
+    ),
+    createElement(
+      "div",
+      "actions",
+      createButton("Zu den Spielern", "quiet", () => context.open("players")),
+    ),
+  );
+}
+
 /** Creates the tab and loads the zones. Every change loads them again. */
-export function createRoomTab(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
+export function createRoomTab(context: SectionContext): HTMLElement {
+  const { lan, onFailure } = context;
   const root = createElement("div", "detail");
   const message = createMessage();
   const reload = () => {
@@ -23,7 +42,7 @@ export function createRoomTab(lan: LANSummary, onFailure: FailureHandler): HTMLE
         root.replaceChildren(
           createMapImportPanel(room),
           createZonePanel(room),
-          createAssignForm(room),
+          createSeatsHint(context),
         );
       })
       .catch((error: unknown) => {

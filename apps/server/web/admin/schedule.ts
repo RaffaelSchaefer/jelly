@@ -1,12 +1,11 @@
 /**
- * What happens during a LAN: the food event, the ceremony and awards.
+ * What happens during a LAN: the food event, the ceremony and the event codes.
  *
  * @module
  */
 
 import type { LANSummary } from "./api.ts";
 import { endGathering, loadGathering, startGathering, type Gathering } from "./apiEvents.ts";
-import { createAwardForm } from "./awards.ts";
 import {
   createButton,
   createConfirmButton,
@@ -16,6 +15,7 @@ import {
   createMessage,
   createSelect,
 } from "./dom.ts";
+import { createEventCodesTab } from "./eventCodes.ts";
 import type { FailureHandler } from "./failure.ts";
 import { formatDateTime } from "./format.ts";
 import { createPlayerPicker } from "./playerPicker.ts";
@@ -70,11 +70,13 @@ function createStartForm(lan: LANSummary, onFailure: FailureHandler, reload: () 
     type: "number",
   });
   minutes.input.value = "15";
-  const winner = createPlayerPicker(
-    "gathering-winner",
-    "Sieger (nur Siegerehrung, optional)",
-    onFailure,
-  );
+  const winner = createPlayerPicker("gathering-winner", "Sieger (optional)", onFailure);
+  // Only a ceremony has a winner.
+  const showWinner = () => {
+    winner.root.hidden = kind.value !== KIND_CEREMONY;
+  };
+  kind.addEventListener("change", showWinner);
+  showWinner();
   const message = createMessage();
   const start = createButton("Starten", "", () => {
     startGathering(lan.id, {
@@ -121,12 +123,28 @@ function createGatheringPanel(lan: LANSummary, onFailure: FailureHandler): HTMLE
   );
 }
 
-/** Creates the tab. */
-export function createScheduleTab(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
+/** Shows only what runs right now, for the overview. */
+export function createGatheringSummary(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
+  const root = createElement("div", "");
+  const reload = () => {
+    loadGathering(lan.id)
+      .then((gathering) => root.replaceChildren(createStatus(gathering, lan, onFailure, reload)))
+      .catch((error: unknown) =>
+        onFailure(error, (text) =>
+          root.replaceChildren(createElement("p", "message message-bad", text)),
+        ),
+      );
+  };
+  reload();
+  return root;
+}
+
+/** Creates the section. */
+export function createActionsSection(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
   return createElement(
     "div",
     "detail",
     createGatheringPanel(lan, onFailure),
-    createAwardForm(onFailure),
+    createEventCodesTab(lan, onFailure),
   );
 }

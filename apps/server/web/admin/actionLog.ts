@@ -5,7 +5,7 @@
  */
 
 import { listAdminActions, type AdminAction } from "./apiPeople.ts";
-import { createButton, createElement, createMessage, createTable } from "./dom.ts";
+import { createButton, createElement, createMessage, createTable, type Message } from "./dom.ts";
 import type { FailureHandler } from "./failure.ts";
 import { formatDateTime } from "./format.ts";
 
@@ -42,30 +42,46 @@ function createRow(entry: AdminAction, names: ReturnType<typeof listActionNames>
   ];
 }
 
+/** Fills `list` with the newest actions, at most `limit` of them. */
+function loadActions(
+  list: HTMLElement,
+  message: Message,
+  onFailure: FailureHandler,
+  limit: number,
+) {
+  const names = listActionNames();
+  listAdminActions()
+    .then((entries) => {
+      list.replaceChildren(
+        entries.length === 0
+          ? createElement("p", "hint", "Noch keine Admin-Aktionen.")
+          : createTable(
+              ["Zeit", "Aktion", "Ziel"],
+              entries.slice(0, limit).map((entry) => createRow(entry, names)),
+            ),
+      );
+    })
+    .catch((error: unknown) => onFailure(error, message.showBad));
+}
+
+/** Shows the newest few actions, for the overview. */
+export function createRecentActions(onFailure: FailureHandler, limit: number): HTMLElement {
+  const message = createMessage();
+  const list = createElement("div", "");
+  loadActions(list, message, onFailure, limit);
+  return createElement("div", "", message.root, list);
+}
+
 /** Creates the section. */
 export function createActionLogSection(onFailure: FailureHandler): HTMLElement {
   const message = createMessage();
   const list = createElement("div", "");
-  const names = listActionNames();
-  const reload = () => {
-    listAdminActions()
-      .then((entries) => {
-        list.replaceChildren(
-          entries.length === 0
-            ? createElement("p", "hint", "Noch keine Admin-Aktionen.")
-            : createTable(
-                ["Zeit", "Aktion", "Ziel"],
-                entries.map((entry) => createRow(entry, names)),
-              ),
-        );
-      })
-      .catch((error: unknown) => onFailure(error, message.showBad));
-  };
+  const reload = () => loadActions(list, message, onFailure, Number.POSITIVE_INFINITY);
   reload();
   return createElement(
     "section",
     "panel",
-    createElement("h2", "", "Protokoll"),
+    createElement("h3", "", "Protokoll"),
     createElement("p", "hint", "Die letzten 200 Aktionen der Orga, die neuesten oben."),
     createElement("div", "actions", createButton("Neu laden", "quiet", reload)),
     message.root,

@@ -89,6 +89,7 @@ function createControlPanel(list: BotList, tab: BotTab): HTMLElement {
   const remove = createConfirmButton("Alle Bots löschen", "Wirklich alle löschen?", () =>
     run(deleteBots()),
   );
+  remove.classList.add("danger");
   return createElement(
     "section",
     "panel",

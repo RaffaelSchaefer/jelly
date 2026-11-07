@@ -1,13 +1,13 @@
 /**
- * The form that corrects the name and period of a LAN, and deletes a LAN nobody has joined.
+ * The form that corrects the name and period of a LAN.
  *
  * @module
  */
 
-import { deleteLAN, updateLAN, type LANSummary } from "./api.ts";
-import { createConfirmButton, createElement, createField, createMessage } from "./dom.ts";
+import { updateLAN, type LANSummary } from "./api.ts";
+import { createElement, createField, createMessage } from "./dom.ts";
 import { readLocalDateTime, toLocalDateTimeValue } from "./format.ts";
-import type { LANActions } from "./lanDetail.ts";
+import type { LANActions } from "./lanContext.ts";
 
 const TEXT_FILL_ALL = "Bitte gib Name, Beginn und Ende an.";
 const TEXT_END_AFTER_START = "Das Ende muss nach dem Beginn liegen.";
@@ -22,15 +22,10 @@ export function createLANEditForm(lan: LANSummary, actions: LANActions): HTMLEle
   endsAt.input.value = toLocalDateTimeValue(lan.ends_at);
   const message = createMessage();
   const save = createElement("button", "", "Speichern");
-  const remove = createConfirmButton("LAN löschen", "Wirklich löschen?", () => {
-    deleteLAN(lan.id)
-      .then(actions.onDeleted)
-      .catch((error: unknown) => actions.onFailure(error, message.showBad));
-  });
   const form = createElement(
     "form",
     "panel",
-    createElement("h3", "", "LAN bearbeiten"),
+    createElement("h3", "", "Name und Zeitraum"),
     createElement(
       "div",
       "fields",
@@ -40,10 +35,10 @@ export function createLANEditForm(lan: LANSummary, actions: LANActions): HTMLEle
     createElement(
       "p",
       "hint",
-      "Der Kurzname bleibt fest. Löschen geht nur, solange niemand an der LAN teilnimmt.",
+      `Der Kurzname ${lan.slug} bleibt fest, die Zeitzone ist ${lan.timezone}.`,
     ),
     message.root,
-    createElement("div", "actions", save, remove),
+    createElement("div", "actions", save),
   );
   form.addEventListener("submit", (event) => {
     event.preventDefault();

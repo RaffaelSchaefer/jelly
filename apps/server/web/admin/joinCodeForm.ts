@@ -6,7 +6,7 @@
 
 import { updateJoinCode, type LANSummary } from "./api.ts";
 import { createElement, createField, createMessage } from "./dom.ts";
-import type { LANActions } from "./lanDetail.ts";
+import type { LANActions } from "./lanContext.ts";
 
 /** Creates the panel. The new code appears at the top of the LAN after saving. */
 export function createJoinCodeForm(lan: LANSummary, actions: LANActions): HTMLElement {

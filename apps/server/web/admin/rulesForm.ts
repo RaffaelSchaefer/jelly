@@ -144,14 +144,17 @@ export function createRulesForm(lan: LANSummary, onFailure: FailureHandler): HTM
     "form",
     "panel",
     createElement("h3", "", "Regeln"),
-    ...groups.map((group) =>
-      createElement(
-        "fieldset",
+    // Only the first group is open, the others wait folded until someone needs them.
+    ...groups.map((group, index) => {
+      const fold = createElement(
+        "details",
         "rule-group",
-        createElement("legend", "", group.title),
-        ...group.entries.map((entry) => entry.field.root),
-      ),
-    ),
+        createElement("summary", "", group.title),
+        createElement("div", "rule-fields", ...group.entries.map((entry) => entry.field.root)),
+      );
+      fold.open = index === 0;
+      return fold;
+    }),
     parts.message.root,
     createElement("div", "actions", parts.save, discard),
   );

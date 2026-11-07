@@ -1,4 +1,4 @@
-/* Layout: a working page for the organizers, a list of LANs beside the LAN being edited. */
+/* Layout: a working page for the organizers, the chosen LAN on top and one section below. */
 :root {
   color-scheme: light;
   --ground: #f4f2f7;
@@ -13,6 +13,8 @@
   --good-soft: #dff2e9;
   --bad: #a3261d;
   --bad-soft: #fae4e1;
+  --warn: #7a5300;
+  --warn-soft: #fbefcf;
   --font-body: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", "DejaVu Sans Mono", monospace;
 }
@@ -32,6 +34,8 @@
     --good-soft: #1b3a2c;
     --bad: #f39a90;
     --bad-soft: #4a211c;
+    --warn: #f2c66b;
+    --warn-soft: #3d3016;
   }
 }
 
@@ -190,57 +194,6 @@ button:focus-visible {
   color: var(--bad);
 }
 
-.work-area {
-  display: grid;
-  grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
-  align-items: start;
-  gap: 1rem;
-}
-
-@media (max-width: 48rem) {
-  .work-area {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.lan-list {
-  display: grid;
-  gap: 0.35rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.lan-entry {
-  width: 100%;
-  display: grid;
-  gap: 0.15rem;
-  padding: 0.6rem 0.7rem;
-  border-color: transparent;
-  background: transparent;
-  color: var(--ink);
-  font-weight: 400;
-  text-align: left;
-}
-
-.lan-entry:hover {
-  background: var(--ground);
-}
-
-.lan-entry[aria-current="true"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.lan-entry-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem;
-  font-weight: 600;
-}
-
 .time {
   font-variant-numeric: tabular-nums;
 }
@@ -280,27 +233,24 @@ button:focus-visible {
   min-width: 0;
 }
 
-.detail-head {
-  gap: 0.25rem;
+.rule-group {
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
 }
 
-.rule-group {
+.rule-group summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.rule-fields {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   align-items: start;
   gap: 0.85rem 1rem;
-  min-width: 0;
-  margin: 0;
-  padding: 0.85rem 0 0;
-  border: 0;
-  border-top: 1px solid var(--line);
-}
-
-.rule-group legend {
-  padding: 0 0.5rem 0 0;
-  color: var(--muted);
-  font-size: 0.875rem;
-  font-weight: 600;
+  padding-top: 0.85rem;
 }
 
 button.is-armed {
@@ -339,15 +289,13 @@ select:focus-visible {
   gap: 1rem;
 }
 
-.section-nav,
-.tabs {
+.section-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
 }
 
-.section-nav button[aria-current="true"],
-.tabs button[aria-current="true"] {
+.section-nav button[aria-current="true"] {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
@@ -460,8 +408,217 @@ td > button {
 
 /* Grid children grow with their content by default. A wide table must scroll inside its own box. */
 .shell > *,
-.work-area > *,
 .detail > *,
 .panel > * {
   min-width: 0;
+}
+
+.context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.lan-select {
+  width: auto;
+  max-width: 100%;
+  font-weight: 600;
+}
+
+.section-nav .short-name {
+  display: none;
+}
+
+.section-nav .apart {
+  margin-inline-start: auto;
+  color: var(--muted);
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  gap: 1rem;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.join-code {
+  font-family: var(--font-mono);
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+}
+
+button.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.danger-zone {
+  border-color: var(--bad);
+}
+
+.player-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.player-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.player-card.is-open {
+  border-color: var(--accent);
+}
+
+button.player-head {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem 0.9rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+}
+
+button.player-head:hover {
+  background: var(--ground);
+}
+
+.player-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.player-tools {
+  display: grid;
+  gap: 1rem;
+  padding: 0 0.9rem 0.9rem;
+}
+
+.tool-group {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.tool-group.danger-zone {
+  border-top-color: var(--bad);
+}
+
+.tool-group h4 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tool-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.tool-line .field {
+  flex: 1 1 14rem;
+}
+
+/* Phones: the navigation is a bar at the bottom within reach of the thumb, tables become cards. */
+@media (max-width: 40rem) {
+  main {
+    padding-block-end: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .section-nav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 10;
+    flex-wrap: nowrap;
+    gap: 0;
+    padding: 0.25rem 0.25rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .section-nav button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 3rem;
+    padding: 0.25rem;
+    border-color: transparent;
+    font-size: 0.8rem;
+  }
+
+  .section-nav .apart {
+    margin-inline-start: 0;
+  }
+
+  .section-nav .long-name {
+    display: none;
+  }
+
+  .section-nav .short-name {
+    display: inline;
+  }
+
+  button {
+    min-height: 2.75rem;
+  }
+
+  .table-wrap table,
+  .table-wrap tbody,
+  .table-wrap tr,
+  .table-wrap td {
+    display: block;
+  }
+
+  .table-wrap thead {
+    display: none;
+  }
+
+  .table-wrap tr {
+    padding-block: 0.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .table-wrap td {
+    padding: 0.15rem 0;
+    border: 0;
+  }
+
+  .table-wrap td[data-label]:not([data-label=""])::before {
+    content: attr(data-label) ": ";
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
 }

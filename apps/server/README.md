@@ -6,7 +6,15 @@ mit Changelog in [docs/api.md](docs/api.md) und als genauer Vertrag in
 [docs/openapi.json](docs/openapi.json).
 
 Gebaut sind Konten, Stupser, Berichte, Event-Codes, Cosmetics, Achievements, Emotes, Partner-Emotes,
-Schilder, die Raumkarte, Moderation, der Simulator und die 3D-Bühne. Die Admin-Seite unter `/admin/` wächst noch: LANs, LAN-Code und Regeln gehen schon, der Rest läuft bis dahin über die Admin-API.
+Schilder, die Raumkarte, Moderation, der Simulator und die 3D-Bühne. Die Admin-Seite unter `/admin/` bezieht sich immer auf die LAN oben im Kopf. Sie hat sechs Bereiche:
+- Übersicht mit LAN-Code, Spielersuche, Essens-Event, laufenden Event-Codes und den letzten Aktionen
+- Spieler, deren Zeile alle Aktionen für diese Person aufklappt
+- Aktionen
+- Hallenplan
+- Einstellungen
+- Werkstatt mit Bots, Testzeiten und Protokoll
+
+Auf dem Handy liegt die Navigation unten.
 
 ## Lokal starten
 

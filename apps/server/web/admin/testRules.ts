@@ -6,7 +6,7 @@
 
 import { patchRules, replaceRules, type GameRules, type LANSummary } from "./api.ts";
 import { createButton, createConfirmButton, createElement, createMessage } from "./dom.ts";
-import type { LANActions } from "./lanDetail.ts";
+import type { LANActions } from "./lanContext.ts";
 
 /** Times short enough to watch a whole trip, follow or stack while testing. */
 function listTestRules(): GameRules {
@@ -21,6 +21,11 @@ function listTestRules(): GameRules {
     emote_cooldown: 0,
     partner_invite_seconds: 30,
   };
+}
+
+/** Says whether every short test time still holds, so that the page can warn about it. */
+export function areTestRulesActive(rules: GameRules): boolean {
+  return Object.entries(listTestRules()).every(([key, value]) => rules[key] === value);
 }
 
 /** Creates the panel. Both buttons save at once, the rules form shows the result afterwards. */

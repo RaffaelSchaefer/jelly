@@ -21,11 +21,12 @@ import { findLANPhase, formatDateTime, readLocalDateTime, toLocalDateTimeValue }
 
 const DEFAULT_VALID_MILLIS = 2 * 60 * 60 * 1000;
 const TEXT_FILL_ALL = "Bitte fülle alle Felder aus.";
+const STATE_RUNNING = "gültig";
 
 /** Says whether a code works now, later or no more. */
 function describeState(code: EventCode, now: number): string {
   const phase = findLANPhase({ starts_at: code.valid_from, ends_at: code.valid_until }, now);
-  const names = { running: "gültig", upcoming: "kommt noch", past: "abgelaufen" };
+  const names = { running: STATE_RUNNING, upcoming: "kommt noch", past: "abgelaufen" };
   return names[phase];
 }
 
@@ -157,4 +158,34 @@ export function createEventCodesTab(lan: LANSummary, onFailure: FailureHandler):
       list,
     ),
   );
+}
+
+/** Lists only the codes that work right now, with the buttons to end them, for the overview. */
+export function createRunningCodes(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
+  const message = createMessage();
+  const list = createElement("div", "");
+  const reload = () => {
+    listEventCodes(lan.id)
+      .then((codes) => {
+        const now = Date.now();
+        const running = codes.filter((code) => describeState(code, now) === STATE_RUNNING);
+        list.replaceChildren(
+          running.length === 0
+            ? createElement("p", "hint", "Gerade gilt kein Event-Code.")
+            : createTable(
+                ["Titel", "Code", "Bis", "Eingelöst", ""],
+                running.map((code) => [
+                  code.title,
+                  createElement("span", "code", code.code),
+                  formatDateTime(code.valid_until),
+                  String(code.redeemed_count),
+                  createCodeActions(code, message, onFailure, reload),
+                ]),
+              ),
+        );
+      })
+      .catch((error: unknown) => onFailure(error, message.showBad));
+  };
+  reload();
+  return createElement("div", "", message.root, list);
 }
