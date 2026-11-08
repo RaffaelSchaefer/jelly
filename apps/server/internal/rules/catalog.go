@@ -29,6 +29,9 @@ func ListEmotes() []CatalogEntry {
 		{Key: "shrug", Label: "Schulterzucken"},
 		{Key: "point", Label: "Zeigen"},
 		{Key: "think", Label: "Grübeln"},
+		{Key: "angry", Label: "Wütend"},
+		{Key: "sad", Label: "Traurig"},
+		{Key: "shy", Label: "Schüchtern"},
 	}
 }
 

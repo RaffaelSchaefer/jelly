@@ -183,7 +183,7 @@ func TestAchievementCatalogIsConsistent(t *testing.T) {
 }
 
 func TestValidateCatalogKeys(t *testing.T) {
-	for _, key := range []string{"wave", "shrug", "point", "think"} {
+	for _, key := range []string{"wave", "shrug", "point", "think", "angry", "sad", "shy"} {
 		if err := rules.ValidateEmote(key); err != nil {
 			t.Errorf("ValidateEmote(%s) = %v", key, err)
 		}
