@@ -4,7 +4,7 @@
  * @module
  */
 
-import { MeshBasicMaterial } from "three";
+import { MeshBasicMaterial, Quaternion } from "three";
 import { expect, test } from "vitest";
 
 import { EMOTE_GLYPHS, EMOTE_SECONDS, isEmoteKey, type EmoteKey } from "./emotes.ts";
@@ -23,6 +23,7 @@ function pose(jelly: Jelly) {
       ...part.scale,
       ...part.rotation.toArray(),
     ]),
+    curls: jelly.curls.map((curl) => curl.toArray()),
     cheeks: jelly.face.cheeks.map((cheek) => [
       cheek.visible,
       (cheek.material as MeshBasicMaterial).opacity,
@@ -76,6 +77,23 @@ test.each(keys)("%s hat bei reduzierter Bewegung eine ruhige Pose mit klarem End
   animateJelly(jelly, motion, { ...input, emote: { key, elapsed: EMOTE_SECONDS } });
   expect(pose(jelly)).toEqual(baseline);
 });
+
+test.each([undefined, "cheer", "love", "shrug"] as const)(
+  "Die linke Hand spiegelt die rechte (Geste: %s)",
+  (key) => {
+    const jelly = createJelly(JELLY_COLORS.mint);
+    // Ohne Bewegung, denn in Ruhe wippen die Hände absichtlich versetzt.
+    const input = { ...frame, reducedMotion: true, pulse: 1, emote: key && { key, elapsed: 0.9 } };
+    animateJelly(jelly, createMotion(0), input);
+    const [left, right] = jelly.hands;
+    // Spiegeln an der Mittelebene kehrt x um, beim Quaternion den y- und z-Anteil.
+    const mirrored = [-right!.position.x, ...right!.position.toArray().slice(1)];
+    expect(left!.position.toArray()).toEqual(mirrored.map((value) => expect.closeTo(value, 9)));
+    const { x, y, z, w } = right!.quaternion;
+    expect(left!.quaternion.toArray()).toEqual([x, -y, -z, w].map((v) => expect.closeTo(v, 9)));
+    expect(right!.quaternion.equals(new Quaternion())).toBe(false);
+  },
+);
 
 test("Ein Wechsel verwirft die alte Geste, auch ihre Mimik", () => {
   const jelly = createJelly(JELLY_COLORS.mint);

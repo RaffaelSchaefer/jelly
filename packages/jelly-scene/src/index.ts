@@ -27,7 +27,7 @@ export {
   type DuetRole,
 } from "./partnerEmotes.ts";
 export { JELLY_COLORS, type JellyColor, type JellyPalette } from "./colors.ts";
-export { BODY_BOTTOM, HAND, HEAD } from "./jellyGeometry.ts";
+export { BODY_BOTTOM, GRIP, HAND, HEAD } from "./jellyGeometry.ts";
 export { MOUTH_SHAPE_NAMES, type MouthFrame, type MouthShape } from "./mouthShapes.ts";
 export type { JellyQuality } from "./body.ts";
 export {

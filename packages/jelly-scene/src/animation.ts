@@ -7,12 +7,26 @@
  * @module
  */
 
-import { MathUtils, type Mesh, type MeshBasicMaterial, type Object3D } from "three";
+import { MathUtils, type Mesh, type MeshBasicMaterial, type Object3D, type Vector3 } from "three";
 
-import { HAND, HEAD } from "./jellyGeometry.ts";
+import { GRIP, HAND, HEAD } from "./jellyGeometry.ts";
 
 /** Wie lange die Hände nach einem Stupser oder einer Aktion draußen bleiben, in Sekunden. */
 const HANDS_OUT_SECONDS = 1.6;
+
+/**
+ * Drehung der rechten Hand um die Blickachse in Ruhe: Die Finger zeigen schräg nach außen unten,
+ * der Daumen nach oben. Die linke Hand dreht gespiegelt.
+ */
+const REST_ROLL = -1.9;
+
+/**
+ * So halten die Hände eine Tafel: Handrücken nach vorn, die Finger zeigen über die Kante nach innen
+ * und krümmen sich dahinter, der Daumen liegt oben auf. Angaben für die rechte Hand.
+ */
+const GRIP_TURN = [0, Math.PI, -Math.PI / 2] as const;
+/** Wie weit sich die Finger beim Halten krümmen. Der Daumen bleibt gestreckt. */
+const GRIP_CURL = 0.75;
 
 /** Zustand der Animation zwischen zwei Bildern. Zeiten in Sekunden der Szenenuhr. */
 export interface Motion {
@@ -125,25 +139,47 @@ function springHands(s: Motion, wanted: number, { delta, motion }: Frame) {
   s.hands += s.handsSpeed * delta;
 }
 
+/** Die Hände, die {@link animateHands} bewegt, und wie weit ihre Finger gebeugt sind. */
+export interface HandParts {
+  hands: Object3D[];
+  curls: Vector3[];
+}
+
+/** Ruhepose einer Hand: seitlich draußen, oder an der Kante der Tafel, wenn er etwas hält. */
+function placeHand(hand: Object3D, side: number, frame: Frame, holding: boolean) {
+  const out = Math.min(hand.scale.x, 1.2);
+  const spot = holding ? GRIP : HAND;
+  const float = Math.sin(frame.time * 2.2 + side * 1.7) * 0.045 * frame.motion;
+  // Sie kommen seitlich aus dem Körper und fliegen beim Stupsen jubelnd nach oben.
+  hand.position.set(
+    side * (MathUtils.lerp(0.6, spot.x, out) + frame.bounce * 0.14),
+    spot.y + (float + frame.bounce * 0.55) * Math.min(out, 1),
+    spot.z,
+  );
+  if (holding) hand.rotation.set(GRIP_TURN[0], side * GRIP_TURN[1], side * GRIP_TURN[2]);
+  // Beim Stupsen reißt er die Finger mit hoch.
+  else hand.rotation.set(0, 0, side * (REST_ROLL + frame.bounce * 1.2));
+}
+
 /**
- * Die Kugel-Hände kommen nur heraus, wenn er sie braucht: als Reaktion auf einen Stupser oder eine
- * Aktion, oder wenn er etwas hält (`holding`).
+ * Die Hände kommen nur heraus, wenn er sie braucht: als Reaktion auf einen Stupser oder eine
+ * Aktion, oder wenn er etwas hält (`holding`). Jedes Bild setzt auch Drehung und Finger neu, damit
+ * sich keine Geste ansammelt.
  */
-export function animateHands(hands: Object3D[], s: Motion, frame: Frame, holding: boolean) {
+export function animateHands(
+  { hands, curls }: HandParts,
+  s: Motion,
+  frame: Frame,
+  holding: boolean,
+) {
   const wanted = holding || frame.time - s.pokedAt < HANDS_OUT_SECONDS ? 1 : 0;
   springHands(s, wanted, frame);
   const out = Math.max(0, s.hands);
   hands.forEach((hand, index) => {
-    hand.visible = out > 0.02;
     // Auch versteckte Hände zurücksetzen: Eine Emote-Geste kann sie gleich wieder hervorholen.
-    const side = index === 0 ? -1 : 1;
-    const float = Math.sin(frame.time * 2.2 + index * 1.7) * 0.045 * frame.motion;
-    // Sie kommen seitlich aus dem Körper und fliegen beim Stupsen jubelnd nach oben.
-    hand.position.set(
-      side * (MathUtils.lerp(0.6, HAND.x, Math.min(out, 1.2)) + frame.bounce * 0.14),
-      HAND.y + (float + frame.bounce * 0.55) * Math.min(out, 1),
-      HAND.z,
-    );
+    hand.visible = out > 0.02;
     hand.scale.setScalar(out);
+    placeHand(hand, index === 0 ? -1 : 1, frame, holding);
+    curls[index]?.set(holding ? GRIP_CURL : 0, holding ? GRIP_CURL : 0, 0);
   });
 }
