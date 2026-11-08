@@ -55,6 +55,7 @@ der alten Zuweisung und muss `prop` erst übernehmen, Tische und Theke fehlen bi
 ```sh
 scripts/demo-docker.sh start       # aus dem echten Image, Ende mit stop, Neuanfang mit reset
 scripts/demo-docker.sh start 0     # nur die 10 Bots des Servers, ohne Simulator
+JELLY_DEMO_BIND=0.0.0.0 scripts/demo-docker.sh start 0   # auch im Heimnetz, etwa fürs Handy
 pnpm demo                          # direkt mit Go, Daten in .demo/
 scripts/record-demo.sh videos 20   # nimmt 20 Sekunden als MP4 und GIF auf, braucht Firefox und ffmpeg
 ```

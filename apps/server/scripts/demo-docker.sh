@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Runs the demo from the real image, reachable only on this machine, like scripts/demo.sh.
 # Usage: scripts/demo-docker.sh start [players] | stop | reset
+# JELLY_DEMO_BIND=0.0.0.0 opens the demo to the local network, to try the admin page on a phone.
 # 0 players leaves only the bots of the server. The data stays in a volume, so `stop` and `start`
 # keep accounts, LANs and settings. `reset` removes them.
 set -u
@@ -13,6 +14,7 @@ simulator="jelly-demo-simulator"
 volume="jelly-demo-data"
 # The same address as scripts/demo.sh, so a client built for the demo finds both.
 port="${JELLY_DEMO_PORT:-18092}"
+bind="${JELLY_DEMO_BIND:-127.0.0.1}"
 base_url="http://127.0.0.1:$port"
 stage_key="demo-stage"
 admin_secret="demo-admin"
@@ -35,7 +37,7 @@ start_demo() {
       -slug demo -name Demo "-from=$(utc_at '1 hour ago' -1H)" \
       "-to=$(utc_at '1 day' +1d)" 2>/dev/null || exit 2
   fi
-  docker run -d --name "$server" -p "127.0.0.1:$port:8080" -v "$volume:/app/data" \
+  docker run -d --name "$server" -p "$bind:$port:8080" -v "$volume:/app/data" \
     -e "JELLY_STAGE_KEY=$stage_key" -e "JELLY_ADMIN_SECRET=$admin_secret" "$image" >/dev/null || exit 2
   for _ in $(seq 1 "$health_tries"); do
     curl -sf "$base_url/health" >/dev/null && break
@@ -55,6 +57,9 @@ start_demo() {
   seat_demo_jellies "$is_new"
   echo "Stage: $base_url/stage/?key=$stage_key"
   echo "Admin: $base_url/admin/ (password: $admin_secret)"
+  if [ "$bind" != "127.0.0.1" ]; then
+    echo "Open to the network: use the address of this machine instead of 127.0.0.1."
+  fi
   echo "Stop with: scripts/demo-docker.sh stop, start over with: scripts/demo-docker.sh reset"
 }
 
