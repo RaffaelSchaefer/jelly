@@ -1,0 +1,235 @@
+name: Build Client
+
+on:
+  pull_request:
+    paths:
+      - "**"
+      - "!apps/server/**"
+      - "!**.md"
+      # propNames.test.ts in @jelly/stage liest diese Datei.
+      - "apps/server/internal/rules/maps.go"
+  # Ein Tag baut alles und veröffentlicht das Release.
+  push:
+    tags:
+      - "v*"
+  # Testbuild ohne Release, die Bundles liegen danach als Artefakte am Lauf.
+  workflow_dispatch:
+    inputs:
+      jelly_server_url:
+        description: "Jelly Server URL baked into the client build"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  JELLY_SERVER_URL: ${{ inputs.jelly_server_url || vars.JELLY_SERVER_URL || 'http://localhost:8080' }}
+  # Fest, damit neue Clippy-Lints mit -D warnings keinen fremden Pull Request rot machen.
+  RUST_TOOLCHAIN: "1.99.1"
+
+jobs:
+  check:
+    name: Test & Lint (Client)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Check release settings
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(node -p "require('./apps/client/src-tauri/tauri.conf.json').version")
+          if [ "${GITHUB_REF_NAME%%-*}" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME passt nicht zur App-Version $version."
+            exit 1
+          fi
+          if [ "$JELLY_SERVER_URL" = "http://localhost:8080" ]; then
+            echo "::error::Repository-Variable JELLY_SERVER_URL fehlt, das Release zeigte auf localhost."
+            exit 1
+          fi
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy, rustfmt
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/client/src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check types
+        run: |
+          pnpm --filter @jelly/scene run check-types
+          pnpm --filter @jelly/stage run check-types
+          pnpm --filter @jelly/client run check-types
+
+      - name: Check formatting
+        run: |
+          pnpm --filter @jelly/scene exec oxfmt --check "**/*.{ts,md}"
+          pnpm --filter @jelly/stage exec oxfmt --check src
+          pnpm --filter @jelly/client exec oxfmt --check "**/*.{ts,tsx,mjs,md}"
+          pnpm --filter @jelly/client run rust fmt --manifest-path src-tauri/Cargo.toml --check
+
+      - name: Lint packages and client
+        run: |
+          pnpm --filter @jelly/scene lint
+          pnpm --filter @jelly/stage lint
+          pnpm --filter @jelly/client lint
+
+      - name: Run frontend and package tests
+        run: |
+          pnpm --filter @jelly/scene test
+          pnpm --filter @jelly/stage test
+          pnpm --filter @jelly/client test
+
+      - name: Run Rust tests
+        run: pnpm --filter @jelly/client run test:rust
+
+  build:
+    name: Build (${{ matrix.label }})
+    needs: check
+    # Pull Requests laufen nur durch die Prüfungen, die vier Builds dauern zu lange.
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux-x86_64
+            os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            artifact_name: jelly-client-linux-x86_64
+            artifact_paths: |
+              apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/jelly
+              apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+              apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
+              apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+          - label: windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: jelly-client-windows-x86_64
+            artifact_paths: |
+              apps/client/src-tauri/target/x86_64-pc-windows-msvc/release/jelly.exe
+              apps/client/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+              apps/client/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          - label: macos-aarch64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: jelly-client-macos-aarch64
+            artifact_paths: |
+              apps/client/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+              apps/client/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
+          - label: macos-x86_64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: jelly-client-macos-x86_64
+            artifact_paths: |
+              apps/client/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+              apps/client/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            patchelf \
+            file \
+            xdg-utils
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/client/src-tauri
+          key: ${{ matrix.target }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri client
+        env:
+          # Für das AppImage. Ohne Doppelstrich: pnpm reicht "--" weiter, dann bekäme nur cargo das
+          # Ziel und die Tauri-CLI suchte die Binärdatei im falschen Ordner.
+          NO_STRIP: ${{ runner.os == 'Linux' }}
+        run: pnpm --filter @jelly/client run tauri build --target ${{ matrix.target }}
+
+      - name: Archive macOS .app bundle
+        if: runner.os == 'macOS'
+        working-directory: apps/client/src-tauri/target/${{ matrix.target }}/release/bundle/macos
+        run: tar -czf Jelly.app.tar.gz Jelly.app
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_paths }}
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi
+          # Nur Installer: Die rohen Binärdateien und .app.tar.gz bleiben Artefakte des Laufs.
+          find artifacts -type f \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
+            -o -name '*.msi' -o -name '*-setup.exe' -o -name '*.dmg' \) -print0 |
+            xargs -0 gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --generate-notes "${flags[@]}"

@@ -16,8 +16,8 @@ use crate::{
 pub struct MapState {
     /// Das eigene Jelly. Frisch je Lesen, denn ein neuer Code kann es ändern.
     own_id: i64,
-    /// Einstellung „Weniger Bewegung“.
-    reduced_motion: bool,
+    /// Einstellung „Weniger Bewegung“, `None` folgt dem Betriebssystem.
+    reduced_motion: Option<bool>,
     /// Einstellung „Optimierter Modus“: feste Knöpfe statt Glas.
     optimized_rendering: bool,
     /// Einstellung „Bildrate“, `None` heißt unbegrenzt.

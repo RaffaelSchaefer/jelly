@@ -21,6 +21,11 @@ interface SettingsPanelProps {
   /** Name des Pets für den Hinweistext. */
   name: string;
   settings: Settings;
+  /**
+   * Wirksamer Wert von „Weniger Bewegung“: die Einstellung oder sonst der Wunsch des
+   * Betriebssystems.
+   */
+  reducedMotion: boolean;
   /** Angezeigte Größe, solange der Regler bewegt wird, also eventuell noch nicht gespeichert. */
   size: number;
   /** Angezeigte Lautstärke, ebenso. */
@@ -86,7 +91,7 @@ function SoundRows({
 
 /** Die Einstellungen. Die Regler speichern, sobald sie ruhen (siehe `useSettingDraft`). */
 export default function SettingsPanel(props: SettingsPanelProps) {
-  const { name, settings, size, frameStop, ready, busy } = props;
+  const { name, settings, reducedMotion, size, frameStop, ready, busy } = props;
   const { onSize, onFrameStop, onReducedMotion, onOptimizedRendering } = props;
   return (
     <>
@@ -117,8 +122,8 @@ export default function SettingsPanel(props: SettingsPanelProps) {
       />
       <ToggleRow
         label="Weniger Bewegung"
-        hint="Ruhiger Begleiter, gleiche Gesellschaft."
-        checked={settings.reducedMotion}
+        hint="Ruhiger Begleiter, gleiche Gesellschaft. Ohne eigene Wahl wie im System."
+        checked={reducedMotion}
         disabled={busy || !ready}
         onChange={onReducedMotion}
       />
