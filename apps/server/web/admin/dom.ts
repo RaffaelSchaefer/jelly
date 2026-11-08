@@ -59,28 +59,41 @@ export function createButton(text: string, className: string, onClick: () => voi
 /** A line that reports the result of an action. */
 export interface Message {
   root: HTMLElement;
+  /** Shows a success that fades after a few seconds, because it is no lasting state. */
   showGood(text: string): void;
+  /** Shows a success that stays, for something to copy such as a code. */
+  showLasting(text: string): void;
   showBad(text: string): void;
   clear(): void;
 }
+
+const GOOD_MESSAGE_MILLIS = 6000;
 
 /** Creates an empty message line that screen readers announce. */
 export function createMessage(): Message {
   const root = createElement("p", "message");
   root.setAttribute("role", "status");
   root.hidden = true;
+  let timer = 0;
   const show = (text: string, className: string) => {
+    window.clearTimeout(timer);
     root.className = `message ${className}`;
     root.textContent = text;
     root.hidden = false;
   };
+  const clear = () => {
+    window.clearTimeout(timer);
+    root.hidden = true;
+  };
   return {
     root,
-    showGood: (text) => show(text, "message-good"),
-    showBad: (text) => show(text, "message-bad"),
-    clear: () => {
-      root.hidden = true;
+    showGood: (text) => {
+      show(text, "message-good");
+      timer = window.setTimeout(clear, GOOD_MESSAGE_MILLIS);
     },
+    showLasting: (text) => show(text, "message-good"),
+    showBad: (text) => show(text, "message-bad"),
+    clear,
   };
 }
 

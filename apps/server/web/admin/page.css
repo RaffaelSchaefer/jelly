@@ -264,6 +264,24 @@ button.is-armed {
   font-weight: 600;
 }
 
+.unit-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.unit-box input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.unit,
+.duration {
+  color: var(--muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
 .is-changed input {
   border-color: var(--accent);
   background: var(--accent-soft);

@@ -9,6 +9,7 @@ import {
   createBots,
   deleteBots,
   listBots,
+  redeemWithBots,
   runBotAction,
   setAutoBots,
   type Bot,
@@ -138,22 +139,51 @@ function createListPanel(list: BotList, tab: BotTab): HTMLElement {
   );
 }
 
+/** Creates the panel that lets every bot redeem an event code, to test a full house. */
+function createRedeemPanel(tab: BotTab): HTMLElement {
+  const code = createField({
+    id: "bot-redeem-code",
+    label: "Event-Code",
+    hint: "Jeder Bot der LAN löst ihn einmal ein, wie ein Spieler.",
+  });
+  const message = createMessage();
+  const redeem = createButton("Bots lösen ein", "quiet", () => {
+    const value = code.input.value.trim();
+    redeemWithBots(tab.lan.id, value)
+      .then(([redeemed, all]) => {
+        message.showGood(`${redeemed} von ${all} Bots haben „${value}“ eingelöst.`);
+        tab.reload();
+      })
+      .catch((error: unknown) => tab.onFailure(error, message.showBad));
+  });
+  return createElement(
+    "section",
+    "panel",
+    createElement("h3", "", "Event-Code einlösen lassen"),
+    code.root,
+    message.root,
+    createElement("div", "actions", redeem),
+  );
+}
+
 /** Creates the tab and loads the bots. */
 export function createBotsTab(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
-  const root = createElement("div", "detail");
+  const control = createElement("div", "detail", createElement("p", "hint", "Lade die Bots …"));
+  const table = createElement("div", "detail");
   const message = createMessage();
   const reload = () => {
     listBots(lan.id)
       .then((list) => {
-        const tab = { lan, onFailure, reload };
-        root.replaceChildren(createControlPanel(list, tab), createListPanel(list, tab));
+        control.replaceChildren(createControlPanel(list, tab));
+        table.replaceChildren(createListPanel(list, tab));
       })
       .catch((error: unknown) => {
-        root.replaceChildren(message.root);
+        control.replaceChildren(message.root);
         onFailure(error, message.showBad);
       });
   };
-  root.append(createElement("p", "hint", "Lade die Bots …"));
+  const tab: BotTab = { lan, onFailure, reload };
   reload();
-  return root;
+  // The redeem panel stays while the lists load anew, so that its result remains visible.
+  return createElement("div", "detail", control, createRedeemPanel(tab), table);
 }

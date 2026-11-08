@@ -114,7 +114,7 @@ function createAccountGroup(tools: PlayerTools): HTMLElement {
   const recover = createButton("Wiederherstellungs-Code", "quiet", () => {
     createRecoveryCode(player.id)
       .then((recovery) =>
-        tools.message.showGood(
+        tools.message.showLasting(
           `Code für ${player.name}: ${recovery.code}, gültig bis ${formatDateTime(recovery.expires_at)}. ` +
             "Die Person gibt ihn in der App ein und bekommt ihr Konto zurück.",
         ),
