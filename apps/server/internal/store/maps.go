@@ -41,10 +41,7 @@ type importedZone struct {
 func (store *Store) ImportMap(
 	ctx context.Context, lanID int64, roomMap rules.RoomMap, now int64,
 ) (MapImportReport, error) {
-	report := MapImportReport{
-		Created: []string{}, Updated: []string{}, Removed: []string{},
-		UnknownProps: rules.ListUnknownProps(roomMap.Zones), UnassignedPlayers: 0,
-	}
+	report := newMapImportReport(roomMap)
 	run := mapImportRun{lanID: lanID, zones: roomMap.Zones, report: &report}
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		workErr := requireLAN(ctx, transaction, lanID)
@@ -200,4 +197,12 @@ func requireLAN(ctx context.Context, transaction *sql.Tx, lanID int64) error {
 		return fmt.Errorf("find LAN: %w", err)
 	}
 	return nil
+}
+
+// newMapImportReport starts a report with empty lists, so that the answer never has `null` in them.
+func newMapImportReport(roomMap rules.RoomMap) MapImportReport {
+	return MapImportReport{
+		Created: []string{}, Updated: []string{}, Removed: []string{},
+		UnknownProps: rules.ListUnknownProps(roomMap.Zones), UnassignedPlayers: 0,
+	}
 }

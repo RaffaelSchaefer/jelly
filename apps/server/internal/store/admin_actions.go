@@ -18,8 +18,15 @@ const (
 	AdminActionEventCode = "event_code.create"
 	AdminActionSeatCode  = "seat.code"
 	AdminActionRecovery  = "player.recovery_code"
-	AdminActionMapImport = "lan.map_import"
-	AdminActionGathering = "lan.gathering"
+	AdminActionGiveXP    = "player.xp"
+	// AdminActionAchievement targets the player, the key stays out of the log like names do.
+	AdminActionAchievement = "player.achievement"
+	AdminActionMapImport   = "lan.map_import"
+	AdminActionGathering   = "lan.gathering"
+	AdminActionLANUpdate   = "lan.update"
+	AdminActionLANDelete   = "lan.delete"
+	// AdminActionEventCodeEnd targets the event code, not the LAN.
+	AdminActionEventCodeEnd = "event_code.end"
 
 	maxAdminActionRows = 200
 )

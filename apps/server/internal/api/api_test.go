@@ -53,12 +53,16 @@ type errorResponse struct {
 
 // fixture is a server with a real database and a controllable clock.
 type fixture struct {
+	service  *api.Service
 	t        *testing.T
 	handler  http.Handler
 	database *store.Store
 	path     string
 	clock    atomic.Int64
 	stopping atomic.Bool
+	// adminCookie is the session of the admin calls, adminLoginAt the fake time of its login.
+	adminCookie  string
+	adminLoginAt int64
 }
 
 func readLANStart() time.Time {
@@ -84,7 +88,7 @@ func (testFixture *fixture) openDatabase() {
 	}
 	testFixture.database = opened
 	readClock := func() time.Time { return time.UnixMilli(testFixture.clock.Load()) }
-	testFixture.handler = api.NewHandler(api.Dependencies{
+	testFixture.service = api.NewService(api.Dependencies{
 		Store:            opened,
 		Now:              readClock,
 		Logger:           slog.New(slog.DiscardHandler),
@@ -94,6 +98,7 @@ func (testFixture *fixture) openDatabase() {
 		IsStopping:       testFixture.stopping.Load,
 		Web:              nil,
 	})
+	testFixture.handler = testFixture.service.Handler
 }
 
 func (testFixture *fixture) createLAN(slug string, startsAt time.Time) {

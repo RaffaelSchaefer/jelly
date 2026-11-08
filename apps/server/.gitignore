@@ -14,3 +14,6 @@ internal/web/dist/*
 *.mp4
 *.gif
 *.webm
+
+# Data of scripts/demo.sh, kept between runs.
+/.demo

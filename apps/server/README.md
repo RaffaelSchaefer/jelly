@@ -6,7 +6,15 @@ mit Changelog in [docs/api.md](docs/api.md) und als genauer Vertrag in
 [docs/openapi.json](docs/openapi.json).
 
 Gebaut sind Konten, Stupser, Berichte, Event-Codes, Cosmetics, Achievements, Emotes, Partner-Emotes,
-Schilder, die Raumkarte, Moderation, der Simulator und die 3D-Bühne. Die Admin-Seite folgt.
+Schilder, die Raumkarte, Moderation, der Simulator und die 3D-Bühne. Die Admin-Seite unter `/admin/` bezieht sich immer auf die LAN oben im Kopf. Sie hat sechs Bereiche:
+- Übersicht mit LAN-Code, Spielersuche, Essens-Event, laufenden Event-Codes und den letzten Aktionen
+- Spieler, deren Zeile alle Aktionen für diese Person aufklappt
+- Aktionen
+- Hallenplan
+- Einstellungen
+- Werkstatt mit Bots, Testzeiten und Protokoll
+
+Auf dem Handy liegt die Navigation unten.
 
 ## Lokal starten
 
@@ -24,8 +32,13 @@ curl -X POST localhost:8080/v1/auth/redeem -H 'Content-Type: application/json' \
 
 ## Bühne ansehen
 
-`scripts/demo.sh` startet einen Wegwerf-Server mit 70 simulierten Jellies und nennt den Link zur
-Bühne. Mit Strg+C ist alles wieder weg. Der Raum folgt dem Hallenplan der LAN: hinten die Bühne
+`scripts/demo-docker.sh start` startet einen Demo-Server aus dem echten Image mit 70 simulierten
+Jellies auf `127.0.0.1:18092` und nennt die Links zu Bühne und Admin-Seite. Die Daten liegen in einem
+Docker-Volume und überstehen `stop` und `start`, jeder Start bringt 70 neue Jellies dazu. `reset`
+fängt neu an. `scripts/demo.sh` (`pnpm demo`) macht dasselbe direkt mit Go, mit den Daten im
+ignorierten Ordner `.demo/`. Dazu spielen 10 Bots des
+Servers selbst und bauen auch Stapel, und jedes sechste Jelly hat keinen festen Platz und läuft als
+Besucher durch die Besucher-Zone ganz vorn. Der Raum folgt dem Hallenplan der LAN: hinten die Bühne
 (`stage`) mit zwei Beamern für Turniere und Public Gaming, davor links die Chillout-Lounge
 (`lounge`) und rechts die Theke der Snackbar mit einer Anstellzone (`queue`). Dann in der Mitte eine Reihe Tische mit Server und
 Bodentank, links und rechts Tischreihen mit Gängen dazwischen. Meist
@@ -40,8 +53,10 @@ der alten Zuweisung und muss `prop` erst übernehmen, Tische und Theke fehlen bi
 ![Die 3D-Bühne mit 70 simulierten Jellies](docs/images/stage-3d.jpg)
 
 ```sh
-pnpm demo                          # direkt mit Go
-scripts/demo-docker.sh start       # aus dem echten Image, Ende mit: scripts/demo-docker.sh stop
+scripts/demo-docker.sh start       # aus dem echten Image, Ende mit stop, Neuanfang mit reset
+scripts/demo-docker.sh start 0     # nur die 10 Bots des Servers, ohne Simulator
+JELLY_DEMO_BIND=0.0.0.0 scripts/demo-docker.sh start 0   # auch im Heimnetz, etwa fürs Handy
+pnpm demo                          # direkt mit Go, Daten in .demo/
 scripts/record-demo.sh videos 20   # nimmt 20 Sekunden als MP4 und GIF auf, braucht Firefox und ffmpeg
 ```
 
@@ -117,6 +132,7 @@ muss vor `go generate` einmal `pnpm install` im Root laufen. Gebündelt wird üb
 | `JELLY_STAGE_KEY` | keiner     | Pflicht: Schlüssel der Bühne                |
 | `JELLY_ADMIN_SECRET` | keiner  | Pflicht: Geheimnis der Admin-Anmeldung      |
 | `JELLY_MIN_CLIENT_VERSION` | keine | Älteste App, die noch funktioniert, Form `1.2.3` |
+| `JELLY_HTTP_DEMO` | `0` | `1` lässt die Admin-Anmeldung ohne HTTPS gelten, nur für eine Demo im Heimnetz |
 
 Im Betrieb gehört `/admin` hinter den Proxy und ist dort auf die Orga zu beschränken, etwa per Adresse oder zusätzlichem
 Passwort. Alle Anmeldeversuche teilen sich einen Zähler, sonst könnte jeder im LAN die Orga mit falschen Versuchen aussperren.

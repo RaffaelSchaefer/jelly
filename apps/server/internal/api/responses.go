@@ -88,9 +88,60 @@ type knownError struct {
 // listKnownErrors returns all errors the client may learn about.
 func listKnownErrors() []knownError {
 	return slices.Concat(
-		listPlayerErrors(), listSeatErrors(), listCosmeticErrors(), listInviteErrors(),
-		listGameErrors(), listStackErrors(),
+		listPlayerErrors(),
+		listAdminErrors(),
+		listSeatErrors(),
+		listCosmeticErrors(),
+		listInviteErrors(),
+		listGameErrors(),
+		listStackErrors(),
 	)
+}
+
+// listAdminErrors returns the errors that only the admin page meets.
+func listAdminErrors() []knownError {
+	return []knownError{
+		{store.ErrEventCodeNotFound, problemNotFound()},
+		{
+			store.ErrNotABot,
+			problem{
+				http.StatusBadRequest,
+				"not_a_bot",
+				"Das ist kein Bot. Echte Spieler steuert niemand von außen.",
+			},
+		},
+		{store.ErrLANHasPlayers, problem{
+			http.StatusConflict, "lan_has_players",
+			"An dieser LAN nehmen schon Spieler teil, deshalb lässt sie sich nicht löschen.",
+		}},
+		{store.ErrLANSlugTaken, problem{
+			http.StatusConflict, "slug_taken", "Dieser Kurzname ist schon vergeben.",
+		}},
+		{store.ErrAreaNotFound, problem{
+			http.StatusNotFound, "area_not_found", "Diesen Bereich gibt es nicht.",
+		}},
+		{store.ErrAreaNotAssignable, problem{
+			http.StatusConflict, "area_not_assignable", "In diesem Bereich kann kein Jelly stehen.",
+		}},
+		{rules.ErrInvalidArea, problem{
+			http.StatusBadRequest, "invalid_area",
+			"Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art.",
+		}},
+		{store.ErrLevelsLocked, problem{
+			http.StatusBadRequest, codeInvalidRules,
+			"xp_per_level lässt sich nach dem Start der LAN nicht mehr ändern.",
+		}},
+		{rules.ErrInvalidRules, problem{
+			http.StatusBadRequest, codeInvalidRules, "Diese Regeln sind ungültig.",
+		}},
+		{rules.ErrInvalidName, problem{
+			http.StatusBadRequest, "invalid_name",
+			"Der Name muss 1 bis 24 Zeichen lang sein und darf keine Steuerzeichen enthalten.",
+		}},
+		{rules.ErrInvalidColor, problem{
+			http.StatusBadRequest, "invalid_color", "Diese Farbe gibt es nicht.",
+		}},
+	}
 }
 
 // listPlayerErrors covers accounts, access and admin input.
@@ -119,33 +170,6 @@ func listPlayerErrors() []knownError {
 			http.StatusConflict, "lan_overlap", "Der Zeitraum überschneidet sich mit einer LAN.",
 		}},
 		{store.ErrInvalidInput, problemInvalidRequest()},
-		{store.ErrLANSlugTaken, problem{
-			http.StatusConflict, "slug_taken", "Dieser Kurzname ist schon vergeben.",
-		}},
-		{store.ErrAreaNotFound, problem{
-			http.StatusNotFound, "area_not_found", "Diesen Bereich gibt es nicht.",
-		}},
-		{store.ErrAreaNotAssignable, problem{
-			http.StatusConflict, "area_not_assignable", "In diesem Bereich kann kein Jelly stehen.",
-		}},
-		{rules.ErrInvalidArea, problem{
-			http.StatusBadRequest, "invalid_area",
-			"Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art.",
-		}},
-		{store.ErrLevelsLocked, problem{
-			http.StatusBadRequest, codeInvalidRules,
-			"xp_per_level lässt sich nach dem Start der LAN nicht mehr ändern.",
-		}},
-		{rules.ErrInvalidRules, problem{
-			http.StatusBadRequest, codeInvalidRules, "Diese Regeln sind ungültig.",
-		}},
-		{rules.ErrInvalidName, problem{
-			http.StatusBadRequest, "invalid_name",
-			"Der Name muss 1 bis 24 Zeichen lang sein und darf keine Steuerzeichen enthalten.",
-		}},
-		{rules.ErrInvalidColor, problem{
-			http.StatusBadRequest, "invalid_color", "Diese Farbe gibt es nicht.",
-		}},
 	}
 }
 

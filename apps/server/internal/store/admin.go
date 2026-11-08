@@ -22,6 +22,7 @@ type PlayerSummary struct {
 	ID         int64  `json:"id"`
 	Name       string `json:"name"`
 	Color      string `json:"color"`
+	IsBot      bool   `json:"is_bot"`
 	Hidden     bool   `json:"hidden"`
 	TotalXP    int    `json:"total_xp"`
 	LANs       int    `json:"lans"`
@@ -41,7 +42,7 @@ func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSum
 	defer cancel()
 	escaper := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	pattern := "%" + escaper.Replace(rules.BuildNameKey(strings.TrimSpace(search))) + "%"
-	const searchPlayersSQL = `SELECT p.id, p.name, p.color, p.hidden_at,
+	const searchPlayersSQL = `SELECT p.id, p.name, p.color, p.is_bot, p.hidden_at,
 			COALESCE(SUM(e.xp), 0), COUNT(e.lan_id), COALESCE(MAX(e.last_seen_at), 0)
 		FROM players p LEFT JOIN lan_entries e ON e.player_id = p.id
 		WHERE p.name_key LIKE ? ESCAPE '\' GROUP BY p.id ORDER BY p.id DESC LIMIT ?`
@@ -55,7 +56,8 @@ func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSum
 	for rows.Next() {
 		var player PlayerSummary
 		var hiddenAt sql.NullInt64
-		err = rows.Scan(&player.ID, &player.Name, &player.Color, &hiddenAt, &player.TotalXP,
+		err = rows.Scan(&player.ID, &player.Name, &player.Color, &player.IsBot, &hiddenAt,
+			&player.TotalXP,
 			&player.LANs, &player.LastSeenAt)
 		if err != nil {
 			return nil, fmt.Errorf("read player: %w", err)

@@ -52,7 +52,8 @@ AGENTS.md im Root. Deutsch bleiben nur die Meldungen, die die App anzeigt (`mess
 - `internal/rules` enthält reine Funktionen ohne IO und ohne Uhr. Zeiten kommen als Argument herein.
 - `internal/movement` plant die Wege der Jellies, ebenfalls ohne IO und ohne Uhr. Den Stand bekommt es
   vom Aufrufer. `internal/api` stößt es an, sobald jemand die Bühne liest, und sonst über
-  `RunMovement`, die einzige langlebige Goroutine neben dem HTTP-Server.
+  `RunMovement`, die einzige langlebige Goroutine neben dem HTTP-Server. Im selben Takt handeln die
+  automatischen Bots (`playBots`), damit keine zweite Goroutine nötig ist.
 - `internal/store` kennt SQLite, aber kein HTTP. `internal/api` kennt HTTP, aber kein SQL.
 - Nur `cmd/jelly-server` liest die Umgebung, wählt die echte Uhr und darf den Prozess beenden.
 - `internal/simulator` spielt nur über die öffentliche API und kennt weder `store` noch `rules`.

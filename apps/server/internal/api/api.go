@@ -4,6 +4,7 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -33,6 +34,10 @@ type Dependencies struct {
 	AdminSecret string
 	// MinClientVersion is the oldest app that still works. Empty means no minimum.
 	MinClientVersion string
+	// IsHTTPDemo lets the admin cookie travel over plain HTTP, for a demo opened to the local
+	// network.
+	// Browsers drop Secure cookies from http://<address>, so the login would not stick there.
+	IsHTTPDemo bool
 	// IsStopping tells long-running streams to end, so a shutdown does not wait for them.
 	IsStopping func() bool
 	// Web serves the stage, admin and test pages.
@@ -55,6 +60,9 @@ type apiServer struct {
 	streams *streamSlots
 	// planner decides where the jellies walk.
 	planner *movement.Planner
+	// autoBots is how many bots play by themselves. It lives in memory only, so a restart stops
+	// them.
+	autoBots atomic.Int64
 }
 
 // newAPIServer creates the state that all routes share.

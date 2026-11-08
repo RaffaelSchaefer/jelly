@@ -33,6 +33,19 @@ func TestServesPagesWithSecurityHeaders(t *testing.T) {
 	}
 }
 
+func TestServesTheAdminPage(t *testing.T) {
+	handler := web.NewFileHandler(fstest.MapFS{
+		"admin/index.html": {Data: []byte("<title>Admin</title>")},
+	})
+	response := request(t, handler, "/admin/")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Admin") {
+		t.Fatalf("page: status %d, body %q", response.Code, response.Body.String())
+	}
+	if response.Header().Get("Content-Security-Policy") == "" {
+		t.Error("the admin page has no content security policy")
+	}
+}
+
 func TestHidesEverythingOutsideThePages(t *testing.T) {
 	handler := web.NewFileHandler(fstest.MapFS{
 		"stage/index.html": {Data: []byte("page")},

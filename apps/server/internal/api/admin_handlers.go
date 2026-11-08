@@ -1,6 +1,7 @@
 package api
 
 import (
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,6 +20,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/players/{id}/recovery-code":     server.handleCreateRecoveryCode,
 		"DELETE /admin/api/players/{id}":                 server.handleDeletePlayer,
 		"GET /admin/api/lans":                            server.handleListLANs,
+		"PATCH /admin/api/lans/{id}":                     server.handleUpdateLAN,
+		"DELETE /admin/api/lans/{id}":                    server.handleDeleteLAN,
 		"POST /admin/api/lans":                           server.handleCreateLAN,
 		"PUT /admin/api/lans/{id}/rules":                 server.handleUpdateRules,
 		"PATCH /admin/api/lans/{id}/rules":               server.handlePatchRules,
@@ -37,7 +40,14 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"PUT /admin/api/lans/{id}/map":                   server.handleImportMap,
 		"POST /admin/api/lans/{id}/gathering":            server.handleStartGathering,
 		"DELETE /admin/api/lans/{id}/gathering":          server.handleEndGathering,
+		"GET /admin/api/lans/{id}/gathering":             server.handleLoadGathering,
+		"POST /admin/api/event-codes/{id}/end":           server.handleEndEventCode,
+		"POST /admin/api/players/{id}/xp":                server.handleGiveXP,
+		"POST /admin/api/players/{id}/achievements":      server.handleGrantAchievement,
+		"GET /admin/api/achievements":                    server.handleListAchievements,
+		"GET /admin/api/stage-link":                      server.handleStageLink,
 	}
+	maps.Copy(routes, server.listBotRoutes())
 	for pattern, handler := range routes {
 		mux.HandleFunc(pattern, server.requireAdmin(handler))
 	}
@@ -119,6 +129,30 @@ func (server *apiServer) handleCreateLAN(writer http.ResponseWriter, request *ht
 	body.Rules = rules.DefaultRules()
 	err := server.Store.CreateLAN(request.Context(), body)
 	server.writeOutcome(writer, request, map[string]bool{fieldCreated: true}, err)
+}
+
+// handleUpdateLAN corrects the name or period of a LAN.
+func (server *apiServer) handleUpdateLAN(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var changes store.LANChanges
+	if !server.readJSON(writer, request, &changes) {
+		return
+	}
+	err := server.Store.UpdateLAN(request.Context(), lanID, changes, server.currentMillis())
+	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
+}
+
+// handleDeleteLAN removes a LAN that nobody has joined yet.
+func (server *apiServer) handleDeleteLAN(writer http.ResponseWriter, request *http.Request) {
+	lanID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	err := server.Store.DeleteLAN(request.Context(), lanID, server.currentMillis())
+	server.writeOutcome(writer, request, map[string]bool{fieldDeleted: true}, err)
 }
 
 // handlePatchRules changes only the rules that the body names, also while the LAN is running.
@@ -305,6 +339,11 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 			http.StatusBadRequest, codeInvalidMap,
 			"Diese Zonen sind ungültig: " + strings.Join(invalid, ", "),
 		})
+		return
+	}
+	if request.URL.Query().Get(queryDryRun) == "true" {
+		report, err := server.Store.PreviewMap(request.Context(), lanID, roomMap)
+		server.writeOutcome(writer, request, report, err)
 		return
 	}
 	report, err := server.Store.ImportMap(

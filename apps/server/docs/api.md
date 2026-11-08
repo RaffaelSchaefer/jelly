@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.15.0**
+Aktuelle Version: **1.16.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.15.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.16.0  | `is_bot` in `players` von `GET /stage`: Bots der Orga, die eine Bühne kennzeichnen kann. Dazu Bots, XP, Achievements und der Link zur Bühne in der Admin-API |
 | 1.15.0  | Neues Cosmetic `headset-neutral` im Katalog, ab Level 2 frei wie `headset` |
 | 1.14.0  | Einheitliche Namen: `ends_at`, `follow`, `stack_level`, `partner_id`. Weniger Fehlercodes, `unlock` im Katalog, `rules` in `GET /lans/current` samt `rules.changed`, `xp_per_level` je LAN. Alles, was endet, meldet sich per Ereignis. `PATCH /admin/api/lans/{id}/rules` ändert einzelne Regeln, der Admin-Weg `rotate-token` entfällt |
 | 1.13.0  | `rotation` in `areas` und in der Kartendatei: Zonen stehen in jedem Winkel, Hindernisse und Plätze drehen sich mit |
@@ -107,7 +108,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 404    | `gathering_not_found`                     | Gerade läuft kein Essens-Event und keine Siegerehrung |
 | 404    | `stack_not_found`, `partner_emote_not_found` | Stapel oder Aufforderung gibt es nicht mehr |
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
-| 409    | `name_taken`, `slug_taken`, `lan_overlap` | Steht im Konflikt mit Vorhandenem         |
+| 409    | `name_taken`, `slug_taken`, `lan_overlap`, `lan_has_players` | Steht im Konflikt mit Vorhandenem |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
 | 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |
@@ -380,6 +381,9 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
 - Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur nächsten Zone der Art `queue` und danach zurück. War
   der Weg lang, wartet es ab seiner Ankunft noch kurz. Jellies füllen die ganze Fläche der Zone. Ist sie voll, geht das
   Jelly zur nächsten mit Platz. Sind alle voll, stellt es sich nah dazu. Ohne solche Zonen bleibt es, wo es ist.
+  Plätze liegen etwa 1,8 Jelly-Einheiten auseinander, eine Zone fasst also so viele Jellies, wie in diesem Raster
+  hineinpassen. Beispiel: 45 % × 5 % der Bühne sind etwa 9,5 × 2 Einheiten, das sind 5 Plätze in einer Reihe. Für ein
+  Essens-Event mit allen braucht die Theke deshalb tiefere oder mehrere Zonen.
 - Wo ein Jelly läuft, bestimmt nur der Server. Er merkt sich die Positionen alle 30 Sekunden. Nach einem Neustart macht
   jedes Jelly dort weiter, ein neuer `move` kann also um bis zu 30 Sekunden Weg springen. Ausflug, Folgen, Stapel und
   Thekenlauf laufen auch während eines Ausfalls ab. Danach läuft das Jelly von selbst zurück zu seinem Platz.
@@ -454,11 +458,17 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/hide`, `/show`     |                                           |
 | `POST /admin/api/players/{id}/reset-name`        |                                           |
 | `POST /admin/api/players/{id}/recovery-code`     | `{"valid_seconds"}`, ohne Angabe 24 Stunden, höchstens 30 Tage. Antwort: `{"code","expires_at"}`, nur dieses eine Mal |
+| `POST /admin/api/players/{id}/xp`                | `{"xp"}` von 1 bis 10000 in der laufenden LAN, wie verdient, mit Ereignis `xp.gained`. XP werden nie abgezogen. Ohne Teilnahme `409 not_joined` |
+| `POST /admin/api/players/{id}/achievements`      | `{"key"}` aus dem Katalog, auch geheime, für die laufende LAN wie verdient. Ein vorhandenes bleibt, wie es ist |
+| `GET /admin/api/achievements`                    | Alle Achievements mit `key`, `title`, `description`, auch die geheimen |
+| `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |
 | `DELETE /admin/api/players/{id}`                 |                                           |
 | `GET`, `POST /admin/api/lans`                    | `{"slug","name","timezone","join_code","starts_at","ends_at"}` |
+| `PATCH /admin/api/lans/{id}`                     | `{"name","starts_at","ends_at"}`, alle optional. Der Kurzname bleibt fest |
+| `DELETE /admin/api/lans/{id}`                    | Nur ohne Spieler, sonst `409 lan_has_players`. Zonen und Codes verschwinden mit |
 | `PATCH /admin/api/lans/{id}/rules`               | Ändert nur die genannten Regeln, siehe unten |
 | `PUT /admin/api/lans/{id}/rules`                 | **Ersetzt alle Regeln**, siehe unten      |
-| `PUT /admin/api/lans/{id}/join-code`             | `{"join_code"}`                           |
+| `PUT /admin/api/lans/{id}/join-code`             | `{"join_code"}`. `GET /admin/api/lans` zeigt ihn danach in `join_code`, bei älteren LANs steht dort bis zum Ersetzen `null` |
 | `GET /admin/api/lans/{id}/event-codes`           |                                           |
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`, der Schlüssel muss im Katalog stehen |
@@ -466,6 +476,12 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","rotation","kind","name","blocks","prop"}` |
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
+| `GET`, `POST /admin/api/lans/{id}/bots`          | Antwort: `{"bots","auto_count"}`. `POST` mit `{"count"}` legt bis zu 100 Bots an, siehe unten |
+| `PUT /admin/api/bots/auto`                       | `{"count"}`: so viele Bots der laufenden LAN spielen selbst, `0` stoppt sie |
+| `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp` oder `redeem` mit `"code"` |
+| `DELETE /admin/api/bots`                         | Löscht alle Bots mit allem, was sie getan haben, und stoppt die automatischen |
+| `GET /admin/api/lans/{id}/gathering`             | Antwort: `{"gathering"}`, das laufende Gathering oder `null` |
+| `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben |
 | `DELETE /admin/api/lans/{id}/gathering`          | Beendet es vorzeitig                      |
 | `PUT /admin/api/lans/{id}/map`                   | Kartendatei, siehe unten. Antwort: `{"created","updated","removed","unknown_props","unassigned_players"}` |
 | `POST /admin/api/lans/{id}/areas/{area}/code`    | `{"player_id"}`, optional, bindet den Code ans Konto |
@@ -476,6 +492,19 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 Beim Bearbeiten eines Bereichs bleiben seine Jellies zugeordnet, solange dort Jellies stehen können.
 Wird er gelöscht oder zu einer Art, in der niemand zugehörig ist, verlieren sie ihn und stehen in der Lounge,
 bis ein Admin sie neu zuweist.
+
+### Bots
+
+Bots sind Konten, die die Orga anlegt, um zu testen und die Bühne zu füllen. Sie heißen `Bot-<Nummer>`, zählen als
+normale Spieler und halten sich an dieselben Regeln: Abklingzeiten, Grenzen und Nähe gelten auch für sie. Nur Bots
+lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Server `400 not_a_bot`.
+
+- **Von Hand:** `POST /admin/api/bots/{id}/actions` lässt einen Bot eine Aktion ausführen. Emote, Schild, Ziel eines
+  Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf einen laufenden Stapel in der Nähe oder
+  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler.
+- **Automatisch:** Die ersten `auto_count` Bots der laufenden LAN handeln im Takt der Bewegung, jeder etwa alle 20
+  Sekunden. Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
+  loslaufen.
 
 ### Regeln ändern
 
@@ -534,6 +563,8 @@ Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der 
   Von Hand angelegte Zonen bleiben unberührt.
 - `rotation` ist optional, von 0 bis unter 360 Grad, Nachkommastellen sind erlaubt. Fehlt sie, zeigt das Modell zur Kamera.
   Alle vier Ecken müssen nach dem Drehen im Raum liegen. Hindernis und Plätze der Zone drehen sich mit.
+- Mit `?dry_run=true` antwortet der Import mit demselben Bericht, ändert aber nichts. So sieht die Orga vorher, welche Zonen
+  verschwinden und wie viele Jellies ihren Platz verlieren.
 - `zones` ist Pflicht, damit eine falsche Datei nicht alle Zonen entfernt. `"zones": []` entfernt sie mit Absicht.
 - Der Import läuft auch während einer LAN und sendet `stage.changed`.
 - Ist eine Zone ungültig, ändert sich nichts, und es folgt `400 invalid_map`. Unbekannte Props hindern den Import nicht,

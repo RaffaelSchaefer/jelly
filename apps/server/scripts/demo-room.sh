@@ -12,6 +12,7 @@ step="$1"
 base_url="$2"
 admin_secret="$3"
 lan_id=1
+visitor_every=6
 
 # Columns in percent of the stage width: a margin, four places, the spine, four places, a margin.
 left_half_x=5
@@ -37,6 +38,7 @@ front_zones=(
   "65 14 20 3 none true snack-bar-set"
   "50 17 45 5 queue false"
   "48 12.5 10 2 none true desk 30"
+  "5 95.5 90 4 visitors false"
 )
 
 # Rows from the back of the hall to the front: top edge, left half, right half, and the side the
@@ -141,10 +143,14 @@ assign_players() {
     grep -o '"areas":\[[^]]*\]' | grep -o '"id":[0-9]*[^}]*"kind":"seats"' |
     sed 's/"id":\([0-9]*\).*"width":\([0-9]*\).*/\1 \2/')
   for player_id in $(admin_call "$base_url/admin/api/players" | grep -o '"id":[0-9]*' | cut -d: -f2); do
+    position=$((position + 1))
+    # Every sixth jelly has no place of its own and wanders through the visitor zone.
+    if ((position % visitor_every == 0)); then
+      continue
+    fi
     area_id="${places[$((position % ${#places[@]}))]}"
     admin_call -X PUT "$base_url/admin/api/lans/$lan_id/players/$player_id/area" \
       -d "{\"area_id\":$area_id}" >/dev/null
-    position=$((position + 1))
   done
 }
 
