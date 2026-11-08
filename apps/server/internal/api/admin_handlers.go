@@ -274,9 +274,33 @@ func (server *apiServer) handleListAreas(writer http.ResponseWriter, request *ht
 		return
 	}
 	assignments, err := server.Store.ListAreaAssignments(request.Context(), lanID)
+	if err != nil {
+		server.writeError(writer, request, err)
+		return
+	}
+	gameRules, err := server.Store.LoadLANRules(request.Context(), lanID)
 	server.writeOutcome(writer, request, map[string]any{
 		"areas": areas, "assignments": assignments,
+		"sizes": measureZones(areas, rules.MeasureRoom(gameRules.PublicRules)),
 	}, err)
+}
+
+// zoneSize is the size of a zone in meters of the real hall. It stays apart from the zone, because
+// the admin page sends a zone back as it got it.
+type zoneSize struct {
+	AreaID       int64   `json:"area_id"`
+	WidthMeters  float64 `json:"width_m"`
+	HeightMeters float64 `json:"height_m"`
+}
+
+// measureZones gives the size of every zone in meters.
+func measureZones(areas []store.AdminArea, room rules.RoomMeters) []zoneSize {
+	sizes := make([]zoneSize, len(areas))
+	for index, area := range areas {
+		rect := room.ToMeters(area.Area)
+		sizes[index] = zoneSize{AreaID: area.ID, WidthMeters: rect.Width, HeightMeters: rect.Height}
+	}
+	return sizes
 }
 
 // handleCreateArea adds an area to the room map.

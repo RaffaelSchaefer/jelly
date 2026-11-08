@@ -13,7 +13,7 @@ const SECONDS_PER_DAY = 86_400;
 const OTHER_GROUP_TITLE = "Weitere";
 
 /** What a value counts. */
-export type RuleUnit = "seconds" | "xp" | "count" | "percent" | "units";
+export type RuleUnit = "seconds" | "xp" | "count" | "percent" | "units" | "meters";
 
 /** How the page shows one rule. */
 export interface RuleText {
@@ -108,20 +108,19 @@ function listStageRules(): RuleText[] {
     {
       key: "room_width",
       label: "Breite der Halle",
-      unit: "units",
-      hint: "Meter, von links nach rechts. Eine Karte in Metern rechnet damit.",
+      unit: "meters",
+      hint: "Von links nach rechts. Eine Karte in Metern rechnet damit, nach einer Änderung neu importieren.",
     },
     {
       key: "room_depth",
       label: "Tiefe der Halle",
-      unit: "units",
-      hint: "Meter, von hinten nach vorn.",
+      unit: "meters",
+      hint: "Von hinten nach vorn.",
     },
     {
       key: "jelly_width",
       label: "Breite eines Jellies",
-      unit: "units",
-      hint: "Meter.",
+      unit: "meters",
     },
     { key: "trip_seconds", label: "Dauer eines Ausflugs", unit: "seconds" },
     { key: "follow_seconds", label: "Dauer des Dazustellens", unit: "seconds" },
@@ -229,5 +228,5 @@ function round(value: number): string {
 
 /** Whether a rule takes values like `1.5`. */
 export function allowsDecimals(rule: RuleText): boolean {
-  return rule.unit === "units";
+  return rule.unit === "units" || rule.unit === "meters";
 }

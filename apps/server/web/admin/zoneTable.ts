@@ -13,6 +13,7 @@ import {
   createTable,
   type Message,
 } from "./dom.ts";
+import { formatMeters } from "./format.ts";
 import type { Room } from "./roomTypes.ts";
 import { listZoneKinds, nameZone } from "./zoneKinds.ts";
 
@@ -70,10 +71,12 @@ function createRows(areas: AdminArea[], room: Room, message: Message) {
     const names = room.areaList.assignments
       .filter((assignment) => assignment.area_id === area.id)
       .map((assignment) => assignment.name);
+    const size = room.areaList.sizes.find((entry) => entry.area_id === area.id);
     return [
       createElement("strong", "", nameZone(area)),
       createKindSelect(area, room, message),
       area.prop === "" ? "–" : area.prop,
+      size === undefined ? "–" : `${formatMeters(size.width_m)} × ${formatMeters(size.height_m)} m`,
       names.length === 0 ? "–" : names.join(", "),
       createCodeCell(area, room, message),
     ];
@@ -101,7 +104,7 @@ export function createZonePanel(room: Room): HTMLElement {
             "Keine Zonen. Importiere eine Kartendatei oder zeige auch Hindernisse.",
           )
         : createTable(
-            ["Zone", "Art", "Modell", "Jellies", "Sitzplatz-Code"],
+            ["Zone", "Art", "Modell", "Größe", "Jellies", "Sitzplatz-Code"],
             createRows(areas, room, message),
           ),
     );
