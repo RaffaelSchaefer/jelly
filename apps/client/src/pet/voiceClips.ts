@@ -131,6 +131,25 @@ export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
     [0.9, 0.3, 0, 1, "u", 0.5],
     [1.5, 0.6, 2, 4, "o", 0.55, 14],
   ]),
+  // „hmpf, hmpf … waaah!“: tiefe Stöße beim Stampfen, dann schimpft es mit zugekniffenen Augen.
+  angry: clip([
+    [0.15, 0.1, -5, -6, "u", 0.85, undefined, "tick"],
+    [0.85, 0.1, -5, -6, "u", 0.85, undefined, "tick"],
+    [1.55, 0.35, 2, 0, "a", 1, 20],
+    [2.0, 0.15, -2, -4, "e", 0.8, undefined, "tick"],
+  ]),
+  // Zwei lange, fallende Seufzer mit Vibrato.
+  sad: clip([
+    [0.3, 0.7, 2, -1, "o", 0.55, 16],
+    [1.2, 0.9, 0, -4, "u", 0.45, 18],
+  ]),
+  // Ein leises, hohes „hihi … hihi“.
+  shy: clip([
+    [0.4, 0.09, 9, 10, "i", 0.45, undefined, "hiss"],
+    [0.56, 0.12, 10, 8, "i", 0.4, undefined, "hiss"],
+    [1.3, 0.09, 9, 10, "i", 0.4, undefined, "hiss"],
+    [1.46, 0.14, 10, 7, "i", 0.35, undefined, "hiss"],
+  ]),
 };
 
 /** Die Hüpfer des Partners beim Auftritt und beim Abgang, sie landen im Takt von `partnerEmotes.ts`. */

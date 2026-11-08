@@ -37,6 +37,9 @@ export const PREVIEW_CATALOG: Catalog = {
     { key: "shrug", label: "Schulterzucken" },
     { key: "point", label: "Zeigen" },
     { key: "think", label: "Grübeln" },
+    { key: "angry", label: "Wütend" },
+    { key: "sad", label: "Traurig" },
+    { key: "shy", label: "Schüchtern" },
   ],
   partner_emotes: [
     { key: "hop", label: "Zusammen hüpfen" },

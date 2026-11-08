@@ -36,11 +36,12 @@
 
 .emote-pop {
   display: grid;
-  grid-template-columns: repeat(3, 44px);
+  grid-template-columns: repeat(4, 44px);
   gap: 4px;
-  /* Das Glas wird rund. So weit gepolstert, dass auch die Ecken des Rasters in den Kreis passen. */
-  width: 184px;
-  padding: 22px;
+  /* Das Glas wird eine Kapsel. So groß, dass auch die Ecken des Rasters in ihre runden Enden passen. */
+  width: 232px;
+  height: 172px;
+  place-content: center;
   box-sizing: border-box;
   translate: calc(-100% - 30px) -50%;
   border-radius: 24px;
