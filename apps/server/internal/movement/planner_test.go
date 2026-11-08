@@ -9,11 +9,17 @@ import (
 
 const start = int64(1_000_000)
 
+// testRoom is the old fixed room, where a meter is one floor unit. The expectations of these tests
+// were written for it.
+func testRoom() rules.Room {
+	return rules.Room{WidthMeters: 21, DepthMeters: 40, JellyMeters: 1.7}
+}
+
 // makeRoster puts jellies with these IDs into a large lounge with a desk row behind it.
 func makeRoster(playerIDs ...int64) movement.Roster {
 	lounge := rules.Area{X: 10, Y: 10, Width: 60, Height: 30, Kind: rules.AreaKindLounge}
 	desk := rules.Area{X: 0, Y: 45, Width: 80, Height: 3, Kind: rules.AreaKindNone, Blocks: true}
-	roster := movement.Roster{WalkSpeed: 1.4, Areas: []rules.Area{lounge, desk}}
+	roster := movement.Roster{WalkSpeed: 1.4, Room: testRoom(), Areas: []rules.Area{lounge, desk}}
 	for index, playerID := range playerIDs {
 		roster.Players = append(roster.Players, movement.Player{
 			ID: playerID, Area: lounge,
@@ -415,6 +421,7 @@ func TestVisitorsWanderThroughAllVisitorZones(t *testing.T) {
 	right := rules.Area{X: 70, Y: 60, Width: 20, Height: 20, Kind: rules.AreaKindVisitors}
 	roster := movement.Roster{
 		WalkSpeed: 1.4,
+		Room:      testRoom(),
 		Areas:     []rules.Area{left, right},
 		Players: []movement.Player{{
 			ID: 1, Area: left, Home: movement.Point{X: 15, Y: 70}, IsVisitor: true,
@@ -461,7 +468,11 @@ func TestQueueInATurnedZoneKeepsItsPlacesInsideTheZone(t *testing.T) {
 	for _, move := range planner.ListCurrentMoves() {
 		end := endOf(move)
 		ends[end] = true
-		if rules.IsOnFreeFloor(rules.StagePoint{X: end.X, Y: end.Y}, []rules.Area{wall}) {
+		if rules.IsOnFreeFloor(
+			rules.StagePoint{X: end.X, Y: end.Y},
+			[]rules.Area{wall},
+			rules.RoomMeters{Width: 21, Depth: 40},
+		) {
 			t.Fatalf("outside the turned zone: %+v", end)
 		}
 	}
