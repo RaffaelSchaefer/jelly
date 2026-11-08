@@ -332,6 +332,16 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 		})
 		return
 	}
+	// Meters become percent here, with the room of this LAN, so the rest of the server stays in
+	// percent.
+	if roomMap.Version == rules.MapFormatMeters {
+		gameRules, err := server.Store.LoadLANRules(request.Context(), lanID)
+		if err != nil {
+			server.writeOutcome(writer, request, struct{}{}, err)
+			return
+		}
+		roomMap = roomMap.ToPercent(rules.MeasureRoom(gameRules.PublicRules))
+	}
 	invalid := rules.ListInvalidMapZones(roomMap.Zones)
 	if len(invalid) > 0 {
 		server.writeProblem(writer, problem{
