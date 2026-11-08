@@ -149,7 +149,7 @@ func TestImportReportsUnknownPropsAndStillTakesTheZone(t *testing.T) {
 func TestImportRefusesBrokenMapsWithoutChangingAnything(t *testing.T) {
 	testFixture := newFixture(t)
 	for _, body := range []string{
-		`{"version":2,"zones":[]}`,
+		`{"version":3,"zones":[]}`,
 		`{"version":1,"zones":[` + seatsZone + `,` + seatsZone + `]}`,
 		`{"version":1,"zones":[{"id":"far","name":"","x":99,"y":1,"width":5,"height":1,` +
 			`"blocks":false,"prop":""}]}`,
@@ -235,4 +235,38 @@ func TestTripsAreRefusedByTheRotatedShapeOfAZone(t *testing.T) {
 			response.body,
 		)
 	}
+}
+
+func TestMapInMetersBecomesPercentOfTheRoomAndTheStageSaysBothWays(t *testing.T) {
+	testFixture := newFixture(t)
+	const rulesPath = "/admin/api/lans/1/rules"
+	if response := testFixture.callAdmin("PATCH", rulesPath,
+		`{"room_width":20,"room_depth":10,"jelly_width":0.5}`); response.status != http.StatusOK {
+		t.Fatalf("rules: %d %s", response.status, response.body)
+	}
+	response := testFixture.callAdmin("PUT", mapPath, `{"version":2,"zones":[`+
+		`{"id":"desk","name":"","x":5,"y":2,"width":1,"height":0.5,"blocks":true,"prop":"desk"}]}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("import: %d %s", response.status, response.body)
+	}
+	desk := testFixture.findMapArea("desk")
+	if desk.X != 25 || desk.Y != 20 || desk.Width != 5 || desk.Height != 5 {
+		t.Fatalf("percent of a room of 20 by 10 meters: %+v", desk)
+	}
+	stage := testFixture.loadStage()
+	room := stage.Room
+	if room.WidthMeters != 20 || room.DepthMeters != 10 || room.JellyMeters != 0.5 {
+		t.Fatalf("room: %+v", room)
+	}
+	area := stage.Areas[0]
+	if area.XMeters != 5 || area.YMeters != 2 || area.WidthMeters != 1 || area.HeightMeters != 0.5 {
+		t.Fatalf("area in meters: %+v", area)
+	}
+}
+
+func TestMapInMetersOutsideTheRoomIsRefused(t *testing.T) {
+	testFixture := newFixture(t)
+	requireProblem(t, testFixture.callAdmin("PUT", mapPath, `{"version":2,"zones":[`+
+		`{"id":"far","name":"","x":21.5,"y":1,"width":1,"height":1,"blocks":true,"prop":"desk"}]}`),
+		http.StatusBadRequest, "invalid_map")
 }
