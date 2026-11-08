@@ -24,6 +24,7 @@ const (
 	DefaultMaxDelay = 20 * time.Second
 
 	maxPlayers = 1000
+	maxStages  = 100
 	runIDBytes = 3
 )
 
@@ -42,6 +43,14 @@ type Config struct {
 	MaxDelay time.Duration
 	// Now is the clock for response times and for the expiry of partner codes.
 	Now func() time.Time
+	// Streams lets every bot keep an event stream open, as the app does.
+	Streams bool
+	// StreamTopics narrows the streams of the bots, such as "events" for an app without the map.
+	// Empty means everything.
+	StreamTopics string
+	// Stages is how many stage screens watch the stream with StageKey.
+	Stages   int
+	StageKey string
 }
 
 // Stats counts what happened during a run. Rejected actions are normal, such as a cooldown.
@@ -55,6 +64,12 @@ type Stats struct {
 	// MeanLatency and MaxLatency measure the answered actions.
 	MeanLatency time.Duration
 	MaxLatency  time.Duration
+	// StreamMessages counts what all streams received, StreamDrops how often one ended or was
+	// refused. FirstStreamDrop says why the first one did.
+	StreamMessages  int64
+	StreamBytes     int64
+	StreamDrops     int64
+	FirstStreamDrop error
 }
 
 // GenerateRunID returns an ID that differs even between runs in the same second.
@@ -67,10 +82,9 @@ func GenerateRunID() string {
 
 // ValidateConfig rejects settings that could only fail later in every bot.
 func ValidateConfig(config Config) error {
-	address, err := url.Parse(config.BaseURL)
-	if err != nil || address.Host == "" || (address.Scheme != "http" && address.Scheme != "https") {
-		return fmt.Errorf("%w: address %q needs http or https and a host",
-			ErrInvalidConfig, config.BaseURL)
+	err := validateAddress(config.BaseURL)
+	if err != nil {
+		return err
 	}
 	if config.Players <= 0 || config.Players > maxPlayers {
 		return fmt.Errorf("%w: players must be from 1 to %d", ErrInvalidConfig, maxPlayers)
@@ -78,8 +92,35 @@ func ValidateConfig(config Config) error {
 	if config.MinDelay <= 0 || config.MaxDelay < config.MinDelay {
 		return fmt.Errorf("%w: delays must be positive and in order", ErrInvalidConfig)
 	}
+	err = validateStages(config)
+	if err != nil {
+		return err
+	}
 	if config.JoinCode == "" || config.RunID == "" || config.Now == nil {
 		return fmt.Errorf("%w: join code, run ID and clock are required", ErrInvalidConfig)
+	}
+	return nil
+}
+
+// validateAddress checks that the server address can take requests.
+func validateAddress(baseURL string) error {
+	address, err := url.Parse(baseURL)
+	if err != nil || address.Host == "" || (address.Scheme != "http" && address.Scheme != "https") {
+		return fmt.Errorf(
+			"%w: address %q needs http or https and a host",
+			ErrInvalidConfig,
+			baseURL,
+		)
+	}
+	return nil
+}
+
+// validateStages checks the stage screens, which need the stage key to sign in.
+func validateStages(config Config) error {
+	if config.Stages < 0 || config.Stages > maxStages ||
+		(config.Stages > 0 && config.StageKey == "") {
+		return fmt.Errorf("%w: stages must be from 0 to %d and need the stage key",
+			ErrInvalidConfig, maxStages)
 	}
 	return nil
 }
@@ -93,13 +134,26 @@ func Run(
 	if err != nil {
 		return Stats{}, err
 	}
-	client := apiClient{httpClient: httpClient, baseURL: strings.TrimRight(config.BaseURL, "/")}
+	baseURL := strings.TrimRight(config.BaseURL, "/")
+	client := apiClient{httpClient: httpClient, baseURL: baseURL}
+	// A stream stays open for the whole run, so it must not hit the time limit of single requests.
+	streamClient := apiClient{
+		httpClient: &http.Client{Transport: httpClient.Transport},
+		baseURL:    baseURL,
+	}
 	results := &counters{}
 	var waitGroup sync.WaitGroup
+	for range config.Stages {
+		// Concurrency plan: one goroutine per stage screen, started here. Each ends when ctx ends
+		// and is awaited below. A dropped stream is counted and opened again.
+		waitGroup.Go(func() {
+			streamClient.watchStream(ctx, buildStagePath(config.StageKey), "", results)
+		})
+	}
 	for index := range config.Players {
 		player := bot{
-			client: client, results: results, config: config,
-			index: index, playerID: 0, token: "",
+			client: client, streamClient: streamClient, streams: &waitGroup, results: results,
+			config: config, index: index, playerID: 0, token: "",
 		}
 		// Concurrency plan: one goroutine per bot, started here. Each ends when ctx ends and
 		// is awaited below. A failed registration ends only that bot and is counted.
@@ -129,6 +183,11 @@ type counters struct {
 	totalLatency atomic.Int64
 	maxLatency   atomic.Int64
 	firstDeath   atomic.Pointer[error]
+
+	streamMessages  atomic.Int64
+	streamBytes     atomic.Int64
+	streamDrops     atomic.Int64
+	firstStreamDrop atomic.Pointer[error]
 }
 
 // recordDeadBot counts a bot that stopped for good and keeps the first reason.
@@ -165,6 +224,12 @@ func (results *counters) buildStats() Stats {
 		Accepted: results.accepted.Load(), Rejected: results.rejected.Load(),
 		FailedActions: results.failed.Load(), DeadBots: results.deadBots.Load(),
 		MeanLatency: 0, MaxLatency: time.Duration(results.maxLatency.Load()),
+		StreamMessages: results.streamMessages.Load(), StreamBytes: results.streamBytes.Load(),
+		StreamDrops:     results.streamDrops.Load(),
+		FirstStreamDrop: nil,
+	}
+	if reason := results.firstStreamDrop.Load(); reason != nil {
+		stats.FirstStreamDrop = *reason
 	}
 	answered := results.answered.Load()
 	if answered > 0 {

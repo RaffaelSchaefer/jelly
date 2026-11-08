@@ -111,8 +111,11 @@ JELLY_JOIN_CODE=geheim go run ./cmd/jelly-server simulate -url http://localhost:
 | `-max-delay` | `20s`                   | Längste Zeit zwischen zwei Aktionen    |
 | `-duration`  | `0`                     | Laufzeit, `0` läuft bis zu einem Signal |
 | `-run-id`    | zufällig                | Teil der Namen, gleiche ID auf derselben Datenbank kollidiert |
+| `-streams`   | aus                     | Jedes Jelly hält wie die App einen Stream offen |
+| `-stream-topics` | alles               | Themen dieser Streams, `events` wie eine App ohne Karte |
+| `-stages`    | 0                       | Bühnen, die den Stream lesen, brauchen `JELLY_STAGE_KEY` |
 
-Am Ende stehen im Log angenommene und abgelehnte Aktionen, Fehler und Antwortzeiten. Können alle Bots
+Am Ende stehen im Log angenommene und abgelehnte Aktionen, Fehler, Antwortzeiten und was die Streams empfangen haben. Können alle Bots
 sich nicht anmelden, endet der Lauf mit dem Grund. Messungen stehen in
 [benchmarks/README.md](benchmarks/README.md).
 
