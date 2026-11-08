@@ -1,47 +1,68 @@
 /**
- * The hall of `apps/server/scripts/demo-room.sh` as areas, for tests of movement and navigation and
- * the map preview of the app. It follows the script step by step: seats first, then desks, then the
- * spine, then the front of the hall. It copies the numbers of the script, so a change there
- * belongs here too.
+ * The hall of the LAN as areas, for tests of the stage and the map preview of the app. It follows the
+ * plan of `apps/server/scripts/demo-room.sh`: seats first, then desks, then the spine, then the front
+ * of the hall. Its desks are tables of 1 by 0.5 meters in the real hall of {@link DEMO_HALL}, so rows
+ * and seats are planned in meters. The front of the hall keeps the percentages of the script.
  *
  * @module
  */
 
-import type { StageArea } from "./types.ts";
+import type { StageArea, StageRoom } from "./types.ts";
 
-const HALVES = [5, 55];
-const PLACE_WIDTH = 10;
-const ROW_DEPTH = 2;
-const SEAT_DEPTH = 5;
-const SPINE_X = 45;
-const SPINE_TOP = 22;
-const SPINE_BOTTOM = 90;
-/** Top edge, left half, right half and the side the players stand on, as in the script. */
+/** The real size of the hall and of a jelly, as the server reports it by default. */
+export const DEMO_HALL: Pick<StageRoom, "width_m" | "depth_m" | "jelly_m"> = {
+  width_m: 22,
+  depth_m: 16.1,
+  jelly_m: 0.5,
+};
+
+const PERCENT = 100;
+/** A table of the hall in meters. A gaming desk is a table with a player in front of it. */
+const DESK = { width: 1, depth: 0.5 };
+/** Depth of the floor in front of gaming desks, where their players stand, in meters. */
+const SEAT_DEPTH = 0.75;
+/** Where the left and the right half of every row start, in meters from the left wall. */
+const HALVES = [2.5, 11.5];
+/** The spine runs down the middle between the halves, a stack of desks from the back to the front. */
+const SPINE = { x: 10.5, top: 3.6, desks: 20 };
+/**
+ * Top edge in meters, left half, right half and the side the players stand on. A desk row is 0.5
+ * meters deep, and two rows of gaming desks face each other across their seats.
+ */
 const ROWS: [number, string, string, "none" | "above" | "below"][] = [
-  [24, "DDDD", "DDDD", "none"],
-  [26, "GGGG", "GGGG", "below"],
-  [38, "GGGG", "GGGG", "above"],
-  [40, "DDDD", "DDDD", "none"],
-  [42, "GGGG", "GGGG", "below"],
-  [54, "GGGG", "GGGG", "above"],
-  [56, "DDDD", "DDDD", "none"],
-  [58, "GGGG", "GGGG", "below"],
-  [70, "GGGG", "GGGG", "above"],
-  [72, "DDDD", "DDDD", "none"],
-  [74, "GGGG", "GGGG", "below"],
-  [86, "GGGG", "GGGG", "above"],
-  [88, "DDGG", "GGDD", "below"],
+  [4.1, "DDDDDDDD", "DDDDDDDD", "none"],
+  [4.6, "GGGGGGGG", "GGGGGGGG", "below"],
+  [6.6, "GGGGGGGG", "GGGGGGGG", "above"],
+  [7.1, "DDDDDDDD", "DDDDDDDD", "none"],
+  [7.6, "GGGGGGGG", "GGGGGGGG", "below"],
+  [9.6, "GGGGGGGG", "GGGGGGGG", "above"],
+  [10.1, "DDDDDDDD", "DDDDDDDD", "none"],
+  [10.6, "GGGGGGGG", "GGGGGGGG", "below"],
+  [12.6, "GGGGGGGG", "GGGGGGGG", "above"],
+  [13.1, "DDDDGGGG", "GGGGDDDD", "below"],
 ];
 
-/** x, y, width, height, kind, blocks, prop and rotation, as in the script. */
+/** x, y, width, height in percent, then kind, blocks, prop and rotation, as in the script. */
 type Shape = [number, number, number, number, string, boolean?, string?, number?];
 
 /** A desk: a zone nobody is assigned to, which jellies walk around. */
-const DESK: [string, boolean, string] = ["none", true, "desk"];
+const DESK_ZONE: [string, boolean, string] = ["none", true, "desk"];
+
+/** Converts a rectangle in meters of the hall to percent of the stage. */
+function inPercent(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): [number, number, number, number] {
+  const perMeterX = PERCENT / DEMO_HALL.width_m;
+  const perMeterY = PERCENT / DEMO_HALL.depth_m;
+  return [x * perMeterX, y * perMeterY, width * perMeterX, height * perMeterY];
+}
 
 /**
- * The front of the hall: the stage platform with what stands on it, the lounge, the snack bar with
- * its queue, and a turned desk next to the lounge, to compare the model with the obstacle.
+ * The front of the hall in percent: the stage platform with what stands on it, the lounge, the snack
+ * bar with its queue, and a turned desk next to the lounge, to compare the model with the obstacle.
  */
 const FRONT_ZONES: Shape[] = [
   [5, 1, 90, 8, "stage", false, "stage-platform"],
@@ -53,7 +74,7 @@ const FRONT_ZONES: Shape[] = [
   [5, 12, 40, 10, "lounge", false, "lounge-set"],
   [65, 14, 20, 3, "none", true, "snack-bar-set"],
   [50, 17, 45, 5, "queue"],
-  [48, 12.5, 10, 2, ...DESK, 30],
+  [...inPercent(11.2, 1.9, DESK.width, DESK.depth), ...DESK_ZONE, 30],
 ];
 
 /** Returns start and length of every run of `letter` in a row pattern. */
@@ -71,10 +92,12 @@ function listSeats(): Shape[] {
       ? []
       : [left, right].flatMap((pattern, half) =>
           listRuns(pattern, "G").map(([start, length]): Shape => [
-            (HALVES[half] ?? 0) + start * PLACE_WIDTH,
-            side === "above" ? top - SEAT_DEPTH : top + ROW_DEPTH,
-            length * PLACE_WIDTH,
-            SEAT_DEPTH,
+            ...inPercent(
+              (HALVES[half] ?? 0) + start * DESK.width,
+              side === "above" ? top - SEAT_DEPTH : top + DESK.depth,
+              length * DESK.width,
+              SEAT_DEPTH,
+            ),
             "seats",
           ]),
         ),
@@ -86,11 +109,8 @@ function listDesks(): Shape[] {
   return ROWS.flatMap(([top, left, right]) =>
     [left, right].flatMap((pattern, half) =>
       [...pattern].map((_, place): Shape => [
-        (HALVES[half] ?? 0) + place * PLACE_WIDTH,
-        top,
-        PLACE_WIDTH,
-        ROW_DEPTH,
-        ...DESK,
+        ...inPercent((HALVES[half] ?? 0) + place * DESK.width, top, DESK.width, DESK.depth),
+        ...DESK_ZONE,
       ]),
     ),
   );
@@ -98,13 +118,13 @@ function listDesks(): Shape[] {
 
 /** Returns the desks of the spine, stacked from the back to the front. */
 function listSpine(): Shape[] {
-  const count = (SPINE_BOTTOM - SPINE_TOP) / ROW_DEPTH;
-  return Array.from({ length: count }, (_, index): Shape => {
-    return [SPINE_X, SPINE_TOP + index * ROW_DEPTH, PLACE_WIDTH, ROW_DEPTH, ...DESK];
-  });
+  return Array.from({ length: SPINE.desks }, (_, index): Shape => [
+    ...inPercent(SPINE.x, SPINE.top + index * DESK.depth, DESK.width, DESK.depth),
+    ...DESK_ZONE,
+  ]);
 }
 
-/** Returns the areas the demo creates, with IDs in the same order. */
+/** Returns the areas of the hall, with IDs in the order of the script. */
 export function createDemoRoom(): StageArea[] {
   const shapes: Shape[] = [...listSeats(), ...listDesks(), ...listSpine(), ...FRONT_ZONES];
   return shapes.map(([x, y, width, height, kind, blocks, prop, rotation], index) => ({

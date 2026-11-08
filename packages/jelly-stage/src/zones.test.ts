@@ -3,7 +3,8 @@ import { test } from "node:test";
 
 import type { FloorRect } from "./world.ts";
 
-import { createDemoRoom } from "./demoRoom.fixture.ts";
+import { createDemoRoom, DEMO_HALL } from "./demoRoom.fixture.ts";
+import { JELLY_WIDTH, measureRoom } from "./world.ts";
 import {
   containsPoint,
   findFloorHeight,
@@ -43,6 +44,16 @@ const turnedDesk = placeArea(
   },
   hall,
 );
+
+test("every desk of the demo hall is two jellies wide and one jelly deep", () => {
+  const lectureHall = measureRoom(DEMO_HALL);
+  const desks = room.filter((area) => area.prop === "desk");
+  assert.ok(desks.length > 0);
+  for (const desk of desks.map((area) => placeArea(area, lectureHall))) {
+    assert.equal((desk.width / JELLY_WIDTH).toFixed(3), "2.000");
+    assert.equal((desk.depth / JELLY_WIDTH).toFixed(3), "1.000");
+  }
+});
 
 test("speakers stand in the back corners and the trophy between the beamers", () => {
   assert.ok(stage);
