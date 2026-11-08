@@ -21,5 +21,6 @@ export * from "./signs";
 export * from "./stage";
 export * from "./studio";
 export * from "./types";
+export * from "./uiSounds";
 export * from "./voice";
 export * from "./voiceClips";

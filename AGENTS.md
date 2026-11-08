@@ -66,6 +66,13 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (Noten, reine Logik): die Stimme des Jellys. Tonhöhe und Tempo je Geste stehen in `EMOTE_MOODS`
   (`packages/jelly-scene/src/emotes.ts`), Bewegung und Laut teilen sich das Tempo. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
+- `src/uiSound.ts`, `src/useUiSounds.ts`, `src/pet/uiSounds.ts`: Geräusche der Oberfläche aus `src/sounds/`
+  (von reactsounds.com, MIT). Ein Hörer im Dokument wählt den Ton aus den Attributen des Knopfs
+  (`aria-expanded`, `aria-disabled`, `role="tab"`), `data-sound` überschreibt ihn,
+  `data-sound="none"` schweigt. Dazu klingen Schalter, Fehler und Momente im Spielstand (XP, Erfolge,
+  Einladung, Schlüpfen, `gameSoundFor`). `LEVELS` gleicht die sehr verschieden lauten Töne an. Was ein Fenster schließt, nutzt `playThen`,
+  sonst bricht der Ton mit dem Fenster ab. Die MP3s liegen als Daten im Bundle, das Paket
+  `react-sounds` lädt per `fetch` und bliebe unter der CSP stumm.
 - `src/pet/rendering.ts`, `src/optimized.css`: der optimierte Modus (`Settings.optimizedRendering`). Das Profil
   sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Beim Einstieg schaltet ein zu langsames Gerät
   selbst um (`createSlowFrameMeter`). Messung und Shader-Prüfung:

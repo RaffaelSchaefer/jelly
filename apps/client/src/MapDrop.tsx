@@ -21,6 +21,7 @@ export default function MapDrop({ disabled, onOpen }: { disabled: boolean; onOpe
         data-liquid="calm"
         data-tip="Karte"
         aria-label="Karte"
+        data-sound="window"
         disabled={disabled}
         onClick={onOpen}
       >

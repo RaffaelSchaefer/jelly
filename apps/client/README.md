@@ -99,7 +99,14 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   drei Finger und einen Daumen und drehen sich mit der Geste. Das Gesicht wechselt dazu Augenform
   (offen, `^^`, `>_<`, geschlossen), zeigt Brauen, Röte und eigene Mundformen. Jede Emotion hat
   eine eigene Stimmlage und ein eigenes Tempo: Wut klingt tief und schnell, Trauer tief und langsam,
-  Freude hoch und flott. Bewegung und Laut laufen dabei im selben Takt. Nach Bestätigung
+  Freude hoch und flott. Bewegung und Laut laufen dabei im selben Takt.
+- Die Oberfläche hat leise Geräusche: Tippen, Auf- und Zuklappen, Wählen, Sperren, Schalter,
+  Öffnen und Schließen von Karte und Pet-Fenster, Erfolg und Fehler. Dazu klingen XP (Münze), neue
+  Erfolge, Einladungen zu Partner-Emotes und das Schlüpfen. Die Töne stammen aus der Bibliothek von
+  [reactsounds.com](https://www.reactsounds.com) (MIT, `src/sounds/LICENSE`), liegen im Bundle,
+  sind aufeinander abgestimmt laut und folgen dem Schalter und dem Regler der Geräusche. Ein neuer
+  Ton kommt nach `src/sounds/`, in `UI_SOUND_NAMES` (`src/pet/uiSounds.ts`) sowie in `SOUNDS` und
+  `LEVELS` in `src/uiSound.ts`. Nach Bestätigung
   durch `POST /v1/emotes` spielt das Jelly die Geste für drei
   Sekunden. Die Bühne nutzt dieselben Gesten aus `@jelly/scene`; reduzierte Bewegung zeigt eine
   ruhige Pose. In der Browser-Vorschau funktionieren die Gesten ohne Server und ohne Fortschritt.
