@@ -18,26 +18,31 @@ import {
   toRoomPoint,
 } from "./zones.ts";
 
+/** The room the server measures in, so the desk below is 2 by 1 jelly units. */
+const hall = { width: 21, depth: 40 };
 const room = createDemoRoom();
-const platform = listPlatforms(room)[0];
+const platform = listPlatforms(room, hall)[0];
 const stage = platform && toLocalRect(platform);
 const middleOf = (rect: FloorRect) => ({
   x: (rect.minX + rect.maxX) / 2,
   z: (rect.minZ + rect.maxZ) / 2,
 });
 /** A desk of 2 by 1 units in the middle of the room, turned by a quarter clockwise. */
-const turnedDesk = placeArea({
-  id: 1,
-  x: 45,
-  y: 48.75,
-  width: 10,
-  height: 2.5,
-  rotation: 90,
-  kind: "none",
-  blocks: true,
-  prop: "desk",
-  name: null,
-});
+const turnedDesk = placeArea(
+  {
+    id: 1,
+    x: 45,
+    y: 48.75,
+    width: 10,
+    height: 2.5,
+    rotation: 90,
+    kind: "none",
+    blocks: true,
+    prop: "desk",
+    name: null,
+  },
+  hall,
+);
 
 test("speakers stand in the back corners and the trophy between the beamers", () => {
   assert.ok(stage);
@@ -63,7 +68,7 @@ test("the beamers stand on the back of the stage, left and right of the middle",
 
 test("the floor is raised on the stage only", () => {
   assert.ok(platform && stage);
-  const platforms = listPlatforms(room);
+  const platforms = listPlatforms(room, hall);
   assert.equal(findFloorHeight(platform.middle, platforms), STAGE_HEIGHT);
   assert.equal(findFloorHeight({ x: 0, z: platform.middle.z + stage.maxZ + 1 }, platforms), 0);
 });

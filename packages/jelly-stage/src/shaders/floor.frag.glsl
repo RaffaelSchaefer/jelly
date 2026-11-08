@@ -1,12 +1,13 @@
 // Floor of the hall, fragment shader: light hexagon tiles with thin grout. A few tiles carry a
 // faint jelly color. Toward the edges the floor fades into the background, so the room has no hard
-// border. TILE_SIZE, GROUT, TINT_SHARE and the room size come as defines from floor.ts.
+// border. TILE_SIZE, GROUT, TINT_SHARE and FLOOR_REACH come as defines from floor.ts.
 
 uniform vec3 uTile;
 uniform vec3 uGrout;
 uniform vec3 uBackground;
 uniform vec3 uTints[3];
 varying vec2 vFloor;
+varying vec2 vPlane;
 
 // Width and height of one hexagon cell, pointy side up.
 const vec2 HEX = vec2(1.0, 1.7320508);
@@ -40,8 +41,9 @@ void main() {
   }
   vec3 color = mix(tile, uGrout, grout);
 
-  // An ellipse a bit larger than the room, beyond which only the background is left.
-  float reach = length(vFloor / (vec2(ROOM_WIDTH, ROOM_DEPTH) * 0.5));
+  // An ellipse a bit larger than the room, beyond which only the background is left. The plane
+  // spans FLOOR_REACH times the room, so 1 is the edge of the room.
+  float reach = length(vPlane * 2.0 * FLOOR_REACH);
   color = mix(color, uBackground, smoothstep(1.05, 1.7, reach));
   gl_FragColor = vec4(color, 1.0);
   #include <colorspace_fragment>

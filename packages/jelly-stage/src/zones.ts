@@ -7,7 +7,7 @@
  */
 
 import type { StageArea } from "./types.ts";
-import type { FloorPoint, FloorRect } from "./world.ts";
+import type { FloorPoint, FloorRect, RoomSize } from "./world.ts";
 
 import { isPlatformProp } from "./propNames.ts";
 import { toFloorPoint, toFloorRect } from "./world.ts";
@@ -41,10 +41,13 @@ export interface Placement {
   turn: number;
 }
 
-/** Returns where a zone stands. The turn happens on the floor: percent is longer on one axis. */
-export function placeArea(area: StageArea): Placement {
-  const rect = toFloorRect(area);
-  const middle = toFloorPoint({ x: area.x + area.width / 2, y: area.y + area.height / 2 });
+/**
+ * Returns where a zone stands in a room. The turn happens on the floor: percent is longer on one
+ * axis.
+ */
+export function placeArea(area: StageArea, room: RoomSize): Placement {
+  const rect = toFloorRect(area, room);
+  const middle = toFloorPoint({ x: area.x + area.width / 2, y: area.y + area.height / 2 }, room);
   return {
     middle,
     width: rect.maxX - rect.minX,
@@ -127,8 +130,8 @@ export function findPedestalRect(stage: FloorRect): FloorRect {
 }
 
 /** Returns the placements of all stage platforms, the zones with a raised floor. */
-export function listPlatforms(areas: StageArea[]): Placement[] {
-  return areas.filter((area) => isPlatformProp(area.prop)).map(placeArea);
+export function listPlatforms(areas: StageArea[], room: RoomSize): Placement[] {
+  return areas.filter((area) => isPlatformProp(area.prop)).map((area) => placeArea(area, room));
 }
 
 /** Returns how high the floor is at a point: on a stage platform it is raised. */

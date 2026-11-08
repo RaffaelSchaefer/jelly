@@ -6,9 +6,9 @@
  */
 
 import type { StageMove } from "./types.ts";
-import type { FloorPoint } from "./world.ts";
+import type { FloorPoint, RoomSize } from "./world.ts";
 
-import { FULL_CIRCLE, measureDistance, toFloorPoint } from "./world.ts";
+import { FULL_CIRCLE, measureDistance, measureServerDistance, toFloorPoint } from "./world.ts";
 
 /** Closer than this, a jelly counts as standing. */
 const ARRIVE_DISTANCE = 0.0005;
@@ -24,7 +24,10 @@ const GAIT_RATE = 10;
 /** Why a jelly walks when it goes to the snack bar. It carries its snack with both hands. */
 const SNACK_KIND = "snack";
 const TRIP_KIND = "trip";
-/** The server looks for a free spot near the point of a trip, so a trip may end this far from it. */
+/**
+ * The server looks for a free spot near the point of a trip, so a trip may end this far from it, as
+ * the server measures.
+ */
 const TRIP_GOAL_REACH = 6;
 
 /** Where a jelly stands and how it moves, kept between frames. */
@@ -58,8 +61,8 @@ export function createWalker(position: FloorPoint): Walker {
   return { position, yaw: 0, stride: 0, gait: 0 };
 }
 
-/** Returns where a move puts a jelly at this server time. */
-export function findMovePosition(move: StageMove, serverTime: number): FloorPoint {
+/** Returns where a move puts a jelly at this server time, on the floor of a room. */
+export function findMovePosition(move: StageMove, serverTime: number, room: RoomSize): FloorPoint {
   const elapsed = serverTime - move.start_at;
   let last = move.points[0];
   if (!last) {
@@ -68,14 +71,14 @@ export function findMovePosition(move: StageMove, serverTime: number): FloorPoin
   for (const next of move.points.slice(1)) {
     if (elapsed < next.t) {
       const share = Math.max(0, (elapsed - last.t) / (next.t - last.t));
-      return toFloorPoint({
-        x: last.x + (next.x - last.x) * share,
-        y: last.y + (next.y - last.y) * share,
-      });
+      return toFloorPoint(
+        { x: last.x + (next.x - last.x) * share, y: last.y + (next.y - last.y) * share },
+        room,
+      );
     }
     last = next;
   }
-  return toFloorPoint(last);
+  return toFloorPoint(last, room);
 }
 
 /** Keeps the newer of two moves of a jelly, so a slower answer cannot undo a newer move. */
@@ -106,11 +109,12 @@ export function isOnTheWay(
   move: StageMove | undefined,
   goal: FloorPoint,
   serverTime: number,
+  room: RoomSize,
 ): boolean {
   const end = move?.points.at(-1);
   if (!move || !end || move.kind !== TRIP_KIND) return true;
   const hasEnded = serverTime >= move.start_at + end.t;
-  return !hasEnded || measureDistance(toFloorPoint(end), goal) > TRIP_GOAL_REACH;
+  return !hasEnded || measureServerDistance(toFloorPoint(end, room), goal, room) > TRIP_GOAL_REACH;
 }
 
 /** Returns the rotation toward a point, or `fallback` when it is right here. */

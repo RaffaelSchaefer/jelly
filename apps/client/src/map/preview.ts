@@ -227,7 +227,14 @@ export function createPreviewSource(): MapSource {
       Promise.resolve({
         last_event_id: 0,
         server_time: Date.now(),
-        room: { width: 100, height: 100, unit: "percent" },
+        room: {
+          width: 100,
+          height: 100,
+          unit: "percent",
+          width_m: 22,
+          depth_m: 16.1,
+          jelly_m: 0.5,
+        },
         areas,
         players,
         moves: [],
