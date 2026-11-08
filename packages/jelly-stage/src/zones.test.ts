@@ -22,6 +22,7 @@ import {
 /** The room the server measures in, so the desk below is 2 by 1 jelly units. */
 const hall = { width: 21, depth: 40 };
 const room = createDemoRoom();
+const demoHall = measureRoom(DEMO_HALL);
 const platform = listPlatforms(room, hall)[0];
 const stage = platform && toLocalRect(platform);
 const middleOf = (rect: FloorRect) => ({
@@ -46,12 +47,20 @@ const turnedDesk = placeArea(
 );
 
 test("every desk of the demo hall is two jellies wide and one jelly deep", () => {
-  const lectureHall = measureRoom(DEMO_HALL);
   const desks = room.filter((area) => area.prop === "desk");
   assert.ok(desks.length > 0);
-  for (const desk of desks.map((area) => placeArea(area, lectureHall))) {
+  for (const desk of desks.map((area) => placeArea(area, demoHall))) {
     assert.equal((desk.width / JELLY_WIDTH).toFixed(3), "2.000");
     assert.equal((desk.depth / JELLY_WIDTH).toFixed(3), "1.000");
+  }
+});
+
+test("two rows of gaming desks leave the floor of three desks between them", () => {
+  const seats = room.filter((area) => area.kind === "seats");
+  assert.ok(seats.length > 0);
+  // A desk is one jelly deep, and the seats of both rows make up the aisle.
+  for (const seat of seats.map((area) => placeArea(area, demoHall))) {
+    assert.equal(((2 * seat.depth) / JELLY_WIDTH).toFixed(3), "3.000");
   }
 });
 
