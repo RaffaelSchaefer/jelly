@@ -62,7 +62,7 @@ App einen Stream offen hält, oder `events`, wenn er nur Ereignisse liest wie ei
 Kein Stream brach ab, kein Fehler im Log. Die LAN-Last braucht einen Bruchteil eines Kerns. Was mitwächst, ist der
 Verkehr: Jedes Ereignis und jeder Weg geht an alle Streams, das wächst mit dem Quadrat der Spieler. Bei 300 Spielern
 sind es etwa 5 KB/s je Client und 12 Mbit/s für den Server. Nur Ereignisse zu lesen spart wenig, denn die Ereignisse
-selbst sind der größere Teil. Mit `?topics=own` (API 1.17.0) bekommt eine App ohne Karte nur noch ihre eigenen Ereignisse und die für
+selbst sind der größere Teil. Mit `?topics=own` (API 1.33.0) bekommt eine App ohne Karte nur noch ihre eigenen Ereignisse und die für
 alle: Bei 300 Spielern sinkt der Verkehr um 98 %, den Rest machen die drei Bühnen mit vollem Stream aus. Eine App braucht
 dann etwa 40 Byte/s. Die `own`-Zeilen sind auf dem Stand des Filters gemessen.
 
