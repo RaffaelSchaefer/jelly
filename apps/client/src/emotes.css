@@ -38,8 +38,9 @@
   display: grid;
   grid-template-columns: repeat(3, 44px);
   gap: 4px;
-  width: 156px;
-  padding: 8px;
+  /* Das Glas wird rund. So weit gepolstert, dass auch die Ecken des Rasters in den Kreis passen. */
+  width: 184px;
+  padding: 22px;
   box-sizing: border-box;
   translate: calc(-100% - 30px) -50%;
   border-radius: 24px;

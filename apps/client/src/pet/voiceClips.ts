@@ -117,6 +117,20 @@ export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
     [0.58, 0.6, 7, 9, "a", 1, 26],
     [1.22, 0.55, 12, 7, "i", 0.8, 18],
   ]),
+  // „hm-mh … eh?“ zu den Schultern: zweimal fallend, dann fragend hoch.
+  shrug: clip([
+    [0.2, 0.2, 4, 0, "u", 0.7],
+    [1.45, 0.2, 4, 0, "u", 0.7],
+    [1.75, 0.3, 0, 6, "e", 0.75],
+  ]),
+  // „da!“ zum Vorstoßen der Hand.
+  point: clip([[0.15, 0.14, 7, 9, "a", 0.9, undefined, "tick"]]),
+  // „hm-hm-hmm“, leise und steigend.
+  think: clip([
+    [0.3, 0.3, -2, -1, "u", 0.5],
+    [0.9, 0.3, 0, 1, "u", 0.5],
+    [1.5, 0.6, 2, 4, "o", 0.55, 14],
+  ]),
 };
 
 /** Die Hüpfer des Partners beim Auftritt und beim Abgang, sie landen im Takt von `partnerEmotes.ts`. */

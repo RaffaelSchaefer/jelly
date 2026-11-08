@@ -94,8 +94,9 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - XP, Level, Cosmetics und Erfolge kommen vom Server. Mit seinen Standardregeln: Stupser +3 XP alle
   15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level.
   Die App fragt nur beim Server, wenn ein Stupser wieder etwas bringt.
-- Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen
-  und Herz auswählen. Nach Bestätigung durch `POST /v1/emotes` spielt das Jelly die Geste für drei
+- Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen,
+  Herz, Schulterzucken, Zeigen und Grübeln auswählen. Die Hände haben drei Finger und einen Daumen
+  und drehen sich mit der Geste. Nach Bestätigung durch `POST /v1/emotes` spielt das Jelly die Geste für drei
   Sekunden. Die Bühne nutzt dieselben Gesten aus `@jelly/scene`; reduzierte Bewegung zeigt eine
   ruhige Pose. In der Browser-Vorschau funktionieren die Gesten ohne Server und ohne Fortschritt.
   Escape und ein Klick außerhalb schließen die Auswahl, ohne das Jelly anzustupsen.

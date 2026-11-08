@@ -47,9 +47,10 @@ html[data-optimized-rendering] :is(.dock, .panel) {
 html[data-optimized-rendering] .pop {
   border-radius: 23px;
 }
-/* Der Rand zählt zur Breite: Die drei Spalten brauchen die 156 px sonst für sich. */
+/* Der Rand zählt zur Breite: Die drei Spalten brauchen die 184 px sonst für sich. */
 html[data-optimized-rendering] .emote-pop {
-  padding: 7px;
+  padding: 21px;
+  border-radius: 50%;
 }
 /* Innen statt als Rand: Der Spiegel-Text gibt dem Feld genau die Breite seines Inhalts. */
 html[data-optimized-rendering] .studio .name-tag input {
