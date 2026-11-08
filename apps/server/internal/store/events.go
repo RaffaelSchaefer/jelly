@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
 )
 
 // scopePublic is the scope of all events. The column allows private events later.
@@ -43,6 +44,40 @@ type Event struct {
 	PlayerID  *int64          `json:"player_id"`
 	Payload   json.RawMessage `json:"payload"`
 	CreatedAt int64           `json:"created_at"`
+}
+
+// listGlobalEventTypes returns the events every player needs, because they change the LAN for all.
+func listGlobalEventTypes() []string {
+	return []string{EventRulesChanged, EventStageChanged, EventGatheringChanged}
+}
+
+// eventPeople are the players a payload can name besides the player of the event.
+type eventPeople struct {
+	PlayerID  *int64 `json:"player_id"`
+	PartnerID *int64 `json:"partner_id"`
+	FromID    *int64 `json:"from_id"`
+}
+
+// ConcernsPlayer reports whether an app without its map needs an event: one of the player, one that
+// names the player in its payload, such as an invite or a deleted account, or one for everyone.
+func (event Event) ConcernsPlayer(playerID int64) bool {
+	if slices.Contains(listGlobalEventTypes(), event.Type) {
+		return true
+	}
+	if isSamePlayer(event.PlayerID, playerID) {
+		return true
+	}
+	var people eventPeople
+	if json.Unmarshal(event.Payload, &people) != nil {
+		return false
+	}
+	return isSamePlayer(people.PlayerID, playerID) || isSamePlayer(people.PartnerID, playerID) ||
+		isSamePlayer(people.FromID, playerID)
+}
+
+// isSamePlayer reports whether an optional player ID names this player.
+func isSamePlayer(candidate *int64, playerID int64) bool {
+	return candidate != nil && *candidate == playerID
 }
 
 // eventRecord is a new entry of the event log.
