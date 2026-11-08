@@ -8,7 +8,7 @@ import { Euler, MathUtils, Quaternion, Vector3 } from "three";
 
 import type { Jelly } from "./jelly.ts";
 
-import { EMOTE_SECONDS, type EmoteFrame, type EmoteKey } from "./emotes.ts";
+import { EMOTE_MOODS, EMOTE_SECONDS, type EmoteFrame, type EmoteKey } from "./emotes.ts";
 import { applyExpression, EXPRESSIONS, type Expression } from "./expression.ts";
 
 /** Dauer des weichen Ein- und Ausblendens in Sekunden. */
@@ -210,7 +210,10 @@ const GESTURES: Record<EmoteKey, (jelly: Jelly, gesture: Gesture) => void> = {
   shy,
 };
 
-/** Legt eine zeitlich begrenzte Geste über die frisch berechnete Grundpose. */
+/**
+ * Legt eine zeitlich begrenzte Geste über die frisch berechnete Grundpose. Ihre Bewegung läuft im
+ * Tempo ihrer Stimmung, das Ein- und Ausblenden in echter Zeit.
+ */
 export function animateEmote(jelly: Jelly, emote: EmoteFrame, reducedMotion: boolean) {
   const { key, elapsed } = emote;
   if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed >= EMOTE_SECONDS) return;
@@ -219,7 +222,7 @@ export function animateEmote(jelly: Jelly, emote: EmoteFrame, reducedMotion: boo
   if (strength === 0) return;
   GESTURES[key](jelly, {
     strength,
-    phase: reducedMotion ? 0 : elapsed,
+    phase: reducedMotion ? 0 : elapsed * EMOTE_MOODS[key].tempo,
     moving: reducedMotion ? 0 : 1,
   });
 }

@@ -14,10 +14,12 @@ export {
 } from "./cosmetic.ts";
 export {
   EMOTE_GLYPHS,
+  EMOTE_MOODS,
   EMOTE_SECONDS,
   isEmoteKey,
   type EmoteKey,
   type EmoteFrame,
+  type EmoteMood,
 } from "./emotes.ts";
 export {
   isPartnerMotionKey,

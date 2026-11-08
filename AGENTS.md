@@ -63,7 +63,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`. Beide Ereignisse schließen
   die Karte (`closes_map` in `src-tauri/src/events.rs`).
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
-  (Noten, reine Logik): die Stimme des Jellys. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
+  (Noten, reine Logik): die Stimme des Jellys. Tonhöhe und Tempo je Geste stehen in `EMOTE_MOODS`
+  (`packages/jelly-scene/src/emotes.ts`), Bewegung und Laut teilen sich das Tempo. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
 - `src/pet/rendering.ts`, `src/optimized.css`: der optimierte Modus (`Settings.optimizedRendering`). Das Profil
   sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Beim Einstieg schaltet ein zu langsames Gerät
