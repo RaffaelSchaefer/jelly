@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,13 +20,16 @@ const (
 	queryTopics      = "topics"
 	topicEvents      = "events"
 	topicMoves       = "moves"
-	topicSeparator   = ","
+	// topicOwn is what an app needs without its map: its own events and those for everyone.
+	topicOwn       = "own"
+	topicSeparator = ","
 )
 
 // streamTopics says what a stream wants to receive.
 type streamTopics struct {
 	events bool
 	moves  bool
+	own    bool
 }
 
 // streamCursor is how far a stream has read.
@@ -33,21 +37,25 @@ type streamCursor struct {
 	topics     streamTopics
 	afterEvent int64
 	afterMove  int64
+	// playerID is the viewer, whose own events pass with the topic `own`.
+	playerID int64
 }
 
 // parseStreamTopics reads `?topics=`. Without it, a stream receives everything.
 func parseStreamTopics(request *http.Request) (streamTopics, error) {
 	list := request.URL.Query().Get(queryTopics)
 	if list == "" {
-		return streamTopics{events: true, moves: true}, nil
+		return streamTopics{events: true, moves: true, own: false}, nil
 	}
-	topics := streamTopics{events: false, moves: false}
+	topics := streamTopics{events: false, moves: false, own: false}
 	for topic := range strings.SplitSeq(list, topicSeparator) {
 		switch topic {
 		case topicEvents:
 			topics.events = true
 		case topicMoves:
 			topics.moves = true
+		case topicOwn:
+			topics.own = true
 		default:
 			return topics, store.ErrInvalidInput
 		}
@@ -60,18 +68,22 @@ func (server *apiServer) writeStreamUpdates(
 	ctx context.Context, writer io.Writer, cursor *streamCursor, tick int,
 ) error {
 	server.advanceMovement(ctx)
-	events := []store.Event{}
-	if cursor.topics.events {
-		var err error
-		events, err = server.Store.ListEventsAfter(ctx, cursor.afterEvent)
-		if err != nil {
-			return fmt.Errorf("list events: %w", err)
-		}
+	events, lastReadID, err := server.listStreamEvents(ctx, cursor)
+	if err != nil {
+		return err
 	}
-	var err error
 	cursor.afterEvent, err = writeStreamTick(writer, events, cursor.afterEvent, tick)
 	if err != nil {
 		return err
+	}
+	// Events of others were left out. An ID without data moves Last-Event-ID past them, so a
+	// reconnect does not read them again.
+	if lastReadID > cursor.afterEvent {
+		_, err = fmt.Fprintf(writer, "id: %d\n\n", lastReadID)
+		if err != nil {
+			return fmt.Errorf("write skipped ID: %w", err)
+		}
+		cursor.afterEvent = lastReadID
 	}
 	if !cursor.topics.moves {
 		return nil
@@ -79,6 +91,28 @@ func (server *apiServer) writeStreamUpdates(
 	moves, afterMove := server.planner.ListMovesAfter(cursor.afterMove)
 	cursor.afterMove = afterMove
 	return writeStreamMoves(writer, moves)
+}
+
+// listStreamEvents reads the new events of a stream. With only the topic `own`, it keeps those of
+// the viewer and returns the ID of the last event it read, so the cursor also passes the others.
+func (server *apiServer) listStreamEvents(
+	ctx context.Context, cursor *streamCursor,
+) ([]store.Event, int64, error) {
+	if !cursor.topics.events && !cursor.topics.own {
+		return []store.Event{}, cursor.afterEvent, nil
+	}
+	events, err := server.Store.ListEventsAfter(ctx, cursor.afterEvent)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list events: %w", err)
+	}
+	if cursor.topics.events || len(events) == 0 {
+		return events, cursor.afterEvent, nil
+	}
+	lastReadID := events[len(events)-1].ID
+	own := slices.DeleteFunc(events, func(event store.Event) bool {
+		return !event.ConcernsPlayer(cursor.playerID)
+	})
+	return own, lastReadID, nil
 }
 
 // writeStreamMoves writes moves without an ID, because they are not part of the event log.

@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.16.0**
+Aktuelle Version: **1.17.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.16.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.17.0  | `?topics=own` im Stream: nur eigene Ereignisse, solche, die den Spieler nennen, und solche für alle. Für die App ohne offene Karte, spart bei 300 Spielern rund 90 % des Verkehrs |
 | 1.16.0  | `is_bot` in `players` von `GET /stage`: Bots der Orga, die eine Bühne kennzeichnen kann. Dazu Bots, XP, Achievements und der Link zur Bühne in der Admin-API |
 | 1.15.0  | Neues Cosmetic `headset-neutral` im Katalog, ab Level 2 frei wie `headset` |
 | 1.14.0  | Einheitliche Namen: `ends_at`, `follow`, `stack_level`, `partner_id`. Weniger Fehlercodes, `unlock` im Katalog, `rules` in `GET /lans/current` samt `rules.changed`, `xp_per_level` je LAN. Alles, was endet, meldet sich per Ereignis. `PATCH /admin/api/lans/{id}/rules` ändert einzelne Regeln, der Admin-Weg `rotate-token` entfällt |
@@ -392,6 +393,11 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
 für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 
 - **Themen:** `?topics=events`, `?topics=moves` oder `?topics=events,moves` wählen aus, ohne Angabe kommt beides.
+- **Nur Eigenes:** `?topics=own` ist für die App ohne offene Karte. Sie bekommt dann nur Ereignisse, deren `player_id`
+  sie selbst ist, solche, die sie im Payload nennen (`player_id` bei `player.removed`, `partner_id` und `from_id` bei
+  Partner-Emotes), und die für alle: `rules.changed`, `stage.changed`, `gathering.changed`. Ausgelassene Ereignisse
+  rücken `Last-Event-ID` trotzdem weiter, über eine Nachricht nur mit `id`. Eine Bühne bekommt auf `own`
+  `400 invalid_request`. Die Karte öffnet weiter den vollen Stream.
   Unbekannte Themen ergeben `400 invalid_request`.
 - **Wege:** Nachrichten vom Typ `move` haben keine ID und stehen nicht im Ereignis-Log. Jede neue Verbindung bekommt
   zuerst den aktuellen Weg jedes Jellys, nach einem Abbruch geht also nichts verloren.

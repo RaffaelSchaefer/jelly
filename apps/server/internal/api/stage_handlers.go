@@ -46,7 +46,10 @@ func (server *apiServer) addStageRoutes(contract huma.API) {
 		Description: "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. " +
 			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events, " +
 			"further back they get `reset` and read their state again. " +
-			"`topics` is a comma-separated list of `events` and `moves`, without it both arrive. " +
+			"`topics` lists `events`, `moves` and `own`, without it `events` and `moves` arrive. " +
+			"`own` is for a player without the map: own events, events naming the player and " +
+			"events for everyone. Left out events still move `Last-Event-ID` on through a " +
+			"message with only an `id`. " +
 			"Messages of type `move` have no ID and carry a `Move`. " +
 			"Every new connection first gets the current move of each jelly. " +
 			"Above the limits of the LAN for open streams, the answer is `429 rate_limited`.",
@@ -120,6 +123,10 @@ func (server *apiServer) handleStream(
 	}
 	defer server.streams.releaseSlot(viewerID)
 	topics, err := parseStreamTopics(request)
+	// Only a player has own events, a stage reads everything.
+	if err == nil && topics.own && viewerID == noViewerPlayer {
+		err = store.ErrInvalidInput
+	}
 	if err != nil {
 		server.writeError(writer, request, err)
 		return
@@ -145,7 +152,7 @@ func (server *apiServer) handleStream(
 	if controller.Flush() != nil {
 		return
 	}
-	cursor := &streamCursor{topics: topics, afterEvent: afterID, afterMove: 0}
+	cursor := &streamCursor{topics: topics, afterEvent: afterID, afterMove: 0, playerID: viewerID}
 	server.sendStreamTicks(writer, request, controller, cursor)
 }
 
