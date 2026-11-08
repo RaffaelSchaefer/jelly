@@ -105,6 +105,24 @@ function listStageRules(): RuleText[] {
       unit: "seconds",
       hint: "So lange bleibt ein Jelly nach seiner letzten Aktion auf der Bühne.",
     },
+    {
+      key: "room_width",
+      label: "Breite der Halle",
+      unit: "units",
+      hint: "Meter, von links nach rechts. Eine Karte in Metern rechnet damit.",
+    },
+    {
+      key: "room_depth",
+      label: "Tiefe der Halle",
+      unit: "units",
+      hint: "Meter, von hinten nach vorn.",
+    },
+    {
+      key: "jelly_width",
+      label: "Breite eines Jellies",
+      unit: "units",
+      hint: "Meter.",
+    },
     { key: "trip_seconds", label: "Dauer eines Ausflugs", unit: "seconds" },
     { key: "follow_seconds", label: "Dauer des Dazustellens", unit: "seconds" },
     {
