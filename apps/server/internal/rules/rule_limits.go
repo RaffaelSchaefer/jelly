@@ -17,6 +17,12 @@ const (
 	maxWalkSpeed    = 100.0
 	minRuleDistance = 0.01
 	minRulePercent  = 1
+	// A hall of a LAN is between a small room and a sports hall, a jelly between a doll and a
+	// person.
+	minRoomMeters  = 1.0
+	maxRoomMeters  = 1_000.0
+	minJellyMeters = 0.05
+	maxJellyMeters = 10.0
 )
 
 // RuleLimit is the range of one rule.
@@ -80,6 +86,9 @@ func listPublicRuleLimits(public PublicRules) []RuleLimit {
 		countLimit("stack_max_members", public.StackMaxMembers, NoStackLimit, maxRuleCount),
 		secondsLimit("highlight_seconds", public.HighlightSeconds, 1),
 		secondsLimit("highlight_cooldown", public.HighlightCooldownSeconds, 0),
+		{"room_width", public.RoomWidthMeters, minRoomMeters, maxRoomMeters},
+		{"room_depth", public.RoomDepthMeters, minRoomMeters, maxRoomMeters},
+		{"jelly_width", public.JellyWidthMeters, minJellyMeters, maxJellyMeters},
 	}
 }
 
