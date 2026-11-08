@@ -107,7 +107,7 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 			players[index].Equipped = map[string]EquippedCosmetic{}
 		}
 	}
-	placeStagePlayers(players, state.Areas)
+	placeStagePlayers(players, state.Areas, rules.MeasureRoom(lan.gameRules.PublicRules))
 	state.Players = slices.DeleteFunc(players, func(player StagePlayer) bool {
 		return !rules.IsPresent(lan.gameRules, player.LastSeenAt, now)
 	})
@@ -158,7 +158,7 @@ func findVisitorArea(areas []StageArea) *int64 {
 
 // placeStagePlayers gives every jelly its home spot. A jelly without an area is a visitor. Places
 // follow the player order and count absent jellies, so nobody moves when someone leaves.
-func placeStagePlayers(players []StagePlayer, areas []StageArea) {
+func placeStagePlayers(players []StagePlayer, areas []StageArea, room rules.RoomMeters) {
 	areaByID := map[int64]rules.Area{}
 	for _, area := range areas {
 		areaByID[area.ID] = area.Area
@@ -177,7 +177,7 @@ func placeStagePlayers(players []StagePlayer, areas []StageArea) {
 			area = areaByID[*player.AreaID]
 			areaKey = *player.AreaID
 		}
-		player.HomeSpot = rules.CalculateHomeSpot(area, takenPlaces[areaKey])
+		player.HomeSpot = rules.CalculateHomeSpot(area, takenPlaces[areaKey], room)
 		takenPlaces[areaKey]++
 	}
 }

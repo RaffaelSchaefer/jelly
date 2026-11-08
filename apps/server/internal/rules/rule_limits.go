@@ -12,7 +12,7 @@ const (
 	maxRuleCount = 1_000
 	// maxRuleTotal limits what counts for the whole server.
 	maxRuleTotal = 100_000
-	// The room is 21 by 40. A test can still count everyone as close with a larger distance.
+	// In meters. A test can still count everyone as close with a larger distance.
 	maxNearDistance = 1_000.0
 	maxWalkSpeed    = 100.0
 	minRuleDistance = 0.01

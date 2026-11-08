@@ -73,12 +73,18 @@ func TestFindNearestWalkableKeepsAFreePoint(t *testing.T) {
 	}
 }
 
+// testFrame is the old fixed room of 21 by 40 floor units, where one unit is one meter.
+func testFrame() floorFrame {
+	return newFloorFrame(rules.Room{WidthMeters: 21, DepthMeters: 40, JellyMeters: unitsPerJelly})
+}
+
 func TestPointsSurviveTheWayToTheFloorAndBack(t *testing.T) {
+	frame := testFrame()
 	point := Point{X: 25, Y: 80}
-	if got := toPoint(toFloorPoint(point)); got != point {
+	if got := frame.toPoint(frame.toFloorPoint(point)); got != point {
 		t.Fatalf("got %v", got)
 	}
-	center := toFloorPoint(Point{X: 50, Y: 50})
+	center := frame.toFloorPoint(Point{X: 50, Y: 50})
 	if center.X != 0 || center.Z != 0 {
 		t.Fatalf("center = %v", center)
 	}
@@ -106,7 +112,7 @@ func TestObstaclesAreOnlyWhatBlocks(t *testing.T) {
 			Blocks: false,
 			Prop:   "cable",
 		},
-	})
+	}, testFrame())
 	if len(obstacles) != 2 {
 		t.Fatalf("got %d obstacles", len(obstacles))
 	}

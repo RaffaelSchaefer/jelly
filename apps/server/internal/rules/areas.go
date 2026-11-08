@@ -94,10 +94,11 @@ func IsOnStage(point StagePoint) bool {
 	return point.X >= 0 && point.X <= stageSize && point.Y >= 0 && point.Y <= stageSize
 }
 
-// ValidateArea checks one area. Areas may touch or overlap, the layout is only a rough map.
-func ValidateArea(area Area) error {
+// ValidateArea checks one area in the room of its LAN. Areas may touch or overlap, the layout is
+// only a rough map.
+func ValidateArea(area Area, room RoomMeters) error {
 	hasSize := area.Width > 0 && area.Height > 0
-	if !hasSize || !isRotationValid(area.Rotation) || !area.fitsOnStage() {
+	if !hasSize || !isRotationValid(area.Rotation) || !area.fitsOnStage(room) {
 		return ErrInvalidArea
 	}
 	if !slices.Contains(listAreaKinds(), area.Kind) || len(area.Prop) > maxZoneTextLength {
@@ -135,11 +136,11 @@ func WholeStage() Area {
 }
 
 // CalculateHomeSpot returns the spot of the jelly with this place in its area, counted from 0.
-func CalculateHomeSpot(area Area, place int) HomeSpot {
+func CalculateHomeSpot(area Area, place int, room RoomMeters) HomeSpot {
 	spot := area.turnPoint(StagePoint{
 		X: placeInSpan(area.X, area.Width, calculateSpreadShare(place, spreadStepX)),
 		Y: placeInSpan(area.Y, area.Height, calculateSpreadShare(place, spreadStepY)),
-	})
+	}, room)
 	return HomeSpot(spot)
 }
 
@@ -158,11 +159,11 @@ func placeInSpan(start, length, share float64) float64 {
 
 // IsOnFreeFloor reports whether a jelly can stand on a point: on the stage and outside of every
 // zone that blocks.
-func IsOnFreeFloor(point StagePoint, areas []Area) bool {
+func IsOnFreeFloor(point StagePoint, areas []Area, room RoomMeters) bool {
 	if !IsOnStage(point) {
 		return false
 	}
 	return !slices.ContainsFunc(areas, func(area Area) bool {
-		return area.Blocks && area.containsPoint(point)
+		return area.Blocks && area.containsPoint(point, room)
 	})
 }

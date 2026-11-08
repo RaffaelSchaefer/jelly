@@ -163,6 +163,7 @@ func (server *apiServer) saveJellySpots(ctx context.Context, now int64) {
 func buildRoster(state store.StageState) movement.Roster {
 	roster := movement.Roster{
 		WalkSpeed: state.WalkSpeed,
+		Room:      state.Room,
 		Areas:     make([]rules.Area, 0, len(state.Areas)),
 		Players:   make([]movement.Player, 0, len(state.Players)),
 		Gathering: buildGathering(state.Gathering),

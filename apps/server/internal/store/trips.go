@@ -62,7 +62,7 @@ func requireFreeFloor(ctx context.Context, action actionContext, point rules.Sta
 	for _, area := range areas {
 		plain = append(plain, area.Area)
 	}
-	if !rules.IsOnFreeFloor(point, plain) {
+	if !rules.IsOnFreeFloor(point, plain, rules.MeasureRoom(action.lan.gameRules.PublicRules)) {
 		return ErrInvalidTrip
 	}
 	return nil

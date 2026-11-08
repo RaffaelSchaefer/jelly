@@ -132,7 +132,7 @@ func TestValidateArea(t *testing.T) {
 		{"no size", rules.Area{X: 0, Y: 0, Width: 0, Height: 10, Kind: "seats"}, false},
 	}
 	for _, testCase := range testCases {
-		err := rules.ValidateArea(testCase.area)
+		err := rules.ValidateArea(testCase.area, testRoom())
 		if (err == nil) != testCase.valid {
 			t.Errorf("%s: ValidateArea = %v", testCase.name, err)
 		}
@@ -168,7 +168,7 @@ func TestFreeFloorEndsAtEveryBlockingZone(t *testing.T) {
 		{rules.StagePoint{X: 130, Y: 30}, false},
 	}
 	for _, testCase := range testCases {
-		if rules.IsOnFreeFloor(testCase.point, areas) != testCase.free {
+		if rules.IsOnFreeFloor(testCase.point, areas, testRoom()) != testCase.free {
 			t.Errorf("point %+v, want free = %v", testCase.point, testCase.free)
 		}
 	}
@@ -190,7 +190,7 @@ func TestMapChecksFindEveryBadZone(t *testing.T) {
 	outside.ID, outside.X = "c", 100
 	missing := good
 	missing.ID = ""
-	invalid := rules.ListInvalidMapZones([]rules.MapZone{good, again, outside, missing})
+	invalid := rules.ListInvalidMapZones([]rules.MapZone{good, again, outside, missing}, testRoom())
 	if len(invalid) != 3 || invalid[0] != "a" || invalid[1] != "c" || invalid[2] != "" {
 		t.Fatalf("invalid = %v", invalid)
 	}
@@ -226,7 +226,7 @@ func TestHomeSpotsFillTheirAreaEvenly(t *testing.T) {
 	const columns, rows, places = 3, 3, 18
 	var counts [columns * rows]int
 	for place := range places {
-		spot := rules.CalculateHomeSpot(area, place)
+		spot := rules.CalculateHomeSpot(area, place, testRoom())
 		column := int((spot.X - float64(area.X)) / float64(area.Width) * columns)
 		row := int((spot.Y - float64(area.Y)) / float64(area.Height) * rows)
 		counts[row*columns+column]++

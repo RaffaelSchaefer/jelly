@@ -357,17 +357,16 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 		})
 		return
 	}
+	gameRules, err := server.Store.LoadLANRules(request.Context(), lanID)
+	if err != nil {
+		server.writeOutcome(writer, request, struct{}{}, err)
+		return
+	}
 	// Meters become percent here, with the room of this LAN, so the rest of the server stays in
 	// percent.
-	if roomMap.Version == rules.MapFormatMeters {
-		gameRules, err := server.Store.LoadLANRules(request.Context(), lanID)
-		if err != nil {
-			server.writeOutcome(writer, request, struct{}{}, err)
-			return
-		}
-		roomMap = roomMap.ToPercent(rules.MeasureRoom(gameRules.PublicRules))
-	}
-	invalid := rules.ListInvalidMapZones(roomMap.Zones)
+	room := rules.MeasureRoom(gameRules.PublicRules)
+	roomMap = roomMap.ToPercent(room)
+	invalid := rules.ListInvalidMapZones(roomMap.Zones, room)
 	if len(invalid) > 0 {
 		server.writeProblem(writer, problem{
 			http.StatusBadRequest, codeInvalidMap,
@@ -376,8 +375,8 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 		return
 	}
 	if request.URL.Query().Get(queryDryRun) == "true" {
-		report, err := server.Store.PreviewMap(request.Context(), lanID, roomMap)
-		server.writeOutcome(writer, request, report, err)
+		preview, previewErr := server.Store.PreviewMap(request.Context(), lanID, roomMap)
+		server.writeOutcome(writer, request, preview, previewErr)
 		return
 	}
 	report, err := server.Store.ImportMap(

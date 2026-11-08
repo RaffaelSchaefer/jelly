@@ -70,12 +70,12 @@ func IsZoneNameValid(name string) bool {
 // ListInvalidMapZones returns the IDs of zones that cannot be imported: without a usable ID, with
 // an
 // ID that came before, with a name that is too long or outside the stage.
-func ListInvalidMapZones(zones []MapZone) []string {
+func ListInvalidMapZones(zones []MapZone, room RoomMeters) []string {
 	invalid := []string{}
 	seen := map[string]bool{}
 	for _, zone := range zones {
 		isUsable := zone.ID != "" && len(zone.ID) <= maxZoneTextLength && !seen[zone.ID] &&
-			IsZoneNameValid(zone.Name) && ValidateArea(zone.ToArea()) == nil
+			IsZoneNameValid(zone.Name) && ValidateArea(zone.ToArea(), room) == nil
 		if !isUsable {
 			invalid = append(invalid, zone.ID)
 		}

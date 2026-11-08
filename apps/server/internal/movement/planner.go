@@ -89,10 +89,12 @@ type Gathering struct {
 
 // Roster is everyone on the stage and the room they stand in, in the order of their IDs.
 type Roster struct {
-	// WalkSpeed is how fast jellies walk, in jelly units per second.
+	// WalkSpeed is how fast jellies walk, in meters per second.
 	WalkSpeed float64
-	Areas     []rules.Area
-	Players   []Player
+	// Room is the real size of the hall and of a jelly.
+	Room    rules.Room
+	Areas   []rules.Area
+	Players []Player
 	// Gathering is what all jellies do right now, or nil.
 	Gathering *Gathering
 }
@@ -104,9 +106,11 @@ type Planner struct {
 	random      *rand.Rand
 	lastAdvance int64
 	lastSave    int64
-	walkSpeed   float64
-	areas       []rules.Area
-	floor       *grid
+	// walkSpeed is in floor units per second.
+	walkSpeed float64
+	frame     floorFrame
+	areas     []rules.Area
+	floor     *grid
 	// zones holds the zones jellies go to by their kind, shrunk so they stay inside.
 	zones     map[string][]floorRect
 	gathering *Gathering
@@ -118,10 +122,12 @@ type Planner struct {
 
 // NewPlanner creates a planner for an empty room.
 func NewPlanner() *Planner {
+	frame := newFloorFrame(rules.DescribeRoom(rules.DefaultRules().PublicRules))
 	return &Planner{
 		//nolint:gosec // Where a jelly wanders needs no secure randomness.
 		random:      rand.New(rand.NewPCG(seedStream, seedStream)),
-		floor:       newGrid(listRoomRect(), nil, jellyRadius),
+		frame:       frame,
+		floor:       newGrid(frame.listRoomRect(), nil, jellyRadius),
 		zones:       map[string][]floorRect{},
 		walkers:     map[int64]*walker{},
 		firstNumber: 1,
@@ -143,9 +149,9 @@ func (planner *Planner) ClaimAdvance(now int64) bool {
 func (planner *Planner) Advance(now int64, roster Roster) {
 	planner.mutex.Lock()
 	defer planner.mutex.Unlock()
-	planner.walkSpeed = roster.WalkSpeed
+	planner.syncRoom(roster.Areas, newFloorFrame(roster.Room))
+	planner.walkSpeed = roster.WalkSpeed / planner.frame.metersPerUnit
 	planner.gathering = roster.Gathering
-	planner.syncRoom(roster.Areas)
 	planner.syncWalkers(now, roster.Players)
 	for _, player := range roster.Players {
 		planner.updateWalker(now, player)
@@ -162,7 +168,10 @@ func (planner *Planner) ListSpotsToSave(now int64) []Spot {
 	planner.lastSave = now
 	spots := make([]Spot, 0, len(planner.walkers))
 	for playerID, walker := range planner.walkers {
-		spots = append(spots, Spot{PlayerID: playerID, Point: toPoint(walker.findPositionAt(now))})
+		spots = append(
+			spots,
+			Spot{PlayerID: playerID, Point: planner.frame.toPoint(walker.findPositionAt(now))},
+		)
 	}
 	return spots
 }
@@ -197,10 +206,10 @@ func (planner *Planner) FindPosition(playerID, now int64) (Point, bool) {
 	if !ok {
 		return Point{}, false
 	}
-	return toPoint(walker.findPositionAt(now)), true
+	return planner.frame.toPoint(walker.findPositionAt(now)), true
 }
 
-// MeasureDistance returns the distance of two jellies in jelly units.
+// MeasureDistance returns the distance of two jellies in meters.
 func (planner *Planner) MeasureDistance(firstID, secondID, now int64) (float64, bool) {
 	planner.mutex.Lock()
 	defer planner.mutex.Unlock()
@@ -209,10 +218,11 @@ func (planner *Planner) MeasureDistance(firstID, secondID, now int64) (float64, 
 	if !isFirstKnown || !isSecondKnown {
 		return 0, false
 	}
-	return measureDistance(first.findPositionAt(now), second.findPositionAt(now)), true
+	distance := measureDistance(first.findPositionAt(now), second.findPositionAt(now))
+	return distance * planner.frame.metersPerUnit, true
 }
 
-// MeasureDistanceTo returns the distance of a jelly to a point in jelly units.
+// MeasureDistanceTo returns the distance of a jelly to a point in meters.
 func (planner *Planner) MeasureDistanceTo(playerID int64, point Point, now int64) (float64, bool) {
 	planner.mutex.Lock()
 	defer planner.mutex.Unlock()
@@ -220,7 +230,8 @@ func (planner *Planner) MeasureDistanceTo(playerID int64, point Point, now int64
 	if !ok {
 		return 0, false
 	}
-	return measureDistance(walker.findPositionAt(now), toFloorPoint(point)), true
+	distance := measureDistance(walker.findPositionAt(now), planner.frame.toFloorPoint(point))
+	return distance * planner.frame.metersPerUnit, true
 }
 
 // collectCurrentMoves reads the latest moves for callers that hold the lock.
@@ -235,17 +246,23 @@ func (planner *Planner) collectCurrentMoves() []Move {
 	return moves
 }
 
-// syncRoom builds the walkable floor again when the areas changed.
-func (planner *Planner) syncRoom(areas []rules.Area) {
-	if slices.Equal(planner.areas, areas) {
+// syncRoom builds the walkable floor again when the areas or the size of the room changed. A new
+// size moves every position on the floor, so all jellies appear anew from their saved spots.
+func (planner *Planner) syncRoom(areas []rules.Area, frame floorFrame) {
+	isNewFrame := frame != planner.frame
+	if !isNewFrame && slices.Equal(planner.areas, areas) {
 		return
 	}
+	if isNewFrame {
+		planner.frame = frame
+		planner.walkers = map[int64]*walker{}
+	}
 	planner.areas = slices.Clone(areas)
-	planner.floor = newGrid(listRoomRect(), listObstacles(areas), jellyRadius)
+	planner.floor = newGrid(frame.listRoomRect(), listObstacles(areas, frame), jellyRadius)
 	planner.zones = map[string][]floorRect{}
 	for _, area := range areas {
 		planner.zones[area.Kind] = append(
-			planner.zones[area.Kind], shrinkRect(toFloorRect(area), edgeMargin),
+			planner.zones[area.Kind], shrinkRect(frame.toFloorRect(area), edgeMargin),
 		)
 	}
 	for _, walker := range planner.walkers {
@@ -288,12 +305,14 @@ func (planner *Planner) addWalker(now int64, player Player) {
 	walker.plan = walkPlan{kind: KindWander}
 	switch {
 	case player.LastSpot != nil:
-		spot = planner.floor.findNearestWalkable(toFloorPoint(*player.LastSpot))
+		spot = planner.floor.findNearestWalkable(planner.frame.toFloorPoint(*player.LastSpot))
 	case player.Trip != nil:
-		spot = planner.findFreeSpot(walker, toFloorPoint(*player.Trip), listRoomRect())
+		spot = planner.findFreeSpot(
+			walker, planner.frame.toFloorPoint(*player.Trip), planner.frame.listRoomRect(),
+		)
 		walker.plan = walkPlan{kind: KindTrip, trip: *player.Trip}
 	}
-	walker.setRoute(walker.plan.kind, now, []routePoint{{floorPoint: spot, at: now}})
+	walker.setRoute(planner.frame, walker.plan.kind, now, []routePoint{{floorPoint: spot, at: now}})
 	walker.nextWanderAt = now + planner.drawPause()
 	planner.publish(walker.move)
 }
@@ -302,8 +321,12 @@ func (planner *Planner) addWalker(now int64, player Player) {
 func (planner *Planner) placeWalker(walker *walker, player Player) {
 	walker.home = player.Home
 	walker.area = player.Area
-	walker.bounds = shrinkRect(toFloorRect(player.Area), edgeMargin)
-	walker.anchor = planner.findFreeSpot(walker, toFloorPoint(player.Home), walker.bounds)
+	walker.bounds = shrinkRect(planner.frame.toFloorRect(player.Area), edgeMargin)
+	walker.anchor = planner.findFreeSpot(
+		walker,
+		planner.frame.toFloorPoint(player.Home),
+		walker.bounds,
+	)
 	walker.isPlaced = true
 }
 

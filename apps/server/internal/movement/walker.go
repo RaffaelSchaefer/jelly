@@ -67,10 +67,13 @@ type walker struct {
 }
 
 // setRoute takes over a route and builds the move for the screens.
-func (walker *walker) setRoute(kind string, startAt int64, route []routePoint) {
+func (walker *walker) setRoute(frame floorFrame, kind string, startAt int64, route []routePoint) {
 	points := make([]Waypoint, 0, len(route))
 	for _, point := range route {
-		points = append(points, Waypoint{Point: toPoint(point.floorPoint), T: point.at - startAt})
+		points = append(
+			points,
+			Waypoint{Point: frame.toPoint(point.floorPoint), T: point.at - startAt},
+		)
 	}
 	walker.route = route
 	walker.move = Move{
@@ -150,7 +153,7 @@ func (planner *Planner) findPlan(now int64, player Player) walkPlan {
 
 // startPlan sends a jelly on its way after its plan changed.
 func (planner *Planner) startPlan(now int64, walker *walker) {
-	room := listRoomRect()
+	room := planner.frame.listRoomRect()
 	var goal floorPoint
 	switch walker.plan.kind {
 	case KindSnack:
@@ -158,11 +161,13 @@ func (planner *Planner) startPlan(now int64, walker *walker) {
 	case KindFood, KindCeremony:
 		goal = planner.findGatherSpot(now, walker, planner.findGatherZones(walker.playerID))
 	case KindTrip:
-		goal = planner.findFreeSpot(walker, toFloorPoint(walker.plan.trip), room)
+		goal = planner.findFreeSpot(walker, planner.frame.toFloorPoint(walker.plan.trip), room)
 	case KindFollow:
 		goal = planner.findFollowGoal(walker)
 	case KindStack:
-		goal = planner.floor.findNearestWalkable(toFloorPoint(walker.plan.stack.Point))
+		goal = planner.floor.findNearestWalkable(
+			planner.frame.toFloorPoint(walker.plan.stack.Point),
+		)
 	default:
 		goal = planner.findFreeSpot(walker, walker.anchor, walker.bounds)
 		walker.nextWanderAt = now + planner.drawPause()
@@ -179,7 +184,8 @@ func (planner *Planner) startWalk(now int64, walker *walker, goal floorPoint) {
 	startAt := now + moveLeadMillis
 	from := walker.findPositionAt(startAt)
 	path := planner.floor.findPath(from, goal)
-	walker.setRoute(walker.plan.kind, startAt, buildRoute(from, path, startAt, planner.walkSpeed))
+	route := buildRoute(from, path, startAt, planner.walkSpeed)
+	walker.setRoute(planner.frame, walker.plan.kind, startAt, route)
 	planner.publish(walker.move)
 }
 
@@ -258,7 +264,7 @@ func (planner *Planner) findFollowGoal(walker *walker) floorPoint {
 		side = -personalSpace
 	}
 	beside := floorPoint{X: walker.followedEnd.X + side, Z: walker.followedEnd.Z}
-	return planner.findFreeSpot(walker, beside, listRoomRect())
+	return planner.findFreeSpot(walker, beside, planner.frame.listRoomRect())
 }
 
 // findGatherZones returns where a jelly goes during the running gathering. At a ceremony, the
@@ -293,7 +299,7 @@ func (planner *Planner) findGatherSpot(
 			return spot
 		}
 	}
-	return planner.findFreeSpot(walker, findRectCenter(zones[0]), listRoomRect())
+	return planner.findFreeSpot(walker, findRectCenter(zones[0]), planner.frame.listRoomRect())
 }
 
 // findZonePlace looks at the places of a zone, which fill all of its area without gaps. It returns
@@ -351,7 +357,7 @@ func (planner *Planner) findFreeSpot(
 	wanted floorPoint,
 	bounds floorRect,
 ) floorPoint {
-	room := listRoomRect()
+	room := planner.frame.listRoomRect()
 	for _, limit := range []floorRect{bounds, room} {
 		for index := range spotCandidates {
 			distance := spotSpacing * math.Sqrt(float64(index))

@@ -3,11 +3,6 @@ package rules
 import "math"
 
 const (
-	// RoomWidth is the room from left to right in jelly units. Percent of the stage has a different
-	// length on each axis, so a turn has to happen in these units to keep the shape of a zone.
-	RoomWidth = 21.0
-	// RoomDepth is the room from back to front in jelly units.
-	RoomDepth = 40.0
 	// A rotation runs from 0 up to below a full turn.
 	fullTurnDegrees = 360.0
 	halfTurnDegrees = 180.0
@@ -16,7 +11,7 @@ const (
 	stageEdgeTolerance = 1e-9
 )
 
-// FloorOffset is a distance on the floor in jelly units: x to the right, z toward the camera.
+// FloorOffset is a distance on the floor: x to the right, z toward the camera.
 type FloorOffset struct {
 	X float64
 	Z float64
@@ -77,37 +72,38 @@ func (area Area) findMiddle() StagePoint {
 }
 
 // turnPoint moves a point of the area from where it would be without rotation to where it stands.
-func (area Area) turnPoint(point StagePoint) StagePoint {
-	return area.moveOnFloor(point, NewTurn(area.Rotation).Apply)
+func (area Area) turnPoint(point StagePoint, room RoomMeters) StagePoint {
+	return area.moveOnFloor(point, room, NewTurn(area.Rotation).Apply)
 }
 
-// moveOnFloor applies a turn around the middle of the area in jelly units, so that the area keeps
-// its shape. Without a rotation the point stays exactly what it is.
+// moveOnFloor applies a turn around the middle of the area in meters of the room, so that the area
+// keeps its shape. Percent has a different length on each axis. Without a rotation the point stays
+// exactly what it is.
 func (area Area) moveOnFloor(
-	point StagePoint, turn func(FloorOffset) FloorOffset,
+	point StagePoint, room RoomMeters, turn func(FloorOffset) FloorOffset,
 ) StagePoint {
 	if area.Rotation == 0 {
 		return point
 	}
 	middle := area.findMiddle()
 	offset := turn(FloorOffset{
-		X: (point.X - middle.X) * RoomWidth / stageSize,
-		Z: (point.Y - middle.Y) * RoomDepth / stageSize,
+		X: (point.X - middle.X) * room.Width / stageSize,
+		Z: (point.Y - middle.Y) * room.Depth / stageSize,
 	})
 	return StagePoint{
-		X: middle.X + offset.X*stageSize/RoomWidth, Y: middle.Y + offset.Z*stageSize/RoomDepth,
+		X: middle.X + offset.X*stageSize/room.Width, Y: middle.Y + offset.Z*stageSize/room.Depth,
 	}
 }
 
 // containsPoint reports whether a point lies in the area, edges included.
-func (area Area) containsPoint(point StagePoint) bool {
-	local := area.moveOnFloor(point, NewTurn(area.Rotation).Undo)
+func (area Area) containsPoint(point StagePoint, room RoomMeters) bool {
+	local := area.moveOnFloor(point, room, NewTurn(area.Rotation).Undo)
 	return local.X >= area.X && local.X <= area.X+area.Width &&
 		local.Y >= area.Y && local.Y <= area.Y+area.Height
 }
 
 // fitsOnStage reports whether all corners of the area stand on the stage after its rotation.
-func (area Area) fitsOnStage() bool {
+func (area Area) fitsOnStage(room RoomMeters) bool {
 	corners := []StagePoint{
 		{X: area.X, Y: area.Y},
 		{X: area.X + area.Width, Y: area.Y},
@@ -115,7 +111,7 @@ func (area Area) fitsOnStage() bool {
 		{X: area.X + area.Width, Y: area.Y + area.Height},
 	}
 	for _, corner := range corners {
-		turned := area.turnPoint(corner)
+		turned := area.turnPoint(corner, room)
 		isOnStage := turned.X >= -stageEdgeTolerance && turned.X <= stageSize+stageEdgeTolerance &&
 			turned.Y >= -stageEdgeTolerance && turned.Y <= stageSize+stageEdgeTolerance
 		if !isOnStage {

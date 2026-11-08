@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	// The room in jelly units, a jelly is about 1.7 wide. Clients speak in percent of the room.
-	roomWidth  = rules.RoomWidth
-	roomDepth  = rules.RoomDepth
-	percentAll = 100.0
+	// unitsPerJelly is how many floor units one jelly is wide. Distances of the planner, like the
+	// personal space, are counted in these units, so they follow the size of a jelly in the hall.
+	unitsPerJelly = 1.7
+	percentAll    = 100.0
 	// Waypoints travel with two decimals, about a hundredth of a jelly.
 	roundingFactor = 100.0
 )
@@ -23,13 +23,32 @@ type Point struct {
 	Y float64 `json:"y"`
 }
 
-// floorPoint is a position on the floor in jelly units: x to the right, z toward the camera.
+// floorFrame is the room on the floor of the planner. Clients speak in percent of the room, the
+// rules in meters.
+type floorFrame struct {
+	width         float64
+	depth         float64
+	metersPerUnit float64
+}
+
+// newFloorFrame measures the room of a LAN in floor units. A hall of 22 meters with jellies of half
+// a meter is about 75 units wide.
+func newFloorFrame(room rules.Room) floorFrame {
+	metersPerUnit := room.JellyMeters / unitsPerJelly
+	return floorFrame{
+		width:         room.WidthMeters / metersPerUnit,
+		depth:         room.DepthMeters / metersPerUnit,
+		metersPerUnit: metersPerUnit,
+	}
+}
+
+// floorPoint is a position on the floor in floor units: x to the right, z toward the camera.
 type floorPoint struct {
 	X float64
 	Z float64
 }
 
-// floorRect is a rectangle on the floor in jelly units. The edges say where it would stand without
+// floorRect is a rectangle on the floor in floor units. The edges say where it would stand without
 // its turn, which goes around its middle.
 type floorRect struct {
 	MinX float64
@@ -40,29 +59,29 @@ type floorRect struct {
 }
 
 // listRoomRect returns the whole floor.
-func listRoomRect() floorRect {
+func (frame floorFrame) listRoomRect() floorRect {
 	return floorRect{
-		MinX: -roomWidth * half,
-		MinZ: -roomDepth * half,
-		MaxX: roomWidth * half,
-		MaxZ: roomDepth * half,
+		MinX: -frame.width * half,
+		MinZ: -frame.depth * half,
+		MaxX: frame.width * half,
+		MaxZ: frame.depth * half,
 		Turn: rules.NewTurn(0),
 	}
 }
 
 // toFloorPoint converts a position in percent to the floor.
-func toFloorPoint(point Point) floorPoint {
+func (frame floorFrame) toFloorPoint(point Point) floorPoint {
 	return floorPoint{
-		X: (point.X/percentAll - half) * roomWidth,
-		Z: (point.Y/percentAll - half) * roomDepth,
+		X: (point.X/percentAll - half) * frame.width,
+		Z: (point.Y/percentAll - half) * frame.depth,
 	}
 }
 
 // toPoint converts a floor position to percent, rounded for the API.
-func toPoint(point floorPoint) Point {
+func (frame floorFrame) toPoint(point floorPoint) Point {
 	return Point{
-		X: roundValue((point.X/roomWidth + half) * percentAll),
-		Y: roundValue((point.Z/roomDepth + half) * percentAll),
+		X: roundValue((point.X/frame.width + half) * percentAll),
+		Y: roundValue((point.Z/frame.depth + half) * percentAll),
 	}
 }
 
@@ -72,9 +91,9 @@ func roundValue(value float64) float64 {
 }
 
 // toFloorRect converts an area to its rectangle on the floor.
-func toFloorRect(area rules.Area) floorRect {
-	start := toFloorPoint(Point{X: area.X, Y: area.Y})
-	end := toFloorPoint(Point{X: area.X + area.Width, Y: area.Y + area.Height})
+func (frame floorFrame) toFloorRect(area rules.Area) floorRect {
+	start := frame.toFloorPoint(Point{X: area.X, Y: area.Y})
+	end := frame.toFloorPoint(Point{X: area.X + area.Width, Y: area.Y + area.Height})
 	return floorRect{
 		MinX: start.X, MinZ: start.Z, MaxX: end.X, MaxZ: end.Z, Turn: rules.NewTurn(area.Rotation),
 	}

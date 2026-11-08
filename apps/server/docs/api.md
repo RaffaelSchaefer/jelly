@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.17.0**
+Aktuelle Version: **1.18.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.17.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.18.0  | Bewegung in Metern: `walk_speed` in m/s (Standard 0,4), `near_distance` in m (Standard 1,8). Der Planer rechnet in der echten Halle, Abstände wachsen mit `jelly_width`. Gespeicherte LANs werden umgerechnet |
 | 1.17.0  | Meter: Regeln `room_width`, `room_depth` und `jelly_width`, `room` und `areas` in `GET /stage` nennen dazu `width_m`, `depth_m`, `jelly_m` und `x_m`, `y_m`, `width_m`, `height_m`. Kartendatei Version 2 mit Zonen in Metern. Positionen bleiben Prozent |
 | 1.16.0  | `is_bot` in `players` von `GET /stage`: Bots der Orga, die eine Bühne kennzeichnen kann. Dazu Bots, XP, Achievements und der Link zur Bühne in der Admin-API |
 | 1.15.0  | Neues Cosmetic `headset-neutral` im Katalog, ab Level 2 frei wie `headset` |
@@ -53,6 +54,7 @@ dem Client abgestimmt. Ab der ersten LAN bekommt jede brechende Änderung einen 
 
 | Version | Änderung | Begründung |
 | ------- | -------- | ---------- |
+| 1.18.0  | `walk_speed` und `near_distance` zählen in Metern statt Jelly-Einheiten. Die Karte der App zeichnet die Reichweite bis zur Anpassung zu klein | Die Bewegung folgt der echten Halle, siehe #34 |
 | 1.14.0  | `trip.until` und `until` bei `highlight` heißen `ends_at`, `follow_player_id` und `follow_until` werden `follow {player_id, ends_at}`, `moves[].level` heißt `stack_level` | Ein Name je Sache, das Level eines Wegs war leicht mit dem XP-Level zu verwechseln |
 | 1.14.0  | `trip` und `last_seen_at` fehlen in `players` von `GET /stage` | Ziel und Art stehen im Weg, die letzte Aktivität war nur Zustand des Servers |
 | 1.14.0  | `invalid_body` und `invalid_input` werden `invalid_request`, `unknown_action` wird `unknown_report_kind`, `partner_self` wird `invalid_partner`, `invalid_event_code` antwortet 403 | Codes sollen sagen, was falsch ist, falsche Codes antworten einheitlich |
@@ -126,7 +128,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 
 `GET /lans/current` liefert in `rules` die Regeln der laufenden LAN, sonst der nächsten, sonst die Standardwerte. Nur die
 Betriebsgrenzen `max_players`, `max_streams` und `max_player_streams` fehlen. Die App zeigt damit an, was der Server
-entscheiden wird, zum Beispiel die Reichweite `near_distance` in Jelly-Einheiten oder den Fortschritt zum nächsten Level mit
+entscheiden wird, zum Beispiel die Reichweite `near_distance` in Metern oder den Fortschritt zum nächsten Level mit
 `xp_per_level`. Geprüft wird trotzdem immer auf dem Server. Ändert die Orga etwas, kommt `rules.changed`.
 
 `xp_per_level` gilt linear für jedes Level, Standard 100, und lässt sich nur bis zum Start der LAN ändern. Sonst würden
@@ -271,8 +273,7 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 - Nach dem Bestätigen folgt `partner.emote` mit B als `player_id` und A als `partner_id`. Ist einer von beiden
   ausgeblendet, gibt es kein Ereignis.
 - Nur wer nah genug steht, kann auffordern und annehmen: In beiden Momenten dürfen die Jellies höchstens
-  `near_distance` auseinander sein, sonst folgt `409 too_far`. Eine Aufforderung bleibt danach offen. Die Angabe zählt in Jelly-Einheiten. Ein Jelly ist etwa 1,7 breit, die Halle 21
-  breit und 40 tief. Ein Jelly, das gerade nicht auf der Bühne steht, ist immer zu weit weg.
+  `near_distance` auseinander sein, sonst folgt `409 too_far`. Eine Aufforderung bleibt danach offen. Die Angabe zählt in Metern der echten Halle. Ein Jelly, das gerade nicht auf der Bühne steht, ist immer zu weit weg.
 
 ### Ausflug und Folgen
 
@@ -380,13 +381,13 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
 - `kind` nennt den Grund: `wander` (bummelt um seinen Platz oder geht dorthin zurück), `follow`, `trip`, `snack`, `stack`,
   `food` und `ceremony`.
   Weitere Werte können dazukommen und sind wie `wander` zu behandeln.
-- Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Jelly-Einheiten pro Sekunde. Ein Jelly ist etwa
-  1,7 breit, die Halle 21 breit und 40 tief.
+- Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Metern pro Sekunde. Der Server plant in der echten
+  Halle (`room_width` × `room_depth`), Abstände zwischen Jellies wachsen mit `jelly_width`.
 - Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur nächsten Zone der Art `queue` und danach zurück. War
   der Weg lang, wartet es ab seiner Ankunft noch kurz. Jellies füllen die ganze Fläche der Zone. Ist sie voll, geht das
   Jelly zur nächsten mit Platz. Sind alle voll, stellt es sich nah dazu. Ohne solche Zonen bleibt es, wo es ist.
-  Plätze liegen etwa 1,8 Jelly-Einheiten auseinander, eine Zone fasst also so viele Jellies, wie in diesem Raster
-  hineinpassen. Beispiel: 45 % × 5 % der Bühne sind etwa 9,5 × 2 Einheiten, das sind 5 Plätze in einer Reihe. Für ein
+  Plätze liegen etwa eine Jelly-Breite auseinander (bei `jelly_width` 0,5 etwa 0,53 m), eine Zone fasst also so viele
+  Jellies, wie in diesem Raster hineinpassen. Beispiel: Eine Theke von 4 × 1 m fasst etwa 7 × 1 Plätze. Für ein
   Essens-Event mit allen braucht die Theke deshalb tiefere oder mehrere Zonen.
 - Wo ein Jelly läuft, bestimmt nur der Server. Er merkt sich die Positionen alle 30 Sekunden. Nach einem Neustart macht
   jedes Jelly dort weiter, ein neuer `move` kann also um bis zu 30 Sekunden Weg springen. Ausflug, Folgen, Stapel und
@@ -539,8 +540,8 @@ Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, 
 | `snack_run_seconds`      | 1 bis 2592000    | So lange bleibt ein Jelly nach einer Meldung an der Theke   |
 | `trip_seconds`           | 1 bis 2592000    | So lange bleibt ein Jelly am Ziel eines Ausflugs            |
 | `follow_seconds`         | 1 bis 2592000    | So lange folgt ein Jelly einem anderen                      |
-| `near_distance`          | 0,01 bis 1000    | Abstand für „nebeneinander“ in Jelly-Einheiten              |
-| `walk_speed`             | 0,01 bis 100     | Jelly-Einheiten pro Sekunde                                 |
+| `near_distance`          | 0,01 bis 1000    | Abstand für „nebeneinander“ in Metern                       |
+| `walk_speed`             | 0,01 bis 100     | Meter pro Sekunde                                           |
 | `stack_seconds`          | 1 bis 2592000    | So lange steht ein Stapel                                   |
 | `stack_max_members`      | 0 bis 1000       | Jellies pro Stapel, 0 heißt ohne Grenze                     |
 | `highlight_seconds`      | 1 bis 2592000    | So lange leuchtet ein hervorgehobenes Jelly                 |

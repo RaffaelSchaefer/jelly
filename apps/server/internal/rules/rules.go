@@ -39,8 +39,8 @@ const (
 	defaultSnackRunSeconds       = 14
 	defaultTripSeconds           = 300
 	defaultFollowSeconds         = 1800
-	defaultNearDistance          = 6.0
-	defaultWalkSpeed             = 1.4
+	defaultNearDistance          = 1.8
+	defaultWalkSpeed             = 0.4
 	defaultStackSeconds          = 120
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
@@ -113,11 +113,11 @@ type PublicRules struct {
 	TripSeconds int64 `json:"trip_seconds"`
 	// FollowSeconds is how long a jelly follows another one before it walks back.
 	FollowSeconds int64 `json:"follow_seconds"`
-	// NearDistance is how far apart two jellies count as next to each other, in jelly units. A
-	// jelly is about 1.7 wide, the hall 21 wide and 40 deep.
+	// NearDistance is how far apart two jellies count as next to each other, in meters of the hall.
 	NearDistance float64 `json:"near_distance"`
-	// WalkSpeed is how fast jellies walk in jelly units per second, so a walk takes its length
-	// divided by this.
+	// WalkSpeed is how fast jellies walk in meters per second, so a walk takes its length divided
+	// by
+	// this.
 	WalkSpeed float64 `json:"walk_speed"`
 	// StackSeconds is how long a stack stands before it falls apart.
 	StackSeconds int64 `json:"stack_seconds"`

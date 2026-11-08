@@ -13,7 +13,7 @@ const SECONDS_PER_DAY = 86_400;
 const OTHER_GROUP_TITLE = "Weitere";
 
 /** What a value counts. */
-export type RuleUnit = "seconds" | "xp" | "count" | "percent" | "units" | "meters";
+export type RuleUnit = "seconds" | "xp" | "count" | "percent" | "units" | "meters" | "speed";
 
 /** How the page shows one rule. */
 export interface RuleText {
@@ -127,14 +127,14 @@ function listStageRules(): RuleText[] {
     {
       key: "walk_speed",
       label: "Laufgeschwindigkeit",
-      unit: "units",
-      hint: "Einheiten pro Sekunde. Die Halle ist 21 breit und 40 tief.",
+      unit: "speed",
+      hint: "Meter pro Sekunde in der echten Halle.",
     },
     {
       key: "near_distance",
       label: "Abstand für „nebeneinander“",
-      unit: "units",
-      hint: "Einheiten. Ein Jelly ist etwa 1,7 breit.",
+      unit: "meters",
+      hint: "So nah müssen Jellies für Partner-Emotes und Stapel stehen.",
     },
     { key: "stack_seconds", label: "Dauer eines Stapels", unit: "seconds" },
     {
@@ -228,5 +228,5 @@ function round(value: number): string {
 
 /** Whether a rule takes values like `1.5`. */
 export function allowsDecimals(rule: RuleText): boolean {
-  return rule.unit === "units" || rule.unit === "meters";
+  return rule.unit === "units" || rule.unit === "meters" || rule.unit === "speed";
 }
