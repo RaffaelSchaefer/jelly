@@ -183,8 +183,10 @@ func TestAchievementCatalogIsConsistent(t *testing.T) {
 }
 
 func TestValidateCatalogKeys(t *testing.T) {
-	if err := rules.ValidateEmote("wave"); err != nil {
-		t.Errorf("ValidateEmote(wave) = %v", err)
+	for _, key := range []string{"wave", "shrug", "point", "think"} {
+		if err := rules.ValidateEmote(key); err != nil {
+			t.Errorf("ValidateEmote(%s) = %v", key, err)
+		}
 	}
 	if err := rules.ValidateEmote("free text"); !errors.Is(err, rules.ErrUnknownEmote) {
 		t.Errorf("ValidateEmote(free text) = %v", err)

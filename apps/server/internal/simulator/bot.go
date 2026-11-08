@@ -86,7 +86,7 @@ func listColors() []string {
 
 // listEmotes returns the emotes the bots use.
 func listEmotes() []string {
-	return []string{"wave", "dance", "cheer", "laugh", "sleep", "love"}
+	return []string{"wave", "dance", "cheer", "laugh", "sleep", "love", "shrug", "point", "think"}
 }
 
 // listPartnerEmotes returns the partner emotes the bots use.
