@@ -15,6 +15,16 @@ zum Vergleich zwischen Commits, nicht als Vorhersage für den VPS.
 | 2026-11-02 | `b16a0c4` | i7-1185G7, 8 | 726 µs       | 220 µs           | 106 µs            |
 | 2026-11-03 | `e36f219` | i7-1185G7, 8, Akku | 1.275 µs | 493 µs           | 271 µs            |
 
+## Planer der Bewegung
+
+`go test -run=^$ -bench=Advance -benchmem ./internal/movement/` lässt 300 Jellies an sechs Tischreihen eine Minute
+lang laufen, mit einem Schritt pro Sekunde wie auf dem Server. Die Halle in Metern hat ein feineres Raster als der alte
+Raum, denn die Zellen folgen der Größe eines Jellys.
+
+| Datum      | Rechner      | Alter Raum 21 × 40 | Halle 22 × 16,1 m, Jelly 0,5 m |
+| ---------- | ------------ | ------------------ | ------------------------------ |
+| 2026-11-08 | i7-1185G7, 8 | 88 ms, 266 MB      | 174 ms, 869 MB                 |
+
 ## Lasttest
 
 `pnpm bench:load [Spieler] [kürzeste Pause] [längste Pause] [Sekunden]` startet einen frischen Server und
