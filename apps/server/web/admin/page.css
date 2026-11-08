@@ -438,6 +438,22 @@ td > button {
   gap: 0.5rem 0.75rem;
 }
 
+a.button-link {
+  margin-inline-start: auto;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.button-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .lan-select {
   width: auto;
   max-width: 100%;

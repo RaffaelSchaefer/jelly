@@ -27,7 +27,7 @@ Aktuelle Version: **1.16.0**
 
 | Version | Änderung |
 | ------- | -------- |
-| 1.16.0  | `is_bot` in `players` von `GET /stage`: Bots der Orga, die eine Bühne kennzeichnen kann. Dazu Bots, XP und Achievements für jedes Konto in der Admin-API |
+| 1.16.0  | `is_bot` in `players` von `GET /stage`: Bots der Orga, die eine Bühne kennzeichnen kann. Dazu Bots, XP, Achievements und der Link zur Bühne in der Admin-API |
 | 1.15.0  | Neues Cosmetic `headset-neutral` im Katalog, ab Level 2 frei wie `headset` |
 | 1.14.0  | Einheitliche Namen: `ends_at`, `follow`, `stack_level`, `partner_id`. Weniger Fehlercodes, `unlock` im Katalog, `rules` in `GET /lans/current` samt `rules.changed`, `xp_per_level` je LAN. Alles, was endet, meldet sich per Ereignis. `PATCH /admin/api/lans/{id}/rules` ändert einzelne Regeln, der Admin-Weg `rotate-token` entfällt |
 | 1.13.0  | `rotation` in `areas` und in der Kartendatei: Zonen stehen in jedem Winkel, Hindernisse und Plätze drehen sich mit |
@@ -461,6 +461,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/xp`                | `{"xp"}` von 1 bis 10000 in der laufenden LAN, wie verdient, mit Ereignis `xp.gained`. XP werden nie abgezogen. Ohne Teilnahme `409 not_joined` |
 | `POST /admin/api/players/{id}/achievements`      | `{"key"}` aus dem Katalog, auch geheime, für die laufende LAN wie verdient. Ein vorhandenes bleibt, wie es ist |
 | `GET /admin/api/achievements`                    | Alle Achievements mit `key`, `title`, `description`, auch die geheimen |
+| `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |
 | `DELETE /admin/api/players/{id}`                 |                                           |
 | `GET`, `POST /admin/api/lans`                    | `{"slug","name","timezone","join_code","starts_at","ends_at"}` |
 | `PATCH /admin/api/lans/{id}`                     | `{"name","starts_at","ends_at"}`, alle optional. Der Kurzname bleibt fest |

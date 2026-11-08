@@ -16,6 +16,9 @@ volume="jelly-demo-data"
 port="${JELLY_DEMO_PORT:-18092}"
 bind="${JELLY_DEMO_BIND:-127.0.0.1}"
 base_url="http://127.0.0.1:$port"
+# Browsers keep the Secure admin cookie only on localhost, so a demo in the network needs plain HTTP.
+http_demo=0
+[ "$bind" = "127.0.0.1" ] || http_demo=1
 stage_key="demo-stage"
 admin_secret="demo-admin"
 join_code="demo-code"
@@ -38,7 +41,8 @@ start_demo() {
       "-to=$(utc_at '1 day' +1d)" 2>/dev/null || exit 2
   fi
   docker run -d --name "$server" -p "$bind:$port:8080" -v "$volume:/app/data" \
-    -e "JELLY_STAGE_KEY=$stage_key" -e "JELLY_ADMIN_SECRET=$admin_secret" "$image" >/dev/null || exit 2
+    -e "JELLY_STAGE_KEY=$stage_key" -e "JELLY_ADMIN_SECRET=$admin_secret" \
+    -e "JELLY_HTTP_DEMO=$http_demo" "$image" >/dev/null || exit 2
   for _ in $(seq 1 "$health_tries"); do
     curl -sf "$base_url/health" >/dev/null && break
     sleep 1

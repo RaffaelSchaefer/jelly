@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
@@ -76,4 +77,15 @@ func (server *apiServer) handleGrantAchievement(
 // leaves out.
 func (server *apiServer) handleListAchievements(writer http.ResponseWriter, _ *http.Request) {
 	server.writeJSON(writer, http.StatusOK, rules.ListAchievements())
+}
+
+// stageLink is the address of the stage with its key, for a button on the admin page.
+type stageLink struct {
+	Path string `json:"path"`
+}
+
+// handleStageLink gives the organizers the stage address, so nobody has to type the key.
+func (server *apiServer) handleStageLink(writer http.ResponseWriter, _ *http.Request) {
+	path := "/stage/?key=" + url.QueryEscape(server.StageKey)
+	server.writeJSON(writer, http.StatusOK, stageLink{Path: path})
 }

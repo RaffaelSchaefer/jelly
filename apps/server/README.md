@@ -132,6 +132,7 @@ muss vor `go generate` einmal `pnpm install` im Root laufen. Gebündelt wird üb
 | `JELLY_STAGE_KEY` | keiner     | Pflicht: Schlüssel der Bühne                |
 | `JELLY_ADMIN_SECRET` | keiner  | Pflicht: Geheimnis der Admin-Anmeldung      |
 | `JELLY_MIN_CLIENT_VERSION` | keine | Älteste App, die noch funktioniert, Form `1.2.3` |
+| `JELLY_HTTP_DEMO` | `0` | `1` lässt die Admin-Anmeldung ohne HTTPS gelten, nur für eine Demo im Heimnetz |
 
 Im Betrieb gehört `/admin` hinter den Proxy und ist dort auf die Orga zu beschränken, etwa per Adresse oder zusätzlichem
 Passwort. Alle Anmeldeversuche teilen sich einen Zähler, sonst könnte jeder im LAN die Orga mit falschen Versuchen aussperren.

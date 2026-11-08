@@ -44,7 +44,7 @@ func (server *apiServer) handleAdminLogin(writer http.ResponseWriter, request *h
 
 // handleAdminLogout clears the cookie in this browser. A copy of it stays valid until it expires.
 func (server *apiServer) handleAdminLogout(writer http.ResponseWriter, _ *http.Request) {
-	http.SetCookie(writer, buildAdminCookie("", time.Unix(0, 0)))
+	http.SetCookie(writer, buildAdminCookie("", time.Unix(0, 0), !server.IsHTTPDemo))
 	server.writeJSON(writer, http.StatusOK, map[string]bool{fieldLoggedIn: false})
 }
 
@@ -52,19 +52,20 @@ func (server *apiServer) handleAdminLogout(writer http.ResponseWriter, _ *http.R
 func (server *apiServer) writeAdminCookie(writer http.ResponseWriter) {
 	expiresAt := server.Now().Add(adminIdleLimit)
 	value := buildAdminSession(server.AdminSecret, expiresAt.UnixMilli())
-	http.SetCookie(writer, buildAdminCookie(value, expiresAt))
+	http.SetCookie(writer, buildAdminCookie(value, expiresAt, !server.IsHTTPDemo))
 }
 
 // buildAdminCookie sets the attributes that keep the session away from scripts and other sites.
 // Browsers and curl accept Secure cookies on localhost too, so local tests work without HTTPS.
-func buildAdminCookie(value string, expiresAt time.Time) *http.Cookie {
+func buildAdminCookie(value string, expiresAt time.Time, isSecure bool) *http.Cookie {
+	//nolint:gosec // G124: Secure is off only when the operator starts an HTTP demo on purpose.
 	return &http.Cookie{
 		Name:     adminCookieName,
 		Value:    value,
 		Path:     adminCookiePath,
 		Expires:  expiresAt,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecure,
 		SameSite: http.SameSiteStrictMode,
 	}
 }
