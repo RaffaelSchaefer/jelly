@@ -39,10 +39,8 @@ export interface Place {
 
 /** Prefers the running LAN, then the next one, then the last one. */
 export function findCurrentLAN(lans: LANSummary[], now: number): LANSummary | undefined {
-  const coming = lans
-    .filter((lan) => now < lan.ends_at)
-    .sort((left, right) => left.starts_at - right.starts_at);
-  return coming[0] ?? lans.at(-1);
+  const sorted = [...lans].sort((left, right) => left.starts_at - right.starts_at);
+  return sorted.find((lan) => now < lan.ends_at) ?? sorted.at(-1);
 }
 
 /** Reads the place from an address. Unknown LANs and sections fall back to the current LAN. */

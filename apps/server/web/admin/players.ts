@@ -18,14 +18,13 @@ interface ListState {
   note: string;
 }
 
-/** Loads everything the cards choose from. The zones change with every seat, so always anew. */
-async function loadCatalogs(lanID: number): Promise<Catalogs> {
-  const [achievements, cosmetics, areas] = await Promise.all([
-    listAchievements(),
-    loadCosmetics(),
-    listAreas(lanID),
-  ]);
-  return { achievements, cosmetics, areas };
+/** Loads what the cards choose from. The catalogs stay, the zones change with every seat. */
+function createCatalogLoader(lanID: number): () => Promise<Catalogs> {
+  const fixed = Promise.all([listAchievements(), loadCosmetics()]);
+  return async () => {
+    const [[achievements, cosmetics], areas] = await Promise.all([fixed, listAreas(lanID)]);
+    return { achievements, cosmetics, areas };
+  };
 }
 
 /** Shows the players. A search with a single match opens it at once. */
@@ -71,6 +70,8 @@ function renderList(
         )),
   );
   state.note = "";
+  // The opened card is new, so the focus goes back to its head instead of the top of the page.
+  list.querySelector<HTMLElement>(".is-open .player-head")?.focus();
 }
 
 /** Creates the section. `search` comes from the overview and is often empty. */
@@ -84,9 +85,12 @@ export function createPlayersSection(context: SectionContext, search: string): H
   const message = createMessage();
   const list = createElement("div", "player-list");
   const state: ListState = { openID: null, note: "" };
+  const loadCatalogs = createCatalogLoader(context.lan.id);
+  // Actions load the list of the last search, not what is half typed into the field.
+  let query = search;
   let isFirstLoad = true;
   const reload = () => {
-    Promise.all([searchPlayers(field.input.value.trim()), loadCatalogs(context.lan.id)])
+    Promise.all([searchPlayers(query), loadCatalogs()])
       .then(([players, catalogs]) => {
         if (isFirstLoad && search !== "" && players.length === 1) {
           state.openID = players[0]?.id ?? null;
@@ -106,6 +110,7 @@ export function createPlayersSection(context: SectionContext, search: string): H
     event.preventDefault();
     message.clear();
     state.openID = null;
+    query = field.input.value.trim();
     reload();
   });
   reload();

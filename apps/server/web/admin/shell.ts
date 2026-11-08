@@ -73,7 +73,9 @@ function createNav(place: Place, go: (place: Place) => void): HTMLElement {
         createElement("span", "long-name", entry.text),
         createElement("span", "short-name", entry.shortText),
       );
-      button.setAttribute("aria-current", String(entry.section === place.section));
+      if (entry.section === place.section) {
+        button.setAttribute("aria-current", "page");
+      }
       return button;
     }),
   );
@@ -100,7 +102,7 @@ function createSection(section: Section, context: SectionContext, search: string
     case "players":
       return createPlayersSection(context, search);
     case "actions":
-      return createActionsSection(context.lan, context.onFailure);
+      return createActionsSection(context);
     case "room":
       return createRoomTab(context);
     case "settings":
@@ -178,16 +180,18 @@ export async function createShell(onSessionEnded: () => void): Promise<HTMLEleme
   };
   // A new LAN passes its slug, so that the frame opens it.
   const refresh = (slug?: string) => {
-    listLANs()
-      .then((lans) => {
+    // Only a failed load reloads the page. A failing section stays visible instead of looping.
+    listLANs().then(
+      (lans) => {
         frame.lans = lans;
         const created = lans.find((lan) => lan.slug === slug);
         if (created !== undefined) {
           history.replaceState(null, "", writePlace({ lanID: created.id, section: "overview" }));
         }
         renderFrame(frame, refresh);
-      })
-      .catch(() => location.reload());
+      },
+      () => location.reload(),
+    );
   };
   window.addEventListener("hashchange", () => renderFrame(frame, refresh));
   renderFrame(frame, refresh);

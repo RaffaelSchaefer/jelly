@@ -17,6 +17,7 @@ import {
 } from "./dom.ts";
 import { createEventCodesTab } from "./eventCodes.ts";
 import type { FailureHandler } from "./failure.ts";
+import type { SectionContext } from "./lanContext.ts";
 import { formatDateTime } from "./format.ts";
 import { createPlayerPicker } from "./playerPicker.ts";
 
@@ -100,14 +101,7 @@ function createStartForm(lan: LANSummary, onFailure: FailureHandler, reload: () 
 
 /** Creates the panel for food events and ceremonies, which loads what is running. */
 function createGatheringPanel(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
-  const status = createElement("div", "");
-  const message = createMessage();
-  const reload = () => {
-    loadGathering(lan.id)
-      .then((gathering) => status.replaceChildren(createStatus(gathering, lan, onFailure, reload)))
-      .catch((error: unknown) => onFailure(error, message.showBad));
-  };
-  reload();
+  const status = createGatheringSummary(lan, onFailure);
   return createElement(
     "section",
     "panel",
@@ -117,14 +111,16 @@ function createGatheringPanel(lan: LANSummary, onFailure: FailureHandler): HTMLE
       "hint",
       "Ein neues ersetzt ein laufendes. Danach kehren alle Jellies an ihre Plätze zurück.",
     ),
-    message.root,
-    status,
-    createStartForm(lan, onFailure, reload),
+    status.root,
+    createStartForm(lan, onFailure, status.reload),
   );
 }
 
-/** Shows only what runs right now, for the overview. */
-export function createGatheringSummary(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
+/** Shows what runs right now and loads it again on `reload`. */
+export function createGatheringSummary(
+  lan: LANSummary,
+  onFailure: FailureHandler,
+): { root: HTMLElement; reload: () => void } {
   const root = createElement("div", "");
   const reload = () => {
     loadGathering(lan.id)
@@ -136,11 +132,12 @@ export function createGatheringSummary(lan: LANSummary, onFailure: FailureHandle
       );
   };
   reload();
-  return root;
+  return { root, reload };
 }
 
 /** Creates the section. */
-export function createActionsSection(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
+export function createActionsSection(context: SectionContext): HTMLElement {
+  const { lan, onFailure } = context;
   return createElement(
     "div",
     "detail",
