@@ -7,10 +7,10 @@
  * @module
  */
 
-import { isEmoteKey, type EmoteKey } from "@jelly/scene/emotes";
+import { EMOTE_MOODS, isEmoteKey, type EmoteKey } from "@jelly/scene/emotes";
 import { isPartnerMotionKey, type PartnerMotionKey } from "@jelly/scene/partner-emotes";
 
-import { noteHz, speechNotes, type VoiceNote, type Vowel } from "./voice";
+import { inMood, noteHz, speechNotes, type VoiceNote, type Vowel } from "./voice";
 
 /**
  * Eine Note als Tabellenzeile: Beginn, Länge, Tonhöhe von und nach, Vokal, Lautstärke, Vibrato,
@@ -65,8 +65,11 @@ export const LEVEL_UP = clip([
   [0.56, 0.48, 12, 14, "a", 1, 26],
 ]);
 
-/** Ein Laut je Geste, abgestimmt auf ihre Bewegung in `@jelly/scene`. */
-export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
+/**
+ * Die Melodie je Geste, abgestimmt auf ihre Bewegung in `@jelly/scene`. Die Zeiten zählen auf der
+ * Uhr der Geste, also vor dem Tempo ihrer Stimmung.
+ */
+const TUNES: Record<EmoteKey, VoiceNote[]> = {
   // „hi-hi … hi-ya“
   wave: clip([
     [0.3, 0.12, 4, 7, "i", 0.9, undefined, "hiss"],
@@ -108,8 +111,8 @@ export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
   ]),
   // Ein leises, sinkendes Summen.
   sleep: clip([
-    [0.4, 1, -3, -5, "u", 0.5, 10],
-    [1.6, 1.1, -5, -8, "o", 0.35, 12],
+    [0.3, 0.9, -3, -5, "u", 0.5, 10],
+    [1.3, 0.95, -5, -8, "o", 0.35, 12],
   ]),
   // „mm-waa-iii“ mit viel Vibrato.
   love: clip([
@@ -151,6 +154,14 @@ export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
     [1.46, 0.14, 10, 7, "i", 0.35, undefined, "hiss"],
   ]),
 };
+
+/**
+ * Ein Laut je Geste in ihrer Stimmung (`EMOTE_MOODS`): höher oder tiefer, schneller oder langsamer.
+ * Das Tempo teilt sich der Laut mit der Bewegung, so bleiben beide im Takt.
+ */
+export const EMOTE_CLIPS = Object.fromEntries(
+  (Object.keys(TUNES) as EmoteKey[]).map((key) => [key, inMood(TUNES[key], EMOTE_MOODS[key])]),
+) as Record<EmoteKey, VoiceNote[]>;
 
 /** Die Hüpfer des Partners beim Auftritt und beim Abgang, sie landen im Takt von `partnerEmotes.ts`. */
 const ARRIVING: Row[] = [

@@ -97,7 +97,9 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen,
   Herz, Schulterzucken, Zeigen, Grübeln, Wütend, Traurig und Schüchtern auswählen. Die Hände haben
   drei Finger und einen Daumen und drehen sich mit der Geste. Das Gesicht wechselt dazu Augenform
-  (offen, `^^`, `>_<`, geschlossen), zeigt Brauen, Röte und eigene Mundformen. Nach Bestätigung
+  (offen, `^^`, `>_<`, geschlossen), zeigt Brauen, Röte und eigene Mundformen. Jede Emotion hat
+  eine eigene Stimmlage und ein eigenes Tempo: Wut klingt tief und schnell, Trauer tief und langsam,
+  Freude hoch und flott. Bewegung und Laut laufen dabei im selben Takt. Nach Bestätigung
   durch `POST /v1/emotes` spielt das Jelly die Geste für drei
   Sekunden. Die Bühne nutzt dieselben Gesten aus `@jelly/scene`; reduzierte Bewegung zeigt eine
   ruhige Pose. In der Browser-Vorschau funktionieren die Gesten ohne Server und ohne Fortschritt.
