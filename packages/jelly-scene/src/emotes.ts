@@ -18,6 +18,9 @@ export const EMOTE_GLYPHS = {
   shrug: "🤷",
   point: "👉",
   think: "🤔",
+  angry: "😠",
+  sad: "😢",
+  shy: "😊",
 } as const;
 
 /** Schlüssel einer Geste, die dieses Jelly darstellen kann. */

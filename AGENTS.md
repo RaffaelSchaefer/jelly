@@ -75,7 +75,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
   Cosmetics), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
-  `body.ts` (geraymarchter Körper, Shader in `shaders/`, volle und optimierte Variante per `JellyQuality`), `face.ts`, `mouthShapes.ts`, `animation.ts`,
+  `body.ts` (geraymarchter Körper, Shader in `shaders/`, volle und optimierte Variante per `JellyQuality`), `face.ts`, `eyeShapes.ts` (Augen und Brauen), `mouthShapes.ts`, `expression.ts` (Gesichtsausdrücke aus diesen Bausteinen), `animation.ts`,
   `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `partnerEmotes.ts` (Duett-Posen der
   Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben), `cosmetic.ts` (Cosmetics
   laden und zeichnen, Modelle in `cosmetics/`).

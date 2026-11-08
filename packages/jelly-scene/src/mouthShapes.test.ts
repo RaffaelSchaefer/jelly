@@ -39,10 +39,10 @@ function countColors(jelly: Jelly, shape: MouthFrame["shape"]) {
   return seen.size;
 }
 
-test("every shape exists in the ink of the jelly, and only a and o show a tongue", () => {
+test("every shape exists in the ink of the jelly, and only a, o and grin show a tongue", () => {
   const jelly = createJelly(JELLY_COLORS.mint);
   for (const shape of MOUTH_SHAPE_NAMES) {
-    const expected = shape === "a" || shape === "o" ? 2 : 1;
+    const expected = shape === "a" || shape === "o" || shape === "grin" ? 2 : 1;
     expect(countColors(jelly, shape)).toBe(expected);
   }
 });

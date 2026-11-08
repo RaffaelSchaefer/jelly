@@ -7,7 +7,16 @@
  * @module
  */
 
-import { MathUtils, type Mesh, type MeshBasicMaterial, type Object3D, type Vector3 } from "three";
+import {
+  MathUtils,
+  type BufferGeometry,
+  type Mesh,
+  type MeshBasicMaterial,
+  type Object3D,
+  type Vector3,
+} from "three";
+
+import type { EyeShape } from "./eyeShapes.ts";
 
 import { GRIP, HAND, HEAD } from "./jellyGeometry.ts";
 
@@ -60,12 +69,21 @@ export interface Frame {
   happy: number;
 }
 
-/** Die Gesichtsteile, die {@link animateFace} bewegt. */
+/** Die Gesichtsteile, die {@link animateFace} bewegt, und die Formen der Grundpose. */
 export interface FaceParts {
-  eyes: Object3D[];
+  eyes: Mesh[];
+  /** Die Brauen, je in einem Halter auf dem Kopf. Ohne Ausdruck unsichtbar. */
+  brows: Mesh[];
   cheeks: Mesh[];
   mouth: Mesh;
+  /** Die Formen der Augen in der Tinte des Jellys. */
+  eyeShapes: Record<EyeShape, BufferGeometry>;
+  /** Die Form des Munds, solange weder Sprechen noch ein Ausdruck ihn ändert. */
+  smile: BufferGeometry;
 }
+
+/** Ab so viel Freude nach einem Stupser strahlt er mit Bogen-Augen statt nur zu blinzeln. */
+const BEAMING = 0.3;
 
 /** Startzustand. Das erste Blinzeln kommt nach 2 s. */
 export function createMotion(pulse: number): Motion {
@@ -107,8 +125,31 @@ export function animateBody(root: Object3D, head: Object3D, { time, motion, boun
   head.rotation.set(0, 0, Math.sin(time * 0.9) * 0.04 * motion);
 }
 
-/** Ab und zu blinzeln. Nach einem Stupser glücklich zukneifen, strahlen und erröten. */
-export function animateFace({ eyes, cheeks, mouth }: FaceParts, s: Motion, { time, happy }: Frame) {
+/** Augen offen oder, kurz nach einem Stupser, strahlend als Bogen. Offene Augen blinzeln. */
+function animateEyes({ eyes, eyeShapes }: FaceParts, blink: number, happy: number) {
+  const beaming = happy > BEAMING;
+  for (const eye of eyes) {
+    eye.geometry = eyeShapes[beaming ? "happy" : "open"];
+    const squash = beaming ? 0 : Math.min(0.92, blink * 0.92 + happy * 0.35);
+    eye.scale.set(1 + happy * 0.05, 1 - squash, 1);
+  }
+}
+
+/** Brauen zurück in ihren Halter und unsichtbar. Erst ein Ausdruck zeigt sie. */
+function resetBrows(brows: Mesh[]) {
+  for (const brow of brows) {
+    brow.visible = false;
+    brow.position.set(0, 0, 0);
+    brow.rotation.set(0, 0, 0);
+    brow.scale.set(1, 1, 1);
+  }
+}
+
+/**
+ * Die Grundpose des Gesichts: ab und zu blinzeln, nach einem Stupser strahlen und erröten, sonst
+ * lächeln. Jedes Bild setzt Formen, Brauen und Größen neu, damit sich kein Ausdruck ansammelt.
+ */
+export function animateFace(face: FaceParts, s: Motion, { time, happy }: Frame) {
   if (time > s.nextBlink) {
     s.blinkAt = time;
     s.nextBlink = time + 2.4 + Math.random() * 3.5;
@@ -116,15 +157,15 @@ export function animateFace({ eyes, cheeks, mouth }: FaceParts, s: Motion, { tim
   // Ein Blinzeln dauert 0,16 s: Sinusbogen von offen über zu wieder auf.
   const phase = (time - s.blinkAt) / 0.16;
   const blink = phase >= 0 && phase <= 1 ? Math.sin(phase * Math.PI) : 0;
-  for (const eye of eyes) {
-    eye.scale.set(1 + happy * 0.05, Math.max(0.08, 1 - blink * 0.92 - happy * 0.35), 1);
-  }
-  for (const cheek of cheeks) {
+  animateEyes(face, blink, happy);
+  resetBrows(face.brows);
+  for (const cheek of face.cheeks) {
     (cheek.material as MeshBasicMaterial).opacity = 0.5 * happy;
     // Unsichtbare Wangen werden gar nicht erst gezeichnet.
     cheek.visible = happy > 0.01;
   }
-  mouth.scale.set(1 + happy * 0.35, 0.65 + happy * 0.4, 1);
+  face.mouth.geometry = face.smile;
+  face.mouth.scale.set(1 + happy * 0.35, 0.65 + happy * 0.4, 1);
 }
 
 /** Feder für die Hände: schnell und federnd heraus, zügig wieder weg. */

@@ -15,8 +15,10 @@ const keys = Object.keys(EMOTE_GLYPHS) as EmoteKey[];
 
 /** Alle von einer Geste veränderten Eigenschaften. */
 function pose(jelly: Jelly) {
-  const parts = [jelly.root, jelly.head, ...jelly.hands, ...jelly.face.eyes, jelly.face.mouth];
+  const { eyes, brows, mouth } = jelly.face;
+  const parts = [jelly.root, jelly.head, ...jelly.hands, ...eyes, ...brows, mouth];
   return {
+    shapes: [...eyes, mouth].map((part) => part.geometry.uuid),
     parts: parts.map((part) => [
       part.visible,
       ...part.position,
@@ -94,6 +96,21 @@ test.each([undefined, "cheer", "love", "shrug"] as const)(
     expect(right!.quaternion.equals(new Quaternion())).toBe(false);
   },
 );
+
+test("Wut zeigt gesenkte Brauen, danach sind sie weg und die Augen wieder offen", () => {
+  const jelly = createJelly(JELLY_COLORS.mint);
+  const motion = createMotion(0);
+  animateJelly(jelly, motion, { ...frame, emote: { key: "angry", elapsed: 0.9 } });
+  const [left, right] = jelly.face.brows;
+  expect(left!.visible && right!.visible).toBe(true);
+  // Die inneren Enden sinken: links dreht die Braue nach rechts unten, rechts gespiegelt.
+  expect(left!.rotation.z).toBeLessThan(0);
+  expect(right!.rotation.z).toBeGreaterThan(0);
+  animateJelly(jelly, motion, frame);
+  expect(jelly.face.brows.some((brow) => brow.visible)).toBe(false);
+  expect(jelly.face.eyes.every((eye) => eye.geometry === jelly.face.eyeShapes.open)).toBe(true);
+  expect(jelly.face.mouth.geometry).toBe(jelly.face.smile);
+});
 
 test("Ein Wechsel verwirft die alte Geste, auch ihre Mimik", () => {
   const jelly = createJelly(JELLY_COLORS.mint);
