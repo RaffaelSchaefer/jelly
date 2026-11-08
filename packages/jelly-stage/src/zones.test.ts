@@ -9,6 +9,7 @@ import {
   containsPoint,
   findFloorHeight,
   findPedestalRect,
+  fitFootprint,
   listPlatforms,
   listScreenRects,
   listSpeakerRects,
@@ -62,6 +63,12 @@ test("two rows of gaming desks leave the floor of three desks between them", () 
   for (const seat of seats.map((area) => placeArea(area, demoHall))) {
     assert.equal(((2 * seat.depth) / JELLY_WIDTH).toFixed(3), "3.000");
   }
+});
+
+test("a model of a fixed shape grows evenly until it fills the shorter side of its zone", () => {
+  const zone = { minX: 0, maxX: 2, minZ: 0, maxZ: 3 };
+  assert.equal(fitFootprint(zone, { width: 1, depth: 0.8 }), 2);
+  assert.equal(fitFootprint(zone, { width: 1, depth: 2 }), 1.5);
 });
 
 test("speakers stand in the back corners and the trophy between the beamers", () => {

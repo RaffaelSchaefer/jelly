@@ -22,21 +22,28 @@ const SCREEN_CENTERS = [0.3, 0.7];
 export const SCREEN_WIDTH = 4.2;
 const SCREEN_DEPTH = 0.2;
 const SCREEN_INSET = 0.3;
-/** Speaker stacks stand in the back corners of the stage, next to the 32A sockets. */
-const SPEAKER = { width: 1, depth: 0.8, sideInset: 0.6, backInset: 0.2 };
+/**
+ * Speaker stacks stand in the back corners of the stage, next to the 32A sockets. Width and depth
+ * are also the size of the model.
+ */
+export const SPEAKER = { width: 1, depth: 0.8, sideInset: 0.6, backInset: 0.2 };
 /** The tournament trophy stands on a pedestal in the middle, between the two screens. */
-const PEDESTAL = { size: 0.7, backInset: 0.25 };
+export const PEDESTAL = { width: 0.7, depth: 0.7, backInset: 0.25 };
 const HALF_TURN_DEGREES = 180;
+
+/** Width and depth on the floor, such as a model of a fixed shape at its own size. */
+export interface Footprint {
+  width: number;
+  depth: number;
+}
 
 /**
  * A zone on the floor: its middle, its size before the turn and the turn itself. The server counts
  * degrees clockwise seen from above, three.js counts the other way, so `turn` is already negated:
  * it goes straight into `rotation.y`.
  */
-export interface Placement {
+export interface Placement extends Footprint {
   middle: FloorPoint;
-  width: number;
-  depth: number;
   /** Rotation around the vertical axis in radians, as three.js wants it. */
   turn: number;
 }
@@ -57,13 +64,23 @@ export function placeArea(area: StageArea, room: RoomSize): Placement {
 }
 
 /** Returns the rectangle a zone covers before it is placed: around the origin, front toward +z. */
-export function toLocalRect(placement: Placement): FloorRect {
+export function toLocalRect(placement: Footprint): FloorRect {
   return {
     minX: -placement.width / 2,
     maxX: placement.width / 2,
     minZ: -placement.depth / 2,
     maxZ: placement.depth / 2,
   };
+}
+
+/**
+ * Returns how much a model of a fixed shape grows or shrinks to fill a zone without stretching:
+ * evenly, until it touches the shorter side.
+ */
+export function fitFootprint(rect: FloorRect, footprint: Footprint): number {
+  const width = rect.maxX - rect.minX;
+  const depth = rect.maxZ - rect.minZ;
+  return Math.min(width / footprint.width, depth / footprint.depth);
 }
 
 /** Moves a point of the room into the coordinates of a placed zone, undoing its turn. */
@@ -122,10 +139,10 @@ export function findPedestalRect(stage: FloorRect): FloorRect {
   const centerX = (stage.minX + stage.maxX) / 2;
   const minZ = stage.minZ + PEDESTAL.backInset;
   return {
-    minX: centerX - PEDESTAL.size / 2,
-    maxX: centerX + PEDESTAL.size / 2,
+    minX: centerX - PEDESTAL.width / 2,
+    maxX: centerX + PEDESTAL.width / 2,
     minZ,
-    maxZ: minZ + PEDESTAL.size,
+    maxZ: minZ + PEDESTAL.depth,
   };
 }
 
