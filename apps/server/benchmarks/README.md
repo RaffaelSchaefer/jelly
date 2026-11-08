@@ -44,13 +44,17 @@ App einen Stream offen hält, oder `events`, wenn er nur Ereignisse liest wie ei
 | 100     | 2 bis 20 s    | 60 s  | `events` | 474        | 2,0 ms | 7,0 ms  | 6 %   | 37 MB    | 141 KB/s       |
 | 300     | 2 bis 20 s    | 60 s  | `on`     | 1.297      | 2,4 ms | 13 ms   | 21 %  | 52 MB    | 1,5 MB/s       |
 | 300     | 2 bis 20 s    | 60 s  | `events` | 1.282      | 2,4 ms | 15 ms   | 20 %  | 49 MB    | 1,2 MB/s       |
+| 100     | 2 bis 20 s    | 60 s  | `own`    | 460        | 1,9 ms | 5,4 ms  | 5 %   | 38 MB    | 9,9 KB/s       |
+| 300     | 2 bis 20 s    | 60 s  | `own`    | 1.253      | 2,4 ms | 10 ms   | 18 %  | 52 MB    | 26 KB/s        |
 | 70      | 20 bis 100 ms | 15 s  | keine    | 4.875      | 2,1 ms | 85 ms   | 89 %  | 30 MB    | –              |
 | 100     | 20 bis 100 ms | 15 s  | `on`     | 6.830      | 8,8 ms | 319 ms  | 137 % | 41 MB    | 490.813 Nachrichten |
 
 Kein Stream brach ab, kein Fehler im Log. Die LAN-Last braucht einen Bruchteil eines Kerns. Was mitwächst, ist der
 Verkehr: Jedes Ereignis und jeder Weg geht an alle Streams, das wächst mit dem Quadrat der Spieler. Bei 300 Spielern
 sind es etwa 5 KB/s je Client und 12 Mbit/s für den Server. Nur Ereignisse zu lesen spart wenig, denn die Ereignisse
-selbst sind der größere Teil.
+selbst sind der größere Teil. Mit `?topics=own` (API 1.17.0) bekommt eine App ohne Karte nur noch ihre eigenen Ereignisse und die für
+alle: Bei 300 Spielern sinkt der Verkehr um 98 %, den Rest machen die drei Bühnen mit vollem Stream aus. Eine App braucht
+dann etwa 40 Byte/s. Die `own`-Zeilen sind auf dem Stand des Filters gemessen.
 
 Die Standardwerte `max_players` 120 und `max_streams` 200 reichen für eine LAN mit 300 Teilnehmern nicht, ohne
 Anheben lehnt der Server Bot 121 bis 300 mit `409` ab.
