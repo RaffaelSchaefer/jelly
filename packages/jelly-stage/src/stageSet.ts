@@ -35,6 +35,7 @@ import {
   createZoneShadow,
   FACE_LIFT,
   findMiddle,
+  fitIntoZone,
   GLOW_COLORS,
   keepMaterial,
   layFlat,
@@ -52,8 +53,11 @@ import {
   findPedestalRect,
   listScreenRects,
   listSpeakerRects,
+  PEDESTAL,
   SCREEN_WIDTH,
+  SPEAKER,
   STAGE_HEIGHT,
+  toLocalRect,
 } from "./zones.ts";
 
 const STAGE_CORNER = 0.08;
@@ -255,8 +259,13 @@ export function createParLight(
   return light;
 }
 
-/** Builds a speaker stack: a bass box with a smaller box on top and two lights. */
+/** Builds a speaker stack in a zone: a bass box with a smaller box on top and two lights. */
 export function createSpeakerStack(rect: FloorRect, side: number): Group {
+  return fitIntoZone(buildSpeakerStack(toLocalRect(SPEAKER), side), SPEAKER, rect);
+}
+
+/** Builds a speaker stack at its own size, filling `rect`. */
+function buildSpeakerStack(rect: FloorRect, side: number): Group {
   const stack = new Group();
   const width = rect.maxX - rect.minX;
   const depth = rect.maxZ - rect.minZ;
@@ -297,8 +306,13 @@ export function createSpeakerStack(rect: FloorRect, side: number): Group {
   return stack;
 }
 
-/** Builds the pedestal of the tournament with the trophy on it. */
+/** Builds the pedestal of the tournament with the trophy on it, in a zone. */
 export function createPedestal(rect: FloorRect): Group {
+  return fitIntoZone(buildPedestal(toLocalRect(PEDESTAL)), PEDESTAL, rect);
+}
+
+/** Builds the pedestal at its own size, filling the shorter side of `rect`. */
+function buildPedestal(rect: FloorRect): Group {
   const pedestal = new Group();
   const middle = findMiddle(rect);
   const size = Math.min(rect.maxX - rect.minX, rect.maxZ - rect.minZ);

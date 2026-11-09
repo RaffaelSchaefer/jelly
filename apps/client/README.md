@@ -125,7 +125,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
   Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. „Weggehen“
   ist ein Tropfen aus demselben flüssigen Glas wie am Jelly, in dessen Farbe. Die Browser-Vorschau zeigt
-  die Halle der Server-Demo.
+  die Halle der Server-Demo in ihrer Größe von 10 × 20,5 m, mit Tischen von 1 × 0,5 m.
 - Partner-Emotes startet man auf der Karte. Ein Klick aufs eigene Jelly öffnet daneben ein Fenster mit den
   Gesten, alle anderen Jellies stehen in einem schimmernden Ring aus Licht. Nach der Wahl leuchten nur noch die in der Nähe, ein Klick auf eines
   fordert es auf (`POST /v1/partner-emotes`). Oben steht dann „Warte auf …“ mit der Restzeit und „Abbrechen“.

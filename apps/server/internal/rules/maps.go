@@ -3,9 +3,11 @@ package rules
 import "slices"
 
 const (
-	// MapFormatVersion is the format of map files that this server reads.
-	MapFormatVersion = 1
-	maxMapZones      = 2000
+	// MapFormatPercent is the first map format, with zones in percent of the stage.
+	MapFormatPercent = 1
+	// MapFormatMeters is the map format with zones in meters of the real room.
+	MapFormatMeters = 2
+	maxMapZones     = 2000
 )
 
 // RoomMap is a map file. It says what stands where in a room and never who uses it, because that
@@ -15,7 +17,8 @@ type RoomMap struct {
 	Zones   []MapZone `json:"zones"`
 }
 
-// MapZone is one zone of a map file, in percent of the stage. `Prop` is empty for bare floor.
+// MapZone is one zone of a map file, in percent of the stage (version 1) or in meters (version 2).
+// `Prop` is empty for bare floor.
 type MapZone struct {
 	ID     string  `json:"id"`
 	Name   string  `json:"name"`
@@ -30,6 +33,21 @@ type MapZone struct {
 	Prop     string  `json:"prop"`
 }
 
+// ToPercent returns the map in percent of the stage, so the rest of the server needs no meters. A
+// map of version 1 is already in percent and stays as it is.
+func (roomMap RoomMap) ToPercent(room RoomMeters) RoomMap {
+	if roomMap.Version != MapFormatMeters {
+		return roomMap
+	}
+	zones := make([]MapZone, len(roomMap.Zones))
+	for index, zone := range roomMap.Zones {
+		zone.X, zone.Width = room.ToPercentX(zone.X), room.ToPercentX(zone.Width)
+		zone.Y, zone.Height = room.ToPercentY(zone.Y), room.ToPercentY(zone.Height)
+		zones[index] = zone
+	}
+	return RoomMap{Version: MapFormatPercent, Zones: zones}
+}
+
 // ToArea returns the zone as an area without an assignment.
 func (zone MapZone) ToArea() Area {
 	return Area{
@@ -40,7 +58,8 @@ func (zone MapZone) ToArea() Area {
 
 // IsMapSizeValid reports whether a map has a known format and is small enough for the planner.
 func IsMapSizeValid(roomMap RoomMap) bool {
-	return roomMap.Version == MapFormatVersion && len(roomMap.Zones) <= maxMapZones
+	isKnown := roomMap.Version == MapFormatPercent || roomMap.Version == MapFormatMeters
+	return isKnown && len(roomMap.Zones) <= maxMapZones
 }
 
 // IsZoneNameValid reports whether a name fits on the admin page and the stage.

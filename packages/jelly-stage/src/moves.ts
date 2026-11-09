@@ -5,10 +5,10 @@
  */
 
 import type { StageGathering, StageMove, StagePlayer } from "./types.ts";
-import type { FloorPoint } from "./world.ts";
+import type { FloorPoint, RoomSize } from "./world.ts";
 
 import { findMovePosition, findStackLevel } from "./walking.ts";
-import { measureDistance, toFloorPoint } from "./world.ts";
+import { measureServerDistance, toFloorPoint } from "./world.ts";
 
 /** Below this a ring that goes away counts as gone. */
 const RING_GONE = 0.01;
@@ -23,6 +23,7 @@ export function findPositions(
   players: StagePlayer[],
   moves: Map<number, StageMove>,
   serverTime: number,
+  room: RoomSize,
 ): Map<number, FloorPoint> {
   const positions = new Map<number, FloorPoint>();
   for (const player of players) {
@@ -30,8 +31,8 @@ export function findPositions(
     positions.set(
       player.id,
       move
-        ? findMovePosition(move, serverTime)
-        : toFloorPoint({ x: player.home_x, y: player.home_y }),
+        ? findMovePosition(move, serverTime, room)
+        : toFloorPoint({ x: player.home_x, y: player.home_y }, room),
     );
   }
   return positions;
@@ -62,19 +63,22 @@ export function pruneMoves(moves: Map<number, StageMove>, players: StagePlayer[]
 
 /**
  * Returns the jellies that light up. The own jelly never does, and without it on the stage nobody is
- * near. Distances are in the same jelly units as `near_distance` on the server.
+ * near. Distances count as the server measures `near_distance`, whatever the size of the room.
  */
 export function listHighlighted(
   positions: Map<number, FloorPoint>,
   ownId: number | null,
   highlight: StageHighlight,
+  room: RoomSize,
 ): Set<number> {
   const own = ownId === null ? undefined : positions.get(ownId);
   const lit = new Set<number>();
   for (const [playerId, position] of positions) {
     if (playerId === ownId) continue;
     const isNear =
-      highlight.kind === "near" && own && measureDistance(own, position) <= highlight.reach;
+      highlight.kind === "near" &&
+      own &&
+      measureServerDistance(own, position, room) <= highlight.reach;
     if (highlight.kind === "others" || isNear) lit.add(playerId);
   }
   return lit;

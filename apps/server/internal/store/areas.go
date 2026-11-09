@@ -14,6 +14,11 @@ import (
 type StageArea struct {
 	ID int64 `json:"id"`
 	rules.Area
+	// The same rectangle in meters of the real room, without rotation.
+	XMeters      float64 `json:"x_m"`
+	YMeters      float64 `json:"y_m"`
+	WidthMeters  float64 `json:"width_m"`
+	HeightMeters float64 `json:"height_m"`
 
 	Name *string `json:"name"`
 }
