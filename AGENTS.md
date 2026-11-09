@@ -63,8 +63,16 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`. Beide Ereignisse schließen
   die Karte (`closes_map` in `src-tauri/src/events.rs`).
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
-  (Noten, reine Logik): die Stimme des Jellys. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
+  (Noten, reine Logik): die Stimme des Jellys. Tonhöhe und Tempo je Geste stehen in `EMOTE_MOODS`
+  (`packages/jelly-scene/src/emotes.ts`), Bewegung und Laut teilen sich das Tempo. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
+- `src/uiSound.ts`, `src/useUiSounds.ts`, `src/pet/uiSounds.ts`: Geräusche der Oberfläche aus `src/sounds/`
+  (von reactsounds.com, MIT). Ein Hörer im Dokument wählt den Ton aus den Attributen des Knopfs
+  (`aria-expanded`, `aria-disabled`, `role="tab"`), `data-sound` überschreibt ihn,
+  `data-sound="none"` schweigt. Dazu klingen Schalter, Fehler und Momente im Spielstand (XP, Erfolge,
+  Einladung, Schlüpfen, `gameSoundFor`). `LEVELS` gleicht die sehr verschieden lauten Töne an. Was ein Fenster schließt, nutzt `playThen`,
+  sonst bricht der Ton mit dem Fenster ab. Die MP3s liegen als Daten im Bundle, das Paket
+  `react-sounds` lädt per `fetch` und bliebe unter der CSP stumm.
 - `src/pet/rendering.ts`, `src/optimized.css`: der optimierte Modus (`Settings.optimizedRendering`). Das Profil
   sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Beim Einstieg schaltet ein zu langsames Gerät
   selbst um (`createSlowFrameMeter`). Messung und Shader-Prüfung:
@@ -75,7 +83,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
   Cosmetics), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
-  `body.ts` (geraymarchter Körper, Shader in `shaders/`, volle und optimierte Variante per `JellyQuality`), `face.ts`, `mouthShapes.ts`, `animation.ts`,
+  `body.ts` (geraymarchter Körper, Shader in `shaders/`, volle und optimierte Variante per `JellyQuality`), `face.ts`, `eyeShapes.ts` (Augen und Brauen), `mouthShapes.ts`, `expression.ts` (Gesichtsausdrücke aus diesen Bausteinen), `animation.ts`,
   `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `partnerEmotes.ts` (Duett-Posen der
   Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben), `cosmetic.ts` (Cosmetics
   laden und zeichnen, Modelle in `cosmetics/`).

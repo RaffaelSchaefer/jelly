@@ -30,6 +30,31 @@ lässt den Simulator dagegen spielen. „Abgelehnt“ ist normal, zum Beispiel e
 Die erste Zeile entspricht etwa der LAN-Last, die zweite ist ein Vielfaches davon, rund 1.080 Aktionen
 pro Sekunde.
 
+### Mit Streams und Bühnen
+
+Seit 2026-11-09 nimmt `pnpm bench:load` zwei weitere Angaben: die Zahl der Bühnen und `on`, wenn jeder Spieler wie die
+App einen Stream offen hält, oder `events`, wenn er nur Ereignisse liest wie eine App ohne Karte. Das Skript hebt
+`max_players` und `max_streams` passend an und nennt CPU-Zeit und den höchsten Speicher des Servers. Gemessen auf
+`25684f1` am Netzteil (Profil `balanced`), i7-1185G7, 8 Threads, jeweils 3 Bühnen.
+
+| Spieler | Pausen        | Dauer | Streams  | Angenommen | Mittel | Maximum | CPU   | Speicher | Stream-Verkehr |
+| ------- | ------------- | ----- | -------- | ---------- | ------ | ------- | ----- | -------- | -------------- |
+| 70      | 2 bis 20 s    | 60 s  | keine    | 320        | 2,0 ms | 5,0 ms  | 1 %   | 28 MB    | –              |
+| 100     | 2 bis 20 s    | 60 s  | `on`     | 465        | 2,0 ms | 5,5 ms  | 6 %   | 35 MB    | 213 KB/s       |
+| 100     | 2 bis 20 s    | 60 s  | `events` | 474        | 2,0 ms | 7,0 ms  | 6 %   | 37 MB    | 141 KB/s       |
+| 300     | 2 bis 20 s    | 60 s  | `on`     | 1.297      | 2,4 ms | 13 ms   | 21 %  | 52 MB    | 1,5 MB/s       |
+| 300     | 2 bis 20 s    | 60 s  | `events` | 1.282      | 2,4 ms | 15 ms   | 20 %  | 49 MB    | 1,2 MB/s       |
+| 70      | 20 bis 100 ms | 15 s  | keine    | 4.875      | 2,1 ms | 85 ms   | 89 %  | 30 MB    | –              |
+| 100     | 20 bis 100 ms | 15 s  | `on`     | 6.830      | 8,8 ms | 319 ms  | 137 % | 41 MB    | 490.813 Nachrichten |
+
+Kein Stream brach ab, kein Fehler im Log. Die LAN-Last braucht einen Bruchteil eines Kerns. Was mitwächst, ist der
+Verkehr: Jedes Ereignis und jeder Weg geht an alle Streams, das wächst mit dem Quadrat der Spieler. Bei 300 Spielern
+sind es etwa 5 KB/s je Client und 12 Mbit/s für den Server. Nur Ereignisse zu lesen spart wenig, denn die Ereignisse
+selbst sind der größere Teil.
+
+Die Standardwerte `max_players` 120 und `max_streams` 200 reichen für eine LAN mit 300 Teilnehmern nicht, ohne
+Anheben lehnt der Server Bot 121 bis 300 mit `409` ab.
+
 Die Zeilen vom 2026-11-03 entstanden auf Akku im Modus `powersave` und taugen nicht zum Vergleich mit den
 Netzteil-Werten: Abwechselnd gemessen schafft `652790c`, der Stand der ersten Baseline, dort dasselbe. Der
 Wechsel auf huma ändert im Vergleich auf demselben Rechner nichts Messbares. Vor neuen Baselines am Netzteil

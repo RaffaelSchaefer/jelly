@@ -6,6 +6,12 @@
 
 const SLUG_LETTERS: Record<string, string> = { ä: "ae", ö: "oe", ü: "ue", ß: "ss" };
 const dateFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
+const meterFormat = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
+
+/** Formats a length in meters the German way, to the centimeter. */
+export function formatMeters(meters: number): string {
+  return meterFormat.format(meters);
+}
 
 /** Formats a time of the API for reading, in the time zone of this browser. */
 export function formatDateTime(millis: number): string {

@@ -12,7 +12,7 @@ import { BoxGeometry, Group, Mesh, type BufferGeometry, type Material } from "th
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 import type { StageArea } from "./types.ts";
-import type { FloorPoint } from "./world.ts";
+import type { FloorPoint, RoomSize } from "./world.ts";
 
 import { createMatte, FLAT_ORDER, mergeParts, type PropPart } from "./props.ts";
 import {
@@ -142,23 +142,23 @@ function createCable(spot: DeskSpot): Mesh {
 }
 
 /** Returns where the furniture of a zone stands, on the platform there if any. */
-function findSpot(area: StageArea, platforms: Placement[]): DeskSpot {
-  const placement = placeArea(area);
+function findSpot(area: StageArea, platforms: Placement[], room: RoomSize): DeskSpot {
+  const placement = placeArea(area, room);
   return { placement, floor: findFloorHeight(placement.middle, platforms) };
 }
 
-/** Builds all desks and cables of the room. */
-export function createFurniture(areas: StageArea[]): Group {
+/** Builds all desks and cables of a room. */
+export function createFurniture(areas: StageArea[], room: RoomSize): Group {
   const furniture = new Group();
   const parts: DeskParts = { tops: [], legs: [], shadows: new Map() };
-  const platforms = listPlatforms(areas);
+  const platforms = listPlatforms(areas, room);
   for (const area of areas) {
     if (area.prop === "desk") {
-      const spot = findSpot(area, platforms);
+      const spot = findSpot(area, platforms, room);
       addDeskBlocks(parts, spot);
       addDeskShadow(parts, spot);
     }
-    if (area.prop === "cable") furniture.add(createCable(findSpot(area, platforms)));
+    if (area.prop === "cable") furniture.add(createCable(findSpot(area, platforms, room)));
   }
   if (parts.tops.length > 0) {
     furniture.add(mergeParts(parts.tops, TOP_MATERIAL), mergeParts(parts.legs, LEG_MATERIAL));

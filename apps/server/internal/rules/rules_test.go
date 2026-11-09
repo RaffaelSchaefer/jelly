@@ -194,9 +194,9 @@ func TestMapChecksFindEveryBadZone(t *testing.T) {
 	if len(invalid) != 3 || invalid[0] != "a" || invalid[1] != "c" || invalid[2] != "" {
 		t.Fatalf("invalid = %v", invalid)
 	}
-	if !rules.IsMapSizeValid(rules.RoomMap{Version: 1, Zones: nil}) ||
-		rules.IsMapSizeValid(rules.RoomMap{Version: 2, Zones: nil}) {
-		t.Fatal("only format 1 is known")
+	if !rules.IsMapSizeValid(rules.RoomMap{Version: 2, Zones: nil}) ||
+		rules.IsMapSizeValid(rules.RoomMap{Version: 3, Zones: nil}) {
+		t.Fatal("only formats 1 and 2 are known")
 	}
 }
 

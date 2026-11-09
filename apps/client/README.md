@@ -94,8 +94,20 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - XP, Level, Cosmetics und Erfolge kommen vom Server. Mit seinen Standardregeln: Stupser +3 XP alle
   15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level.
   Die App fragt nur beim Server, wenn ein Stupser wieder etwas bringt.
-- Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen
-  und Herz auswählen. Nach Bestätigung durch `POST /v1/emotes` spielt das Jelly die Geste für drei
+- Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen,
+  Herz, Schulterzucken, Zeigen, Grübeln, Wütend, Traurig und Schüchtern auswählen. Die Hände haben
+  drei Finger und einen Daumen und drehen sich mit der Geste. Das Gesicht wechselt dazu Augenform
+  (offen, `^^`, `>_<`, geschlossen), zeigt Brauen, Röte und eigene Mundformen. Jede Emotion hat
+  eine eigene Stimmlage und ein eigenes Tempo: Wut klingt tief und schnell, Trauer tief und langsam,
+  Freude hoch und flott. Bewegung und Laut laufen dabei im selben Takt.
+- Die Oberfläche hat leise Geräusche: Tippen, Auf- und Zuklappen, Wählen, Sperren, Schalter,
+  Öffnen und Schließen von Karte und Pet-Fenster, Erfolg und Fehler. Dazu klingen XP (Münze), neue
+  Erfolge, Einladungen zu Partner-Emotes und das Schlüpfen. Die Töne stammen aus der Bibliothek von
+  [reactsounds.com](https://www.reactsounds.com) (MIT, `src/sounds/LICENSE`), liegen im Bundle,
+  sind aufeinander abgestimmt laut und folgen dem Schalter und dem Regler der Geräusche. Ein neuer
+  Ton kommt nach `src/sounds/`, in `UI_SOUND_NAMES` (`src/pet/uiSounds.ts`) sowie in `SOUNDS` und
+  `LEVELS` in `src/uiSound.ts`. Nach Bestätigung
+  durch `POST /v1/emotes` spielt das Jelly die Geste für drei
   Sekunden. Die Bühne nutzt dieselben Gesten aus `@jelly/scene`; reduzierte Bewegung zeigt eine
   ruhige Pose. In der Browser-Vorschau funktionieren die Gesten ohne Server und ohne Fortschritt.
   Escape und ein Klick außerhalb schließen die Auswahl, ohne das Jelly anzustupsen.
@@ -125,7 +137,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
   Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. „Weggehen“
   ist ein Tropfen aus demselben flüssigen Glas wie am Jelly, in dessen Farbe. Die Browser-Vorschau zeigt
-  die Halle der Server-Demo.
+  die Halle der Server-Demo in ihrer Größe von 10 × 20,5 m, mit Tischen von 1 × 0,5 m.
 - Partner-Emotes startet man auf der Karte. Ein Klick aufs eigene Jelly öffnet daneben ein Fenster mit den
   Gesten, alle anderen Jellies stehen in einem schimmernden Ring aus Licht. Nach der Wahl leuchten nur noch die in der Nähe, ein Klick auf eines
   fordert es auf (`POST /v1/partner-emotes`). Oben steht dann „Warte auf …“ mit der Restzeit und „Abbrechen“.

@@ -6,6 +6,7 @@ import {
   EMOTE_CLIPS,
   HELLO,
   HOP_CLIPS,
+  inMood,
   LEVEL_UP,
   PARTNER_CLIPS,
   pickClip,
@@ -120,6 +121,11 @@ describe("clips", () => {
     for (const notes of [HELLO, LEVEL_UP, ...HOP_CLIPS, ...Object.values(EMOTE_CLIPS)]) {
       expectPlayable(notes);
     }
+  });
+  it("sing in a mood: an octave up doubles the pitch, double tempo halves the times", () => {
+    const note = { at: 1, duration: 0.4, from: 400, to: 500, vowel: "a" as const, gain: 1 };
+    const [sung] = inMood([note], { pitch: 12, tempo: 2 });
+    expect(sung).toMatchObject({ at: 0.5, duration: 0.2, from: 800, to: 1000, vowel: "a" });
   });
   it("cover every gesture within its time", () => {
     expect(Object.keys(EMOTE_CLIPS).sort()).toEqual(Object.keys(EMOTE_GLYPHS).sort());

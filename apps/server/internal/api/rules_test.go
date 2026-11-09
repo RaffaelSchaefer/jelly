@@ -145,3 +145,12 @@ func TestRuleErrorsSayWhatToFix(t *testing.T) {
 		}
 	}
 }
+
+func TestRoomSizeRulesStayInTheirRange(t *testing.T) {
+	testFixture := newFixture(t)
+	bodies := []string{`{"room_width":0}`, `{"room_depth":1001}`, `{"jelly_width":0.01}`}
+	for _, body := range bodies {
+		requireProblem(t, testFixture.callAdmin("PATCH", "/admin/api/lans/1/rules", body),
+			http.StatusBadRequest, "invalid_rules")
+	}
+}

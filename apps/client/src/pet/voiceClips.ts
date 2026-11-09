@@ -7,10 +7,10 @@
  * @module
  */
 
-import { isEmoteKey, type EmoteKey } from "@jelly/scene/emotes";
+import { EMOTE_MOODS, isEmoteKey, type EmoteKey } from "@jelly/scene/emotes";
 import { isPartnerMotionKey, type PartnerMotionKey } from "@jelly/scene/partner-emotes";
 
-import { noteHz, speechNotes, type VoiceNote, type Vowel } from "./voice";
+import { inMood, noteHz, speechNotes, type VoiceNote, type Vowel } from "./voice";
 
 /**
  * Eine Note als Tabellenzeile: Beginn, Länge, Tonhöhe von und nach, Vokal, Lautstärke, Vibrato,
@@ -65,8 +65,11 @@ export const LEVEL_UP = clip([
   [0.56, 0.48, 12, 14, "a", 1, 26],
 ]);
 
-/** Ein Laut je Geste, abgestimmt auf ihre Bewegung in `@jelly/scene`. */
-export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
+/**
+ * Die Melodie je Geste, abgestimmt auf ihre Bewegung in `@jelly/scene`. Die Zeiten zählen auf der
+ * Uhr der Geste, also vor dem Tempo ihrer Stimmung.
+ */
+const TUNES: Record<EmoteKey, VoiceNote[]> = {
   // „hi-hi … hi-ya“
   wave: clip([
     [0.3, 0.12, 4, 7, "i", 0.9, undefined, "hiss"],
@@ -108,8 +111,8 @@ export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
   ]),
   // Ein leises, sinkendes Summen.
   sleep: clip([
-    [0.4, 1, -3, -5, "u", 0.5, 10],
-    [1.6, 1.1, -5, -8, "o", 0.35, 12],
+    [0.3, 0.9, -3, -5, "u", 0.5, 10],
+    [1.3, 0.95, -5, -8, "o", 0.35, 12],
   ]),
   // „mm-waa-iii“ mit viel Vibrato.
   love: clip([
@@ -117,7 +120,48 @@ export const EMOTE_CLIPS: Record<EmoteKey, VoiceNote[]> = {
     [0.58, 0.6, 7, 9, "a", 1, 26],
     [1.22, 0.55, 12, 7, "i", 0.8, 18],
   ]),
+  // „hm-mh … eh?“ zu den Schultern: zweimal fallend, dann fragend hoch.
+  shrug: clip([
+    [0.2, 0.2, 4, 0, "u", 0.7],
+    [1.45, 0.2, 4, 0, "u", 0.7],
+    [1.75, 0.3, 0, 6, "e", 0.75],
+  ]),
+  // „da!“ zum Vorstoßen der Hand.
+  point: clip([[0.15, 0.14, 7, 9, "a", 0.9, undefined, "tick"]]),
+  // „hm-hm-hmm“, leise und steigend.
+  think: clip([
+    [0.3, 0.3, -2, -1, "u", 0.5],
+    [0.9, 0.3, 0, 1, "u", 0.5],
+    [1.5, 0.6, 2, 4, "o", 0.55, 14],
+  ]),
+  // „hmpf, hmpf … waaah!“: tiefe Stöße beim Stampfen, dann schimpft es mit zugekniffenen Augen.
+  angry: clip([
+    [0.15, 0.1, -5, -6, "u", 0.85, undefined, "tick"],
+    [0.85, 0.1, -5, -6, "u", 0.85, undefined, "tick"],
+    [1.55, 0.35, 2, 0, "a", 1, 20],
+    [2.0, 0.15, -2, -4, "e", 0.8, undefined, "tick"],
+  ]),
+  // Zwei lange, fallende Seufzer mit Vibrato.
+  sad: clip([
+    [0.3, 0.7, 2, -1, "o", 0.55, 16],
+    [1.2, 0.9, 0, -4, "u", 0.45, 18],
+  ]),
+  // Ein leises, hohes „hihi … hihi“.
+  shy: clip([
+    [0.4, 0.09, 9, 10, "i", 0.45, undefined, "hiss"],
+    [0.56, 0.12, 10, 8, "i", 0.4, undefined, "hiss"],
+    [1.3, 0.09, 9, 10, "i", 0.4, undefined, "hiss"],
+    [1.46, 0.14, 10, 7, "i", 0.35, undefined, "hiss"],
+  ]),
 };
+
+/**
+ * Ein Laut je Geste in ihrer Stimmung (`EMOTE_MOODS`): höher oder tiefer, schneller oder langsamer.
+ * Das Tempo teilt sich der Laut mit der Bewegung, so bleiben beide im Takt.
+ */
+export const EMOTE_CLIPS = Object.fromEntries(
+  (Object.keys(TUNES) as EmoteKey[]).map((key) => [key, inMood(TUNES[key], EMOTE_MOODS[key])]),
+) as Record<EmoteKey, VoiceNote[]>;
 
 /** Die Hüpfer des Partners beim Auftritt und beim Abgang, sie landen im Takt von `partnerEmotes.ts`. */
 const ARRIVING: Row[] = [

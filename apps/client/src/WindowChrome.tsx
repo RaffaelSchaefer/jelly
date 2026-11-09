@@ -6,6 +6,7 @@
 
 import { desktop, type WindowAction } from "./backend";
 import { IconButton } from "./ui";
+import { playThen } from "./uiSound";
 
 /** Kopfzeile, die nur in der Browser-Vorschau erscheint. */
 export function PreviewHeader() {
@@ -39,6 +40,7 @@ export function WindowTools({ onAction }: { onAction: (action: WindowAction) => 
         icon="drag"
         label="Pet-Fenster verschieben"
         className="drag-handle"
+        data-sound="none"
         title={desktop ? "Fenster verschieben" : "Im Desktop-Modus verschiebbar"}
         disabled={!desktop}
         onPointerDown={(event) => {
@@ -55,8 +57,10 @@ export function WindowTools({ onAction }: { onAction: (action: WindowAction) => 
         <IconButton
           icon="close"
           label="Schließen"
+          // Erst klingen, dann schließen: Mit dem Fenster ginge sonst auch der Ton.
+          data-sound="none"
           disabled={!desktop}
-          onClick={() => onAction("close")}
+          onClick={() => playThen("windowClose", () => onAction("close"))}
         />
       </div>
     </div>

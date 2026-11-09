@@ -2,14 +2,14 @@
  * Das Schild des Jellys: eine Tafel wie am Flughafen, quer vor dem Bauch und zwischen beiden
  * Händen.
  *
- * Text und Papier stehen in der Textur (`signTexture.ts`), die Bewegung rechnet `pet/signs.ts`. Wie
- * die Cosmetics liegt die Tafel als Sticker über dem Jelly, aber in der Tinte seiner Farbe
- * umrandet.
+ * Text und Papier stehen in der Textur (`signTexture.ts`), die Bewegung rechnet `pet/signs.ts`. Die
+ * Tafel steht vor dem Bauch und testet die Tiefe, so greifen die Hände sichtbar über ihre Kanten.
+ * Umrandet ist sie in der Tinte des Jellys.
  *
  * @module
  */
 
-import { HAND, type Jelly } from "@jelly/scene";
+import { GRIP, type Jelly } from "@jelly/scene";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ExtrudeGeometry, Shape, ShapeGeometry, type Object3D } from "three";
@@ -24,8 +24,11 @@ import {
 } from "../pet";
 import { createSignTexture, SIGN_TEXTURE } from "./signTexture";
 
-/** Halbe Breite: Die Tafel reicht bis an die Hände, die sie halten (`HAND.x - HAND.radius`). */
-const HALF_WIDTH = 0.92;
+/** Halbe Breite: Die Tafel reicht bis an die Hände, die sie halten. */
+const HALF_WIDTH = GRIP.x;
+
+/** Lage der Vorderseite: knapp hinter den Händen, aber vor dem Bauch. */
+const FACE_Z = GRIP.z - 0.06;
 
 /** Halbe Höhe im Seitenverhältnis der Textur. */
 const HALF_HEIGHT = (HALF_WIDTH * SIGN_TEXTURE.height) / SIGN_TEXTURE.width;
@@ -118,7 +121,7 @@ export default function SignBoard({
     stepBoard(motion, label, delta, reducedMotion);
     if (motion.shown && motion.shown !== before) paint(motion.shown);
     const pose = boardPose(jelly.hands[0]!.position, jelly.hands[1]!.position);
-    board.current.position.set(pose.x, pose.y, HAND.z);
+    board.current.position.set(pose.x, pose.y, FACE_Z);
     board.current.rotation.set(0, boardAngle(motion.flip), pose.tilt);
     board.current.scale.setScalar(Math.max(0, motion.raise));
     board.current.visible = motion.raise > VISIBLE_FROM;
@@ -126,8 +129,7 @@ export default function SignBoard({
 
   return (
     <object3D ref={board} visible={false}>
-      {/* Löscht vorher die Tiefe, damit die Tafel nicht im Jelly versinkt. */}
-      <mesh geometry={PLATE} renderOrder={SIGN_ORDER} onBeforeRender={(gl) => gl.clearDepth()}>
+      <mesh geometry={PLATE} renderOrder={SIGN_ORDER}>
         <meshBasicMaterial color={PET_COLORS[color].outline} />
       </mesh>
       <mesh geometry={FACE} renderOrder={SIGN_ORDER + 1}>

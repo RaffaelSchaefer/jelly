@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -71,7 +72,10 @@ var errRegisterRejected = errors.New("server rejected the registration")
 
 // bot is one simulated player.
 type bot struct {
-	client   apiClient
+	client       apiClient
+	streamClient apiClient
+	// streams awaits the event stream of the bot together with all bots.
+	streams  *sync.WaitGroup
 	results  *counters
 	config   Config
 	index    int
@@ -86,7 +90,20 @@ func listColors() []string {
 
 // listEmotes returns the emotes the bots use.
 func listEmotes() []string {
-	return []string{"wave", "dance", "cheer", "laugh", "sleep", "love"}
+	return []string{
+		"wave",
+		"dance",
+		"cheer",
+		"laugh",
+		"sleep",
+		"love",
+		"shrug",
+		"point",
+		"think",
+		"angry",
+		"sad",
+		"shy",
+	}
 }
 
 // listPartnerEmotes returns the partner emotes the bots use.
@@ -156,6 +173,15 @@ func (player *bot) play(ctx context.Context) error {
 	err := player.register(ctx)
 	if err != nil {
 		return err
+	}
+	if player.config.Streams {
+		token := player.token
+		// Concurrency plan: started once per bot after its registration, ends when ctx ends and
+		// is awaited with all bots in Run. A dropped stream is counted and opened again.
+		player.streams.Go(func() {
+			path := buildPlayerPath(player.config.StreamTopics)
+			player.streamClient.watchStream(ctx, path, token, player.results)
+		})
 	}
 	for {
 		err = waitFor(ctx, player.pickDelay())

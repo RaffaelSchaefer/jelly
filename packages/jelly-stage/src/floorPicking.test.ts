@@ -10,6 +10,8 @@ import { toFloorPoint } from "./world.ts";
 
 const size = { width: 1280, height: 720 };
 const strength = LENS_RANGE.usual;
+const view = { size, lensStrength: strength };
+const room = { width: 21, depth: 40 };
 
 /** A camera like the one of the stage: in front of the room and above it, its picture shifted. */
 function createCamera(): PerspectiveCamera {
@@ -23,7 +25,7 @@ function createCamera(): PerspectiveCamera {
 
 /** Where the camera shows a stage position, seen through the lens. */
 function showOnScreen(camera: PerspectiveCamera, position: StagePoint) {
-  const floor = toFloorPoint(position);
+  const floor = toFloorPoint(position, room);
   const projected = new Vector3(floor.x, 0, floor.z).project(camera);
   const flat = {
     x: ((projected.x + 1) / 2) * size.width,
@@ -39,7 +41,7 @@ test("a stage position on the screen picks itself again", () => {
     { x: 12, y: 80 },
     { x: 90, y: 5 },
   ]) {
-    const picked = pickFloor(camera, showOnScreen(camera, position), size, strength);
+    const picked = pickFloor(camera, showOnScreen(camera, position), view, room);
     assert.ok(picked, JSON.stringify(position));
     assert.ok(Math.abs(picked.x - position.x) < 1e-6, JSON.stringify(picked));
     assert.ok(Math.abs(picked.y - position.y) < 1e-6, JSON.stringify(picked));
@@ -49,7 +51,7 @@ test("a stage position on the screen picks itself again", () => {
 test("the floor beyond the stage is no stage position", () => {
   const camera = createCamera();
   const beyond = showOnScreen(camera, { x: 130, y: 50 });
-  assert.equal(pickFloor(camera, beyond, size, strength), null);
+  assert.equal(pickFloor(camera, beyond, view, room), null);
 });
 
 test("above the horizon there is no floor to pick", () => {
@@ -57,5 +59,5 @@ test("above the horizon there is no floor to pick", () => {
   camera.position.set(0, 5, 30);
   camera.lookAt(0, 5, 0);
   camera.updateMatrixWorld();
-  assert.equal(pickFloor(camera, { x: 640, y: 10 }, size, 0), null);
+  assert.equal(pickFloor(camera, { x: 640, y: 10 }, { size, lensStrength: 0 }, room), null);
 });
