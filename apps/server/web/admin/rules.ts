@@ -173,9 +173,28 @@ function listGesturesRules(): RuleText[] {
 /** Lists the limits of the server. */
 function listOperationRules(): RuleText[] {
   return [
-    { key: "max_players", label: "Spieler pro LAN", unit: "count" },
-    { key: "max_streams", label: "Verbindungen insgesamt", unit: "count" },
-    { key: "max_player_streams", label: "Verbindungen pro Spieler", unit: "count" },
+    {
+      key: "max_players",
+      label: "Spieler pro LAN",
+      unit: "count",
+      hint:
+        "Mindestens so viele wie erwartete Teilnehmer, Bots zählen mit. Wer darüber " +
+        "beitreten will, wird abgelehnt. 300 Spieler sind im Lasttest kein Problem.",
+    },
+    {
+      key: "max_streams",
+      label: "Verbindungen insgesamt",
+      unit: "count",
+      hint:
+        "Jede offene App und jede Bühne hält eine. Mindestens Spieler pro LAN plus Bühnen " +
+        "plus Reserve, für 300 Teilnehmer etwa 320.",
+    },
+    {
+      key: "max_player_streams",
+      label: "Verbindungen pro Spieler",
+      unit: "count",
+      hint: "Eine App braucht eine, beim Neustart kurz eine zweite.",
+    },
   ];
 }
 
