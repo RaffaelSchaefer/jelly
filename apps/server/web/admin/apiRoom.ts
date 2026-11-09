@@ -33,6 +33,15 @@ export interface AreaAssignment {
 export interface AreaList {
   areas: AdminArea[];
   assignments: AreaAssignment[];
+  /** The size of every zone in meters of the real hall, from the room rules of the LAN. */
+  sizes: ZoneSize[];
+}
+
+/** The size of a zone in meters. */
+export interface ZoneSize {
+  area_id: number;
+  width_m: number;
+  height_m: number;
 }
 
 /** A seat code and whether someone used it. */

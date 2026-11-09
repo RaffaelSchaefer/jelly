@@ -369,7 +369,10 @@
       "fields": {
         "width": "Width of the room in `unit`.",
         "height": "Height of the room in `unit`.",
-        "unit": "The unit of all positions, `percent` for now."
+        "unit": "The unit of all positions, `percent` for now.",
+        "width_m": "Real width of the room in meters, the rule `room_width` of the LAN.",
+        "depth_m": "Real depth of the room in meters, the rule `room_depth` of the LAN.",
+        "jelly_m": "Real width of a jelly in meters, the rule `jelly_width` of the LAN."
       }
     },
     "Stack": {
@@ -433,7 +436,10 @@
         "stack_seconds": "How long a stack stands.",
         "stack_max_members": "How many jellies fit on one stack, 0 means no limit.",
         "highlight_seconds": "How long a highlighted jelly lights up.",
-        "highlight_cooldown": "Time between two highlights of one player."
+        "highlight_cooldown": "Time between two highlights of one player.",
+        "room_width": "Real width of the hall in meters, from left to right.",
+        "room_depth": "Real depth of the hall in meters, from back to front.",
+        "jelly_width": "Real width of a jelly in meters."
       }
     },
     "Follow": {
@@ -451,6 +457,10 @@
         "y": "Top edge before the rotation.",
         "width": "Width before the rotation.",
         "height": "Height before the rotation.",
+        "x_m": "`x` in meters of the real room, counted from the left edge.",
+        "y_m": "`y` in meters of the real room, counted from the back edge.",
+        "width_m": "`width` in meters of the real room.",
+        "height_m": "`height` in meters of the real room.",
         "rotation": "Degrees clockwise seen from above, from 0 up to below 360. The zone turns around its middle and keeps its size on the floor. Percent has a different length on each axis, so turn it on the floor and not in percent. At 0, the front of the model faces the camera, toward larger `y`.",
         "kind": "How jellies use the zone. They belong to `seats`, `stage`, `lounge` and `visitors`, line up in `queue`, and `public` is a named place to go to. `spectators` and `winner` are for a ceremony, `none` is not assigned yet. Treat new values like `none`.",
         "blocks": "Whether jellies walk around this zone. `POST /v1/trips/goto` refuses points in it.",

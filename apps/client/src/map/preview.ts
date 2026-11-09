@@ -1,6 +1,6 @@
 /**
  * Daten der Karte für die Browser-Vorschau, ohne Backend: die Halle der Server-Demo mit ein paar
- * Jellies. Die Desktop-App lädt diese Datei nie.
+ * Jellies, in ihrer echten Größe. Die Desktop-App lädt diese Datei nie.
  *
  * @module
  */
@@ -15,7 +15,7 @@ import type {
   StreamListener,
 } from "@jelly/stage";
 
-import { createDemoRoom } from "@jelly/stage/demo-room";
+import { createDemoRoom, DEMO_HALL } from "@jelly/stage/demo-room";
 
 import type { MapSource } from "./source";
 
@@ -227,7 +227,7 @@ export function createPreviewSource(): MapSource {
       Promise.resolve({
         last_event_id: 0,
         server_time: Date.now(),
-        room: { width: 100, height: 100, unit: "percent" },
+        room: { width: 100, height: 100, unit: "percent", ...DEMO_HALL },
         areas,
         players,
         moves: [],

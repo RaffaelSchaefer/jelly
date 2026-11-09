@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.18.0**
+Aktuelle Version: **1.19.0**
 
 ## Versionen
 
@@ -27,8 +27,9 @@ Aktuelle Version: **1.18.0**
 
 | Version | Änderung |
 | ------- | -------- |
-| 1.18.0  | Neue Emotes `angry`, `sad` und `shy` im Katalog |
-| 1.17.0  | Neue Emotes `shrug`, `point` und `think` im Katalog |
+| 1.19.0  | Neue Emotes `angry`, `sad` und `shy` im Katalog |
+| 1.18.0  | Neue Emotes `shrug`, `point` und `think` im Katalog |
+| 1.17.0  | Meter: Regeln `room_width`, `room_depth` und `jelly_width`, `room` und `areas` in `GET /stage` nennen dazu `width_m`, `depth_m`, `jelly_m` und `x_m`, `y_m`, `width_m`, `height_m`. Kartendatei Version 2 mit Zonen in Metern. Positionen bleiben Prozent |
 | 1.16.0  | `is_bot` in `players` von `GET /stage`: Bots der Orga, die eine Bühne kennzeichnen kann. Dazu Bots, XP, Achievements und der Link zur Bühne in der Admin-API |
 | 1.15.0  | Neues Cosmetic `headset-neutral` im Katalog, ab Level 2 frei wie `headset` |
 | 1.14.0  | Einheitliche Namen: `ends_at`, `follow`, `stack_level`, `partner_id`. Weniger Fehlercodes, `unlock` im Katalog, `rules` in `GET /lans/current` samt `rules.changed`, `xp_per_level` je LAN. Alles, was endet, meldet sich per Ereignis. `PATCH /admin/api/lans/{id}/rules` ändert einzelne Regeln, der Admin-Weg `rotate-token` entfällt |
@@ -333,6 +334,9 @@ das Lesen und ist die einzige Ausnahme. Spieler-Secrets gehören immer in den He
 }
 ```
 
+- `room` nennt außerdem die echte Größe: `width_m`, `depth_m` und `jelly_m` in Metern (die Regeln `room_width`,
+  `room_depth`, `jelly_width`). Jede Zone trägt ihr Rechteck zusätzlich als `x_m`, `y_m`, `width_m` und `height_m`, ohne
+  Drehung, von links hinten gezählt. Positionen und Heimplätze bleiben Prozent, bis die Bühne Meter versteht.
 - Bereiche und Heimplätze sind Prozentwerte der Bühne, auch Bruchteile. Bereiche dürfen sich überlappen, etwa ein Sofa in
   der Lounge.
 - `kind` ist die Zuweisung einer Zone und sagt nur, wie Jellies sie nutzen: `seats` (Plätze, mit Code ein Sitzplatz),
@@ -475,7 +479,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`, der Schlüssel muss im Katalog stehen |
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
-| `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
+| `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments","sizes"}`, `sizes` nennt `width_m` und `height_m` je Zone |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","rotation","kind","name","blocks","prop"}` |
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
 | `GET`, `POST /admin/api/lans/{id}/bots`          | Antwort: `{"bots","auto_count"}`. `POST` mit `{"count"}` legt bis zu 100 Bots an, siehe unten |
@@ -543,6 +547,9 @@ Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, 
 | `stack_max_members`      | 0 bis 1000       | Jellies pro Stapel, 0 heißt ohne Grenze                     |
 | `highlight_seconds`      | 1 bis 2592000    | So lange leuchtet ein hervorgehobenes Jelly                 |
 | `highlight_cooldown`     | 0 bis 2592000    | Zeit zwischen zwei Hervorhebungen, 0 schaltet sie ab        |
+| `room_width`             | 1 bis 1000       | Breite der echten Halle in Metern                           |
+| `room_depth`             | 1 bis 1000       | Tiefe der echten Halle in Metern                            |
+| `jelly_width`            | 0,05 bis 10      | Breite eines Jellies in Metern                              |
 | `max_players`            | 1 bis 100000     | Konten pro LAN                                              |
 | `max_streams`            | 1 bis 100000     | Offene Ereignis-Streams insgesamt                           |
 | `max_player_streams`     | 1 bis 1000       | Offene Ereignis-Streams pro Spieler                         |
@@ -560,6 +567,9 @@ Eine Karte sagt, was wo steht, und nie, wer es benutzt. Die Zuweisung macht der 
 }
 ```
 
+- `version` ist `1` (Zonen in Prozent der Bühne) oder `2` (Zonen in Metern der echten Halle, von links hinten gezählt).
+  Der Server rechnet Version 2 beim Import mit `room_width` und `room_depth` der LAN in Prozent um und speichert Prozent.
+  Ändert sich die Raumgröße danach, steht die Karte neu zu importieren.
 - `id` ist ein freier Text, höchstens 64 Zeichen, und erkennt die Zone beim nächsten Import wieder. Bekannte Zonen behalten
   Zuweisung und Sitzplatz-Code. Neue beginnen mit `none`. Fehlt eine, wird sie entfernt, und ihre Jellies verlieren den Platz.
   Von Hand angelegte Zonen bleiben unberührt.

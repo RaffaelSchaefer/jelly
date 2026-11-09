@@ -44,6 +44,9 @@ const (
 	defaultStackSeconds          = 120
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
+	defaultRoomWidthMeters       = 22.0
+	defaultRoomDepthMeters       = 16.1
+	defaultJellyWidthMeters      = 0.5
 )
 
 const (
@@ -124,6 +127,12 @@ type PublicRules struct {
 	HighlightSeconds int64 `json:"highlight_seconds"`
 	// HighlightCooldownSeconds is the time between two highlights of one player.
 	HighlightCooldownSeconds int64 `json:"highlight_cooldown"`
+	// RoomWidthMeters is the room from left to right in meters, the size of the real hall.
+	RoomWidthMeters float64 `json:"room_width"`
+	// RoomDepthMeters is the room from back to front in meters.
+	RoomDepthMeters float64 `json:"room_depth"`
+	// JellyWidthMeters is how wide a jelly is in the real hall.
+	JellyWidthMeters float64 `json:"jelly_width"`
 }
 
 // DefaultRules returns the starting values of a new LAN.
@@ -152,6 +161,9 @@ func DefaultRules() Rules {
 		StackMaxMembers:          NoStackLimit,
 		HighlightSeconds:         defaultHighlightSeconds,
 		HighlightCooldownSeconds: defaultHighlightCooldown,
+		RoomWidthMeters:          defaultRoomWidthMeters,
+		RoomDepthMeters:          defaultRoomDepthMeters,
+		JellyWidthMeters:         defaultJellyWidthMeters,
 		MaxPlayers:               defaultMaxPlayers,
 		MaxStreams:               defaultMaxStreams,
 		MaxPlayerStreams:         defaultMaxPlayerStreams,

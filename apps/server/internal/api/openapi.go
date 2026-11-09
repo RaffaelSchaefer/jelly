@@ -16,7 +16,7 @@ import (
 
 const (
 	// APIVersion is the version of `/v1`. Every new feature raises it, see `docs/api.md`.
-	APIVersion = "1.18.0"
+	APIVersion = "1.19.0"
 	apiTitle   = "Jelly API"
 	// versionPrefix only changes for a breaking change, which then lives next to the old one.
 	versionPrefix = "/v1"

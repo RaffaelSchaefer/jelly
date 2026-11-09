@@ -16,13 +16,14 @@ import {
   SRGBColorSpace,
   Vector3,
   WebGLRenderer,
+  type Mesh,
 } from "three";
 
-import type { FloorPoint, ScenePoint } from "./world.ts";
+import type { FloorPoint, RoomSize, ScenePoint } from "./world.ts";
 
-import { BACKGROUND_COLOR, createFloor } from "./floor.ts";
+import { BACKGROUND_COLOR, createFloor, fitFloor } from "./floor.ts";
 import { bendToLens, type ScreenPoint, type ScreenSize } from "./lens.ts";
-import { calculateCameraDistance, ROOM } from "./world.ts";
+import { calculateCameraDistance, toRoomRect } from "./world.ts";
 
 const FIELD_OF_VIEW_DEGREES = 30;
 /** How steeply the camera looks down on the room. */
@@ -48,6 +49,16 @@ export interface StageScene {
   renderer: WebGLRenderer;
   scene: Scene;
   camera: PerspectiveCamera;
+  floor: Mesh;
+}
+
+/** Where the stage is shown: its size in CSS pixels and how it is drawn there. */
+export interface StageScreen {
+  size: ScreenSize;
+  /** Drawing buffer pixels per CSS pixel. */
+  pixelRatio: number;
+  /** The fisheye the picture is shown through. */
+  lensStrength: number;
 }
 
 /** Creates renderer, scene, camera, light and floor. The renderer draws into its own canvas. */
@@ -61,39 +72,35 @@ export function createStageScene(): StageScene {
   const sky = new HemisphereLight(SKY_LIGHT.sky, SKY_LIGHT.ground, SKY_LIGHT.intensity);
   const sun = new DirectionalLight(SUN.color, SUN.intensity);
   sun.position.set(...SUN.direction);
-  scene.add(sky, sun, createFloor());
+  const floor = createFloor();
+  scene.add(sky, sun, floor);
   const camera = new PerspectiveCamera(FIELD_OF_VIEW_DEGREES, 1, NEAR_PLANE, FAR_PLANE);
-  return { renderer, scene, camera };
+  return { renderer, scene, camera, floor };
 }
 
-/** Lists the points that must stay on screen. */
-function listFramePoints(): ScenePoint[] {
+/** Lists the points of a room that must stay on screen. */
+function listFramePoints(room: RoomSize): ScenePoint[] {
+  const rect = toRoomRect(room);
   const points: ScenePoint[] = [];
-  for (const x of [ROOM.minX, ROOM.maxX]) {
+  for (const x of [rect.minX, rect.maxX]) {
     points.push(
-      { x, y: 0, z: ROOM.minZ },
-      { x, y: SIGN_TOP, z: ROOM.minZ },
-      { x, y: 0, z: ROOM.maxZ + NAME_REACH },
+      { x, y: 0, z: rect.minZ },
+      { x, y: SIGN_TOP, z: rect.minZ },
+      { x, y: 0, z: rect.maxZ + NAME_REACH },
     );
   }
   return points;
 }
 
-/**
- * Fits renderer and camera to the screen size in CSS pixels. `pixelRatio` is drawing buffer pixels
- * per CSS pixel and `lensStrength` the fisheye the picture is shown through.
- */
-export function resizeStageScene(
-  stage: StageScene,
-  size: ScreenSize,
-  pixelRatio: number,
-  lensStrength: number,
-): void {
+/** Fits renderer, floor and camera to a screen and a room. The camera sees the whole room. */
+export function resizeStageScene(stage: StageScene, screen: StageScreen, room: RoomSize): void {
   const { renderer, camera } = stage;
+  const { size, pixelRatio } = screen;
   // The lens copies the picture into a texture, so it may not outgrow the largest one of the GPU.
   const largest = renderer.capabilities.maxTextureSize / Math.max(1, size.width, size.height);
   renderer.setPixelRatio(Math.min(pixelRatio, largest));
   renderer.setSize(size.width, size.height, false);
+  fitFloor(stage.floor, room);
   camera.aspect = size.width / Math.max(1, size.height);
   const pitch = MathUtils.degToRad(PITCH_DEGREES);
   const view = {
@@ -102,27 +109,32 @@ export function resizeStageScene(
     aspect: camera.aspect,
     margin: FRAME_MARGIN,
   };
-  const target = { x: 0, y: 0, z: (ROOM.minZ + ROOM.maxZ) / 2 };
-  const distance = calculateCameraDistance(listFramePoints(), target, view);
+  // The room lies around the origin.
+  const target = { x: 0, y: 0, z: 0 };
+  const points = listFramePoints(room);
+  const distance = calculateCameraDistance(points, target, view);
   camera.position.set(
     target.x,
     target.y + Math.sin(pitch) * distance,
     target.z + Math.cos(pitch) * distance,
   );
   camera.lookAt(target.x, target.y, target.z);
-  fitThroughLens(camera, size, lensStrength);
+  // Nothing of the room lies farther away than its diagonal behind the target.
+  camera.far = Math.max(FAR_PLANE, distance + Math.hypot(room.width, room.depth));
+  fitThroughLens(camera, screen, points);
 }
 
 /**
  * Widens the view until the room stays on screen after the lens bends it. Widening also moves the
  * room toward the middle, so the smallest widening that fits is searched step by step.
  */
-function fitThroughLens(camera: PerspectiveCamera, size: ScreenSize, lensStrength: number): void {
+function fitThroughLens(camera: PerspectiveCamera, screen: StageScreen, points: ScenePoint[]) {
+  const { size, lensStrength } = screen;
   const tangent = Math.tan(MathUtils.degToRad(FIELD_OF_VIEW_DEGREES) / 2);
   const fits = (widening: number) => {
     camera.fov = MathUtils.radToDeg(2 * Math.atan(tangent * widening));
-    centerVertically(camera, size);
-    return listFramePoints().every((point) => {
+    centerVertically(camera, size, points);
+    return points.every((point) => {
       const bent = bendToLens(projectToScreen(camera, point, size), size, lensStrength);
       const reachX = Math.abs(bent.x - size.width / 2) - size.width / 2 / FRAME_MARGIN;
       const reachY = Math.abs(bent.y - size.height / 2) - size.height / 2 / FRAME_MARGIN;
@@ -149,12 +161,10 @@ function fitThroughLens(camera: PerspectiveCamera, size: ScreenSize, lensStrengt
  * Shifts the picture up or down so the room sits in the middle. Perspective makes the back of the
  * room smaller, so the fitted room would otherwise leave more space above it than below.
  */
-function centerVertically(camera: PerspectiveCamera, size: ScreenSize) {
+function centerVertically(camera: PerspectiveCamera, size: ScreenSize, points: ScenePoint[]) {
   camera.clearViewOffset();
   camera.updateMatrixWorld();
-  const heights = listFramePoints().map(
-    (point) => new Vector3(point.x, point.y, point.z).project(camera).y,
-  );
+  const heights = points.map((point) => new Vector3(point.x, point.y, point.z).project(camera).y);
   const middle = (Math.max(...heights) + Math.min(...heights)) / 2;
   camera.setViewOffset(
     size.width,

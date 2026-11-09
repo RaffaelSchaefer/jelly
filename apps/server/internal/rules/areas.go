@@ -56,16 +56,25 @@ type Area struct {
 	Prop string `json:"prop"`
 }
 
-// Room says what the coordinates of the stage mean, so they can become meters without a new API.
+// Room says what the coordinates of the stage mean. Positions stay percent of the room, so the
+// stage keeps working. `WidthMeters`, `DepthMeters` and `JellyMeters` give the real size, from
+// which clients can convert to meters.
 type Room struct {
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-	Unit   string `json:"unit"`
+	Width       int     `json:"width"`
+	Height      int     `json:"height"`
+	Unit        string  `json:"unit"`
+	WidthMeters float64 `json:"width_m"`
+	DepthMeters float64 `json:"depth_m"`
+	JellyMeters float64 `json:"jelly_m"`
 }
 
-// DescribeRoom returns the size of the room. All coordinates are percent so far.
-func DescribeRoom() Room {
-	return Room{Width: stageSize, Height: stageSize, Unit: roomUnitPercent}
+// DescribeRoom returns the size of the room of a LAN. All coordinates are percent so far.
+func DescribeRoom(public PublicRules) Room {
+	return Room{
+		Width: stageSize, Height: stageSize, Unit: roomUnitPercent,
+		WidthMeters: public.RoomWidthMeters, DepthMeters: public.RoomDepthMeters,
+		JellyMeters: public.JellyWidthMeters,
+	}
 }
 
 // HomeSpot is where a jelly wanders around, in percent of the stage.
