@@ -1,11 +1,13 @@
 /**
- * The room in 3D. The server speaks in percent of the stage, the scene in jelly units on the floor:
- * x runs to the right, z toward the camera, y up. A jelly is about 2.3 units tall.
+ * The room in 3D. The server speaks in percent of the stage and tells the real size of the hall in
+ * meters, the scene builds in jelly units on the floor: x runs to the right, z toward the camera, y
+ * up. A jelly is about 1.7 units wide and 2.3 units tall, so the room is as many jelly widths wide
+ * as a jelly fits into the real hall.
  *
  * @module
  */
 
-import type { StageArea, StagePoint } from "./types.ts";
+import type { StageArea, StagePoint, StageRoom } from "./types.ts";
 
 /** The server gives positions in percent of the stage. */
 export const STAGE_SIZE = 100;
@@ -13,13 +15,16 @@ export const STAGE_SIZE = 100;
 export const FULL_CIRCLE = 2 * Math.PI;
 /** Turning by this angle again and again spreads things evenly around a circle. */
 export const GOLDEN_ANGLE = 2.399963;
+/** Width of a jelly body in jelly units, the width `jelly_m` of the room gives in meters. */
+export const JELLY_WIDTH = 1.7;
+/** The lecture hall of the LAN, for a server that does not tell the size of its room yet. */
+const LECTURE_HALL = { width_m: 22, depth_m: 16.1, jelly_m: 0.5 };
 /**
- * Size of the room in jelly units. The stage percentages stretch over it. The hall is deeper than
- * wide: a place at a desk is a tenth of the width, about 2 units, and a desk row 2 % of the depth.
+ * The room the server measures `near_distance` and the spot of a trip in: its percentages stretched
+ * over 21 by 40 jelly units, whatever the size of the hall. It goes away once the server measures in
+ * meters, then a distance only scales with `jelly_m`.
  */
-export const ROOM_WIDTH = 21;
-/** Depth of the room in jelly units, see {@link ROOM_WIDTH}. */
-export const ROOM_DEPTH = 40;
+const SERVER_ROOM: RoomSize = { width: 21, depth: 40 };
 /**
  * The canvas has twice as many pixels per side as the screen, and the browser smooths them down.
  * That also smooths the edges of the raymarched jellies, which the GPU's own anti-aliasing misses.
@@ -61,27 +66,53 @@ export interface CameraView {
   margin: number;
 }
 
-/** The whole room on the floor. */
-export const ROOM: FloorRect = {
-  minX: -ROOM_WIDTH / 2,
-  minZ: -ROOM_DEPTH / 2,
-  maxX: ROOM_WIDTH / 2,
-  maxZ: ROOM_DEPTH / 2,
-};
+/** Size of the room on the floor in jelly units. The stage percentages stretch over it. */
+export interface RoomSize {
+  width: number;
+  depth: number;
+}
 
-/** Converts a stage position in percent to the floor. */
-export function toFloorPoint(point: StagePoint): FloorPoint {
+/** The real size of a room, as `GET /v1/stage` reports it. */
+export type RoomMeters = Pick<StageRoom, "width_m" | "depth_m" | "jelly_m">;
+
+/**
+ * Returns the size of the room in jelly units: a jelly stays {@link JELLY_WIDTH} wide, so the room
+ * is as many jelly widths wide and deep as jellies fit into the real hall. A server before API
+ * 1.17.0 sends no meters, and a size of 0 is no size: then the room is the lecture hall.
+ */
+export function measureRoom(room: RoomMeters): RoomSize {
+  const isMeasured = [room.width_m, room.depth_m, room.jelly_m].every((meters) => meters > 0);
+  const meters = isMeasured ? room : LECTURE_HALL;
+  const unitsPerMeter = JELLY_WIDTH / meters.jelly_m;
+  return { width: meters.width_m * unitsPerMeter, depth: meters.depth_m * unitsPerMeter };
+}
+
+/** The room until the server tells its size: the lecture hall. */
+export const DEFAULT_ROOM = measureRoom(LECTURE_HALL);
+
+/** Returns the whole room on the floor, around the origin. */
+export function toRoomRect(room: RoomSize): FloorRect {
   return {
-    x: (point.x / STAGE_SIZE - 0.5) * ROOM_WIDTH,
-    z: (point.y / STAGE_SIZE - 0.5) * ROOM_DEPTH,
+    minX: -room.width / 2,
+    minZ: -room.depth / 2,
+    maxX: room.width / 2,
+    maxZ: room.depth / 2,
+  };
+}
+
+/** Converts a stage position in percent to the floor of a room. */
+export function toFloorPoint(point: StagePoint, room: RoomSize): FloorPoint {
+  return {
+    x: (point.x / STAGE_SIZE - 0.5) * room.width,
+    z: (point.y / STAGE_SIZE - 0.5) * room.depth,
   };
 }
 
 /** Converts a point on the floor to a stage position in percent. Undoes {@link toFloorPoint}. */
-export function fromFloorPoint(point: FloorPoint): StagePoint {
+export function fromFloorPoint(point: FloorPoint, room: RoomSize): StagePoint {
   return {
-    x: (point.x / ROOM_WIDTH + 0.5) * STAGE_SIZE,
-    y: (point.z / ROOM_DEPTH + 0.5) * STAGE_SIZE,
+    x: (point.x / room.width + 0.5) * STAGE_SIZE,
+    y: (point.z / room.depth + 0.5) * STAGE_SIZE,
   };
 }
 
@@ -94,9 +125,9 @@ export function isOnStage(point: StagePoint): boolean {
 export type StageRect = Pick<StageArea, "x" | "y" | "width" | "height">;
 
 /** Converts a rectangle in percent to its rectangle on the floor, without any rotation. */
-export function toFloorRect(area: StageRect): FloorRect {
-  const start = toFloorPoint({ x: area.x, y: area.y });
-  const end = toFloorPoint({ x: area.x + area.width, y: area.y + area.height });
+export function toFloorRect(area: StageRect, room: RoomSize): FloorRect {
+  const start = toFloorPoint({ x: area.x, y: area.y }, room);
+  const end = toFloorPoint({ x: area.x + area.width, y: area.y + area.height }, room);
   return { minX: start.x, minZ: start.z, maxX: end.x, maxZ: end.z };
 }
 
@@ -112,6 +143,13 @@ export function shrinkRect(rect: FloorRect, margin: number): FloorRect {
 /** Returns the distance between two floor points. */
 export function measureDistance(from: FloorPoint, to: FloorPoint): number {
   return Math.hypot(to.x - from.x, to.z - from.z);
+}
+
+/** Returns the distance between two floor points of a room as the server measures it. */
+export function measureServerDistance(from: FloorPoint, to: FloorPoint, room: RoomSize): number {
+  const scaleX = SERVER_ROOM.width / room.width;
+  const scaleZ = SERVER_ROOM.depth / room.depth;
+  return Math.hypot((to.x - from.x) * scaleX, (to.z - from.z) * scaleZ);
 }
 
 /**

@@ -9,7 +9,7 @@
 import { Group, type Object3D } from "three";
 
 import type { StageArea } from "./types.ts";
-import type { FloorRect } from "./world.ts";
+import type { FloorRect, RoomSize } from "./world.ts";
 
 import {
   createBeanbag,
@@ -89,23 +89,27 @@ function placeProp(model: Object3D, placement: Placement, floor: number): Object
   return model;
 }
 
-/** Builds the model of one zone, or null for bare floor. */
-export function createProp(area: StageArea, platforms: Placement[]): Object3D | null {
+/** Builds the model of one zone in a room, or null for bare floor. */
+export function createProp(
+  area: StageArea,
+  platforms: Placement[],
+  room: RoomSize,
+): Object3D | null {
   const build = BUILDERS[area.prop];
   if (!build) return null;
-  const placement = placeArea(area);
+  const placement = placeArea(area, room);
   // A platform stands on the hall floor, everything else on whatever platform is there.
   const floor = isPlatformProp(area.prop) ? 0 : findFloorHeight(placement.middle, platforms);
   return placeProp(build(toLocalRect(placement), area), placement, floor);
 }
 
-/** Builds everything that stands in the room, except desks and cables. */
-export function createVenue(areas: StageArea[]): Group {
+/** Builds everything that stands in a room, except desks and cables. */
+export function createVenue(areas: StageArea[], room: RoomSize): Group {
   const venue = new Group();
-  const platforms = listPlatforms(areas);
+  const platforms = listPlatforms(areas, room);
   for (const area of areas) {
     if (area.prop === "desk" || area.prop === "cable") continue;
-    const model = createProp(area, platforms);
+    const model = createProp(area, platforms, room);
     if (model) venue.add(model);
   }
   return venue;

@@ -22,7 +22,7 @@ import { findPalette } from "./jellies.ts";
 import { FLAT_ORDER } from "./props.ts";
 import { createShadow } from "./shadow.ts";
 import { isOnTheWay } from "./walking.ts";
-import { toFloorPoint } from "./world.ts";
+import { toFloorPoint, type RoomSize } from "./world.ts";
 import { findFloorHeight, type Placement } from "./zones.ts";
 
 /** The crystal in jelly units: a long tip pointing at the floor and a short cap above it. */
@@ -70,6 +70,7 @@ export interface PointerFrame {
   color: string;
   /** The stage platforms, where the floor is raised. */
   platforms: Placement[];
+  room: RoomSize;
   serverTime: number;
   seconds: number;
   reducedMotion: boolean;
@@ -140,8 +141,8 @@ function animatePointer(pointer: StagePointer): void {
 
 /** Shows the pointer while the own jelly is on its way and lets it shrink away on arrival. */
 export function updatePointer(pointer: StagePointer, frame: PointerFrame): void {
-  const goal = frame.destination && toFloorPoint(frame.destination);
-  const wanted = goal && isOnTheWay(frame.move, goal, frame.serverTime) ? 1 : 0;
+  const goal = frame.destination && toFloorPoint(frame.destination, frame.room);
+  const wanted = goal && isOnTheWay(frame.move, goal, frame.serverTime, frame.room) ? 1 : 0;
   const step = frame.reducedMotion ? 1 : 1 - Math.exp(-GROW_RATE * frame.seconds);
   pointer.size += (wanted - pointer.size) * step;
   pointer.root.visible = pointer.size > SMALLEST_SIZE;

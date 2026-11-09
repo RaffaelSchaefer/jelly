@@ -197,6 +197,23 @@ fn the_stage_from_the_docs_parses_with_its_room_map() {
 }
 
 #[test]
+fn the_room_brings_the_size_of_the_hall_in_meters() {
+    let body = r#"{
+      "width": 100, "height": 100, "unit": "percent",
+      "width_m": 22, "depth_m": 16.1, "jelly_m": 0.5
+    }"#;
+    let room: Room = serde_json::from_str(body).unwrap();
+    assert_eq!(
+        (room.width_m, room.depth_m, room.jelly_m),
+        (22.0, 16.1, 0.5)
+    );
+    // Ein älterer Server kennt keine Meter, die Bühne zeigt dann den Hörsaal.
+    let older: Room =
+        serde_json::from_str(r#"{"width":100,"height":100,"unit":"percent"}"#).unwrap();
+    assert_eq!(older.jelly_m, 0.0);
+}
+
+#[test]
 fn a_refused_follow_keeps_the_server_message() {
     let message = "Zu diesem Jelly kannst du dich nicht stellen.";
     let body = json!({ "error": { "code": "invalid_follow", "message": message } }).to_string();
