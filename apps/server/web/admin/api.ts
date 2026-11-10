@@ -146,3 +146,9 @@ export function deleteLAN(lanID: number): Promise<unknown> {
 export function replaceRules(lanID: number, rules: GameRules): Promise<GameRules> {
   return sendRequest("PUT", `/lans/${lanID}/rules`, rules);
 }
+
+/** Loads the address of the stage with its key. */
+export async function loadStagePath(): Promise<string> {
+  const link = await sendRequest<{ path: string }>("GET", "/stage-link");
+  return link.path;
+}

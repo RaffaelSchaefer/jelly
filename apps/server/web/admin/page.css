@@ -99,8 +99,11 @@ main {
   border-radius: 8px;
   padding: 1.25rem;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   min-width: 0;
+  /* Names and codes without spaces break instead of widening the page. */
+  overflow-wrap: break-word;
 }
 
 .login {
@@ -110,6 +113,8 @@ main {
 
 .fields {
   display: grid;
+  /* A track as wide as its longest option would push the page sideways on a phone. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
 }
 
@@ -229,6 +234,7 @@ button:focus-visible {
 
 .detail {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   min-width: 0;
 }
@@ -264,12 +270,32 @@ button.is-armed {
   font-weight: 600;
 }
 
+.unit-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.unit-box input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.unit,
+.duration {
+  color: var(--muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
 .is-changed input {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
 
 select {
+  /* As a grid item a select is at least as wide as its longest option, unless this allows less. */
+  min-width: 0;
   max-width: 100%;
   padding: 0.45rem 0.55rem;
   border: 1px solid var(--line);
@@ -286,6 +312,7 @@ select:focus-visible {
 
 .shell {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
@@ -295,7 +322,7 @@ select:focus-visible {
   gap: 0.4rem;
 }
 
-.section-nav button[aria-current="true"] {
+.section-nav button[aria-current="page"] {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
@@ -418,6 +445,22 @@ td > button {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.75rem;
+}
+
+a.button-link {
+  margin-inline-start: auto;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.button-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .lan-select {

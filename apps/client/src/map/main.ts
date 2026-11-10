@@ -145,7 +145,7 @@ function applyState(page: MapPage, state: StageState) {
   page.players = state.players;
   page.clockOffset = state.server_time - Date.now();
   applyAway(page, own, trip);
-  const reduced = reducedMotion || OS_REDUCED_MOTION.matches;
+  const reduced = reducedMotion ?? OS_REDUCED_MOTION.matches;
   page.view?.setReducedMotion(reduced);
   page.view?.setFrameLimit(frameLimit);
   applyButtonLook(page, optimizedRendering);

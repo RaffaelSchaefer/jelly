@@ -4,10 +4,10 @@
  * @module
  */
 
-import { listLANs, type LANSummary } from "./api.ts";
+import { listLANs, loadStagePath, type LANSummary } from "./api.ts";
 import { createButton, createElement } from "./dom.ts";
 import { createFailureHandler, type FailureHandler } from "./failure.ts";
-import { formatDateTime } from "./format.ts";
+import { findLANPhase, formatDateTime } from "./format.ts";
 import { createPhaseChip, type Section, type SectionContext } from "./lanContext.ts";
 import { createLANForm } from "./lanForm.ts";
 import { createOverview } from "./overview.ts";
@@ -42,8 +42,23 @@ function createLANSelect(lans: LANSummary[], place: Place, go: (place: Place) =>
   return select;
 }
 
-/** Creates the line with the LAN, its phase and its period. */
-function createContextBar(lans: LANSummary[], place: Place, go: (place: Place) => void) {
+/** Creates the link that opens the stage in a new tab. The stage always shows the running LAN. */
+function createStageLink(stagePath: string, lan: LANSummary | undefined): HTMLElement {
+  const isRunning = lan !== undefined && findLANPhase(lan, Date.now()) === "running";
+  const link = createElement(
+    "a",
+    "button-link",
+    isRunning ? "Bühne öffnen" : "Bühne (laufende LAN)",
+  );
+  link.href = stagePath;
+  link.target = "_blank";
+  link.rel = "noopener";
+  return link;
+}
+
+/** Creates the line with the LAN, its phase, its period and the stage. */
+function createContextBar(frame: Frame, place: Place, go: (place: Place) => void) {
+  const { lans } = frame;
   const lan = lans.find((candidate) => candidate.id === place.lanID);
   return createElement(
     "div",
@@ -57,6 +72,7 @@ function createContextBar(lans: LANSummary[], place: Place, go: (place: Place) =
           "hint time",
           `${formatDateTime(lan.starts_at)} bis ${formatDateTime(lan.ends_at)}`,
         ),
+    createStageLink(frame.stagePath, lan),
   );
 }
 
@@ -73,7 +89,9 @@ function createNav(place: Place, go: (place: Place) => void): HTMLElement {
         createElement("span", "long-name", entry.text),
         createElement("span", "short-name", entry.shortText),
       );
-      button.setAttribute("aria-current", String(entry.section === place.section));
+      if (entry.section === place.section) {
+        button.setAttribute("aria-current", "page");
+      }
       return button;
     }),
   );
@@ -100,7 +118,7 @@ function createSection(section: Section, context: SectionContext, search: string
     case "players":
       return createPlayersSection(context, search);
     case "actions":
-      return createActionsSection(context.lan, context.onFailure);
+      return createActionsSection(context);
     case "room":
       return createRoomTab(context);
     case "settings":
@@ -118,6 +136,7 @@ interface Frame {
   lans: LANSummary[];
   onFailure: FailureHandler;
   search: string;
+  stagePath: string;
 }
 
 /** Shows the frame for the place in the address. */
@@ -138,7 +157,7 @@ function renderFrame(frame: Frame, refresh: (slug?: string) => void): void {
   frame.search = "";
   if (lan === undefined) {
     frame.root.replaceChildren(
-      createContextBar(frame.lans, place, go),
+      createContextBar(frame, place, go),
       createLANForm({
         onCreated: refresh,
         onFailure: frame.onFailure,
@@ -158,7 +177,7 @@ function renderFrame(frame: Frame, refresh: (slug?: string) => void): void {
   };
   const banner = createTestBanner(lan, go);
   frame.root.replaceChildren(
-    createContextBar(frame.lans, place, go),
+    createContextBar(frame, place, go),
     createNav(place, go),
     ...(banner === null ? [] : [banner]),
     createSection(place.section, context, search),
@@ -175,19 +194,22 @@ export async function createShell(onSessionEnded: () => void): Promise<HTMLEleme
     lans: await listLANs(),
     onFailure: createFailureHandler(onSessionEnded),
     search: "",
+    stagePath: await loadStagePath(),
   };
   // A new LAN passes its slug, so that the frame opens it.
   const refresh = (slug?: string) => {
-    listLANs()
-      .then((lans) => {
+    // Only a failed load reloads the page. A failing section stays visible instead of looping.
+    listLANs().then(
+      (lans) => {
         frame.lans = lans;
         const created = lans.find((lan) => lan.slug === slug);
         if (created !== undefined) {
           history.replaceState(null, "", writePlace({ lanID: created.id, section: "overview" }));
         }
         renderFrame(frame, refresh);
-      })
-      .catch(() => location.reload());
+      },
+      () => location.reload(),
+    );
   };
   window.addEventListener("hashchange", () => renderFrame(frame, refresh));
   renderFrame(frame, refresh);

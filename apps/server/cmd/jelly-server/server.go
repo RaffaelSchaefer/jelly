@@ -40,6 +40,10 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("JELLY_MIN_CLIENT_VERSION: %w", err)
 	}
+	isHTTPDemo := os.Getenv("JELLY_HTTP_DEMO") == "1"
+	if isHTTPDemo {
+		logger.WarnContext(appCtx, "admin cookie without Secure, only for a demo")
+	}
 	database, err := openDatabase(appCtx)
 	if err != nil {
 		return err
@@ -57,6 +61,7 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 		StageKey:         stageKey,
 		AdminSecret:      adminSecret,
 		MinClientVersion: minClientVersion,
+		IsHTTPDemo:       isHTTPDemo,
 		IsStopping:       func() bool { return appCtx.Err() != nil },
 		Web:              pages,
 	})

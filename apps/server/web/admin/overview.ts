@@ -11,6 +11,7 @@ import type { SectionContext } from "./lanContext.ts";
 import { createGatheringSummary } from "./schedule.ts";
 
 const RECENT_ACTIONS = 5;
+const TEXT_NO_CLIPBOARD = "Kopieren geht hier nicht. Bitte abschreiben.";
 
 /** Creates a card with a title, its content and a link to the section it belongs to. */
 function createCard(title: string, link: HTMLElement | null, ...content: Child[]) {
@@ -27,10 +28,15 @@ function createJoinCodeCard(context: SectionContext): HTMLElement {
   const code = context.lan.join_code;
   const message = createMessage();
   const copy = createButton("Kopieren", "quiet", () => {
+    // Plain HTTP in the LAN has no clipboard API, the code stays large enough to copy by hand.
+    if (!window.isSecureContext) {
+      message.showBad(TEXT_NO_CLIPBOARD);
+      return;
+    }
     navigator.clipboard
       .writeText(code ?? "")
       .then(() => message.showGood("Kopiert."))
-      .catch(() => message.showBad("Kopieren geht hier nicht. Bitte abschreiben."));
+      .catch(() => message.showBad(TEXT_NO_CLIPBOARD));
   });
   return createCard(
     "LAN-Code",
@@ -77,12 +83,12 @@ export function createOverview(context: SectionContext): HTMLElement {
     createSearchCard(context),
     createCard(
       "Essens-Event und Siegerehrung",
-      createButton("Starten", "quiet", () => open("actions")),
-      createGatheringSummary(lan, onFailure),
+      createButton("Zu Aktionen", "quiet", () => open("actions")),
+      createGatheringSummary(lan, onFailure).root,
     ),
     createCard(
       "Laufende Event-Codes",
-      createButton("Neuer Event-Code", "quiet", () => open("actions")),
+      createButton("Zu Aktionen", "quiet", () => open("actions")),
       createRunningCodes(lan, onFailure),
     ),
     createCard(

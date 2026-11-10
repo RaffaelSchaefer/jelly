@@ -24,6 +24,8 @@ const CLASS_CHANGED = "is-changed";
 interface RuleField {
   rule: RuleText;
   field: Field;
+  /** The readable length of a number of seconds, right beside the field. */
+  duration: HTMLElement;
 }
 
 /** The parts of the form that its actions work on. */
@@ -35,17 +37,20 @@ interface RulesFormParts {
   discard: HTMLButtonElement;
 }
 
-/** Writes the help line, which also says how long a number of seconds is. */
-function writeHint({ rule, field }: RuleField): void {
-  const parts = [
+/** Names the unit shown inside the field, if the label does not say it already. */
+function nameUnit(rule: RuleText): string {
+  const names: Partial<Record<RuleText["unit"], string>> = { seconds: "s", percent: "%", xp: "XP" };
+  return names[rule.unit] ?? "";
+}
+
+/** Writes how long a number of seconds is, and the help line. */
+function writeHint({ rule, field, duration }: RuleField): void {
+  duration.textContent =
     rule.unit === "seconds" && field.input.value !== ""
-      ? formatDuration(Number(field.input.value))
-      : undefined,
-    rule.unit === "percent" ? "Prozent" : undefined,
-    rule.hint,
-  ].filter((part) => part !== undefined);
-  field.hint.textContent = parts.join(". ");
-  field.hint.hidden = parts.length === 0;
+      ? `= ${formatDuration(Number(field.input.value))}`
+      : "";
+  field.hint.textContent = rule.hint ?? "";
+  field.hint.hidden = rule.hint === undefined;
 }
 
 /** Reads all fields. Gives `null` when one is empty. */
@@ -63,7 +68,11 @@ function createRuleField(rule: RuleText, lan: LANSummary): RuleField {
   field.input.step = allowsDecimals(rule) ? "any" : "1";
   field.input.value = String(lan.rules[rule.key] ?? "");
   field.input.disabled = rule.key === RULE_XP_PER_LEVEL && Date.now() >= lan.starts_at;
-  return { rule, field };
+  const duration = createElement("span", "duration");
+  const box = createElement("div", "unit-box");
+  field.input.replaceWith(box);
+  box.append(field.input, createElement("span", "unit", nameUnit(rule)), duration);
+  return { rule, field, duration };
 }
 
 /** Shows which fields differ from the saved rules and what can be done about it. */

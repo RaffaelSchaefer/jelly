@@ -5,10 +5,8 @@
  */
 
 import type { LANSummary } from "./api.ts";
-import { redeemWithBots } from "./apiBots.ts";
 import { createEventCode, endEventCode, listEventCodes, type EventCode } from "./apiEvents.ts";
 import {
-  createButton,
   createConfirmButton,
   createElement,
   createField,
@@ -42,15 +40,7 @@ function createCodeActions(
       .then(reload)
       .catch((error: unknown) => onFailure(error, message.showBad));
   });
-  const redeem = createButton("Bots lösen ein", "quiet", () => {
-    redeemWithBots(code.lan_id, code.code)
-      .then(([redeemed, all]) => {
-        message.showGood(`${redeemed} von ${all} Bots haben „${code.code}“ eingelöst.`);
-        reload();
-      })
-      .catch((error: unknown) => onFailure(error, message.showBad));
-  });
-  return createElement("div", "row-actions", redeem, end);
+  return createElement("div", "row-actions", end);
 }
 
 /** Creates the rows, with a button to end every code that still works or will work. */

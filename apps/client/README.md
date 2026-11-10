@@ -157,8 +157,9 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   denselben Spielstand überschreiben.
 - Animation mit 30 Bildern pro Sekunde, einstellbar unter „Bildrate“ von 5 bis 144 FPS oder unbegrenzt,
   begrenzter Pixeldichte und Pause bei verborgenem
-  WebView. Die Option „Weniger Bewegung“ und die entsprechende Systemeinstellung reduzieren die
-  Animation auf eine statische Darstellung.
+  WebView. Die Option „Weniger Bewegung“ reduziert die Animation auf eine statische Darstellung.
+  Solange niemand sie gestellt hat, folgt sie der Systemeinstellung (`prefers-reduced-motion`, unter
+  Windows „Animationseffekte“); der Schalter zeigt den wirksamen Wert und übersteuert das System.
 - „Optimierter Modus“ in den Einstellungen senkt die Grafiklast für ältere PCs: Das flüssige Glas
   entfällt, die Bedienelemente werden feste Flächen, die Pixeldichte bleibt bei 1 und der Körper-Shader
   verzichtet auf den Weg durchs Innere. Jelly behält Form, Mimik, Cosmetics und die eingestellte Bildrate.
@@ -268,9 +269,28 @@ pnpm run tauri build -- --debug --no-bundle
 ```
 
 `pnpm lint` prüft TypeScript mit oxlint und Rust mit clippy (Warnungen sind Fehler). Der letzte
-Befehl erstellt einen nativen Debug-Build, unter Windows in `src-tauri/target/debug/jelly.exe`.
-Installer, Signierung und Updates sind noch nicht konfiguriert. `pnpm run check` kombiniert die
-Frontend-Tests, den Frontend-Build und die Rust-Tests.
+Befehl erstellt einen nativen Debug-Build ohne Installer, unter Windows in
+`src-tauri/target/debug/jelly.exe`. Ein normales `pnpm run tauri build` baut die fertigen Bundles
+und Installer (`.dmg`/`.app` für macOS, `.msi`/`.exe` für Windows, `.deb`/`.rpm`/`.AppImage` für
+Linux). In GitHub Actions macht das `.github/workflows/client.yml`: Pull Requests laufen nur durch die
+Prüfungen, gebaut wird beim manuellen Start und bei einem Tag. Die Server-Adresse kommt dort aus der
+Eingabe des manuellen Starts, sonst aus der Repository-Variable `JELLY_SERVER_URL`. Ohne beide zeigen
+die Bundles auf `http://localhost:8080` und taugen nicht für die LAN.
+
+Ein Release entsteht aus einem Tag. Vorher die Version in `src-tauri/tauri.conf.json` anheben, dann:
+
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Der Lauf bricht ab, wenn der Tag nicht zur Version passt oder `JELLY_SERVER_URL` fehlt. Ein Bindestrich
+im Tag (`v0.2.0-alpha.1`) macht daraus eine Vorabversion. Die macOS-Bundles sind nur ad-hoc signiert:
+Beim ersten Start blockiert macOS Jelly, freigeben geht unter Systemeinstellungen, Datenschutz &
+Sicherheit, „Trotzdem öffnen“. Echte Signierung und automatische Updates sind noch nicht
+konfiguriert.
+
+`pnpm run check` kombiniert die Frontend-Tests, den Frontend-Build und die Rust-Tests.
 
 Die Emote- und Schild-Hooks und die Stimme lassen sich ohne zusätzliche Test-Bibliothek im Browser prüfen: Nach
 `pnpm webpreview:dev` die Seiten `http://127.0.0.1:1420/scripts/emotes-check.html` und

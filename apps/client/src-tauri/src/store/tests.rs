@@ -14,7 +14,7 @@ fn secret_and_settings_survive_reopening() {
     store.set_secret("geheim".into()).unwrap();
     store
         .set_settings(Settings {
-            reduced_motion: true,
+            reduced_motion: Some(true),
             size: 130,
             sound: false,
             volume: 40,
@@ -24,7 +24,7 @@ fn secret_and_settings_survive_reopening() {
         .unwrap();
     let restored = Store::open(path).unwrap();
     assert_eq!(restored.local.secret.as_deref(), Some("geheim"));
-    assert!(restored.local.settings.reduced_motion);
+    assert_eq!(restored.local.settings.reduced_motion, Some(true));
     assert_eq!(restored.local.settings.size, 130);
     assert!(!restored.local.settings.sound);
     assert_eq!(restored.local.settings.volume, 40);
@@ -155,7 +155,7 @@ fn a_save_file_without_sound_loads_with_sound_on_at_full_volume() {
     fs::write(&path, older).unwrap();
     let restored = Store::open(path).unwrap();
     assert_eq!(restored.local.secret.as_deref(), Some("geheim"));
-    assert!(restored.local.settings.reduced_motion);
+    assert_eq!(restored.local.settings.reduced_motion, Some(true));
     assert!(restored.local.settings.sound);
     assert_eq!(restored.local.settings.volume, MAX_VOLUME);
     assert!(!restored.local.settings.optimized_rendering);
@@ -163,6 +163,16 @@ fn a_save_file_without_sound_loads_with_sound_on_at_full_volume() {
         restored.local.settings.frame_limit,
         Some(DEFAULT_FRAME_LIMIT)
     );
+}
+
+#[test]
+fn a_save_file_without_reduced_motion_follows_the_system() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    let older = r#"{"schemaVersion":2,"token":"geheim","settings":{"size":110}}"#;
+    fs::write(&path, older).unwrap();
+    let restored = Store::open(path).unwrap();
+    assert_eq!(restored.local.settings.reduced_motion, None);
 }
 
 #[test]

@@ -34,6 +34,10 @@ type Dependencies struct {
 	AdminSecret string
 	// MinClientVersion is the oldest app that still works. Empty means no minimum.
 	MinClientVersion string
+	// IsHTTPDemo lets the admin cookie travel over plain HTTP, for a demo opened to the local
+	// network.
+	// Browsers drop Secure cookies from http://<address>, so the login would not stick there.
+	IsHTTPDemo bool
 	// IsStopping tells long-running streams to end, so a shutdown does not wait for them.
 	IsStopping func() bool
 	// Web serves the stage, admin and test pages.
