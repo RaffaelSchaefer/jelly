@@ -133,10 +133,32 @@ func (server *apiServer) runBotAction(ctx context.Context, botID int64, action b
 		err = server.Store.GiveXP(ctx, botID, action.XP, now)
 	case rules.BotActionRedeem:
 		_, err = server.Store.RedeemEventCode(ctx, botID, action.Code, now)
+	case rules.BotActionPurchase:
+		err = server.buySomething(ctx, botID, now)
 	default:
 		err = store.ErrInvalidInput
 	}
 	return err
+}
+
+// buySomething lets a bot buy an affordable cosmetic it does not own yet. With not enough coins
+// for anything, it buys nothing, like a player would wait too.
+func (server *apiServer) buySomething(ctx context.Context, botID, now int64) error {
+	state, err := server.Store.LoadPlayerState(ctx, botID, now)
+	if err != nil {
+		return err
+	}
+	for _, cosmetic := range rules.ListCosmetics() {
+		if cosmetic.Unlock != rules.UnlockShop {
+			continue
+		}
+		if slices.Contains(state.Cosmetics, cosmetic.Key) || cosmetic.Price > state.Coins {
+			continue
+		}
+		_, err = server.Store.PurchaseCosmetic(ctx, botID, cosmetic.Key, now)
+		return err
+	}
+	return nil
 }
 
 // followSomeone lets a bot follow another jelly on the stage.

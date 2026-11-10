@@ -43,6 +43,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"GET /admin/api/lans/{id}/gathering":             server.handleLoadGathering,
 		"POST /admin/api/event-codes/{id}/end":           server.handleEndEventCode,
 		"POST /admin/api/players/{id}/xp":                server.handleGiveXP,
+		"POST /admin/api/players/{id}/coins":             server.handleGiveCoins,
+		"DELETE /admin/api/players/{id}/purchases/{key}": server.handleRefundPurchase,
 		"POST /admin/api/players/{id}/achievements":      server.handleGrantAchievement,
 		"GET /admin/api/achievements":                    server.handleListAchievements,
 		"GET /admin/api/stage-link":                      server.handleStageLink,

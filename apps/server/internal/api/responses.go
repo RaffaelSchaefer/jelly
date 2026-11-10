@@ -194,6 +194,19 @@ func listCosmeticErrors() []knownError {
 			http.StatusConflict, "cosmetic_locked",
 			"Dieses Cosmetic ist noch nicht freigeschaltet.",
 		}},
+		{rules.ErrNotForSale, problem{
+			http.StatusConflict, "not_for_sale", "Dieses Cosmetic steht nicht im Shop.",
+		}},
+		{rules.ErrAlreadyOwned, problem{
+			http.StatusConflict, "already_owned", "Dieses Cosmetic hast du schon.",
+		}},
+		{rules.ErrNotEnoughCoins, problem{
+			http.StatusConflict, "not_enough_coins",
+			"Dir fehlen Münzen für dieses Cosmetic.",
+		}},
+		{store.ErrPurchaseNotFound, problem{
+			http.StatusNotFound, "purchase_not_found", "Dieses Cosmetic hast du nicht gekauft.",
+		}},
 	}
 }
 

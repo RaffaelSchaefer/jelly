@@ -16,6 +16,8 @@ export interface PlayerSummary {
   total_xp: number;
   lans: number;
   last_seen_at: number;
+  coins: number;
+  purchases: PlayerPurchase[];
 }
 
 /** A code that gives an account a new secret once. */
@@ -55,6 +57,24 @@ export function resetPlayerName(playerID: number): Promise<unknown> {
 /** Gives an account XP in its current LAN, as if it had earned it. XP is never taken away. */
 export function giveXP(playerID: number, xp: number): Promise<unknown> {
   return sendRequest("POST", `/players/${playerID}/xp`, { xp });
+}
+
+/** Gives an account coins in its current LAN, as if it had earned them. */
+export function giveCoins(playerID: number, coins: number): Promise<unknown> {
+  return sendRequest("POST", `/players/${playerID}/coins`, { coins });
+}
+
+/** A purchase an account has made. */
+export interface PlayerPurchase {
+  cosmetic_key: string;
+  price: number;
+  lan_id: number | null;
+  created_at: number;
+}
+
+/** Takes a bought cosmetic back and refunds its price. */
+export function refundPurchase(playerID: number, key: string): Promise<unknown> {
+  return sendRequest("DELETE", `/players/${playerID}/purchases/${encodeURIComponent(key)}`);
 }
 
 /** An achievement of the catalog. */

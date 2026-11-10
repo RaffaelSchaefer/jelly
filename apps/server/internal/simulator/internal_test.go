@@ -10,7 +10,7 @@ func TestChooseActionCoversAllWeights(t *testing.T) {
 	for roll := range totalWeight() {
 		seen[chooseAction(roll)] = true
 	}
-	if len(seen) != 6 {
+	if len(seen) != 7 {
 		t.Fatalf("actions: %v", seen)
 	}
 }

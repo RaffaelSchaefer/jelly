@@ -13,22 +13,24 @@ import (
 
 // Weights of the bot actions. A poke is the most common action of a real player.
 const (
-	weightPoke    = 35
-	weightReport  = 10
-	weightEmote   = 20
-	weightSign    = 10
-	weightFollow  = 10
-	weightPartner = 15
+	weightPoke     = 35
+	weightReport   = 10
+	weightEmote    = 20
+	weightSign     = 10
+	weightFollow   = 10
+	weightPartner  = 15
+	weightPurchase = 5
 )
 
 // Everything a bot can do.
 const (
-	actionPoke    = "poke"
-	actionReport  = "report"
-	actionEmote   = "emote"
-	actionSign    = "sign"
-	actionFollow  = "follow"
-	actionPartner = "partner"
+	actionPoke     = "poke"
+	actionReport   = "report"
+	actionEmote    = "emote"
+	actionSign     = "sign"
+	actionFollow   = "follow"
+	actionPartner  = "partner"
+	actionPurchase = "purchase"
 )
 
 const (
@@ -42,19 +44,25 @@ const apiPrefix = "/v1"
 
 // Field names and paths of the API.
 const (
-	fieldCode    = "code"
-	fieldKey     = "key"
-	fieldKind    = "kind"
-	pathPokes    = apiPrefix + "/pokes"
-	pathReports  = apiPrefix + "/reports"
-	pathEmote    = apiPrefix + "/emotes"
-	pathFollow   = apiPrefix + "/trips/follow"
-	pathTrip     = apiPrefix + "/trips/current"
-	pathSign     = apiPrefix + "/signs/current"
-	pathState    = apiPrefix + "/stage"
-	pathRegister = apiPrefix + "/auth/redeem"
-	pathInvites  = apiPrefix + "/partner-emotes"
+	fieldCode     = "code"
+	fieldKey      = "key"
+	fieldKind     = "kind"
+	pathPokes     = apiPrefix + "/pokes"
+	pathReports   = apiPrefix + "/reports"
+	pathEmote     = apiPrefix + "/emotes"
+	pathFollow    = apiPrefix + "/trips/follow"
+	pathTrip      = apiPrefix + "/trips/current"
+	pathSign      = apiPrefix + "/signs/current"
+	pathState     = apiPrefix + "/stage"
+	pathMe        = apiPrefix + "/players/me"
+	pathCatalog   = apiPrefix + "/catalog"
+	pathPurchases = apiPrefix + "/purchases"
+	pathRegister  = apiPrefix + "/auth/redeem"
+	pathInvites   = apiPrefix + "/partner-emotes"
 )
+
+// unlockShop marks a catalog entry that players buy with coins.
+const unlockShop = "shop"
 
 const (
 	// One in this many sign changes raises a sign, the others lower it.
@@ -116,6 +124,7 @@ func chooseAction(roll int) string {
 		{actionSign, weightSign},
 		{actionFollow, weightFollow},
 		{actionPartner, weightPartner},
+		{actionPurchase, weightPurchase},
 	}
 	for _, entry := range entries {
 		if roll < entry.weight {
@@ -128,7 +137,8 @@ func chooseAction(roll int) string {
 
 // totalWeight is the sum of all action weights.
 func totalWeight() int {
-	return weightPoke + weightReport + weightEmote + weightSign + weightFollow + weightPartner
+	return weightPoke + weightReport + weightEmote + weightSign + weightFollow +
+		weightPartner + weightPurchase
 }
 
 // pickNumber returns a number from 0 to `limit` - 1.
@@ -254,9 +264,45 @@ func (player *bot) act(ctx context.Context, action string) (int, error) {
 		return player.changeFollow(ctx)
 	case actionPartner:
 		return player.doPartnerEmote(ctx)
+	case actionPurchase:
+		return player.doPurchase(ctx)
 	default:
 		return player.post(ctx, pathPokes, nil)
 	}
+}
+
+// doPurchase buys an affordable cosmetic from the catalog that this bot does not own yet.
+// Without one, it pokes instead, like a bot that saves up.
+func (player *bot) doPurchase(ctx context.Context) (int, error) {
+	var ownState struct {
+		Coins     int      `json:"coins"`
+		Cosmetics []string `json:"cosmetics"`
+	}
+	status, err := player.get(ctx, pathMe, &ownState)
+	if err != nil || status != http.StatusOK {
+		return status, err
+	}
+	var catalog struct {
+		Cosmetics []struct {
+			Key    string `json:"key"`
+			Unlock string `json:"unlock"`
+			Price  int    `json:"price"`
+		} `json:"cosmetics"`
+	}
+	status, err = player.get(ctx, pathCatalog, &catalog)
+	if err != nil || status != http.StatusOK {
+		return status, err
+	}
+	for _, cosmetic := range catalog.Cosmetics {
+		if cosmetic.Unlock != unlockShop || cosmetic.Price > ownState.Coins {
+			continue
+		}
+		if slices.Contains(ownState.Cosmetics, cosmetic.Key) {
+			continue
+		}
+		return player.post(ctx, pathPurchases, map[string]string{fieldKey: cosmetic.Key})
+	}
+	return player.post(ctx, pathPokes, nil)
 }
 
 // post sends a body and ignores the answer.
