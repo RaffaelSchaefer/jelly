@@ -1,5 +1,5 @@
 /* The window is transparent only outside its rounded corners. Inside, the room fades into its floor colour. */
-:root { --radius: 26px; --floor: #eef4fa; }
+:root { --radius: 26px; --floor: #eef4fa; --ink: #171d25; }
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
 button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 button:focus-visible { outline: 2px solid #2059ed; outline-offset: 3px; }
@@ -7,64 +7,107 @@ button:focus-visible { outline: 2px solid #2059ed; outline-offset: 3px; }
 #frame { position: relative; width: 100vw; height: 100vh; }
 /* Solid on purpose: A see-through panel lets a dark desktop show as a dark fade, and `backdrop-filter` cannot blur what lies behind the window. The rim keeps an edge on a light desktop. */
 #frame::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); background: var(--floor); box-shadow: inset 0 0 0 1px #17243a26; pointer-events: none; }
-/* The picture fades out towards the rim, into the panel behind it. */
-#map { position: relative; z-index: 1; display: block; width: 100%; height: 100%; border-radius: var(--radius); -webkit-mask-image: radial-gradient(ellipse 72% 72% at center, #000 80%, transparent 100%); mask-image: radial-gradient(ellipse 72% 72% at center, #000 80%, transparent 100%); }
+/* Das Bild läuft zum Rand hin in die Fläche dahinter aus. Es blendet ein, sobald der erste Stand da ist, während die Kamera vom eigenen Jelly wegfliegt. */
+#map { position: relative; z-index: 1; display: block; width: 100%; height: 100%; border-radius: var(--radius); -webkit-mask-image: radial-gradient(ellipse 72% 72% at center, #000 80%, transparent 100%); mask-image: radial-gradient(ellipse 72% 72% at center, #000 80%, transparent 100%); opacity: 0; transition: opacity 450ms ease-out; }
+#frame[data-ready] #map { opacity: 1; }
+/* Beim Ziehen gilt die greifende Hand, auch über einem Jelly. */
+#frame[data-dragging] #map { cursor: grabbing !important; }
 
 /* Window tools like the pet: drag grip on the left, minimize and close on the right. */
 #tools { position: absolute; top: 10px; right: 12px; left: 12px; z-index: 3; display: flex; justify-content: space-between; height: 30px; }
 #tools-right { display: flex; gap: 1px; }
-.tool { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 5px; border: 0; border-radius: 9px; background: transparent; color: #171d25; transition: background 120ms, box-shadow 120ms; }
+.tool { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 5px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); transition: background 120ms, box-shadow 120ms; }
 .tool svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .tool:hover { background: #ffffffcc; box-shadow: inset 0 0 0 1px #ffffff, 0 3px 10px #0002; }
 #drag { cursor: grab; }
 
-/* Right below the tools: The hall is deeper than wide and narrows towards the back, so this corner stays free. */
-#find-open { position: absolute; top: 48px; right: 1rem; z-index: 3; }
-#highlight-own { position: absolute; top: 90px; right: 1rem; z-index: 3; }
-#leave { position: absolute; top: 132px; right: 1rem; z-index: 3; }
-#leave[hidden] { display: none; }
-
 /* Knöpfe und Hinweise der Karte. Im optimierten Modus und ohne WebGL fehlt `data-glass`, dann bleiben sie einfarbig. */
-.glass-pill { margin: 0; padding: 0.55rem 1rem; border: 0; border-radius: 11px; background: #171d25; color: #f4f8fa; font: 600 0.8125rem system-ui, sans-serif; box-shadow: 0 3px 10px #0003; }
+.glass-pill { margin: 0; padding: 0.55rem 1rem; border: 0; border-radius: 11px; background: var(--ink); color: #f4f8fa; font: 600 0.8125rem system-ui, sans-serif; box-shadow: 0 3px 10px #0003; }
 button.glass-pill:hover { background: #262e38; }
+.icon-pill { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; }
+.icon-pill svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Die Tropfen zeichnet `glass.ts` über das ganze Fenster. Hell wie am Jelly, auf dem blassen Glas hält der Schatten den Text lesbar. */
 #glass { position: absolute; inset: 0; z-index: 2; display: block; width: 100%; height: 100%; pointer-events: none; }
 html:not([data-glass]) #glass { display: none; }
 html[data-glass] .glass-pill { background: transparent; color: #ffffff; text-shadow: 0 1px 2px #0b1a2bb3, 0 0 6px #0b1a2b66; box-shadow: none; transition: scale 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+html[data-glass] .icon-pill svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 /* Der Tropfen liest die Lage des Knopfs ab und wächst mit ihm. */
 html[data-glass] button.glass-pill:hover { background: transparent; scale: 1.06; }
 html[data-glass] button.glass-pill:active { scale: 0.96; }
-@media (prefers-reduced-motion: reduce) { html[data-glass] .glass-pill { transition: none; } }
 
-/* Die Fenster mit Gesten und Aktionen sitzen am Jelly, `partner.ts` setzt die Lage. Dicht genug, damit die Kapseln ineinanderfließen. */
+/* Die Leiste unten: das eigene Jelly, Suchen und Hervorheben, dann die Kamera. Ein Tropfen für alles. Die Bühne hält die Halle darüber frei (`DOCK_BAND` in `main.ts`). */
+#dock { position: absolute; bottom: 14px; left: 50%; z-index: 3; display: flex; align-items: center; gap: 2px; max-width: calc(100% - 2rem); padding: 6px 8px; box-sizing: border-box; border-radius: 16px; translate: -50% 0; white-space: nowrap; }
+.dock-group { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.dock-divider { flex: none; width: 1px; height: 22px; margin: 0 6px; background: currentColor; opacity: 0.35; }
+#own-state[hidden], #own-state[hidden] + .dock-divider { display: none; }
+#dock .tool { flex: none; width: 36px; height: 36px; padding: 7px; border-radius: 10px; color: inherit; }
+#dock .tool svg { width: 22px; height: 22px; }
+#dock .tool:hover { background: #ffffff2e; box-shadow: none; }
+#dock .tool:active { scale: 0.92; }
+html[data-glass] #dock .tool svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
+/* Gedrückt: Die Kamera folgt dem eigenen Jelly, oder die Suche ist offen. */
+#zoom-own[aria-pressed="true"], #find-open[aria-expanded="true"] { background: #ffffff38; }
+.follow-dot { fill: currentColor; stroke: none; opacity: 0; transition: opacity 160ms; }
+#zoom-own[aria-pressed="true"] .follow-dot { opacity: 1; }
+#zoom-level { min-width: 2.7em; font-size: 0.75rem; font-variant-numeric: tabular-nums; text-align: center; opacity: 0.9; }
+#own-state { gap: 0.5rem; padding-left: 0.45rem; font-size: 0.8125rem; }
+#own-dot { flex: none; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--dot, #7ed9bd); box-shadow: 0 0 0 1.5px #ffffffe6, 0 0 7px var(--dot-glow, #7ed9bd); }
+#own-text { min-width: 0; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; }
+#dock #leave { width: 26px; height: 26px; padding: 4px; }
+#dock #leave svg { width: 18px; height: 18px; }
+#leave[hidden] { display: none; }
+
+/* Tooltips nennen Aktion und Taste. Sie kommen nach kurzem Verweilen: über der Leiste, neben dem Jelly und unter dem Hinweis oben. */
+[data-tip] { position: relative; }
+[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 12px); left: 50%; z-index: 4; padding: 0.3rem 0.55rem; border-radius: 7px; background: var(--ink); color: #f4f8fa; font: 600 0.75rem system-ui, sans-serif; text-shadow: none; white-space: nowrap; pointer-events: none; opacity: 0; translate: -50% 4px; transition: opacity 120ms, translate 120ms; }
+[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; translate: -50% 0; transition-delay: 350ms; }
+/* Eine Meldung über der Leiste geht vor, sonst lägen zwei dunkle Blasen übereinander. */
+#frame:has(#status:not([hidden])) #dock [data-tip]::after { display: none; }
+#jelly-menu [data-tip]::after { top: 50%; bottom: auto; left: calc(100% + 10px); translate: 4px -50%; }
+#jelly-menu [data-tip]:hover::after, #jelly-menu [data-tip]:focus-visible::after { translate: 0 -50%; }
+#partner-bar [data-tip]::after { top: calc(100% + 10px); bottom: auto; translate: -50% -4px; }
+#partner-bar [data-tip]:hover::after, #partner-bar [data-tip]:focus-visible::after { translate: -50% 0; }
+
+/* Die Fenster mit Gesten und Aktionen bleiben an ihrem Jelly, `partner.ts` setzt sie in jedem Bild. Dicht genug, damit die Kapseln ineinanderfließen. */
 #partner-menu, #jelly-menu { position: absolute; z-index: 3; display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+#jelly-menu { align-items: center; }
 #partner-menu[hidden], #jelly-menu[hidden] { display: none; }
-/* Oben in der Mitte: Dort liegen weder Fensterknöpfe noch „Weggehen“. */
-#partner-bar { position: absolute; top: 12px; left: 50%; z-index: 3; display: flex; gap: 6px; translate: -50% 0; white-space: nowrap; }
+.follow-leave, #jelly-follow[data-target] .follow-join { display: none; }
+#jelly-follow[data-target] .follow-leave { display: block; }
+/* Oben in der Mitte: Dort liegen keine Fensterknöpfe, und die Leiste bleibt frei. */
+#partner-bar { position: absolute; top: 12px; left: 50%; z-index: 3; display: flex; align-items: center; gap: 6px; translate: -50% 0; white-space: nowrap; }
 #partner-bar[hidden] { display: none; }
+#partner-note { padding-block: 0.7rem; }
 
-/* Die Suche nimmt den Platz der festen Knöpfe ein: eine Glasfläche wie die Schilder am Jelly, oben das Feld, darunter die Treffer. Das Feld liegt unter dem Glanzstreifen der Fläche, damit er nicht durch den Text läuft. */
-#frame[data-finding] #find-open, #frame[data-finding] #highlight-own, #frame[data-finding] #leave { display: none; }
-#find-panel { position: absolute; top: 48px; right: 1rem; z-index: 3; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; width: 15rem; padding: 1.35rem 0.75rem 0.85rem; }
+/* Die Suche geht über der Leiste auf: das Feld unten an der Leiste, der beste Treffer direkt darüber. */
+#find-panel { position: absolute; bottom: 74px; left: 50%; z-index: 3; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; width: 15rem; padding: 0.85rem 0.75rem 0.75rem; translate: -50% 0; }
 #find-panel[hidden] { display: none; }
-#find-input { box-sizing: border-box; width: 100%; margin-bottom: 4px; padding: 0.4rem 1.9rem 0.5rem 0.55rem; border: 0; border-bottom: 1px solid #ffffff66; border-radius: 0; background: transparent; color: inherit; font: inherit; text-shadow: inherit; outline: 0; appearance: none; }
+#find-field { position: relative; }
+#find-input { box-sizing: border-box; width: 100%; padding: 0.45rem 1.9rem 0.45rem 0.55rem; border: 0; border-bottom: 1px solid #ffffff66; border-radius: 0; background: transparent; color: inherit; font: inherit; text-shadow: inherit; outline: 0; appearance: none; }
 #find-input::-webkit-search-cancel-button { display: none; }
 #find-input::placeholder { color: inherit; opacity: 0.85; }
 #find-input:focus { border-bottom-color: #ffffffd9; }
-#find-close { position: absolute; top: 1.25rem; right: 0.7rem; width: 26px; height: 26px; padding: 4px; color: #ffffff; filter: drop-shadow(0 1px 2px #0b1a2bb3); }
+#find-close { position: absolute; top: 50%; right: 0.1rem; width: 26px; height: 26px; padding: 4px; color: #ffffff; filter: drop-shadow(0 1px 2px #0b1a2bb3); translate: 0 -50%; }
 #find-close:hover { background: #ffffff33; box-shadow: none; }
-#find-list { display: flex; flex-direction: column; gap: 2px; }
+#find-list { display: flex; flex-direction: column-reverse; gap: 2px; }
 #find-list button { display: flex; align-items: center; gap: 0.55rem; padding: 0.42rem 0.55rem; border: 0; border-radius: 999px; background: transparent; color: inherit; font: inherit; text-align: left; text-shadow: inherit; transition: background 120ms; }
 #find-list button:hover { background: #ffffff2e; }
 #find-list button:focus-visible { outline: 2px solid #ffffff; outline-offset: -2px; }
 /* Der Ring zeigt, wen Enter wählt, wie bei der gewählten Zeile der Schilder. */
-#find-input:not(:placeholder-shown) ~ #find-list button:first-child { box-shadow: inset 0 0 0 1.5px #ffffffd9; }
-#find-list p { margin: 0; padding: 0.35rem 0.55rem 0; font-size: 0.72rem; font-weight: 500; opacity: 0.9; text-align: center; }
+#find-panel:has(#find-input:not(:placeholder-shown)) #find-list button:first-child { box-shadow: inset 0 0 0 1.5px #ffffffd9; }
+#find-list p { margin: 0; padding: 0 0.55rem 0.2rem; font-size: 0.72rem; font-weight: 500; opacity: 0.9; text-align: center; }
 .find-dot { flex: none; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 1.5px #ffffffe6, 0 0 7px var(--dot-glow); }
 .find-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .find-level { flex: none; font-size: 0.72rem; font-weight: 500; opacity: 0.9; }
 
-#status { position: absolute; right: 1.5rem; bottom: 1.5rem; left: 1.5rem; z-index: 3; margin: 0; padding: 0.6rem 1rem; border-radius: 0.5rem; background: #171d25; color: #f4f7f8; font: 0.875rem system-ui, sans-serif; text-align: center; }
+/* Hinweise, Bestätigungen und Fehler, direkt über der Leiste. */
+#status { position: absolute; bottom: 74px; left: 50%; z-index: 3; box-sizing: border-box; max-width: calc(100% - 3rem); margin: 0; padding: 0.55rem 1rem; border-radius: 0.6rem; background: var(--ink); color: #f4f7f8; font: 600 0.8125rem system-ui, sans-serif; text-align: center; box-shadow: 0 4px 14px #0b1a2b40; translate: -50% 0; }
 #status[data-problem] { background: #4f1c0b; }
 #status[hidden] { display: none; }
+/* Solange die Suche offen ist, wartet die Meldung. */
+#frame:has(#find-panel:not([hidden])) #status { display: none; }
+
+/* Reduzierte Bewegung aus dem System oder aus den Einstellungen der App (`data-reduced-motion`). */
+@media (prefers-reduced-motion: reduce) { html[data-glass] .glass-pill, #map, [data-tip]::after { transition: none; } }
+html[data-reduced-motion] .glass-pill, html[data-reduced-motion] #map, html[data-reduced-motion] [data-tip]::after { transition: none; }

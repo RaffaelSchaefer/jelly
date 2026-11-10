@@ -91,8 +91,14 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `source.ts` beschreibt ihre Daten, `labels.ts` und `picking.ts` zeichnen Namen und finden das Jelly
   unter dem Zeiger, `floorPicking.ts` den Punkt auf dem Boden, `pointer.ts` markiert das Ziel eines
   Ausflugs, `beams.ts` zeichnet das Licht beim Hervorheben, `choiceRings.ts` die Ringe beim Auswählen, `worn.ts` merkt sich, was ein Jelly trägt, `moves.ts` und `walking.ts` spielen die Wege
-  des Servers ab, der Rest ist der Raum.
+  des Servers ab. Die Kamera der Karte: `zoom.ts` (Zoom, Gleiten, Grenzen der Halle), `flight.ts`
+  (Kamerafahrten), `cameraControls.ts` (was die Seite steuert, samt Einflug), `insets.ts` (Bänder, die die
+  Seite mit Knöpfen verdeckt). Über dem Bild: `overlay.ts` (Texte, Hinweise, Treffer), `edgeHints.ts`
+  (Hinweise am Rand), `hoverRing.ts` (Ring unter dem Jelly unter dem Zeiger). Ohne Aufrufe der Seite, wie
+  auf dem Beamer, zeigt die Kamera die ganze Halle. Der Rest ist der Raum.
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
+  `page.ts` (Stand der Seite), `commands.ts` (Aktionen mit Bestätigung und Kameraflug), `dock.ts` (Leiste
+  unten), `zoom.ts` (Mausrad, Ziehen, Tasten), `notice.ts` (Statuszeile),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
   `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
   sie öffnet.

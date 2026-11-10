@@ -124,20 +124,32 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   dieselbe 3D-Bühne wie auf dem Beamer (`@jelly/stage`, Daten aus `GET /v1/stage`). Wo die Jellies laufen,
   plant der Server, die Karte spielt seine Wege nur ab (`moves`, Nachricht `move` im Stream). Das eigene Jelly trägt seine
   Farbe im Namen und eine Markierung über dem Kopf, sein Ziel eine weiße. Unter dem Zeiger zeigt jedes
-  Jelly seinen Namen, auch im Gedränge. Ein Klick auf ein fremdes Jelly öffnet daneben ein Fenster:
+  Jelly seinen Namen, auch im Gedränge. Ein Klick auf ein fremdes Jelly öffnet daneben ein Fenster mit zwei Symbolen:
   „Dazustellen“ lässt das eigene Jelly dorthin laufen (`POST /v1/trips/follow`), beim Ziel steht dort
   „Weggehen“. „Hervorheben“ stellt das Jelly auf allen Bühnen in eine Säule aus Licht mit Halo und Lichtfleck am Boden
-  (`POST /v1/highlights`), ist es dafür zu früh, steht die Meldung des Servers in der Statuszeile. Der feste Knopf „Mich hervorheben“ oben rechts macht dasselbe mit dem eigenen Jelly, „Jelly suchen“ findet jedes andere per Namen, ohne dass man es erst in der Halle entdecken muss. Jeder Spieler leuchtet in seinem eigenen Farbton, berechnet aus seiner ID, so sieht man auch bei mehreren Lichtern, von wem welches kommt. Der Name des Jellys im Licht bleibt auch im Gedränge sichtbar. Ein Klick
+  (`POST /v1/highlights`), ist es dafür zu früh, steht die Meldung des Servers in der Statuszeile. „Mich hervorheben“ in der Leiste unten macht dasselbe mit dem eigenen Jelly, „Jelly suchen“ findet jedes andere per Namen, ohne dass man es erst in der Halle entdecken muss. Jeder Spieler leuchtet in seinem eigenen Farbton, berechnet aus seiner ID, so sieht man auch bei mehreren Lichtern, von wem welches kommt. Der Name des Jellys im Licht bleibt auch im Gedränge sichtbar. Ein Klick
   auf den freien Boden schickt das eigene Jelly auf einen Ausflug dorthin (`POST /v1/trips/goto`), ein
   Kristall mit Ring markiert das Ziel, bis es angekommen ist. Der
-  Knopf „Weggehen“ beendet Dazustellen und Ausflug (`DELETE /v1/trips/current`). Das Pet sagt zu beidem
+  Knopf „Weggehen“ (× in der Leiste) beendet Dazustellen und Ausflug (`DELETE /v1/trips/current`). Das Pet sagt zu beidem
   etwas, auch wenn der Server sie beendet: `follow.changed` und `trip.changed` melden das Ende auch, wenn
   `follow.ends_at` oder `trip.ends_at` abläuft, die App braucht dafür keine eigene Uhr. Die Karte kostet Grafikleistung nur, solange sie offen ist, sie rechnet ohne
   die doppelte Auflösung des Beamers und schließt sich mit dem Pet. Solange sie offen ist, ist das Pet
   versteckt, danach kommt es zurück. Das Fenster hat keinen Rahmen des Systems: Griff, Minimieren und
-  Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. „Weggehen“
-  ist ein Tropfen aus demselben flüssigen Glas wie am Jelly, in dessen Farbe. Die Browser-Vorschau zeigt
+  Schließen zeichnet die Seite selbst, das Bild läuft zum Rand hin in die Farbe des Bodens aus. Leiste,
+  Suche und Fenster sind Tropfen aus demselben flüssigen Glas wie am Jelly, in dessen Farbe. Die Browser-Vorschau zeigt
   die Halle der Server-Demo in ihrer Größe von 10 × 20,5 m, mit Tischen von 1 × 0,5 m.
+- Unten auf der Karte liegt eine Leiste: links, wo das eigene Jelly gerade ist („Am Platz“, „Bei …“,
+  „Auf Ausflug“, mit × zum Weggehen), dann Suchen (F) und Mich hervorheben (H), rechts die Kamera mit
+  Zoomstufe. Die Knöpfe zeigen nur Symbole, ihr Tooltip nennt Aktion und Taste. Mausrad, Spreizen, `+`/`-`
+  und ein Doppelklick zoomen bis 6×, Ziehen und Pfeiltasten oder WASD verschieben den Ausschnitt, der danach
+  ausrollt und am Rand der Halle zurückfedert. Herangezoomt folgt die Kamera dem eigenen Jelly, bis man sie
+  verschiebt. Leertaste und Fadenkreuz fliegen zurück. Beim Öffnen fliegt die Kamera vom eigenen Jelly auf
+  die ganze Halle, Suchtreffer, Hervorheben, Dazustellen und Partnerwahl fliegen zum betroffenen Jelly. Liegt
+  etwas außerhalb des Bildes, zeigt ein Hinweis am Rand dorthin: das eigene Jelly, Emotes, neue Level und
+  Licht. Ein Klick darauf fliegt hin. Ein Ring am Boden zeigt, welches Jelly ein Klick trifft, eine Welle,
+  wohin ein Ausflug geht, und eine kurze Meldung über der Leiste bestätigt jede Aktion. Fenster an einem
+  Jelly bleiben bei ihm, auch wenn die Kamera fährt. Die Rechnung steht in `@jelly/stage` (`zoom.ts`,
+  `flight.ts`, `cameraControls.ts`), der Beamer zeigt weiter die ganze Halle.
 - Partner-Emotes startet man auf der Karte. Ein Klick aufs eigene Jelly öffnet daneben ein Fenster mit den
   Gesten, alle anderen Jellies stehen in einem schimmernden Ring aus Licht. Nach der Wahl leuchten nur noch die in der Nähe, ein Klick auf eines
   fordert es auf (`POST /v1/partner-emotes`). Oben steht dann „Warte auf …“ mit der Restzeit und „Abbrechen“.

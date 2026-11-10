@@ -1,39 +1,37 @@
 /**
- * Die Karte im eigenen Fenster: die Bühne aus `@jelly/stage` über das ganze Fenster, dazu das
- * eigene Jelly und „Weggehen“. Ein Klick aufs eigene Jelly startet ein Partner-Emote
- * (`partner.ts`), einer auf ein fremdes öffnet dessen Fenster (`actions.ts`), einer auf den Boden
- * einen Ausflug. Oben rechts lässt sich ein Jelly per Namen suchen (`search.ts`).
+ * Die Karte im eigenen Fenster: die Bühne aus `@jelly/stage` über das ganze Fenster, unten eine
+ * Leiste mit dem eigenen Jelly, Suche, Hervorheben und Kamera (`dock.ts`, `zoom.ts`). Ein Klick
+ * aufs eigene Jelly startet ein Partner-Emote (`partner.ts`), einer auf ein fremdes öffnet dessen
+ * Fenster (`actions.ts`), einer auf den Boden einen Ausflug, einer auf einen Hinweis am Rand fliegt
+ * hin. Ein Doppelklick zoomt. Beim Öffnen fliegt die Kamera vom eigenen Jelly auf die ganze Halle.
  *
- * Reines TypeScript ohne React: Außer der Canvas gibt es hier nur ein paar Knöpfe und eine
- * Statuszeile.
+ * Reines TypeScript ohne React: Außer der Canvas gibt es hier nur Knöpfe und eine Statuszeile.
  *
  * @module
  */
 
-import {
-  createStageView,
-  type ScreenPoint,
-  type StageHighlight,
-  type StagePlayer,
-  type StagePoint,
-  type StageState,
-  type StageView,
-} from "@jelly/stage";
+import { createStageView, type ScreenPoint, type StageState } from "@jelly/stage";
 
 import { desktop, windowAction } from "../backend";
 import { knownPetColor } from "../pet";
-import { createJellyMenu, type JellyMenu } from "./actions";
-import { startGlass, type GlassLayer } from "./glass";
+import { createJellyMenu } from "./actions";
+import { flyToJelly, follow, goTo, highlight } from "./commands";
+import { createDock } from "./dock";
+import { startGlass } from "./glass";
+import { createNotice } from "./notice";
+import { applyAway, applyMarks, findName, type MapPage } from "./page";
 import {
   cancelFlow,
   handleEscape,
   handleInviteEvent,
   handleStageClick,
   openGestures,
+  placeGestures,
   type PartnerFlow,
 } from "./partner";
-import { createJellySearch, type JellySearch } from "./search";
-import { createDesktopSource, type MapSource } from "./source";
+import { createJellySearch } from "./search";
+import { createDesktopSource } from "./source";
+import { listenToZoom } from "./zoom";
 import "./map.css";
 
 /**
@@ -43,77 +41,14 @@ import "./map.css";
 const RELOAD_DELAY_MS = 2000;
 /** Die Karte läuft neben Spielen, also ohne die doppelte Auflösung des Beamers. */
 const SUPERSAMPLING = 1;
-/** So lange bleibt eine Fehlermeldung zu einem Klick stehen. Das nächste Neuladen löscht sie nicht. */
-const ACTION_PROBLEM_MS = 6000;
+/** Oben die Fensterknöpfe, unten die Leiste (`#dock` in `map.css`): Die Halle passt dazwischen. */
+const INSETS = { top: 44, bottom: 70 };
+/** So lange wartet ein Ausflug, ob der Klick ein Doppelklick wird. */
+const DOUBLE_CLICK_MS = 280;
+const DOUBLE_CLICK_ZOOM = 2;
 const TEXT_NO_LAN = "Gerade läuft keine LAN.";
 const TEXT_NO_WEBGL = "Dieses Gerät kann die 3D-Karte nicht zeichnen.";
-const TEXT_UNKNOWN_JELLY = "dem Jelly";
 const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-/** Die Seite und was sich auf ihr ändert. */
-interface MapPage {
-  source: MapSource;
-  canvas: HTMLCanvasElement;
-  leave: HTMLButtonElement;
-  status: HTMLElement;
-  /** `null`, bis die Bühne läuft. */
-  view: StageView | null;
-  /** `null` im optimierten Modus und ohne WebGL: Dann bleiben Knöpfe und Hinweise einfarbig. */
-  glass: GlassLayer | null;
-  /** Das Gerät kann kein WebGL, ein neuer Versuch ist zwecklos. */
-  glassFailed: boolean;
-  menu: JellyMenu;
-  search: JellySearch;
-  targetId: number | null;
-  /** Wohin das Jelly auf seinem Ausflug will. */
-  destination: StagePoint | null;
-  /** Wer gerade leuchtet, solange man einen Partner wählt. */
-  highlight: StageHighlight | null;
-  /** Die Jellies vom letzten Lesen, für den Namen eines Partners. */
-  players: StagePlayer[];
-  /** Abstand zur Uhr des Servers vom letzten Lesen. */
-  clockOffset: number;
-  /** Ein Aufruf läuft. Sie laufen einzeln, damit keiner einen neueren überholt. */
-  acting: boolean;
-  /** Was die Statuszeile zeigt, das Wichtigste zuerst. */
-  actionProblem: string;
-  readProblem: string;
-  note: string;
-}
-
-/** Zeigt den wichtigsten Text in der Statuszeile oder blendet sie aus. */
-function renderStatus(page: MapPage) {
-  const problem = page.actionProblem || page.readProblem;
-  page.status.textContent = problem || page.note;
-  page.status.hidden = !page.status.textContent;
-  page.status.toggleAttribute("data-problem", problem !== "");
-}
-
-/** Gibt Ziel, Leuchten und das Ziel des Ausflugs an die Bühne. */
-function applyMarks(page: MapPage) {
-  page.view?.setMarks({
-    ownId: page.source.readOwn().id,
-    targetId: page.targetId,
-    highlight: page.highlight,
-    destination: page.destination,
-  });
-}
-
-/** Übernimmt das Ziel für Markierung und „Weggehen“, den es auch für einen Ausflug gibt. */
-function setTarget(page: MapPage, targetId: number | null) {
-  page.targetId = targetId;
-  page.leave.hidden = targetId === null && page.destination === null;
-  applyMarks(page);
-}
-
-/**
- * Übernimmt Ziel und Ausflug aus dem eigenen Stand. Enden sie von selbst, meldet das der Server mit
- * `follow.changed` und `trip.changed`, und die Bühne liest neu.
- */
-function applyAway(page: MapPage, own: StagePlayer | undefined, trip: StagePoint | null) {
-  page.destination = trip;
-  setTarget(page, own?.follow?.player_id ?? null);
-}
 
 /** Legt das Glas unter die Knöpfe. `data-glass` nimmt ihnen in `map.css` den eigenen Hintergrund. */
 function startButtonGlass(page: MapPage) {
@@ -138,6 +73,14 @@ function applyButtonLook(page: MapPage, optimized: boolean) {
   }
 }
 
+/** Blendet die Karte ein. Beim ersten Stand fliegt die Kamera vom eigenen Jelly auf die Halle. */
+function showMap(page: MapPage, hasOwn: boolean) {
+  if (page.isShown) return;
+  page.isShown = true;
+  document.querySelector("#frame")!.toggleAttribute("data-ready", true);
+  if (hasOwn) page.view?.playIntro();
+}
+
 /** Übernimmt, was ein neuer Stand für die Seite bedeutet. */
 function applyState(page: MapPage, state: StageState) {
   const { id, reducedMotion, optimizedRendering, frameLimit, trip } = page.source.readOwn();
@@ -146,68 +89,15 @@ function applyState(page: MapPage, state: StageState) {
   page.clockOffset = state.server_time - Date.now();
   applyAway(page, own, trip);
   const reduced = reducedMotion ?? OS_REDUCED_MOTION.matches;
+  document.documentElement.toggleAttribute("data-reduced-motion", reduced);
   page.view?.setReducedMotion(reduced);
   page.view?.setFrameLimit(frameLimit);
   applyButtonLook(page, optimizedRendering);
   page.glass?.setFrameLimit(frameLimit);
   if (own) page.glass?.setLook(knownPetColor(own.color), reduced);
-  page.note = state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "";
-  page.readProblem = "";
-  renderStatus(page);
-}
-
-/** Zeigt, warum ein Klick nicht geklappt hat, und räumt die Meldung später weg. */
-function showActionProblem(page: MapPage, problem: string) {
-  page.actionProblem = problem;
-  setTimeout(() => {
-    if (page.actionProblem !== problem) return;
-    page.actionProblem = "";
-    renderStatus(page);
-  }, ACTION_PROBLEM_MS);
-}
-
-/** Schickt einen Aufruf ab und liest danach neu. Den Weg plant der Server und schickt ihn im Stream. */
-async function runAction(page: MapPage, action: () => Promise<void>) {
-  if (page.acting) return;
-  page.acting = true;
-  page.actionProblem = "";
-  try {
-    await action();
-  } catch (cause) {
-    showActionProblem(page, String(cause));
-  }
-  page.acting = false;
-  renderStatus(page);
-  page.view?.reload();
-}
-
-/**
- * Stellt das Jelly dazu oder weg. Das beendet einen Ausflug. Das Ziel gilt sofort, damit schon der
- * nächste Klick es kennt.
- */
-function follow(page: MapPage, playerId: number | null) {
-  return runAction(page, async () => {
-    const target = await page.source.setFollow(playerId);
-    page.destination = null;
-    setTarget(page, target);
-  });
-}
-
-/**
- * Schickt das Jelly auf einen Ausflug, der ein Dazustellen beendet. Der Zeiger steht sofort. Lehnt
- * der Server ab, räumt ihn das Neuladen danach wieder weg.
- */
-function goTo(page: MapPage, point: StagePoint) {
-  return runAction(page, () => {
-    page.destination = point;
-    setTarget(page, null);
-    return page.source.goTo(point);
-  });
-}
-
-/** Lässt ein Jelly aufleuchten. Den Lichtkegel zeichnet die Bühne, sobald das Ereignis ankommt. */
-function highlight(page: MapPage, playerId: number) {
-  return runAction(page, () => page.source.highlight(playerId));
+  page.notice.setNote(state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "");
+  page.notice.setReadProblem("");
+  showMap(page, own !== undefined);
 }
 
 /** Schließt, was gerade über der Karte offen ist. */
@@ -229,17 +119,15 @@ function createPartnerFlow(page: MapPage): PartnerFlow {
     context: {
       source: page.source,
       pickAt: (point) => page.view?.pickAt(point) ?? null,
-      findName: (playerId) =>
-        page.players.find((player) => player.id === playerId)?.name ?? TEXT_UNKNOWN_JELLY,
+      locate: (playerId) => page.view?.locate(playerId) ?? null,
+      flyTo: (playerId) => page.view?.flyTo(playerId),
+      findName: (playerId) => findName(page, playerId),
       readServerTime: () => Date.now() + page.clockOffset,
       setHighlight: (highlight) => {
         page.highlight = highlight;
         applyMarks(page);
       },
-      report: (message) => {
-        showActionProblem(page, message);
-        renderStatus(page);
-      },
+      report: (message) => page.notice.problem(message),
     },
     step: { kind: "idle" },
     entries: null,
@@ -257,38 +145,55 @@ function pointOf(event: MouseEvent): ScreenPoint {
 }
 
 /**
- * Ein Klick auf die Bühne. Der laufende Partner-Ablauf hat Vorrang, dann schließt er ein offenes
- * Fenster. Sonst entscheidet, was unter dem Zeiger liegt: das eigene Jelly, ein fremdes oder der
- * Boden.
+ * Plant einen Ausflug, der kurz wartet: Wird der Klick ein Doppelklick, zoomt die Karte
+ * stattdessen.
+ */
+function planTrip(page: MapPage, point: ScreenPoint) {
+  const floor = page.view?.floorAt(point);
+  if (!floor) return;
+  clearTimeout(page.pendingTrip);
+  page.pendingTrip = setTimeout(() => void goTo(page, floor), DOUBLE_CLICK_MS);
+}
+
+/**
+ * Ein Klick auf die Bühne. Ein Hinweis am Rand fliegt hin. Dann hat der laufende Partner-Ablauf
+ * Vorrang, dann schließt er ein offenes Fenster. Sonst entscheidet, was unter dem Zeiger liegt: das
+ * eigene Jelly, ein fremdes oder der Boden.
  */
 function handleClick(page: MapPage, flow: PartnerFlow, point: ScreenPoint) {
+  const hinted = page.view?.hintAt(point) ?? null;
+  if (hinted !== null) {
+    flyToJelly(page, hinted);
+    return;
+  }
   if (handleStageClick(flow, point) || page.menu.close() || page.search.close()) return;
   if (page.view?.isOwnAt(point)) {
-    void openGestures(flow, point);
+    void openGestures(flow);
     return;
   }
   const picked = page.view?.pickAt(point) ?? null;
-  if (picked !== null) {
-    page.menu.open(picked, point, picked === page.targetId);
-    return;
-  }
-  const floor = page.view?.floorAt(point);
-  if (floor) void goTo(page, floor);
+  if (picked !== null) page.menu.open(picked, picked === page.targetId);
+  else planTrip(page, point);
 }
 
-/** Hover, Klicks und die festen Knöpfe. „Jelly suchen“ verbindet sich selbst. */
+/** Ein Doppelklick zoomt auf den Punkt und lässt die Kamera dort. Ein geplanter Ausflug entfällt. */
+function handleDoubleClick(page: MapPage, point: ScreenPoint) {
+  if (!page.view || page.view.hintAt(point) !== null) return;
+  clearTimeout(page.pendingTrip);
+  page.view.zoomInAt(point, DOUBLE_CLICK_ZOOM);
+}
+
+/** Hover, Klicks und Tasten. Leiste, Suche und Kamera verbinden sich selbst. */
 function listenToInput(page: MapPage, flow: PartnerFlow) {
+  // Vor dem Klick-Hörer unten: Der Zoom schluckt den Klick am Ende eines Ziehens.
+  listenToZoom({ canvas: page.canvas, readView: () => page.view });
   page.canvas.addEventListener("pointermove", (event) => page.view?.setPointer(pointOf(event)));
   page.canvas.addEventListener("pointerleave", () => page.view?.setPointer(null));
   page.canvas.addEventListener("click", (event) => {
-    // Ein Doppelklick zählt einmal, sonst schlösse sein zweiter Klick das Fenster gleich wieder.
+    // Der zweite Klick eines Doppelklicks gehört dem Zoom.
     if (event.detail <= 1) handleClick(page, flow, pointOf(event));
   });
-  page.leave.addEventListener("click", () => {
-    closeWindows(page);
-    void follow(page, null);
-  });
-  document.querySelector("#highlight-own")!.addEventListener("click", () => highlightOwn(page));
+  page.canvas.addEventListener("dblclick", (event) => handleDoubleClick(page, pointOf(event)));
   document.querySelector("#partner-cancel")!.addEventListener("click", () => cancelFlow(flow));
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
@@ -299,6 +204,14 @@ function listenToInput(page: MapPage, flow: PartnerFlow) {
   // Ponytail: Eine geänderte Einstellung kommt erst beim Lesen an. Wer aus dem Pet-Fenster zurückkommt,
   // liest neu. Ohne Klick auf die Karte erst beim nächsten Ereignis, sonst bräuchte es eigene Meldungen.
   window.addEventListener("focus", () => page.view?.reload());
+}
+
+/** Nach jedem Bild: Fenster bleiben an ihrem Jelly, die Leiste zeigt die Kamera. */
+function followFrame(page: MapPage, flow: PartnerFlow) {
+  if (!page.view) return;
+  page.dock.showCamera(page.view.readCamera());
+  page.menu.place();
+  placeGestures(flow);
 }
 
 /** Die Fensterknöpfe. In der Vorschau tut das Browser-Fenster, was es kann. */
@@ -317,43 +230,40 @@ function listenToWindowTools() {
 }
 
 /** Startet die Bühne. Ohne WebGL bleibt nur der Hinweis. */
-function startView(page: MapPage) {
+function startView(page: MapPage, flow: PartnerFlow) {
   try {
     page.view = createStageView({
       canvas: page.canvas,
       source: page.source,
       supersampling: SUPERSAMPLING,
       reloadDelayMs: RELOAD_DELAY_MS,
+      insets: INSETS,
       onState: (state) => applyState(page, state),
       onError: (cause) => {
-        page.readProblem = String(cause);
+        page.notice.setReadProblem(String(cause));
         applyButtonLook(page, page.source.readOwn().optimizedRendering);
-        renderStatus(page);
+        showMap(page, false);
       },
+      onFrame: () => followFrame(page, flow),
     });
   } catch {
-    page.readProblem = TEXT_NO_WEBGL;
+    page.notice.setReadProblem(TEXT_NO_WEBGL);
     applyButtonLook(page, false);
-    renderStatus(page);
   }
 }
 
-/** Sucht die Elemente aus `map.html` und startet die Karte. */
-async function startMap() {
-  const source = desktop
-    ? await createDesktopSource()
-    : (await import("./preview")).createPreviewSource();
+/** Baut die Seite aus den Elementen von `map.html`. */
+function createPage(source: MapPage["source"]): MapPage {
   const page: MapPage = {
     source,
     canvas: document.querySelector<HTMLCanvasElement>("#map")!,
-    leave: document.querySelector<HTMLButtonElement>("#leave")!,
-    status: document.querySelector<HTMLElement>("#status")!,
     view: null,
     glass: null,
     glassFailed: false,
     menu: createJellyMenu({
       follow: (playerId) => void follow(page, playerId),
       highlight: (playerId) => void highlight(page, playerId),
+      locate: (playerId) => page.view?.locate(playerId) ?? null,
     }),
     search: createJellySearch({
       readPlayers: () => page.players,
@@ -361,22 +271,39 @@ async function startMap() {
       onOpen: () => page.menu.close(),
       pick: (playerId) => void highlight(page, playerId),
     }),
+    dock: createDock({
+      highlightOwn: () => highlightOwn(page),
+      leave: () => {
+        closeWindows(page);
+        void follow(page, null);
+      },
+    }),
+    notice: createNotice(document.querySelector<HTMLElement>("#status")!),
     targetId: null,
     destination: null,
     highlight: null,
     players: [],
     clockOffset: 0,
     acting: false,
-    actionProblem: "",
-    readProblem: "",
-    note: "",
+    pendingTrip: undefined,
+    isShown: false,
   };
-  listenToInput(page, createPartnerFlow(page));
+  return page;
+}
+
+/** Sucht die Elemente aus `map.html` und startet die Karte. */
+async function startMap() {
+  const source = desktop
+    ? await createDesktopSource()
+    : (await import("./preview")).createPreviewSource();
+  const page = createPage(source);
+  const flow = createPartnerFlow(page);
+  listenToInput(page, flow);
   listenToWindowTools();
   // Welcher Modus gilt, sagt erst das erste Lesen. Bis dahin steht nur die Schrift da, wie bisher,
   // bevor das Glas gewachsen ist: So blitzen im normalen Modus keine festen Knöpfe auf.
   document.documentElement.toggleAttribute("data-glass", true);
-  startView(page);
+  startView(page, flow);
 }
 
 // Scheitert schon der Start, bliebe sonst nur ein leeres Fenster.
