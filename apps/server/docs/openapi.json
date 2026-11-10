@@ -201,14 +201,14 @@
             "description": "Stable key of the cosmetic.",
             "type": "string"
           },
-          "level": {
-            "description": "The level that unlocks it, only with `unlock` `level`.",
-            "format": "int64",
-            "type": "integer"
-          },
           "name": {
             "description": "German name to show.",
             "type": "string"
+          },
+          "price": {
+            "description": "The price in coins, only with `unlock` `shop`. Buy it with `POST /v1/purchases`.",
+            "format": "int64",
+            "type": "integer"
           },
           "scope": {
             "description": "`permanent` counts progress over all LANs, `lan` only counts the current LAN.",
@@ -219,7 +219,7 @@
             "type": "string"
           },
           "unlock": {
-            "description": "How a player gets it: `level` from reaching `level`, `event` from an event code, `award` as a prize from the orga, `none` not at all. Treat new values like `none`.",
+            "description": "How a player gets it: `shop` for coins, `event` from an event code, `award` as a prize from the orga, `none` not at all. Treat new values like `none`.",
             "type": "string"
           }
         },
@@ -916,6 +916,11 @@
             },
             "type": "array"
           },
+          "coins": {
+            "description": "Coins to spend in the shop, earned with every level-up. 0 outside an active LAN.",
+            "format": "int64",
+            "type": "integer"
+          },
           "color": {
             "description": "The color of the jelly, out of `colors` in the catalog.",
             "type": "string"
@@ -1040,6 +1045,7 @@
           "lan",
           "xp",
           "level",
+          "coins",
           "total_xp",
           "next_poke_at",
           "reports",
@@ -1104,6 +1110,11 @@
         "additionalProperties": true,
         "description": "The values a client needs to show what the server will decide. The server still checks every action. Times are seconds.",
         "properties": {
+          "coins_per_level": {
+            "description": "Coins that every reached level pays. 0 pays nothing. Fixed once a LAN has started.",
+            "format": "int64",
+            "type": "integer"
+          },
           "drink_xp": {
             "description": "XP for a drink report.",
             "format": "int64",
@@ -1237,6 +1248,7 @@
         },
         "required": [
           "xp_per_level",
+          "coins_per_level",
           "poke_interval",
           "poke_xp",
           "poke_max_ticks",
@@ -1262,6 +1274,35 @@
           "room_width",
           "room_depth",
           "jelly_width"
+        ],
+        "type": "object"
+      },
+      "PurchaseAnswer": {
+        "additionalProperties": true,
+        "description": "The result of a purchase in the shop.",
+        "properties": {
+          "coins_spent": {
+            "description": "The price that left the balance.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "cosmetic_key": {
+            "description": "The key of the cosmetic that this player now owns.",
+            "type": "string"
+          },
+          "me": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerState"
+              }
+            ],
+            "description": "The state of the player after the purchase."
+          }
+        },
+        "required": [
+          "cosmetic_key",
+          "coins_spent",
+          "me"
         ],
         "type": "object"
       },
@@ -1906,9 +1947,9 @@
     }
   },
   "info": {
-    "description": "The contract between the Jelly server and its clients, the desktop app and the stage page.\n\n**Authentication:** A player sends `Authorization: Bearer \u003csecret\u003e`. A new secret only arrives from `POST /v1/auth/redeem` or `POST /v1/auth/recover`, and clients keep it to themselves. The stage page reads with the stage key in the query `key`, which allows reading only.\n\n**Units:** All times are milliseconds since 1970 in server time. Use `server_time` from an answer for countdowns instead of the clock of the device. All positions on the stage are percent of the room. Distances in rules such as `near_distance` and `walk_speed` count jelly units: a jelly is about 1.7 wide, the hall 21 wide and 40 deep.\n\n**Growth:** Answers can gain fields, event types, catalog entries, enum values and error codes in any version, so clients ignore what they do not know. Requests reject unknown fields. A breaking change gets a new path version.\n\n**Errors:** Every error has the form `{\"error\":{\"code\",\"message\"}}`. `code` is stable and meant for code, `message` is German and meant for people, so show it for unknown codes. `invalid_request` answers with 400 (no valid JSON), 408 or 413 (body too slow or too large), 415 (not JSON) or 422 (unknown or missing field, wrong type). After a network error, read `GET /v1/players/me` before repeating an action, because it may have counted already. `401` means the secret is no longer valid. Never delete a secret because of a network error.\n\n**Error codes:** New ones can appear in any version.\n\n| Status | Code | Message |\n| --- | --- | --- |\n| 400 | `invalid_request` | Die Anfrage ist ungültig. |\n| 404 | `not_found` | Diesen Weg gibt es nicht. |\n| 429 | `rate_limited` | Zu viele Versuche, bitte warten. |\n| 500 | `internal` | Auf dem Server ist ein Fehler aufgetreten. |\n| 401 | `unauthorized` | Dieses Konto ist nicht bekannt. |\n| 403 | `forbidden` | Zugriff verweigert. |\n| 403 | `invalid_code` | Der Anmeldecode stimmt nicht. |\n| 409 | `name_taken` | Dieser Name ist schon vergeben. |\n| 404 | `player_not_found` | Dieses Konto gibt es nicht. |\n| 404 | `lan_not_found` | Diese LAN gibt es nicht. |\n| 409 | `lan_full` | Diese LAN ist schon voll. |\n| 409 | `lan_overlap` | Der Zeitraum überschneidet sich mit einer LAN. |\n| 400 | `not_a_bot` | Das ist kein Bot. Echte Spieler steuert niemand von außen. |\n| 409 | `lan_has_players` | An dieser LAN nehmen schon Spieler teil, deshalb lässt sie sich nicht löschen. |\n| 409 | `slug_taken` | Dieser Kurzname ist schon vergeben. |\n| 404 | `area_not_found` | Diesen Bereich gibt es nicht. |\n| 409 | `area_not_assignable` | In diesem Bereich kann kein Jelly stehen. |\n| 400 | `invalid_area` | Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art. |\n| 400 | `invalid_rules` | xp_per_level lässt sich nach dem Start der LAN nicht mehr ändern. |\n| 400 | `invalid_name` | Der Name muss 1 bis 24 Zeichen lang sein und darf keine Steuerzeichen enthalten. |\n| 400 | `invalid_color` | Diese Farbe gibt es nicht. |\n| 409 | `code_redeemed` | Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben. |\n| 404 | `gathering_not_found` | Gerade läuft kein solches Ereignis. |\n| 403 | `seat_code_other_account` | Dieser Sitzplatz-Code gehört zu einem anderen Konto. Fehlt dein Konto auf diesem Gerät, gibt dir die Orga einen Wiederherstellungs-Code. |\n| 403 | `invalid_recovery_code` | Dieser Wiederherstellungs-Code stimmt nicht oder ist abgelaufen. |\n| 400 | `unknown_slot` | Diesen Platz für Cosmetics gibt es nicht. |\n| 400 | `unknown_cosmetic` | Dieses Cosmetic passt nicht auf diesen Platz. |\n| 400 | `invalid_cosmetic_color` | Diese Farbe geht hier nicht. |\n| 409 | `cosmetic_locked` | Dieses Cosmetic ist noch nicht freigeschaltet. |\n| 400 | `invalid_partner` | Dieses Jelly kannst du nicht auffordern. |\n| 409 | `partner_emote_open` | Du hast dieses Jelly schon aufgefordert. |\n| 404 | `partner_emote_not_found` | Diese Aufforderung gibt es nicht. |\n| 409 | `partner_emote_closed` | Diese Aufforderung ist schon vorbei. |\n| 400 | `invalid_partner_emote_state` | Das geht bei dieser Aufforderung nicht. |\n| 409 | `no_active_lan` | Gerade läuft keine LAN. |\n| 409 | `not_joined` | Du nimmst an dieser LAN noch nicht teil. |\n| 403 | `invalid_event_code` | Dieser Event-Code gilt gerade nicht. |\n| 409 | `event_code_redeemed` | Diesen Event-Code hast du schon eingelöst. |\n| 409 | `event_code_exists` | Diesen Event-Code gibt es schon. |\n| 409 | `emote_cooldown` | Warte kurz bis zum nächsten Emote. |\n| 400 | `invalid_follow` | Zu diesem Jelly kannst du dich nicht stellen. |\n| 400 | `invalid_trip` | Auf diesem Punkt kann kein Jelly stehen. |\n| 409 | `too_far` | Ihr steht nicht nah genug beieinander. |\n| 400 | `unknown_partner_emote` | Dieses Partner-Emote gibt es nicht. |\n| 409 | `report_cooldown` | Das hast du gerade erst gemeldet. |\n| 409 | `report_limit` | Du hast dein Tageslimit erreicht. |\n| 400 | `unknown_emote` | Dieses Emote gibt es nicht. |\n| 400 | `unknown_sign` | Dieses Schild gibt es nicht. |\n| 400 | `unknown_report_kind` | Diese Meldung gibt es nicht. |\n| 404 | `stack_not_found` | Diesen Stapel gibt es nicht mehr. |\n| 409 | `stack_full` | Dieser Stapel ist schon hoch genug. |\n| 400 | `invalid_highlight` | Dieses Jelly kannst du nicht hervorheben. |\n| 409 | `highlight_cooldown` | Warte kurz bis zum nächsten Hervorheben. |\n",
+    "description": "The contract between the Jelly server and its clients, the desktop app and the stage page.\n\n**Authentication:** A player sends `Authorization: Bearer \u003csecret\u003e`. A new secret only arrives from `POST /v1/auth/redeem` or `POST /v1/auth/recover`, and clients keep it to themselves. The stage page reads with the stage key in the query `key`, which allows reading only.\n\n**Units:** All times are milliseconds since 1970 in server time. Use `server_time` from an answer for countdowns instead of the clock of the device. All positions on the stage are percent of the room. Distances in rules such as `near_distance` and `walk_speed` count jelly units: a jelly is about 1.7 wide, the hall 21 wide and 40 deep.\n\n**Growth:** Answers can gain fields, event types, catalog entries, enum values and error codes in any version, so clients ignore what they do not know. Requests reject unknown fields. A breaking change gets a new path version.\n\n**Errors:** Every error has the form `{\"error\":{\"code\",\"message\"}}`. `code` is stable and meant for code, `message` is German and meant for people, so show it for unknown codes. `invalid_request` answers with 400 (no valid JSON), 408 or 413 (body too slow or too large), 415 (not JSON) or 422 (unknown or missing field, wrong type). After a network error, read `GET /v1/players/me` before repeating an action, because it may have counted already. `401` means the secret is no longer valid. Never delete a secret because of a network error.\n\n**Error codes:** New ones can appear in any version.\n\n| Status | Code | Message |\n| --- | --- | --- |\n| 400 | `invalid_request` | Die Anfrage ist ungültig. |\n| 404 | `not_found` | Diesen Weg gibt es nicht. |\n| 429 | `rate_limited` | Zu viele Versuche, bitte warten. |\n| 500 | `internal` | Auf dem Server ist ein Fehler aufgetreten. |\n| 401 | `unauthorized` | Dieses Konto ist nicht bekannt. |\n| 403 | `forbidden` | Zugriff verweigert. |\n| 403 | `invalid_code` | Der Anmeldecode stimmt nicht. |\n| 409 | `name_taken` | Dieser Name ist schon vergeben. |\n| 404 | `player_not_found` | Dieses Konto gibt es nicht. |\n| 404 | `lan_not_found` | Diese LAN gibt es nicht. |\n| 409 | `lan_full` | Diese LAN ist schon voll. |\n| 409 | `lan_overlap` | Der Zeitraum überschneidet sich mit einer LAN. |\n| 400 | `not_a_bot` | Das ist kein Bot. Echte Spieler steuert niemand von außen. |\n| 409 | `lan_has_players` | An dieser LAN nehmen schon Spieler teil, deshalb lässt sie sich nicht löschen. |\n| 409 | `slug_taken` | Dieser Kurzname ist schon vergeben. |\n| 404 | `area_not_found` | Diesen Bereich gibt es nicht. |\n| 409 | `area_not_assignable` | In diesem Bereich kann kein Jelly stehen. |\n| 400 | `invalid_area` | Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art. |\n| 400 | `invalid_rules` | xp_per_level lässt sich nach dem Start der LAN nicht mehr ändern. |\n| 400 | `invalid_name` | Der Name muss 1 bis 24 Zeichen lang sein und darf keine Steuerzeichen enthalten. |\n| 400 | `invalid_color` | Diese Farbe gibt es nicht. |\n| 409 | `code_redeemed` | Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben. |\n| 404 | `gathering_not_found` | Gerade läuft kein solches Ereignis. |\n| 403 | `seat_code_other_account` | Dieser Sitzplatz-Code gehört zu einem anderen Konto. Fehlt dein Konto auf diesem Gerät, gibt dir die Orga einen Wiederherstellungs-Code. |\n| 403 | `invalid_recovery_code` | Dieser Wiederherstellungs-Code stimmt nicht oder ist abgelaufen. |\n| 400 | `unknown_slot` | Diesen Platz für Cosmetics gibt es nicht. |\n| 400 | `unknown_cosmetic` | Dieses Cosmetic passt nicht auf diesen Platz. |\n| 400 | `invalid_cosmetic_color` | Diese Farbe geht hier nicht. |\n| 409 | `cosmetic_locked` | Dieses Cosmetic ist noch nicht freigeschaltet. |\n| 409 | `not_for_sale` | Dieses Cosmetic steht nicht im Shop. |\n| 409 | `already_owned` | Dieses Cosmetic hast du schon. |\n| 409 | `not_enough_coins` | Dir fehlen Münzen für dieses Cosmetic. |\n| 404 | `purchase_not_found` | Dieses Cosmetic hast du nicht gekauft. |\n| 400 | `invalid_partner` | Dieses Jelly kannst du nicht auffordern. |\n| 409 | `partner_emote_open` | Du hast dieses Jelly schon aufgefordert. |\n| 404 | `partner_emote_not_found` | Diese Aufforderung gibt es nicht. |\n| 409 | `partner_emote_closed` | Diese Aufforderung ist schon vorbei. |\n| 400 | `invalid_partner_emote_state` | Das geht bei dieser Aufforderung nicht. |\n| 409 | `no_active_lan` | Gerade läuft keine LAN. |\n| 409 | `not_joined` | Du nimmst an dieser LAN noch nicht teil. |\n| 403 | `invalid_event_code` | Dieser Event-Code gilt gerade nicht. |\n| 409 | `event_code_redeemed` | Diesen Event-Code hast du schon eingelöst. |\n| 409 | `event_code_exists` | Diesen Event-Code gibt es schon. |\n| 409 | `emote_cooldown` | Warte kurz bis zum nächsten Emote. |\n| 400 | `invalid_follow` | Zu diesem Jelly kannst du dich nicht stellen. |\n| 400 | `invalid_trip` | Auf diesem Punkt kann kein Jelly stehen. |\n| 409 | `too_far` | Ihr steht nicht nah genug beieinander. |\n| 400 | `unknown_partner_emote` | Dieses Partner-Emote gibt es nicht. |\n| 409 | `report_cooldown` | Das hast du gerade erst gemeldet. |\n| 409 | `report_limit` | Du hast dein Tageslimit erreicht. |\n| 400 | `unknown_emote` | Dieses Emote gibt es nicht. |\n| 400 | `unknown_sign` | Dieses Schild gibt es nicht. |\n| 400 | `unknown_report_kind` | Diese Meldung gibt es nicht. |\n| 404 | `stack_not_found` | Diesen Stapel gibt es nicht mehr. |\n| 409 | `stack_full` | Dieser Stapel ist schon hoch genug. |\n| 400 | `invalid_highlight` | Dieses Jelly kannst du nicht hervorheben. |\n| 409 | `highlight_cooldown` | Warte kurz bis zum nächsten Hervorheben. |\n",
     "title": "Jelly API",
-    "version": "1.17.0"
+    "version": "1.18.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -2617,6 +2658,50 @@
         "summary": "Keep the jelly awake while the app runs, without XP"
       }
     },
+    "/v1/purchases": {
+      "post": {
+        "description": "Buys a cosmetic from the catalog with the coins of the running LAN. Can answer `unknown_cosmetic`, `not_for_sale`, `already_owned`, `not_enough_coins`, `no_active_lan` and `not_joined`. The purchase unlocks the cosmetic but does not put it on.",
+        "operationId": "purchaseCosmetic",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseAnswer"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error with a stable code"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Buy a cosmetic from the shop"
+      }
+    },
     "/v1/reports": {
       "post": {
         "description": "Earns XP within the rules of the LAN. Can answer `report_cooldown`, `report_limit`, `no_active_lan` and `not_joined`. After a report the jelly walks to a zone of kind `queue` for `snack_run_seconds`.",
@@ -2888,7 +2973,7 @@
     },
     "/v1/stage/events": {
       "get": {
-        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events, further back they get `reset` and read their state again. `topics` is a comma-separated list of `events` and `moves`, without it both arrive. Messages of type `move` have no ID and carry a `Move`. Every new connection first gets the current move of each jelly. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.\n\n**Messages:** The SSE message type equals `type`.\n\n| Type | Meaning | `player_id` | `payload` |\n| --- | --- | --- | --- |\n| `player.active` | A jelly came to the stage. | the player | `{}` |\n| `player.updated` | A jelly changed. | the player | `{}`, or `{\"edited\":true}` if the player changed it |\n| `player.hidden` | The orga hid a jelly. | the player | `{}` |\n| `player.removed` | An account was deleted. | null | `{\"player_id\"}` |\n| `xp.gained` | A player earned XP. `source` is `poke`, `food`, `drink`, `event` or `partner`. | the player | `{\"amount\",\"source\"}` |\n| `level.up` | A player reached a new level. | the player | `{\"level\"}` |\n| `achievement.earned` | A player earned an achievement. | the player | `{\"key\"}` |\n| `award.given` | The orga gave a prize. `title` is free text. | the player | `{\"title\"}` |\n| `emote` | A jelly plays an emote. | the player | `{\"key\"}` |\n| `partner.emote` | Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden. | who accepted | `{\"key\",\"partner_id\"}`, `partner_id` is who asked |\n| `partner_emote.updated` | A partner emote was created or changed. The app of an invited jelly finds itself in `partner_id` and shows its popup. | who acted | `{\"id\",\"key\",\"from_id\",\"partner_id\",\"state\",\"expires_at\"}` |\n| `sign.changed` | A jelly raised or lowered a sign. | the player | `{\"key\"}`, null when lowered |\n| `follow.changed` | A jelly started following, or following ended, also when its time ran out. | the player | `{\"target_id\"}`, null when it ended |\n| `trip.changed` | A jelly started a trip, or its trip ended, also when its time ran out. | the player | `{\"x\",\"y\",\"ends_at\"}`, null when it ended |\n| `stack.changed` | A stack was started, changed or ended, also when its time ran out. | the player, null when its time ran out | The stack, only `{\"id\"}` after climbing down or when it ended |\n| `highlight` | A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`. | who asked | `{\"target_id\",\"ends_at\",\"cosmetic_key\"}` |\n| `stage.changed` | The room changed, so read `GET /v1/stage` again. | null | `{}` |\n| `rules.changed` | The orga changed the rules of a LAN, so read `GET /lans/current` again. | null | `{}` |\n| `gathering.changed` | A gathering started or ended, also when its time ran out. | null | The `Gathering`, null when it ended |\n| `move` | A jelly starts a walk. This message has no ID and is not part of the event log. | `player_id` of the move | The data is a whole `Move`, not an `Event` |\n| `reset` | The stream dropped events for this client, so read the state again. | none | None |\n",
+        "description": "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. Players can only go back 1000 events, further back they get `reset` and read their state again. `topics` is a comma-separated list of `events` and `moves`, without it both arrive. Messages of type `move` have no ID and carry a `Move`. Every new connection first gets the current move of each jelly. Above the limits of the LAN for open streams, the answer is `429 rate_limited`.\n\n**Messages:** The SSE message type equals `type`.\n\n| Type | Meaning | `player_id` | `payload` |\n| --- | --- | --- | --- |\n| `player.active` | A jelly came to the stage. | the player | `{}` |\n| `player.updated` | A jelly changed. | the player | `{}`, or `{\"edited\":true}` if the player changed it |\n| `player.hidden` | The orga hid a jelly. | the player | `{}` |\n| `player.removed` | An account was deleted. | null | `{\"player_id\"}` |\n| `xp.gained` | A player earned XP. `source` is `poke`, `food`, `drink`, `event` or `partner`. | the player | `{\"amount\",\"source\"}` |\n| `level.up` | A player reached a new level. | the player | `{\"level\"}` |\n| `coins.gained` | A player received coins, from a level-up, the orga or a refund. | the player | `{\"amount\",\"source\"}` with `source` `level`, `admin` or `refund` |\n| `cosmetic.purchased` | A player bought a cosmetic in the shop. | the player | `{\"key\",\"price\"}` |\n| `achievement.earned` | A player earned an achievement. | the player | `{\"key\"}` |\n| `award.given` | The orga gave a prize. `title` is free text. | the player | `{\"title\"}` |\n| `emote` | A jelly plays an emote. | the player | `{\"key\"}` |\n| `partner.emote` | Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden. | who accepted | `{\"key\",\"partner_id\"}`, `partner_id` is who asked |\n| `partner_emote.updated` | A partner emote was created or changed. The app of an invited jelly finds itself in `partner_id` and shows its popup. | who acted | `{\"id\",\"key\",\"from_id\",\"partner_id\",\"state\",\"expires_at\"}` |\n| `sign.changed` | A jelly raised or lowered a sign. | the player | `{\"key\"}`, null when lowered |\n| `follow.changed` | A jelly started following, or following ended, also when its time ran out. | the player | `{\"target_id\"}`, null when it ended |\n| `trip.changed` | A jelly started a trip, or its trip ended, also when its time ran out. | the player | `{\"x\",\"y\",\"ends_at\"}`, null when it ended |\n| `stack.changed` | A stack was started, changed or ended, also when its time ran out. | the player, null when its time ran out | The stack, only `{\"id\"}` after climbing down or when it ended |\n| `highlight` | A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`. | who asked | `{\"target_id\",\"ends_at\",\"cosmetic_key\"}` |\n| `stage.changed` | The room changed, so read `GET /v1/stage` again. | null | `{}` |\n| `rules.changed` | The orga changed the rules of a LAN, so read `GET /lans/current` again. | null | `{}` |\n| `gathering.changed` | A gathering started or ended, also when its time ran out. | null | The `Gathering`, null when it ended |\n| `move` | A jelly starts a walk. This message has no ID and is not part of the event log. | `player_id` of the move | The data is a whole `Move`, not an `Event` |\n| `reset` | The stream dropped events for this client, so read the state again. | none | None |\n",
         "operationId": "streamEvents",
         "parameters": [
           {
