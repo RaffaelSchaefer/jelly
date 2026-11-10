@@ -20,8 +20,10 @@ import {
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
+import beanie from "./cosmetics/beanie.glb?url&inline";
 import headsetNeutral from "./cosmetics/headset-neutral.glb?url&inline";
 import headset from "./cosmetics/headset.glb?url&inline";
+import pixelGlasses from "./cosmetics/pixel-glasses.glb?url&inline";
 import outlineFragmentShader from "./shaders/outline.frag.glsl?raw";
 import outlineVertexShader from "./shaders/outline.vert.glsl?raw";
 import fragmentShader from "./shaders/toon.frag.glsl?raw";
@@ -35,8 +37,10 @@ import vertexShader from "./shaders/toon.vert.glsl?raw";
 // ponytail: Alle Modelle liegen im Chunk der Szene. Dynamische Importe trennten sie, falls sie groß
 // werden. `?inline` allein geht nicht, Vite kennt `.glb` nicht als Asset.
 export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
+  beanie,
   headset,
   "headset-neutral": headsetNeutral,
+  "pixel-glasses": pixelGlasses,
 };
 
 /** Breite der Outline in Szenen-Einheiten. */
