@@ -22,6 +22,7 @@ import {
 import type { FloorPoint, RoomSize, ScenePoint } from "./world.ts";
 
 import { BACKGROUND_COLOR, createFloor, fitFloor } from "./floor.ts";
+import { findViewCenter, keepHalf, type StageInsets } from "./insets.ts";
 import { bendToLens, type ScreenPoint, type ScreenSize } from "./lens.ts";
 import { calculateCameraDistance, toRoomRect } from "./world.ts";
 
@@ -49,12 +50,16 @@ export interface StageScene {
   renderer: WebGLRenderer;
   scene: Scene;
   camera: PerspectiveCamera;
+  /** Where the camera stands when it shows the whole room. `zoom.ts` moves it from there. */
+  home: Vector3;
   floor: Mesh;
 }
 
 /** Where the stage is shown: its size in CSS pixels and how it is drawn there. */
 export interface StageScreen {
   size: ScreenSize;
+  /** The room fits between these bands. */
+  insets: StageInsets;
   /** Drawing buffer pixels per CSS pixel. */
   pixelRatio: number;
   /** The fisheye the picture is shown through. */
@@ -75,7 +80,7 @@ export function createStageScene(): StageScene {
   const floor = createFloor();
   scene.add(sky, sun, floor);
   const camera = new PerspectiveCamera(FIELD_OF_VIEW_DEGREES, 1, NEAR_PLANE, FAR_PLANE);
-  return { renderer, scene, camera, floor };
+  return { renderer, scene, camera, home: new Vector3(), floor };
 }
 
 /** Lists the points of a room that must stay on screen. */
@@ -119,6 +124,9 @@ export function resizeStageScene(stage: StageScene, screen: StageScreen, room: R
     target.z + Math.cos(pitch) * distance,
   );
   camera.lookAt(target.x, target.y, target.z);
+  stage.home.copy(camera.position);
+  // The fit measures the whole room, the next frame zooms in again.
+  camera.zoom = 1;
   // Nothing of the room lies farther away than its diagonal behind the target.
   camera.far = Math.max(FAR_PLANE, distance + Math.hypot(room.width, room.depth));
   fitThroughLens(camera, screen, points);
@@ -130,14 +138,17 @@ export function resizeStageScene(stage: StageScene, screen: StageScreen, room: R
  */
 function fitThroughLens(camera: PerspectiveCamera, screen: StageScreen, points: ScenePoint[]) {
   const { size, lensStrength } = screen;
+  const insets = keepHalf(size, screen.insets);
+  const middleY = findViewCenter(size, insets).y;
+  const halfHeight = (size.height - insets.top - insets.bottom) / 2;
   const tangent = Math.tan(MathUtils.degToRad(FIELD_OF_VIEW_DEGREES) / 2);
   const fits = (widening: number) => {
     camera.fov = MathUtils.radToDeg(2 * Math.atan(tangent * widening));
-    centerVertically(camera, size, points);
+    centerVertically(camera, { size, insets }, points);
     return points.every((point) => {
       const bent = bendToLens(projectToScreen(camera, point, size), size, lensStrength);
       const reachX = Math.abs(bent.x - size.width / 2) - size.width / 2 / FRAME_MARGIN;
-      const reachY = Math.abs(bent.y - size.height / 2) - size.height / 2 / FRAME_MARGIN;
+      const reachY = Math.abs(bent.y - middleY) - halfHeight / FRAME_MARGIN;
       return Math.max(reachX, reachY) <= FIT_TOLERANCE;
     });
   };
@@ -158,10 +169,15 @@ function fitThroughLens(camera: PerspectiveCamera, screen: StageScreen, points: 
 }
 
 /**
- * Shifts the picture up or down so the room sits in the middle. Perspective makes the back of the
- * room smaller, so the fitted room would otherwise leave more space above it than below.
+ * Shifts the picture up or down so the room sits in the middle of what the page leaves free.
+ * Perspective makes the back of the room smaller, so the fitted room would otherwise leave more
+ * space above it than below.
  */
-function centerVertically(camera: PerspectiveCamera, size: ScreenSize, points: ScenePoint[]) {
+function centerVertically(
+  camera: PerspectiveCamera,
+  { size, insets }: Pick<StageScreen, "size" | "insets">,
+  points: ScenePoint[],
+) {
   camera.clearViewOffset();
   camera.updateMatrixWorld();
   const heights = points.map((point) => new Vector3(point.x, point.y, point.z).project(camera).y);
@@ -170,7 +186,7 @@ function centerVertically(camera: PerspectiveCamera, size: ScreenSize, points: S
     size.width,
     size.height,
     0,
-    (-middle * size.height) / 2,
+    (-middle * size.height) / 2 + (insets.bottom - insets.top) / 2,
     size.width,
     size.height,
   );

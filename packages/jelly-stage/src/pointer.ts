@@ -1,6 +1,7 @@
 /**
  * The pointer on a personal screen: a small crystal turning over the spot the own jelly is heading
- * to, with a ring on the floor. It stays until the jelly has arrived. The big stage shows none.
+ * to, with a ring on the floor. A new goal sends a splash over the floor, so the click shows where
+ * it landed. The pointer stays until the jelly has arrived. The big stage shows none.
  *
  * @module
  */
@@ -17,6 +18,7 @@ import {
 } from "three";
 
 import type { StageMove, StagePoint } from "./types.ts";
+import type { FloorPoint } from "./world.ts";
 
 import { findPalette } from "./jellies.ts";
 import { FLAT_ORDER } from "./props.ts";
@@ -33,6 +35,8 @@ const OUTLINE_SCALE = 1.15;
 const FLOAT = { height: 1.45, swing: 0.16, swingRate: 2.6, turnRate: 1.5 };
 const RING = { inner: 0.62, outer: 0.82, around: 48, lift: 0.08 };
 const RIPPLE = { seconds: 1.3, growth: 1.1, opacity: 0.8 };
+/** The splash of a new goal: how long it runs, how small it starts and how far it grows. */
+const SPLASH = { seconds: 0.75, start: 0.5, growth: 2.8, opacity: 0.95 };
 const CRYSTAL_SHADOW = {
   halfWidth: 0.2,
   halfDepth: 0.2,
@@ -48,7 +52,14 @@ const SMALLEST_SIZE = 0.01;
 /** Everything the pointer is made of, and how far it is along. */
 export interface StagePointer {
   root: Object3D;
+  /** Everything but the splash, which grows on its own. */
+  body: Object3D;
   crystal: Object3D;
+  splash: Mesh<RingGeometry, MeshBasicMaterial>;
+  /** Seconds since the last splash began. */
+  splashTime: number;
+  /** The goal of the last frame, to notice a new one. */
+  goal: FloorPoint | null;
   ripple: Mesh<RingGeometry, MeshBasicMaterial>;
   fill: MeshLambertMaterial;
   outline: MeshBasicMaterial;
@@ -112,10 +123,15 @@ export function createPointer(): StagePointer {
   const ringFill = createRingMaterial();
   const crystal = createCrystal(fill, outline);
   const ripple = createRing(createRingMaterial());
+  const splash = createRing(createRingMaterial());
+  const body = new Object3D();
+  body.add(createShadow(CRYSTAL_SHADOW), createRing(ringFill), ripple, crystal);
   const root = new Object3D();
-  root.add(createShadow(CRYSTAL_SHADOW), createRing(ringFill), ripple, crystal);
+  root.add(body, splash);
   root.visible = false;
-  return { root, crystal, ripple, fill, outline, ringFill, color: "", size: 0, time: 0 };
+  const splashTime = SPLASH.seconds;
+  const looks = { fill, outline, ringFill, color: "", size: 0, time: 0 };
+  return { root, body, crystal, splash, splashTime, goal: null, ripple, ...looks };
 }
 
 /** Paints the pointer like the own jelly. */
@@ -127,6 +143,7 @@ function paintPointer(pointer: StagePointer, color: string): void {
   pointer.outline.color.set(palette.outline);
   pointer.ringFill.color.set(palette.glow);
   pointer.ripple.material.color.set(palette.glow);
+  pointer.splash.material.color.set(palette.glow);
 }
 
 /** Lets the crystal float and turn and a ripple run outward from the ring. */
@@ -139,17 +156,35 @@ function animatePointer(pointer: StagePointer): void {
   ripple.material.opacity = (1 - share) * RIPPLE.opacity;
 }
 
+/** Starts a splash for a new goal and lets it run. Reduced motion shows none. */
+function splashGoal(pointer: StagePointer, goal: FloorPoint | null, frame: PointerFrame): boolean {
+  const isNew = goal !== null && (pointer.goal?.x !== goal.x || pointer.goal.z !== goal.z);
+  pointer.goal = goal;
+  if (isNew) pointer.splashTime = 0;
+  const share = pointer.splashTime / SPLASH.seconds;
+  const isRunning = share < 1 && !frame.reducedMotion;
+  pointer.splash.visible = isRunning;
+  if (!isRunning) return false;
+  const scale = SPLASH.start + share * SPLASH.growth;
+  pointer.splash.scale.set(scale, 1, scale);
+  pointer.splash.material.opacity = (1 - share) ** 2 * SPLASH.opacity;
+  pointer.splashTime += frame.seconds;
+  return true;
+}
+
 /** Shows the pointer while the own jelly is on its way and lets it shrink away on arrival. */
 export function updatePointer(pointer: StagePointer, frame: PointerFrame): void {
   const goal = frame.destination && toFloorPoint(frame.destination, frame.room);
   const wanted = goal && isOnTheWay(frame.move, goal, frame.serverTime, frame.room) ? 1 : 0;
   const step = frame.reducedMotion ? 1 : 1 - Math.exp(-GROW_RATE * frame.seconds);
   pointer.size += (wanted - pointer.size) * step;
-  pointer.root.visible = pointer.size > SMALLEST_SIZE;
+  const isSplashing = splashGoal(pointer, goal, frame);
+  pointer.body.visible = pointer.size > SMALLEST_SIZE;
+  pointer.root.visible = pointer.body.visible || isSplashing;
   if (!pointer.root.visible) return;
   // Without a goal it shrinks where it stands.
   if (goal) pointer.root.position.set(goal.x, findFloorHeight(goal, frame.platforms), goal.z);
-  pointer.root.scale.setScalar(pointer.size);
+  pointer.body.scale.setScalar(pointer.size);
   paintPointer(pointer, frame.color);
   if (!frame.reducedMotion) pointer.time += frame.seconds;
   animatePointer(pointer);

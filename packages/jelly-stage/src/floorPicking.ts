@@ -20,6 +20,14 @@ export interface PickView {
   lensStrength: number;
 }
 
+/** Reads the picture a canvas shows through a lens right now. */
+export function readPickView(canvas: HTMLCanvasElement, lens: { strength: number }): PickView {
+  return {
+    size: { width: canvas.clientWidth, height: canvas.clientHeight },
+    lensStrength: lens.strength,
+  };
+}
+
 /** The floor lies at height 0 and faces up. */
 const FLOOR_PLANE = new Plane(new Vector3(0, 1, 0), 0);
 
@@ -36,6 +44,16 @@ function castToFloor(
   return hit && { x: hit.x, z: hit.z };
 }
 
+/** Returns the floor under a point in CSS pixels, also beyond the room. Null when it shows no floor. */
+export function findFloor(
+  camera: PerspectiveCamera,
+  point: ScreenPoint,
+  view: PickView,
+): FloorPoint | null {
+  const { size, lensStrength } = view;
+  return castToFloor(camera, unbendFromLens(point, size, lensStrength), size);
+}
+
 /**
  * Returns the stage position under a point in CSS pixels, on the floor of a room. Returns null when
  * the point shows no floor or the floor beyond the stage.
@@ -46,8 +64,7 @@ export function pickFloor(
   view: PickView,
   room: RoomSize,
 ): StagePoint | null {
-  const { size, lensStrength } = view;
-  const hit = castToFloor(camera, unbendFromLens(point, size, lensStrength), size);
+  const hit = findFloor(camera, point, view);
   const position = hit && fromFloorPoint(hit, room);
   return position && isOnStage(position) ? position : null;
 }
