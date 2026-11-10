@@ -46,26 +46,28 @@ type PlayerState struct {
 	// ServerTime lets a client with a wrong clock show correct countdowns.
 	ServerTime int64 `json:"server_time"`
 	// LastEventID is where a client opens the stream to miss nothing after this state.
-	LastEventID  int64                       `json:"last_event_id"`
-	ID           int64                       `json:"id"`
-	Name         string                      `json:"name"`
-	Color        string                      `json:"color"`
-	Equipped     map[string]EquippedCosmetic `json:"equipped"`
-	Hidden       bool                        `json:"hidden"`
-	LAN          *LANInfo                    `json:"lan"`
-	XP           int                         `json:"xp"`
-	Level        int                         `json:"level"`
-	TotalXP      int                         `json:"total_xp"`
-	NextPokeAt   *int64                      `json:"next_poke_at"`
-	Reports      *rules.ReportStatus         `json:"reports"`
-	Sign         *string                     `json:"sign"`
-	Follow       *Follow                     `json:"follow"`
-	Trip         *Trip                       `json:"trip"`
-	LANsAttended int                         `json:"lans_attended"`
-	Badges       []Badge                     `json:"badges"`
-	Cosmetics    []string                    `json:"cosmetics"`
-	Achievements []EarnedAchievement         `json:"achievements"`
-	Awards       []PlayerAward               `json:"awards"`
+	LastEventID int64                       `json:"last_event_id"`
+	ID          int64                       `json:"id"`
+	Name        string                      `json:"name"`
+	Color       string                      `json:"color"`
+	Equipped    map[string]EquippedCosmetic `json:"equipped"`
+	Hidden      bool                        `json:"hidden"`
+	LAN         *LANInfo                    `json:"lan"`
+	XP          int                         `json:"xp"`
+	Level       int                         `json:"level"`
+	// Coins are the balance in the running LAN, 0 outside of one.
+	Coins        int                 `json:"coins"`
+	TotalXP      int                 `json:"total_xp"`
+	NextPokeAt   *int64              `json:"next_poke_at"`
+	Reports      *rules.ReportStatus `json:"reports"`
+	Sign         *string             `json:"sign"`
+	Follow       *Follow             `json:"follow"`
+	Trip         *Trip               `json:"trip"`
+	LANsAttended int                 `json:"lans_attended"`
+	Badges       []Badge             `json:"badges"`
+	Cosmetics    []string            `json:"cosmetics"`
+	Achievements []EarnedAchievement `json:"achievements"`
+	Awards       []PlayerAward       `json:"awards"`
 }
 
 // entryRow is the latest entry as stored in the database.
@@ -77,6 +79,7 @@ type entryRow struct {
 	rulesJSON       string
 	joinedAt        int64
 	xp              int
+	coins           int
 	sign            sql.NullString
 	follow          sql.NullInt64
 	trip            tripColumns
@@ -155,14 +158,14 @@ func loadAccount(ctx context.Context, database querier, playerID int64) (PlayerS
 func loadProgress(ctx context.Context, database querier, state *PlayerState, now int64) error {
 	var row entryRow
 	const selectLatestEntrySQL = `SELECT l.id, l.slug, l.name, l.starts_at, l.ends_at,
-			l.rules, e.joined_at, e.xp, e.sign_key, e.follow_player_id,
+			l.rules, e.joined_at, e.xp, e.coins, e.sign_key, e.follow_player_id,
 			e.trip_x, e.trip_y, e.trip_until, e.follow_started_at
 		FROM lan_entries e JOIN lans l ON l.id = e.lan_id
 		WHERE e.player_id = ?
 		ORDER BY (l.starts_at <= ? AND ? < l.ends_at) DESC, l.starts_at DESC LIMIT 1`
 	err := database.QueryRowContext(ctx, selectLatestEntrySQL, state.ID, now, now).
 		Scan(&row.lanID, &row.info.Slug, &row.info.Name, &row.startsAt, &row.endsAt,
-			&row.rulesJSON, &row.joinedAt, &row.xp, &row.sign, &row.follow,
+			&row.rulesJSON, &row.joinedAt, &row.xp, &row.coins, &row.sign, &row.follow,
 			&row.trip.x, &row.trip.y, &row.trip.until, &row.followStartedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
@@ -173,6 +176,9 @@ func loadProgress(ctx context.Context, database querier, state *PlayerState, now
 	row.info.Active = row.startsAt <= now && now < row.endsAt
 	state.LAN = &row.info
 	state.XP = row.xp
+	if row.info.Active {
+		state.Coins = row.coins
+	}
 	gameRules, err := parseRules(row.rulesJSON)
 	if err != nil {
 		return err
@@ -216,17 +222,13 @@ func loadActiveTimers(
 func loadUnlockedCosmetics(
 	ctx context.Context, database querier, playerID int64,
 ) ([]string, error) {
-	levels, err := loadLevels(ctx, database, playerID)
-	if err != nil {
-		return nil, err
-	}
 	var currentEvents, totalEvents int
 	const selectUnlockFactsSQL = `SELECT
 		(SELECT COUNT(*) FROM xp_log WHERE player_id = ?1 AND action = ?2 AND lan_id = (
 			SELECT e.lan_id FROM lan_entries e JOIN lans l ON l.id = e.lan_id
 			WHERE e.player_id = ?1 ORDER BY l.starts_at DESC LIMIT 1)),
 		(SELECT COUNT(*) FROM xp_log WHERE player_id = ?1 AND action = ?2)`
-	err = database.QueryRowContext(ctx, selectUnlockFactsSQL,
+	err := database.QueryRowContext(ctx, selectUnlockFactsSQL,
 		playerID, actionEvent).Scan(&currentEvents, &totalEvents)
 	if err != nil {
 		return nil, fmt.Errorf("load unlock facts: %w", err)
@@ -241,54 +243,16 @@ func loadUnlockedCosmetics(
 			awardCosmetics = append(awardCosmetics, *award.CosmeticKey)
 		}
 	}
-	return rules.ListUnlockedCosmetics(rules.UnlockFacts{
-		CurrentLevel:   levels.current,
-		BestLevel:      levels.best,
-		CurrentEvents:  currentEvents,
-		TotalEvents:    totalEvents,
-		AwardCosmetics: awardCosmetics,
-	}), nil
-}
-
-// playerLevels are the level in the newest LAN of a player and the best one in any LAN.
-type playerLevels struct {
-	current int
-	best    int
-}
-
-// loadLevels reads the levels of a player. Every LAN counts by its own rules, so XP of two LANs
-// cannot be compared without them.
-func loadLevels(ctx context.Context, database querier, playerID int64) (playerLevels, error) {
-	levels := playerLevels{current: rules.FirstLevel, best: rules.FirstLevel}
-	const selectEntriesSQL = `SELECT e.xp, l.rules FROM lan_entries e JOIN lans l ON l.id = e.lan_id
-		WHERE e.player_id = ? ORDER BY l.starts_at DESC`
-	rows, err := database.QueryContext(ctx, selectEntriesSQL, playerID)
+	purchased, err := loadPurchasedCosmetics(ctx, database, playerID)
 	if err != nil {
-		return levels, fmt.Errorf("load levels: %w", err)
+		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
-	isNewest := true
-	for rows.Next() {
-		var lanXP int
-		var rulesJSON string
-		err = rows.Scan(&lanXP, &rulesJSON)
-		if err != nil {
-			return levels, fmt.Errorf("read level: %w", err)
-		}
-		gameRules, err := parseRules(rulesJSON)
-		if err != nil {
-			return levels, err
-		}
-		level := rules.CalculateLevel(gameRules, lanXP)
-		levels.best = max(levels.best, level)
-		if isNewest {
-			levels.current, isNewest = level, false
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return levels, fmt.Errorf("load levels: %w", err)
-	}
-	return levels, nil
+	return rules.ListUnlockedCosmetics(rules.UnlockFacts{
+		CurrentEvents:      currentEvents,
+		TotalEvents:        totalEvents,
+		AwardCosmetics:     awardCosmetics,
+		PurchasedCosmetics: purchased,
+	}), nil
 }
 
 // loadBadges returns all attended LANs, newest first.

@@ -19,6 +19,9 @@ const (
 	AdminActionSeatCode  = "seat.code"
 	AdminActionRecovery  = "player.recovery_code"
 	AdminActionGiveXP    = "player.xp"
+	AdminActionGiveCoins = "player.coins"
+	// AdminActionRefundPurchase targets the player, the key stays out of the log like names do.
+	AdminActionRefundPurchase = "player.purchase_refund"
 	// AdminActionAchievement targets the player, the key stays out of the log like names do.
 	AdminActionAchievement = "player.achievement"
 	AdminActionMapImport   = "lan.map_import"

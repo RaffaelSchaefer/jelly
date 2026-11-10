@@ -94,33 +94,31 @@ func TestListUnlockedCosmetics(t *testing.T) {
 		facts rules.UnlockFacts
 		want  []string
 	}{
-		{"new player", rules.UnlockFacts{CurrentLevel: 1, BestLevel: 1}, []string{}},
+		{"new player", rules.UnlockFacts{}, []string{}},
 		{
-			"permanent cosmetics stay after a LAN",
-			rules.UnlockFacts{CurrentLevel: 1, BestLevel: 3},
-			[]string{"headset", "headset-neutral", "beanie"},
+			"a purchase unlocks its cosmetic",
+			rules.UnlockFacts{PurchasedCosmetics: []string{"headset", "hood"}},
+			[]string{"headset", "hood"},
 		},
 		{
-			"crown needs the level in this LAN",
-			rules.UnlockFacts{CurrentLevel: 1, BestLevel: 10},
-			[]string{"headset", "headset-neutral", "beanie", "pixel-glasses", "hood"},
-		},
-		{
-			"crown counts at level 10 now",
-			rules.UnlockFacts{CurrentLevel: 10, BestLevel: 10},
-			[]string{"headset", "headset-neutral", "beanie", "pixel-glasses", "hood", "crown"},
+			"a purchase of the crown unlocks it",
+			rules.UnlockFacts{PurchasedCosmetics: []string{"crown"}},
+			[]string{"crown"},
 		},
 		{
 			"an event from an earlier LAN keeps the party hat",
-			rules.UnlockFacts{CurrentLevel: 1, BestLevel: 1, TotalEvents: 1},
+			rules.UnlockFacts{TotalEvents: 1},
+			[]string{"party-hat"},
+		},
+		{
+			"an event never buys a shop cosmetic",
+			rules.UnlockFacts{CurrentEvents: 1, TotalEvents: 1},
 			[]string{"party-hat"},
 		},
 		{
 			"awards add cosmetics once",
-			rules.UnlockFacts{
-				CurrentLevel: 1, BestLevel: 2, AwardCosmetics: []string{"golden-cup", "headset"},
-			},
-			[]string{"headset", "headset-neutral", "golden-cup"},
+			rules.UnlockFacts{AwardCosmetics: []string{"golden-cup", "headset"}},
+			[]string{"golden-cup", "headset"},
 		},
 	}
 	for _, testCase := range testCases {

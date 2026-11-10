@@ -64,6 +64,7 @@ func ListRuleLimits(gameRules Rules) []RuleLimit {
 func listPublicRuleLimits(public PublicRules) []RuleLimit {
 	return []RuleLimit{
 		countLimit("xp_per_level", public.XPPerLevel, 1, maxXPPerLevel),
+		countLimit("coins_per_level", public.CoinsPerLevel, 0, maxCoinsPerLevel),
 		secondsLimit("poke_interval", public.PokeIntervalSeconds, 1),
 		countLimit("poke_xp", public.PokeXP, 0, maxRuleXP),
 		{"poke_max_ticks", float64(public.PokeMaxTicks), 1, maxRuleCount},

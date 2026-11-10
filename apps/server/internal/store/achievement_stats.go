@@ -38,6 +38,9 @@ func listMetricQueries() []metricQuery {
 			AND type = '` + EventFollowChanged + `'
 			AND json_extract(payload, '$.target_id') IS NOT NULL`},
 		{rules.MetricAwards, `SELECT COUNT(*) FROM awards WHERE player_id = ?1`},
+		{rules.MetricPurchases, `SELECT COUNT(*) FROM purchases WHERE player_id = ?1`},
+		{rules.MetricPermanentPurchases, `SELECT COUNT(DISTINCT cosmetic_key) FROM purchases
+			WHERE player_id = ?1 AND lan_id IS NULL`},
 		{rules.MetricPartners, `SELECT COUNT(DISTINCT partner_id) FROM partner_emotes
 			WHERE player_id = ?1 AND lan_id = ?2`},
 		{rules.MetricPartnerAreas, `SELECT COUNT(DISTINCT other.area_id) FROM partner_emotes pe

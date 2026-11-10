@@ -17,8 +17,11 @@ const (
 	// NoStackLimit lets stacks grow as high as the players can build them.
 	NoStackLimit = 0
 
-	defaultXPPerLevel = 100
-	millisPerSecond   = 1000
+	defaultXPPerLevel    = 100
+	defaultCoinsPerLevel = 1
+	// maxCoinsPerLevel keeps one level-up from flooding one wallet.
+	maxCoinsPerLevel = 100
+	millisPerSecond  = 1000
 
 	defaultPokeIntervalSeconds   = 900
 	defaultPokeXP                = 3
@@ -81,6 +84,8 @@ type Rules struct {
 type PublicRules struct {
 	// XPPerLevel is how much XP a level takes, the same for every level.
 	XPPerLevel int `json:"xp_per_level"`
+	// CoinsPerLevel is how many coins every reached level gives to spend in the shop.
+	CoinsPerLevel int `json:"coins_per_level"`
 	// PokeIntervalSeconds is the minimum time between two XP pokes.
 	PokeIntervalSeconds int64 `json:"poke_interval"`
 	// PokeXP is the XP per interval.
@@ -139,6 +144,7 @@ type PublicRules struct {
 func DefaultRules() Rules {
 	return Rules{
 		XPPerLevel:               defaultXPPerLevel,
+		CoinsPerLevel:            defaultCoinsPerLevel,
 		PokeIntervalSeconds:      defaultPokeIntervalSeconds,
 		PokeXP:                   defaultPokeXP,
 		PokeMaxTicks:             defaultPokeMaxTicks,
@@ -185,6 +191,15 @@ func IsEventCodeValid(xp int, validFrom, validUntil int64) bool {
 // CalculateLevel returns the level for the XP of a LAN, starting at [FirstLevel].
 func CalculateLevel(gameRules Rules, xp int) int {
 	return xp/gameRules.XPPerLevel + FirstLevel
+}
+
+// CalculateCoinsForLevels returns the coins for reaching `levels` new levels at once. A jump over
+// several levels pays for every one of them.
+func CalculateCoinsForLevels(gameRules Rules, levels int) int {
+	if levels < 1 {
+		return 0
+	}
+	return levels * gameRules.CoinsPerLevel
 }
 
 // CalculatePokeXP returns the XP for a poke. A poke that comes too early earns 0.

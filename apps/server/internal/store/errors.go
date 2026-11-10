@@ -40,6 +40,8 @@ var (
 	ErrPlayerNotFound = errors.New("player not found")
 	// ErrCosmeticLocked reports a cosmetic the player has not unlocked.
 	ErrCosmeticLocked = errors.New("cosmetic is locked")
+	// ErrPurchaseNotFound reports a purchase this player does not have.
+	ErrPurchaseNotFound = errors.New("purchase not found")
 	// ErrEventCodeInvalid reports an unknown or expired event code.
 	ErrEventCodeInvalid = errors.New("invalid event code")
 	// ErrEventCodeRedeemed reports an event code this player has already redeemed.

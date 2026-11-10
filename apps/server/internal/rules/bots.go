@@ -2,14 +2,15 @@ package rules
 
 // What a bot can do. Food and drink reuse the report actions.
 const (
-	BotActionPoke   = "poke"
-	BotActionEmote  = "emote"
-	BotActionSign   = "sign"
-	BotActionTrip   = "trip"
-	BotActionFollow = "follow"
-	BotActionStack  = "stack"
-	BotActionXP     = "xp"
-	BotActionRedeem = "redeem"
+	BotActionPoke     = "poke"
+	BotActionEmote    = "emote"
+	BotActionSign     = "sign"
+	BotActionTrip     = "trip"
+	BotActionFollow   = "follow"
+	BotActionStack    = "stack"
+	BotActionXP       = "xp"
+	BotActionRedeem   = "redeem"
+	BotActionPurchase = "purchase"
 	// BotActionOdds is one in how many seconds an automatic bot acts, so a crowd stays calm.
 	BotActionOdds = 20
 )
@@ -23,13 +24,14 @@ type botChoice struct {
 // listBotChoices returns what automatic bots do and how often. XP stays a manual gift.
 func listBotChoices() []botChoice {
 	const (
-		weightEmote  = 30
-		weightSign   = 15
-		weightPoke   = 20
-		weightReport = 5
-		weightTrip   = 15
-		weightFollow = 10
-		weightStack  = 5
+		weightEmote    = 30
+		weightSign     = 15
+		weightPoke     = 20
+		weightReport   = 5
+		weightTrip     = 15
+		weightFollow   = 10
+		weightStack    = 5
+		weightPurchase = 5
 	)
 	return []botChoice{
 		{BotActionEmote, weightEmote},
@@ -40,6 +42,7 @@ func listBotChoices() []botChoice {
 		{BotActionTrip, weightTrip},
 		{BotActionFollow, weightFollow},
 		{BotActionStack, weightStack},
+		{BotActionPurchase, weightPurchase},
 	}
 }
 

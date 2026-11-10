@@ -5,7 +5,24 @@ import "slices"
 // ListAchievements returns the catalog. Titles and descriptions are shown in the German app.
 func ListAchievements() []Achievement {
 	return slices.Concat(listCareAchievements(), listSocialAchievements(), listEventAchievements(),
-		listNightAchievements(), listLifetimeAchievements())
+		listShopAchievements(), listNightAchievements(), listLifetimeAchievements())
+}
+
+// listShopAchievements covers buying cosmetics in the shop.
+func listShopAchievements() []Achievement {
+	return []Achievement{
+		{
+			Key: AchievementFirstPurchase, Title: "Erster Einkauf",
+			Description: "Im Shop zugegriffen.",
+			Scope:       ScopePermanent, Metric: MetricPurchases, Goal: 1,
+		},
+		{
+			Key: AchievementShopaholic, Title: "Ausverkauft",
+			Description: "Jedes dauerhafte Shop-Cosmetic gehört dir.",
+			Scope:       ScopePermanent, Metric: MetricPermanentPurchases,
+			Goal: len(ListPermanentShopCosmetics()),
+		},
+	}
 }
 
 // listCareAchievements covers getting started and looking after the jelly.
