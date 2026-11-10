@@ -1139,6 +1139,11 @@
             "format": "int64",
             "type": "integer"
           },
+          "jelly_width": {
+            "description": "Real width of a jelly in meters.",
+            "format": "double",
+            "type": "number"
+          },
           "near_distance": {
             "description": "How far apart two jellies count as next to each other, in jelly units and not in percent. A jelly is about 1.7 wide, the hall 21 wide and 40 deep.",
             "format": "double",
@@ -1188,6 +1193,16 @@
             "description": "How many food and drink reports count in the window, together.",
             "format": "int64",
             "type": "integer"
+          },
+          "room_depth": {
+            "description": "Real depth of the hall in meters, from back to front.",
+            "format": "double",
+            "type": "number"
+          },
+          "room_width": {
+            "description": "Real width of the hall in meters, from left to right.",
+            "format": "double",
+            "type": "number"
           },
           "snack_run_seconds": {
             "description": "How long a jelly stays in a queue zone after a report.",
@@ -1243,7 +1258,10 @@
           "stack_seconds",
           "stack_max_members",
           "highlight_seconds",
-          "highlight_cooldown"
+          "highlight_cooldown",
+          "room_width",
+          "room_depth",
+          "jelly_width"
         ],
         "type": "object"
       },
@@ -1408,10 +1426,20 @@
         "additionalProperties": true,
         "description": "What the coordinates of the stage mean.",
         "properties": {
+          "depth_m": {
+            "description": "Real depth of the room in meters, the rule `room_depth` of the LAN.",
+            "format": "double",
+            "type": "number"
+          },
           "height": {
             "description": "Height of the room in `unit`.",
             "format": "int64",
             "type": "integer"
+          },
+          "jelly_m": {
+            "description": "Real width of a jelly in meters, the rule `jelly_width` of the LAN.",
+            "format": "double",
+            "type": "number"
           },
           "unit": {
             "description": "The unit of all positions, `percent` for now.",
@@ -1421,12 +1449,20 @@
             "description": "Width of the room in `unit`.",
             "format": "int64",
             "type": "integer"
+          },
+          "width_m": {
+            "description": "Real width of the room in meters, the rule `room_width` of the LAN.",
+            "format": "double",
+            "type": "number"
           }
         },
         "required": [
           "width",
           "height",
-          "unit"
+          "unit",
+          "width_m",
+          "depth_m",
+          "jelly_m"
         ],
         "type": "object"
       },
@@ -1600,6 +1636,11 @@
             "format": "double",
             "type": "number"
           },
+          "height_m": {
+            "description": "`height` in meters of the real room.",
+            "format": "double",
+            "type": "number"
+          },
           "id": {
             "description": "Number of the zone.",
             "format": "int64",
@@ -1628,8 +1669,18 @@
             "format": "double",
             "type": "number"
           },
+          "width_m": {
+            "description": "`width` in meters of the real room.",
+            "format": "double",
+            "type": "number"
+          },
           "x": {
             "description": "Left edge before the rotation.",
+            "format": "double",
+            "type": "number"
+          },
+          "x_m": {
+            "description": "`x` in meters of the real room, counted from the left edge.",
             "format": "double",
             "type": "number"
           },
@@ -1637,10 +1688,19 @@
             "description": "Top edge before the rotation.",
             "format": "double",
             "type": "number"
+          },
+          "y_m": {
+            "description": "`y` in meters of the real room, counted from the back edge.",
+            "format": "double",
+            "type": "number"
           }
         },
         "required": [
           "id",
+          "x_m",
+          "y_m",
+          "width_m",
+          "height_m",
           "name",
           "x",
           "y",
@@ -1848,7 +1908,7 @@
   "info": {
     "description": "The contract between the Jelly server and its clients, the desktop app and the stage page.\n\n**Authentication:** A player sends `Authorization: Bearer \u003csecret\u003e`. A new secret only arrives from `POST /v1/auth/redeem` or `POST /v1/auth/recover`, and clients keep it to themselves. The stage page reads with the stage key in the query `key`, which allows reading only.\n\n**Units:** All times are milliseconds since 1970 in server time. Use `server_time` from an answer for countdowns instead of the clock of the device. All positions on the stage are percent of the room. Distances in rules such as `near_distance` and `walk_speed` count jelly units: a jelly is about 1.7 wide, the hall 21 wide and 40 deep.\n\n**Growth:** Answers can gain fields, event types, catalog entries, enum values and error codes in any version, so clients ignore what they do not know. Requests reject unknown fields. A breaking change gets a new path version.\n\n**Errors:** Every error has the form `{\"error\":{\"code\",\"message\"}}`. `code` is stable and meant for code, `message` is German and meant for people, so show it for unknown codes. `invalid_request` answers with 400 (no valid JSON), 408 or 413 (body too slow or too large), 415 (not JSON) or 422 (unknown or missing field, wrong type). After a network error, read `GET /v1/players/me` before repeating an action, because it may have counted already. `401` means the secret is no longer valid. Never delete a secret because of a network error.\n\n**Error codes:** New ones can appear in any version.\n\n| Status | Code | Message |\n| --- | --- | --- |\n| 400 | `invalid_request` | Die Anfrage ist ungültig. |\n| 404 | `not_found` | Diesen Weg gibt es nicht. |\n| 429 | `rate_limited` | Zu viele Versuche, bitte warten. |\n| 500 | `internal` | Auf dem Server ist ein Fehler aufgetreten. |\n| 401 | `unauthorized` | Dieses Konto ist nicht bekannt. |\n| 403 | `forbidden` | Zugriff verweigert. |\n| 403 | `invalid_code` | Der Anmeldecode stimmt nicht. |\n| 409 | `name_taken` | Dieser Name ist schon vergeben. |\n| 404 | `player_not_found` | Dieses Konto gibt es nicht. |\n| 404 | `lan_not_found` | Diese LAN gibt es nicht. |\n| 409 | `lan_full` | Diese LAN ist schon voll. |\n| 409 | `lan_overlap` | Der Zeitraum überschneidet sich mit einer LAN. |\n| 400 | `not_a_bot` | Das ist kein Bot. Echte Spieler steuert niemand von außen. |\n| 409 | `lan_has_players` | An dieser LAN nehmen schon Spieler teil, deshalb lässt sie sich nicht löschen. |\n| 409 | `slug_taken` | Dieser Kurzname ist schon vergeben. |\n| 404 | `area_not_found` | Diesen Bereich gibt es nicht. |\n| 409 | `area_not_assignable` | In diesem Bereich kann kein Jelly stehen. |\n| 400 | `invalid_area` | Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art. |\n| 400 | `invalid_rules` | xp_per_level lässt sich nach dem Start der LAN nicht mehr ändern. |\n| 400 | `invalid_name` | Der Name muss 1 bis 24 Zeichen lang sein und darf keine Steuerzeichen enthalten. |\n| 400 | `invalid_color` | Diese Farbe gibt es nicht. |\n| 409 | `code_redeemed` | Dieser Code wurde schon benutzt. Die Orga kann einen neuen vergeben. |\n| 404 | `gathering_not_found` | Gerade läuft kein solches Ereignis. |\n| 403 | `seat_code_other_account` | Dieser Sitzplatz-Code gehört zu einem anderen Konto. Fehlt dein Konto auf diesem Gerät, gibt dir die Orga einen Wiederherstellungs-Code. |\n| 403 | `invalid_recovery_code` | Dieser Wiederherstellungs-Code stimmt nicht oder ist abgelaufen. |\n| 400 | `unknown_slot` | Diesen Platz für Cosmetics gibt es nicht. |\n| 400 | `unknown_cosmetic` | Dieses Cosmetic passt nicht auf diesen Platz. |\n| 400 | `invalid_cosmetic_color` | Diese Farbe geht hier nicht. |\n| 409 | `cosmetic_locked` | Dieses Cosmetic ist noch nicht freigeschaltet. |\n| 400 | `invalid_partner` | Dieses Jelly kannst du nicht auffordern. |\n| 409 | `partner_emote_open` | Du hast dieses Jelly schon aufgefordert. |\n| 404 | `partner_emote_not_found` | Diese Aufforderung gibt es nicht. |\n| 409 | `partner_emote_closed` | Diese Aufforderung ist schon vorbei. |\n| 400 | `invalid_partner_emote_state` | Das geht bei dieser Aufforderung nicht. |\n| 409 | `no_active_lan` | Gerade läuft keine LAN. |\n| 409 | `not_joined` | Du nimmst an dieser LAN noch nicht teil. |\n| 403 | `invalid_event_code` | Dieser Event-Code gilt gerade nicht. |\n| 409 | `event_code_redeemed` | Diesen Event-Code hast du schon eingelöst. |\n| 409 | `event_code_exists` | Diesen Event-Code gibt es schon. |\n| 409 | `emote_cooldown` | Warte kurz bis zum nächsten Emote. |\n| 400 | `invalid_follow` | Zu diesem Jelly kannst du dich nicht stellen. |\n| 400 | `invalid_trip` | Auf diesem Punkt kann kein Jelly stehen. |\n| 409 | `too_far` | Ihr steht nicht nah genug beieinander. |\n| 400 | `unknown_partner_emote` | Dieses Partner-Emote gibt es nicht. |\n| 409 | `report_cooldown` | Das hast du gerade erst gemeldet. |\n| 409 | `report_limit` | Du hast dein Tageslimit erreicht. |\n| 400 | `unknown_emote` | Dieses Emote gibt es nicht. |\n| 400 | `unknown_sign` | Dieses Schild gibt es nicht. |\n| 400 | `unknown_report_kind` | Diese Meldung gibt es nicht. |\n| 404 | `stack_not_found` | Diesen Stapel gibt es nicht mehr. |\n| 409 | `stack_full` | Dieser Stapel ist schon hoch genug. |\n| 400 | `invalid_highlight` | Dieses Jelly kannst du nicht hervorheben. |\n| 409 | `highlight_cooldown` | Warte kurz bis zum nächsten Hervorheben. |\n",
     "title": "Jelly API",
-    "version": "1.16.0"
+    "version": "1.17.0"
   },
   "openapi": "3.0.3",
   "paths": {
