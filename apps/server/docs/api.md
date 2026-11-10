@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.16.0**
+Aktuelle Version: **1.18.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.16.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.18.0  | Punkteshop: Regel `coins_per_level`, `coins` im Stand, `unlock: shop` mit `price` im Katalog statt Freischaltung per Level, `POST /purchases`, Ereignisse `coins.gained` und `cosmetic.purchased`, Achievements `first-purchase` und `shopaholic`. Admin: Münzen schenken und Käufe zurücknehmen, Bots-Aktion `purchase` |
 | 1.17.0  | Meter: Regeln `room_width`, `room_depth` und `jelly_width`, `room` und `areas` in `GET /stage` nennen dazu `width_m`, `depth_m`, `jelly_m` und `x_m`, `y_m`, `width_m`, `height_m`. Kartendatei Version 2 mit Zonen in Metern. Positionen bleiben Prozent |
 | 1.16.0  | `is_bot` in `players` von `GET /stage`: Bots der Orga, die eine Bühne kennzeichnen kann. Dazu Bots, XP, Achievements und der Link zur Bühne in der Admin-API |
 | 1.15.0  | Neues Cosmetic `headset-neutral` im Katalog, ab Level 2 frei wie `headset` |
@@ -87,7 +88,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 415    | `invalid_request`                            | `Content-Type` ist nicht JSON             |
 | 422    | `invalid_request`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
 | 400    | `invalid_request`                         | Admin-Angaben, `since`, `cursor` oder `topics` sind ungültig |
-| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, oder `xp_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
+| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, oder `xp_per_level` oder `coins_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
 | 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
@@ -109,10 +110,12 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 404    | `gathering_not_found`                     | Gerade läuft kein Essens-Event und keine Siegerehrung |
 | 404    | `stack_not_found`, `partner_emote_not_found` | Stapel oder Aufforderung gibt es nicht mehr |
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
+| 404    | `purchase_not_found`                      | Dieses Cosmetic hat der Spieler nicht gekauft |
 | 409    | `name_taken`, `slug_taken`, `lan_overlap`, `lan_has_players` | Steht im Konflikt mit Vorhandenem |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
 | 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |
+| 409    | `not_for_sale`, `already_owned`, `not_enough_coins` | Nicht im Shop, schon vorhanden oder zu wenige Münzen |
 | 409    | `event_code_redeemed`, `event_code_exists` | Event-Code schon eingelöst oder vorhanden |
 | 409    | `emote_cooldown`, `report_cooldown`       | Zu früh wiederholt                        |
 | 409    | `report_limit`      | Limit erreicht, später erneut versuchen   |
@@ -130,7 +133,8 @@ entscheiden wird, zum Beispiel die Reichweite `near_distance` in Jelly-Einheiten
 `xp_per_level`. Geprüft wird trotzdem immer auf dem Server. Ändert die Orga etwas, kommt `rules.changed`.
 
 `xp_per_level` gilt linear für jedes Level, Standard 100, und lässt sich nur bis zum Start der LAN ändern. Sonst würden
-Level und Cosmetics für alle springen.
+Level und Cosmetics für alle springen. `coins_per_level` zahlt bei jedem Level-Aufstieg Münzen für den Shop, Standard 1,
+und ist ebenfalls nach dem Start der LAN fest. Ein Kauf senkt kein Level.
 
 ### Stand eines Spielers
 
@@ -148,6 +152,7 @@ Level und Cosmetics für alle springen.
   "lan": { "slug": "ucb-2026", "name": "UCB LAN 2026", "active": true },
   "xp": 3,
   "level": 1,
+  "coins": 3,
   "total_xp": 3,
   "next_poke_at": 1795000900000,
   "reports": { "food_ready_at": 0, "drink_ready_at": 0, "reports_left": 8 },
@@ -164,11 +169,13 @@ Level und Cosmetics für alle springen.
 
 - `lan` ist die jüngste LAN des Kontos, nicht unbedingt die laufende. Ob eine läuft, sagt
   `GET /lans/current`. `xp` und `level` gelten für diese LAN, `total_xp` über alle LANs.
+- `coins` sind die Münzen für den Shop. Jeder Level-Aufstieg zahlt `coins_per_level`, sie gelten
+  je LAN und sind außerhalb einer aktiven LAN `0`.
 - `next_poke_at`, `reports`, `sign`, `trip` und `follow` sind außerhalb einer aktiven LAN `null`.
 - `server_time` gilt für Countdowns statt der Uhr des Geräts. `food_ready_at` und `drink_ready_at`
   sind 0, wenn noch nichts gemeldet wurde.
 - `cosmetics` sind die Schlüssel, die der Spieler tragen darf. Wie man einen Eintrag bekommt, sagt `unlock` im Katalog:
-  `level`, `event` (Event-Code), `award` (Preis der Orga) oder `none`. Ein Admin kann jeden Eintrag vergeben.
+  `shop` (mit `price`, gekauft mit `POST /purchases`), `event` (Event-Code), `award` (Preis der Orga) oder `none`. Ein Admin kann jeden Eintrag vergeben.
 - Rekord-Achievements wie Marathon tragen zusätzlich `best` und `record_unit`.
 
 ## Anmeldung
@@ -216,6 +223,7 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `GET /players/me`         |                                            | Stand                          |
 | `PATCH /players/me`       | `{"name","color"}`, alle optional          | Stand                          |
 | `PUT /cosmetics/equipped` | `{"slot","key","color"}`, ohne `key` leert den Platz | Stand                |
+| `POST /purchases`         | `{"key"}` aus dem Katalog mit `unlock: shop` | `{"cosmetic_key","coins_spent","me"}` |
 | `GET /players`            | `?cursor=&limit=`                          | `{"items","next_cursor"}`      |
 | `GET /players/{id}`       |                                            | Profil: XP, Achievements, Cosmetics |
 | `POST /presence`          |                                            | Stand                          |
@@ -415,6 +423,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `player.active`, `player.updated`                 | Jelly kam dazu oder wurde geändert |
 | `player.hidden`, `player.removed`                 | Jelly ist weg                      |
 | `xp.gained`, `level.up`                           | Fortschritt, `xp.gained` mit `{"amount","source"}` |
+| `coins.gained`, `cosmetic.purchased`              | Shop: Münzen bekommen, etwas gekauft |
 | `achievement.earned`, `award.given`               | Auszeichnung                       |
 | `emote`, `partner.emote`                          | Emote, Partner-Emote mit `partner_id` |
 | `sign.changed`, `follow.changed`, `trip.changed`  | Schild oder Standort               |
@@ -432,6 +441,8 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `player.removed`                                  | `null`      | `{"player_id"}`                   |
 | `xp.gained`                                       | Spieler     | `{"amount","source"}`             |
 | `level.up`                                        | Spieler     | `{"level"}`                       |
+| `coins.gained`                                    | Spieler     | `{"amount","source"}` mit `source` `level`, `admin` oder `refund` |
+| `cosmetic.purchased`                              | Spieler     | `{"key","price"}`                 |
 | `achievement.earned`, `emote`                     | Spieler     | `{"key"}`                         |
 | `award.given`                                     | Spieler     | `{"title"}`, Freitext vom Admin   |
 | `partner.emote`                                   | B           | `{"key","partner_id"}`, `partner_id` ist A |
@@ -447,7 +458,8 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 Ausflug, Folgen, Stapel und Gathering melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
 Sekunde. Eine App braucht dafür keine eigenen Timer. Das Bild bleibt schon vorher überall gleich, weil alle Wege vom Server kommen.
 
-`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`.
+`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`. Ein Level-Aufstieg zahlt
+Münzen getrennt vom `level.up` per `coins.gained`, ein Kauf nimmt sie ohne Ereignis.
 
 ## Admin
 
@@ -463,6 +475,8 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/reset-name`        |                                           |
 | `POST /admin/api/players/{id}/recovery-code`     | `{"valid_seconds"}`, ohne Angabe 24 Stunden, höchstens 30 Tage. Antwort: `{"code","expires_at"}`, nur dieses eine Mal |
 | `POST /admin/api/players/{id}/xp`                | `{"xp"}` von 1 bis 10000 in der laufenden LAN, wie verdient, mit Ereignis `xp.gained`. XP werden nie abgezogen. Ohne Teilnahme `409 not_joined` |
+| `POST /admin/api/players/{id}/coins`             | `{"coins"}` von 1 bis 1000 in der laufenden LAN, mit Ereignis `coins.gained` und `source: admin`. Ohne Teilnahme `409 not_joined` |
+| `DELETE /admin/api/players/{id}/purchases/{key}` | Nimmt den Kauf zurück, erstattet den Preis per `coins.gained` mit `source: refund` und legt das Cosmetic ab, falls getragen. Nicht gekauft: `404 purchase_not_found` |
 | `POST /admin/api/players/{id}/achievements`      | `{"key"}` aus dem Katalog, auch geheime, für die laufende LAN wie verdient. Ein vorhandenes bleibt, wie es ist |
 | `GET /admin/api/achievements`                    | Alle Achievements mit `key`, `title`, `description`, auch die geheimen |
 | `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |
@@ -482,7 +496,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
 | `GET`, `POST /admin/api/lans/{id}/bots`          | Antwort: `{"bots","auto_count"}`. `POST` mit `{"count"}` legt bis zu 100 Bots an, siehe unten |
 | `PUT /admin/api/bots/auto`                       | `{"count"}`: so viele Bots der laufenden LAN spielen selbst, `0` stoppt sie |
-| `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp` oder `redeem` mit `"code"` |
+| `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp`, `redeem` mit `"code"` oder `purchase` |
 | `DELETE /admin/api/bots`                         | Löscht alle Bots mit allem, was sie getan haben, und stoppt die automatischen |
 | `GET /admin/api/lans/{id}/gathering`             | Antwort: `{"gathering"}`, das laufende Gathering oder `null` |
 | `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben |
@@ -505,7 +519,8 @@ lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Serv
 
 - **Von Hand:** `POST /admin/api/bots/{id}/actions` lässt einen Bot eine Aktion ausführen. Emote, Schild, Ziel eines
   Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf einen laufenden Stapel in der Nähe oder
-  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler.
+  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler,
+  und `purchase` kauft ein bezahlbares Cosmetic, das der Bot noch nicht hat.
 - **Automatisch:** Die ersten `auto_count` Bots der laufenden LAN handeln im Takt der Bewegung, jeder etwa alle 20
   Sekunden. Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
   loslaufen.
@@ -515,14 +530,15 @@ lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Serv
 - **`PATCH` für einzelne Regeln:** `{"trip_seconds":60}` ändert nur diesen Wert, alles andere bleibt. Das ist der Normalfall.
 - **`PUT` ersetzt alle Regeln:** Jedes Feld, das im Körper fehlt, fällt auf seinen Standardwert zurück, auch wenn es vorher
   anders eingestellt war. `PUT` mit `{"trip_seconds":60}` setzt also alle anderen Regeln zurück.
-- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. `xp_per_level` lässt sich nach dem Start der
-  LAN mit keinem von beiden ändern.
+- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. `xp_per_level` und `coins_per_level`
+  lassen sich nach dem Start der LAN mit keinem von beiden ändern.
 
 Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, höchstens 30 Tage:
 
 | Regel                    | Erlaubt          | Bedeutung                                                   |
 | ------------------------ | ---------------- | ----------------------------------------------------------- |
 | `xp_per_level`           | 1 bis 1000000    | XP pro Level, nach dem Start der LAN fest                   |
+| `coins_per_level`        | 0 bis 100        | Münzen pro Level-Aufstieg, nach dem Start der LAN fest, 0 schaltet den Shop-Werbelohn ab |
 | `poke_interval`          | 1 bis 2592000    | Mindestzeit zwischen zwei Stupsern, die XP geben            |
 | `poke_xp`                | 0 bis 10000      | XP pro Stupser                                              |
 | `poke_max_ticks`         | 1 bis 1000       | Abstände, die ein Stupser nachholt, 1 heißt kein Nachholen  |
