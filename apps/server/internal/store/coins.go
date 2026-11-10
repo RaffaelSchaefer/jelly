@@ -22,6 +22,11 @@ type coinsGainedPayload struct {
 	Source string `json:"source"`
 }
 
+// insertCoinEntrySQL writes one line of the balance history. It is shared by the grant and the
+// spend, so both always write the same shape.
+const insertCoinEntrySQL = `INSERT INTO coin_entries
+	(lan_id, player_id, source, amount, created_at) VALUES (?, ?, ?, ?, ?)`
+
 // grantCoins adds to the balance, writes the history and announces the gain.
 func grantCoins(ctx context.Context, action actionContext, source string, amount int) error {
 	const addCoinsSQL = `UPDATE lan_entries SET coins = coins + ?
@@ -31,8 +36,6 @@ func grantCoins(ctx context.Context, action actionContext, source string, amount
 	if err != nil {
 		return fmt.Errorf("add coins: %w", err)
 	}
-	const insertCoinEntrySQL = `INSERT INTO coin_entries
-		(lan_id, player_id, source, amount, created_at) VALUES (?, ?, ?, ?, ?)`
 	_, err = action.transaction.ExecContext(ctx, insertCoinEntrySQL,
 		action.lan.id, action.playerID, source, amount, action.now)
 	if err != nil {
@@ -51,8 +54,6 @@ func spendCoins(ctx context.Context, action actionContext, amount int) error {
 	if err != nil {
 		return fmt.Errorf("take coins: %w", err)
 	}
-	const insertCoinEntrySQL = `INSERT INTO coin_entries
-		(lan_id, player_id, source, amount, created_at) VALUES (?, ?, ?, ?, ?)`
 	_, err = action.transaction.ExecContext(ctx, insertCoinEntrySQL,
 		action.lan.id, action.playerID, coinSourcePurchase, -amount, action.now)
 	if err != nil {

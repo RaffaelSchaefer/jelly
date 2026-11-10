@@ -60,11 +60,18 @@ func ListRuleLimits(gameRules Rules) []RuleLimit {
 	)
 }
 
+// Names of the rules that no longer change after the start of a LAN. Levels would jump for
+// everyone and take cosmetics away.
+const (
+	RuleXPPerLevel    = "xp_per_level"
+	RuleCoinsPerLevel = "coins_per_level"
+)
+
 // listPublicRuleLimits returns the ranges of the rules that clients can read.
 func listPublicRuleLimits(public PublicRules) []RuleLimit {
 	return []RuleLimit{
-		countLimit("xp_per_level", public.XPPerLevel, 1, maxXPPerLevel),
-		countLimit("coins_per_level", public.CoinsPerLevel, 0, maxCoinsPerLevel),
+		countLimit(RuleXPPerLevel, public.XPPerLevel, 1, maxXPPerLevel),
+		countLimit(RuleCoinsPerLevel, public.CoinsPerLevel, 0, maxCoinsPerLevel),
 		secondsLimit("poke_interval", public.PokeIntervalSeconds, 1),
 		countLimit("poke_xp", public.PokeXP, 0, maxRuleXP),
 		{"poke_max_ticks", float64(public.PokeMaxTicks), 1, maxRuleCount},

@@ -1,9 +1,12 @@
 package api_test
 
 import (
+	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
@@ -95,6 +98,99 @@ func TestALevelUpPaysCoins(t *testing.T) {
 	}
 	if got := testFixture.countEvents(store.EventLevelUp, `{"level":3}`); got != 1 {
 		t.Fatalf("level up announced %d times", got)
+	}
+}
+
+func TestCoinsPerLevelIsFixedOnceTheLANRuns(t *testing.T) {
+	testFixture := newFixture(t)
+	response := testFixture.callAdmin("PATCH", "/admin/api/lans/1/rules", `{"coins_per_level":5}`)
+	requireProblem(t, response, 400, "invalid_rules")
+	if !strings.Contains(string(response.body), "coins_per_level lässt sich nach dem Start") {
+		t.Fatalf("message does not name the rule: %s", response.body)
+	}
+
+	// A LAN that has not started can still choose.
+	testFixture.createFutureLAN()
+	response = testFixture.callAdmin("PATCH", "/admin/api/lans/2/rules", `{"coins_per_level":0}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("a LAN that has not started can change: %d %s", response.status, response.body)
+	}
+}
+
+func TestWithoutCoinsPerLevelALevelUpPaysNothing(t *testing.T) {
+	testFixture := newFixture(t)
+	testFixture.createFutureLAN()
+	if changed := testFixture.callAdmin(
+		"PATCH", "/admin/api/lans/2/rules", `{"coins_per_level":0}`,
+	); changed.status != http.StatusOK {
+		t.Fatalf("prepare rules: %d %s", changed.status, changed.body)
+	}
+	token := testFixture.registerPlayer("Still")
+	testFixture.advanceClock(30 * 24 * time.Hour)
+	joined := testFixture.callAPI("POST", "/v1/auth/redeem", token, `{"code":"next-code"}`)
+	if joined.status != http.StatusOK {
+		t.Fatalf("join: %d %s", joined.status, joined.body)
+	}
+
+	// Two levels at once, and the balance stays silent.
+	playerID := testFixture.loadMe(token).ID
+	admin := testFixture.callAdmin(
+		"POST", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/xp", `{"xp":250}`,
+	)
+	if admin.status != 200 {
+		t.Fatalf("give XP: %d %s", admin.status, admin.body)
+	}
+	state := testFixture.loadMe(token)
+	if state.Level != 3 || state.Coins != 0 {
+		t.Fatalf("level %d, coins %d, want 3 and 0", state.Level, state.Coins)
+	}
+	if got := testFixture.countEvents(
+		store.EventCoinsGained, `{"amount":0,"source":"level"}`,
+	); got != 0 {
+		t.Fatalf("a payment of nothing was announced %d times", got)
+	}
+}
+
+func TestCoinsVanishWithTheLANButPurchasesStay(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Bleibt")
+	playerID := testFixture.loadMe(token).ID
+	playerPath := strconv.FormatInt(playerID, 10)
+	if admin := testFixture.callAdmin(
+		"POST", "/admin/api/players/"+playerPath+"/coins", `{"coins":20}`,
+	); admin.status != 200 {
+		t.Fatalf("give coins: %d %s", admin.status, admin.body)
+	}
+	for _, key := range []string{"headset", "crown"} {
+		if bought := testFixture.callAPI(
+			"POST", "/v1/purchases", token, `{"key":"`+key+`"}`,
+		); bought.status != 200 {
+			t.Fatalf("purchase %s: %d %s", key, bought.status, bought.body)
+		}
+	}
+
+	testFixture.createFutureLAN()
+	testFixture.advanceClock(30 * 24 * time.Hour)
+	joined := testFixture.callAPI("POST", "/v1/auth/redeem", token, `{"code":"next-code"}`)
+	if joined.status != http.StatusOK {
+		t.Fatalf("join: %d %s", joined.status, joined.body)
+	}
+	state := testFixture.loadMe(token)
+	if state.Coins != 0 {
+		t.Fatalf("coins of the last LAN stayed: %d", state.Coins)
+	}
+	if !slices.Contains(state.Cosmetics, "headset") {
+		t.Error("the headset purchase must stay over LANs")
+	}
+	if slices.Contains(state.Cosmetics, "crown") {
+		t.Error("the crown of the last LAN must not stay")
+	}
+
+	// The crown is for sale again in the new LAN, and the old coins are gone.
+	if bought := testFixture.callAPI(
+		"POST", "/v1/purchases", token, `{"key":"crown"}`,
+	); bought.status != 409 {
+		t.Fatalf("crown without coins: %d %s", bought.status, bought.body)
 	}
 }
 

@@ -1,6 +1,9 @@
 package store
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // Errors the API turns into its own error codes for the client.
 var (
@@ -22,8 +25,9 @@ var (
 	ErrInvalidRecoveryCode = errors.New("invalid recovery code")
 	// ErrUnauthorized reports an unknown token.
 	ErrUnauthorized = errors.New("unknown token")
-	// ErrLevelsLocked reports a new XP per level after the start of a LAN.
-	ErrLevelsLocked = errors.New("XP per level is locked")
+	// ErrLevelsLocked reports a rule of the level, which no longer changes after the start of a
+	// LAN. [LockedRuleError] names the rule.
+	ErrLevelsLocked = errors.New("level rules are locked")
 	// ErrNotABot reports a player that the admin cannot control, because it is a real person.
 	ErrNotABot = errors.New("player is no bot")
 	// ErrEventCodeNotFound reports an unknown event code.
@@ -85,3 +89,20 @@ var (
 	// ErrInvalidInput reports admin input that is empty or inconsistent.
 	ErrInvalidInput = errors.New("invalid input")
 )
+
+// LockedRuleError names the rule that no longer changes after the start of a LAN. It counts as
+// [ErrLevelsLocked].
+type LockedRuleError struct {
+	// Rule is the name of the rule in the API.
+	Rule string
+}
+
+// Error describes the rule for logs.
+func (locked LockedRuleError) Error() string {
+	return fmt.Sprintf("rule %s is locked after the start of the LAN", locked.Rule)
+}
+
+// Unwrap makes the error count as [ErrLevelsLocked].
+func (LockedRuleError) Unwrap() error {
+	return ErrLevelsLocked
+}

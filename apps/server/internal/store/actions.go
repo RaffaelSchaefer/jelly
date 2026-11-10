@@ -243,8 +243,12 @@ func announceXP(ctx context.Context, action actionContext, previousXP int, entry
 	if err != nil {
 		return err
 	}
-	return grantCoins(ctx, action, coinSourceLevel,
-		rules.CalculateCoinsForLevels(gameRules, level-previousLevel))
+	coins := rules.CalculateCoinsForLevels(gameRules, level-previousLevel)
+	if coins == 0 {
+		// A LAN without coins per level keeps its players at a silent balance.
+		return nil
+	}
+	return grantCoins(ctx, action, coinSourceLevel, coins)
 }
 
 // loadLastPokeTime returns the last XP poke of this LAN or [rules.NoPokeYet].

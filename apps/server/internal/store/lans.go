@@ -276,8 +276,8 @@ func loadPublicRules(
 	return gameRules.PublicRules, nil
 }
 
-// requireStableLevels refuses a new XP per level once a LAN has started, because levels would
-// jump for everyone and take cosmetics away.
+// requireStableLevels refuses a new level rule once a LAN has started, because levels would jump
+// for everyone and take cosmetics away.
 func requireStableLevels(
 	ctx context.Context, transaction *sql.Tx, lanID int64, gameRules rules.Rules, now int64,
 ) error {
@@ -295,10 +295,17 @@ func requireStableLevels(
 	if err != nil {
 		return err
 	}
-	if startsAt <= now && stored.XPPerLevel != gameRules.XPPerLevel {
-		return ErrLevelsLocked
+	if startsAt > now {
+		return nil
 	}
-	return nil
+	switch {
+	case stored.XPPerLevel != gameRules.XPPerLevel:
+		return LockedRuleError{Rule: rules.RuleXPPerLevel}
+	case stored.CoinsPerLevel != gameRules.CoinsPerLevel:
+		return LockedRuleError{Rule: rules.RuleCoinsPerLevel}
+	default:
+		return nil
+	}
 }
 
 // loadLANPeriod runs a query for one LAN and returns nil if there is none.
