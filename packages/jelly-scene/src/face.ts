@@ -1,9 +1,9 @@
 /**
- * Das Gesicht des Jellys: zwei Augen mit Glanzpunkten, Wangen und ein Mund.
+ * Das Gesicht des Jellys: zwei Augen mit Glanzpunkten, Brauen, Wangen und ein Mund.
  *
  * Die Teile sitzen auf der Kopfoberfläche und schauen entlang ihrer Normale nach außen. Die
- * Animation (`animation.ts`) bewegt sie über {@link Face}. Beim Sprechen tauscht `mouthShapes.ts`
- * die Form des Munds aus.
+ * Animation (`animation.ts`) bewegt sie über {@link Face}. Augen und Mund tauschen ihre Form je
+ * Ausdruck (`expression.ts`), beim Sprechen tauscht `mouthShapes.ts` die Form des Munds.
  *
  * @module
  */
@@ -13,14 +13,13 @@ import {
   Mesh,
   MeshBasicMaterial,
   Object3D,
-  SphereGeometry,
   TorusGeometry,
   CircleGeometry,
 } from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import type { FaceParts } from "./animation.ts";
 
+import { findBrowShape, findEyeShapes } from "./eyeShapes.ts";
 import { HEAD, headSurface, tintGeometry } from "./jellyGeometry.ts";
 import { findMouthShapes, type MouthShape } from "./mouthShapes.ts";
 
@@ -30,18 +29,17 @@ const SIDES = [-1, 1] as const;
 /** Augenposition relativ zur Kopfmitte. `x` gilt gespiegelt für beide Seiten. */
 const EYE = { x: 0.19, y: 0.0 } as const;
 
+/** Lage der Brauen über den Augen. */
+const BROW = { x: 0.19, y: 0.13 } as const;
+
 /** Render-Order des Gesichts: nach dem Jelly, vor den Cosmetics. */
 const FACE_ORDER = 6;
 
-/** Farben der Glanzpunkte im Auge und der Wangen. */
-const HIGHLIGHT = "#f3ffff";
-const REFLECTION = "#8fdcff";
+/** Farbe der Wangen. */
 const BLUSH = "#ff5c9a";
 
 /** Geometrien des Gesichts. Alle Jellies teilen sie, Materialien gehören einem Jelly. */
 const SHAPES = {
-  pupil: new SphereGeometry(1, 24, 16),
-  sparkle: new SphereGeometry(1, 12, 8),
   cheek: new CircleGeometry(1, 24),
   // Ein halber Torus, um 180° gedreht: ein Lächeln.
   smile: new TorusGeometry(0.072, 0.015, 12, 28, Math.PI),
@@ -50,9 +48,7 @@ const SHAPES = {
 /** Das Gesicht: `root` hängt im Kopf, die übrigen Teile bewegt die Animation. */
 export interface Face extends FaceParts {
   root: Object3D;
-  /** Die Form des Munds, solange das Jelly nicht spricht. */
-  smile: BufferGeometry;
-  /** Die Formen des Munds beim Sprechen. */
+  /** Die Formen des Munds beim Sprechen und für Ausdrücke. */
   mouthShapes: Record<MouthShape, BufferGeometry>;
 }
 
@@ -78,57 +74,8 @@ function placeOnHead(object: Object3D, { x, y, inset, roll = 0 }: HeadSpot) {
   object.rotation.set(-Math.atan2(ny, Math.hypot(nx, nz)), Math.atan2(nx, nz), roll, "YXZ");
 }
 
-/** Ein Teil eines Auges: Form, Größe und Lage relativ zur Augenmitte. Ohne Farbe ist es Tinte. */
-interface EyePart {
-  shape: BufferGeometry;
-  scale: [number, number, number];
-  at: [number, number, number];
-  color?: string;
-}
-
-/** Pupille, großer und kleiner Glanzpunkt. */
-const EYE_PARTS: EyePart[] = [
-  { shape: SHAPES.pupil, scale: [0.058, 0.084, 0.022], at: [0, 0, 0] },
-  {
-    shape: SHAPES.sparkle,
-    scale: [0.018, 0.023, 0.008],
-    at: [-0.016, 0.028, 0.021],
-    color: HIGHLIGHT,
-  },
-  {
-    shape: SHAPES.sparkle,
-    scale: [0.008, 0.01, 0.005],
-    at: [0.015, -0.026, 0.022],
-    color: REFLECTION,
-  },
-];
-
-/** Ein Auge je Tintenfarbe: Pupille und Glanzpunkte als eine Geometrie mit Vertexfarben. */
-const EYE_SHAPES = new Map<string, BufferGeometry>();
 /** Der Mund je Tintenfarbe, mit Vertexfarben wie die Augen: beide teilen sich Material und Shader. */
 const MOUTH_SHAPES = new Map<string, BufferGeometry>();
-
-/**
- * Baut das Auge in der Tintenfarbe oder holt es aus dem Cache. Ein Mesh statt drei spart der Bühne
- * mit vielen Jellies Draw-Calls.
- */
-function findEyeShape(ink: string): BufferGeometry {
-  const cached = EYE_SHAPES.get(ink);
-  if (cached) return cached;
-  const parts = EYE_PARTS.map(({ shape, scale, at, color }) =>
-    tintGeometry(
-      shape
-        .clone()
-        .scale(...scale)
-        .translate(...at),
-      color ?? ink,
-    ),
-  );
-  const eye = mergeGeometries(parts) ?? parts[0] ?? new BufferGeometry();
-  for (const part of parts) part.dispose();
-  EYE_SHAPES.set(ink, eye);
-  return eye;
-}
 
 /** Ein Mesh des Gesichts mit Position und Größe. */
 function createPart(
@@ -146,9 +93,22 @@ function createPart(
 
 /** Ein Auge: dunkle Pupille mit großem und kleinem Glanzpunkt. */
 function createEye(ink: string, side: number, material: MeshBasicMaterial) {
-  const eye = createPart(findEyeShape(ink), material, [1, 1, 1]);
+  const eye = createPart(findEyeShapes(ink).open, material, [1, 1, 1]);
   placeOnHead(eye, { x: side * EYE.x, y: EYE.y, inset: 0.006 });
   return eye;
+}
+
+/**
+ * Eine Braue in einem eigenen Halter auf dem Kopf. Ein Ausdruck hebt und kippt die Braue darin, die
+ * Grundpose setzt sie auf den Ursprung zurück. Ohne Ausdruck ist sie unsichtbar.
+ */
+function createBrow(ink: string, side: number, material: MeshBasicMaterial) {
+  const holder = new Object3D();
+  placeOnHead(holder, { x: side * BROW.x, y: BROW.y, inset: 0.004 });
+  const brow = createPart(findBrowShape(ink), material, [1, 1, 1]);
+  brow.visible = false;
+  holder.add(brow);
+  return brow;
 }
 
 /** Holt den Mund in der Tintenfarbe aus dem Cache oder baut ihn. */
@@ -183,13 +143,22 @@ function createMouth(ink: string, material: MeshBasicMaterial) {
 
 /** Das ganze Gesicht in der Tintenfarbe `ink`, in Koordinaten des Jellys. */
 export function createFace(ink: string): Face {
-  // Augen und Mund tragen ihre Farbe in den Vertices, also reicht ein Material für alle drei.
+  // Augen, Brauen und Mund tragen ihre Farbe in den Vertices, also reicht ein Material für alle.
   const inked = new MeshBasicMaterial({ vertexColors: true });
   const eyes = SIDES.map((side) => createEye(ink, side, inked));
+  const brows = SIDES.map((side) => createBrow(ink, side, inked));
   const cheeks = SIDES.map((side) => createCheek(side));
   const mouth = createMouth(ink, inked);
   const root = new Object3D();
-  root.add(...eyes, ...cheeks, mouth);
-  const smile = findMouthShape(ink);
-  return { root, eyes, cheeks, mouth, smile, mouthShapes: findMouthShapes(ink) };
+  root.add(...eyes, ...brows.map((brow) => brow.parent!), ...cheeks, mouth);
+  return {
+    root,
+    eyes,
+    brows,
+    cheeks,
+    mouth,
+    eyeShapes: findEyeShapes(ink),
+    smile: findMouthShape(ink),
+    mouthShapes: findMouthShapes(ink),
+  };
 }

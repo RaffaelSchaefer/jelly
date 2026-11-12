@@ -63,8 +63,13 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 		return StageState{}, err
 	}
 	state := StageState{
-		LastEventID: latestID, ServerTime: now, Room: rules.DescribeRoom(),
-		Areas: []StageArea{}, Players: []StagePlayer{}, Stacks: []Stack{}, Gathering: nil,
+		LastEventID: latestID,
+		ServerTime:  now,
+		Room:        rules.DescribeRoom(rules.DefaultRules().PublicRules),
+		Areas:       []StageArea{},
+		Players:     []StagePlayer{},
+		Stacks:      []Stack{},
+		Gathering:   nil,
 	}
 	lan, err := loadActiveLAN(queryCtx, store.readDB, now)
 	if errors.Is(err, ErrNoActiveLAN) {
@@ -74,10 +79,12 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 		return StageState{}, err
 	}
 	state.WalkSpeed = lan.gameRules.WalkSpeed
+	state.Room = rules.DescribeRoom(lan.gameRules.PublicRules)
 	state.Areas, err = loadAreas(queryCtx, store.readDB, lan.id)
 	if err != nil {
 		return StageState{}, err
 	}
+	measureAreas(state.Areas, rules.MeasureRoom(lan.gameRules.PublicRules))
 	state.Stacks, err = loadRunningStacks(queryCtx, store.readDB, lan.id, now)
 	if err != nil {
 		return StageState{}, err
@@ -250,4 +257,13 @@ func scanStagePlayer(rows *sql.Rows, gameRules rules.Rules, now int64) (StagePla
 		player.AreaID = &area.Int64
 	}
 	return player, nil
+}
+
+// measureAreas gives every area its rectangle in meters.
+func measureAreas(areas []StageArea, room rules.RoomMeters) {
+	for index := range areas {
+		rect := room.ToMeters(areas[index].Area)
+		areas[index].XMeters, areas[index].YMeters = rect.X, rect.Y
+		areas[index].WidthMeters, areas[index].HeightMeters = rect.Width, rect.Height
+	}
 }

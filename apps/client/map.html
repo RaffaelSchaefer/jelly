@@ -23,25 +23,62 @@
       </div>
       <canvas id="map" role="img" aria-label="Karte der LAN-Halle mit allen Jellies"></canvas>
       <canvas id="glass" aria-hidden="true"></canvas>
-      <button id="leave" class="glass-pill" type="button" data-liquid="calm" hidden>Weggehen</button>
-      <button id="highlight-own" class="glass-pill" type="button" data-liquid="calm">Mich hervorheben</button>
-      <button id="find-open" class="glass-pill" type="button" data-liquid="calm" aria-expanded="false" aria-controls="find-panel">Jelly suchen</button>
+      <div id="dock" class="glass-pill" data-liquid="calm" role="toolbar" aria-label="Karte">
+        <div id="own-state" class="dock-group" hidden>
+          <span id="own-dot" aria-hidden="true"></span>
+          <span id="own-text" role="status"></span>
+          <button id="leave" type="button" class="tool" aria-label="Weggehen" data-tip="Weggehen" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M7 17 17 7" /></svg>
+          </button>
+        </div>
+        <span class="dock-divider" aria-hidden="true"></span>
+        <div class="dock-group">
+          <button id="find-open" type="button" class="tool" aria-label="Jelly suchen" data-tip="Jelly suchen · F" aria-expanded="false" aria-controls="find-panel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" /><path d="m20 20-4.5-4.5" /></svg>
+          </button>
+          <button id="highlight-own" type="button" class="tool" aria-label="Mich hervorheben" data-tip="Mich hervorheben · H">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 13.9 9l5.6 1.9-5.6 1.9L12 18.5l-1.9-5.7-5.6-1.9L10.1 9z" /><path d="M19 3.5v3M17.5 5h3" /></svg>
+          </button>
+        </div>
+        <span class="dock-divider" aria-hidden="true"></span>
+        <div class="dock-group" role="group" aria-label="Kamera">
+          <button id="zoom-out" type="button" class="tool" aria-label="Herauszoomen" data-tip="Herauszoomen · −">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
+          </button>
+          <output id="zoom-level" aria-label="Zoom">1×</output>
+          <button id="zoom-in" type="button" class="tool" aria-label="Hineinzoomen" data-tip="Hineinzoomen · +">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg>
+          </button>
+          <button id="zoom-own" type="button" class="tool" aria-label="Kamera folgt meinem Jelly" aria-pressed="true" data-tip="Zu meinem Jelly · Leertaste">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" /><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4" /><circle class="follow-dot" cx="12" cy="12" r="2" /></svg>
+          </button>
+        </div>
+      </div>
+      <form id="find-panel" class="glass-pill" data-liquid="calm" role="search" hidden>
+        <div id="find-list"></div>
+        <div id="find-field">
+          <input id="find-input" type="search" aria-label="Name des Jellys" placeholder="Name suchen …" autocomplete="off" />
+          <button id="find-close" type="button" class="tool" aria-label="Suche schließen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+          </button>
+        </div>
+      </form>
       <div id="partner-bar" hidden>
         <p id="partner-note" class="glass-pill" role="status" data-liquid="calm"></p>
-        <button id="partner-cancel" class="glass-pill" type="button" data-liquid="calm">Abbrechen</button>
+        <button id="partner-cancel" class="glass-pill icon-pill" type="button" data-liquid="calm" aria-label="Abbrechen" data-tip="Abbrechen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M7 17 17 7" /></svg>
+        </button>
       </div>
       <div id="jelly-menu" role="group" aria-label="Was mit diesem Jelly passieren soll" hidden>
-        <button id="jelly-follow" class="glass-pill" type="button" data-liquid="calm">Dazustellen</button>
-        <button id="jelly-highlight" class="glass-pill" type="button" data-liquid="calm">Hervorheben</button>
+        <button id="jelly-follow" class="glass-pill icon-pill" type="button" data-liquid="calm" aria-label="Dazustellen" data-tip="Dazustellen">
+          <svg class="follow-join" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6" /></svg>
+          <svg class="follow-leave" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 11h6" /></svg>
+        </button>
+        <button id="jelly-highlight" class="glass-pill icon-pill" type="button" data-liquid="calm" aria-label="Hervorheben" data-tip="Hervorheben">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 13.9 9l5.6 1.9-5.6 1.9L12 18.5l-1.9-5.7-5.6-1.9L10.1 9z" /><path d="M19 3.5v3M17.5 5h3" /></svg>
+        </button>
       </div>
       <div id="partner-menu" role="group" aria-label="Partner-Emote wählen" hidden></div>
-      <form id="find-panel" class="glass-pill" data-liquid="calm" role="search" hidden>
-        <input id="find-input" type="search" aria-label="Name des Jellys" placeholder="Name suchen …" autocomplete="off" />
-        <button id="find-close" type="button" class="tool" aria-label="Suche schließen">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
-        </button>
-        <div id="find-list"></div>
-      </form>
       <p id="status" role="status" hidden></p>
     </div>
     <script type="module" src="/src/map/main.ts"></script>

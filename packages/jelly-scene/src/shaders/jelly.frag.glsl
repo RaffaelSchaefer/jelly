@@ -17,6 +17,8 @@ uniform vec3 uCamObj;
 uniform vec3 uHead;
 uniform vec2 uTilt;
 uniform vec4 uHands[2];
+uniform vec4 uHandRot[2];
+uniform vec3 uHandCurl[2];
 uniform vec3 uColor;
 uniform vec3 uGlow;
 uniform vec3 uInk;
@@ -64,13 +66,55 @@ float sdHead(vec3 p) {
   q.xy = vec2(uTilt.x * q.x + uTilt.y * q.y, uTilt.x * q.y - uTilt.y * q.x);
   return sdEllipsoid(q, HEAD_R);
 }
-float sdHands(vec3 p) {
+float sdCapsule(vec3 p, vec3 a, vec3 b, float r) {
+  vec3 pa = p - a, ba = b - a;
+  return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)) - r;
+}
+// Dreht v mit der Umkehrung des Quaternions r, also vom Jelly in den Raum einer Hand.
+vec3 unrotate(vec3 v, vec4 r) {
+  vec3 t = 2.0 * cross(-r.xyz, v);
+  return v + r.w * t + cross(-r.xyz, t);
+}
+// Die rechte Hand mit Grundgröße r: Die drei kurzen Finger zeigen nach +y, die Handfläche nach +z,
+// der Daumen sitzt bei -x und zeigt schräg nach oben. Nur die Ansätze verschmelzen mit der
+// Handfläche, zwischen den Fingerspitzen zeichnet die Outline Linien. `curl` beugt den Zeigefinger
+// (x), die übrigen Finger (y) und den Daumen (z) zur Handfläche, 1 ist eine Faust.
+float sdHand(vec3 q, float r, vec3 curl) {
+  float palm = sdEllipsoid(q - r * vec3(0.05, -0.15, 0.0), r * vec3(0.9, 0.8, 0.5));
+  vec3 thumbTip = mix(vec3(-1.05, 0.25, 0.15), vec3(-0.15, -0.05, 0.55), curl.z);
+  float parts = sdCapsule(q, r * vec3(-0.5, -0.3, 0.1), r * thumbTip, 0.26 * r);
+  for (int f = 0; f < 3; f++) {
+    float x = r * (float(f) * 0.42 - 0.3);
+    // Gebeugt kippt der Finger um seinen Ansatz nach vorn über die Handfläche.
+    float bend = (f == 0 ? curl.x : curl.y) * 2.4;
+    vec3 tip = vec3(x * (1.0 + 0.35 * cos(bend)), r * (0.2 + 0.85 * cos(bend)), r * 0.85 * sin(bend));
+    parts = min(parts, sdCapsule(q, vec3(x, 0.2 * r, 0.0), tip, 0.24 * r));
+  }
+  return smin(palm, parts, 0.2 * r);
+}
+// Fern der Hände reicht ihre umschließende Kugel. Ab dem Abstand `exact` ändert die genaue Form das
+// Ergebnis nicht mehr, spart aber die meiste Rechnung im Raymarch.
+float sdHands(vec3 p, float exact) {
   float d = 1e5;
-  for (int i = 0; i < 2; i++) if (uHands[i].w > 0.0) d = min(d, length(p - uHands[i].xyz) - uHands[i].w);
+  for (int i = 0; i < 2; i++) {
+    float r = uHands[i].w;
+    if (r <= 0.0) continue;
+    vec3 q = p - uHands[i].xyz;
+    float bound = length(q) - 1.6 * r;
+    if (bound > exact) {
+      d = min(d, bound);
+      continue;
+    }
+    q = unrotate(q, uHandRot[i]);
+    // Die linke Hand ist das Spiegelbild der rechten, ihr Daumen sitzt bei +x.
+    q.x *= float(i) * 2.0 - 1.0;
+    d = min(d, sdHand(q, r, uHandCurl[i]));
+  }
   return d;
 }
 float map(vec3 p) {
-  return smin(smin(sdBody(p), sdHead(p), 0.15), sdHands(p), 0.1);
+  // Genau bis zum Radius von smin, weiter weg verschmilzt nichts mehr.
+  return smin(smin(sdBody(p), sdHead(p), 0.15), sdHands(p, 0.1), 0.1);
 }
 vec3 calcNormal(vec3 p) {
   const vec2 e = vec2(1.0, -1.0) * 0.0015;
@@ -78,7 +122,7 @@ vec3 calcNormal(vec3 p) {
 }
 // Wo zwei Teile aufeinandertreffen, sind beide nah: am Hals oder wo eine Hand aus dem Körper kommt.
 float crease(vec3 p) {
-  float b = sdBody(p), h = sdHead(p), k = sdHands(p);
+  float b = sdBody(p), h = sdHead(p), k = sdHands(p, 0.28);
   return 1.0 - smoothstep(0.0, 0.28, min(max(b, h), min(max(b, k), max(h, k))));
 }
 

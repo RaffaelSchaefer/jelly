@@ -48,8 +48,17 @@ const BODY_PROFILE: [number, number][] = [
   [0.0, 0.16],
 ];
 
-/** Hand: eine kleine schwebende Kugel neben dem Körper, ohne Arm. */
-export const HAND = { x: 1.1, y: -0.4, z: 0.18, radius: 0.16 } as const;
+/**
+ * Hand: eine kleine schwebende Hand neben dem Körper, ohne Arm. `radius` ist ihre Grundgröße, die
+ * Form mit drei Fingern und Daumen steht in `sdHand` im Shader.
+ */
+export const HAND = { x: 1.1, y: -0.4, z: 0.18, radius: 0.2 } as const;
+
+/**
+ * Wo die Hände etwas halten: an den Kanten einer Tafel vor dem Bauch. `x` ist zugleich die halbe
+ * Breite der Tafel, `z` liegt knapp vor ihr, damit die Finger über die Kante greifen.
+ */
+export const GRIP = { x: 0.92, y: HAND.y, z: 0.82 } as const;
 
 /**
  * Färbt jeden Vertex einer Geometrie. Augen und Mund tragen ihre Farbe so in den Vertices und
@@ -91,7 +100,7 @@ export function createBodyGeometry() {
   return geometry;
 }
 
-/** Hand-Mesh im Ursprung. Positioniert wird es von der Animation. */
+/** Hand-Mesh im Ursprung, als Kugel angenähert. Positioniert wird es von der Animation. */
 export function createHandGeometry() {
   return new SphereGeometry(HAND.radius, 40, 28);
 }

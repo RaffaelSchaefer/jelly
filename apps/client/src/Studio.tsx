@@ -56,6 +56,15 @@ function useFocusWhileOpen() {
   return element;
 }
 
+/** Schließt das Studio und klingt dabei wie ein Panel, das zugeht. */
+function DoneButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button type="button" className="studio-done" data-liquid data-sound="close" onClick={onClose}>
+      Fertig
+    </button>
+  );
+}
+
 /** Das Overlay über dem Jelly. */
 export default function Studio(props: StudioProps) {
   const { me, catalog, busy, region, onRegion, onEquip, onColor, onName, onClose } = props;
@@ -111,9 +120,7 @@ export default function Studio(props: StudioProps) {
           <RegionPopover key={open.id} {...{ items, busy }} region={open} onPick={pick} />
         ) : null}
         <NameTag name={me.name} busy={busy} onSave={onName} />
-        <button type="button" className="studio-done" data-liquid onClick={onClose}>
-          Fertig
-        </button>
+        <DoneButton onClose={onClose} />
       </div>
       {/* Nach `.ink`: Der Shader nimmt sie der Reihe nach, und das Popover kommt und geht als letztes. */}
       <div className="studio-shapes" aria-hidden="true">

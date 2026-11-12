@@ -153,6 +153,8 @@ function PetVisual({
     <button
       className="pet-touch"
       aria-label={`${me.name} anstupsen`}
+      // Das Jelly antwortet selbst mit seiner Stimme.
+      data-sound="none"
       disabled={!desktop || !game.ready || game.busy || !game.game.me}
       onClick={() => void game.interact("poke")}
     >

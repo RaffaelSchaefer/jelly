@@ -32,6 +32,13 @@ export interface VoiceNote {
   by?: "partner";
 }
 
+/** Wie eine Stimmung die Stimme färbt: Halbtöne höher oder tiefer, Tempo schneller oder langsamer. */
+export interface VoiceMood {
+  pitch: number;
+  /** Über 1 schneller, unter 1 langsamer. */
+  tempo: number;
+}
+
 /** Eine Silbe des Texts und wann sie an der Reihe ist, in Sekunden. */
 export interface SpokenSyllable {
   text: string;
@@ -50,6 +57,18 @@ const BASE_HZ = 523.25;
  */
 export function volumeGain(percent: number) {
   return (percent / 100) ** 2;
+}
+
+/** Singt Noten in einer Stimmung: um `pitch` Halbtöne verschoben, im Tempo `tempo`. */
+export function inMood(notes: VoiceNote[], { pitch, tempo }: VoiceMood): VoiceNote[] {
+  const factor = 2 ** (pitch / 12);
+  return notes.map((note) => ({
+    ...note,
+    at: note.at / tempo,
+    duration: note.duration / tempo,
+    from: note.from * factor,
+    to: note.to * factor,
+  }));
 }
 
 /** Tonhöhe `semitones` Halbtöne über dem Grundton. */

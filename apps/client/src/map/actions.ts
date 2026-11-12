@@ -1,29 +1,33 @@
 /**
- * Das Fenster an einem fremden Jelly auf der Karte: dazustellen, weggehen oder hervorheben.
+ * Das Fenster an einem fremden Jelly auf der Karte: dazustellen, weggehen oder hervorheben. Es
+ * bleibt am Jelly, auch wenn die Kamera fährt oder das Jelly läuft.
  *
  * @module
  */
 
-import type { ScreenPoint } from "@jelly/stage";
+import type { JellyOnScreen } from "@jelly/stage";
 
 import { placeMenu } from "./partner";
 
 const TEXT_FOLLOW = "Dazustellen";
 const TEXT_LEAVE = "Weggehen";
 
-/** Was die Knöpfe des Fensters auslösen. */
+/** Was die Knöpfe des Fensters auslösen und wo es sein Jelly findet. */
 export interface JellyMenuActions {
   /** Stellt das eigene Jelly dazu oder mit `null` weg. */
   follow: (playerId: number | null) => void;
   highlight: (playerId: number) => void;
+  locate: (playerId: number) => JellyOnScreen | null;
 }
 
 /** Was die Seite mit dem Fenster tun kann. */
 export interface JellyMenu {
-  /** Öffnet es neben dem Klick. `isTarget` sagt, ob das eigene Jelly schon dort steht. */
-  open: (playerId: number, at: ScreenPoint, isTarget: boolean) => void;
+  /** Öffnet es neben dem Jelly. `isTarget` sagt, ob das eigene Jelly schon dort steht. */
+  open: (playerId: number, isTarget: boolean) => void;
   /** Schließt es. `true`, wenn es offen war: Dann gehört der Klick dem Schließen. */
   close: () => boolean;
+  /** Rückt das offene Fenster an sein Jelly. Ist es nicht mehr zu sehen, geht das Fenster zu. */
+  place: () => void;
 }
 
 /** Sucht das Fenster aus `map.html` und verbindet seine Knöpfe. */
@@ -38,6 +42,9 @@ export function createJellyMenu(actions: JellyMenuActions): JellyMenu {
     menu.hidden = true;
     return wasOpen;
   };
+  const place = () => {
+    if (!menu.hidden && !placeMenu(menu, actions.locate(chosen.playerId))) close();
+  };
 
   follow.addEventListener("click", () => {
     close();
@@ -49,12 +56,16 @@ export function createJellyMenu(actions: JellyMenuActions): JellyMenu {
   });
 
   return {
-    open: (playerId, at, isTarget) => {
+    open: (playerId, isTarget) => {
       chosen = { playerId, isTarget };
-      follow.textContent = isTarget ? TEXT_LEAVE : TEXT_FOLLOW;
+      const label = isTarget ? TEXT_LEAVE : TEXT_FOLLOW;
+      follow.setAttribute("aria-label", label);
+      follow.dataset.tip = label;
+      follow.toggleAttribute("data-target", isTarget);
       menu.hidden = false;
-      placeMenu(menu, at);
+      place();
     },
     close,
+    place,
   };
 }

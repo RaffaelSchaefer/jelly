@@ -25,7 +25,10 @@
     "stack_seconds": 120,
     "stack_max_members": 0,
     "highlight_seconds": 10,
-    "highlight_cooldown": 30
+    "highlight_cooldown": 30,
+    "room_width": 22,
+    "room_depth": 16.1,
+    "jelly_width": 0.5
   },
   "poke": [
     { "name": "first poke counts immediately", "elapsed_seconds": null, "xp": 3 },

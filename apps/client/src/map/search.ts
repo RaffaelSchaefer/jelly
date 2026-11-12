@@ -1,7 +1,7 @@
 /**
- * Die Suche auf der Karte: ein Jelly per Namen finden und hervorheben, auch wenn man es in der
- * Halle noch nicht entdeckt hat. Feld und Treffer liegen auf einer Glasfläche wie die Schilder am
- * Jelly, sie nimmt den Platz der festen Knöpfe ein.
+ * Die Suche auf der Karte: ein Jelly per Namen finden, hervorheben und hinfliegen, auch wenn man es
+ * in der Halle noch nicht entdeckt hat. Feld und Treffer liegen auf einer Glasfläche wie die
+ * Schilder am Jelly, sie geht über der Leiste auf. Der beste Treffer steht direkt über dem Feld.
  *
  * @module
  */
@@ -82,7 +82,6 @@ export function createJellySearch(actions: JellySearchActions): JellySearch {
 
   const setOpen = (isOpen: boolean) => {
     panel.hidden = !isOpen;
-    panel.parentElement!.toggleAttribute("data-finding", isOpen);
     opener.setAttribute("aria-expanded", String(isOpen));
   };
 
@@ -105,6 +104,8 @@ export function createJellySearch(actions: JellySearchActions): JellySearch {
   };
 
   opener.addEventListener("click", () => {
+    // Ein zweiter Klick auf den gedrückten Knopf schließt die Suche wieder.
+    if (close()) return;
     actions.onOpen();
     input.value = "";
     render();

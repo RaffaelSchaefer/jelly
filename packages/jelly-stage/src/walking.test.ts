@@ -27,20 +27,22 @@ const move: StageMove = {
   ],
 };
 const viewer = { x: 0, z: 40 };
+/** The room the server measures in, so the numbers below are its jelly units. */
+const room = { width: 21, depth: 40 };
 
 test("a jelly waits at the start of a move and stands at its end afterwards", () => {
-  assert.deepEqual(findMovePosition(move, 0), toFloorPoint({ x: 10, y: 10 }));
-  assert.deepEqual(findMovePosition(move, 10_000), toFloorPoint({ x: 20, y: 30 }));
+  assert.deepEqual(findMovePosition(move, 0, room), toFloorPoint({ x: 10, y: 10 }, room));
+  assert.deepEqual(findMovePosition(move, 10_000, room), toFloorPoint({ x: 20, y: 30 }, room));
 });
 
 test("between two waypoints a jelly is on the line between them", () => {
-  assert.deepEqual(findMovePosition(move, 1500), toFloorPoint({ x: 15, y: 10 }));
-  assert.deepEqual(findMovePosition(move, 3000), toFloorPoint({ x: 20, y: 20 }));
+  assert.deepEqual(findMovePosition(move, 1500, room), toFloorPoint({ x: 15, y: 10 }, room));
+  assert.deepEqual(findMovePosition(move, 3000, room), toFloorPoint({ x: 20, y: 20 }, room));
 });
 
 test("a move with a single point means standing", () => {
   const standing = { ...move, points: [{ x: 40, y: 40, t: 0 }] };
-  assert.deepEqual(findMovePosition(standing, 5000), toFloorPoint({ x: 40, y: 40 }));
+  assert.deepEqual(findMovePosition(standing, 5000, room), toFloorPoint({ x: 40, y: 40 }, room));
 });
 
 test("an older move does not replace a newer one", () => {
@@ -87,14 +89,14 @@ test("a jelly climbs its stack only after it has arrived", () => {
 
 test("a jelly is on its way until its trip to the goal has ended", () => {
   const trip = { ...move, kind: "trip" };
-  const goal = toFloorPoint({ x: 20, y: 30 });
-  assert.equal(isOnTheWay(trip, goal, 3999), true);
-  assert.equal(isOnTheWay(trip, goal, 4000), false);
+  const goal = toFloorPoint({ x: 20, y: 30 }, room);
+  assert.equal(isOnTheWay(trip, goal, 3999, room), true);
+  assert.equal(isOnTheWay(trip, goal, 4000, room), false);
 });
 
 test("a move from before the click does not count as arrival", () => {
-  const goal = toFloorPoint({ x: 90, y: 90 });
-  assert.equal(isOnTheWay(undefined, goal, 9000), true);
-  assert.equal(isOnTheWay(move, toFloorPoint({ x: 20, y: 30 }), 9000), true);
-  assert.equal(isOnTheWay({ ...move, kind: "trip" }, goal, 9000), true);
+  const goal = toFloorPoint({ x: 90, y: 90 }, room);
+  assert.equal(isOnTheWay(undefined, goal, 9000, room), true);
+  assert.equal(isOnTheWay(move, toFloorPoint({ x: 20, y: 30 }, room), 9000, room), true);
+  assert.equal(isOnTheWay({ ...move, kind: "trip" }, goal, 9000, room), true);
 });
