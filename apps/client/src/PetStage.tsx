@@ -39,7 +39,7 @@ const PetScene = lazy(() => import("./scene/PetScene"));
 const SETTINGS_WAIT_MS = 1500;
 
 /** Welches Panel über dem Dock oder direkt am Jelly offen ist. */
-export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "signs";
+export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "signs" | "schedule";
 
 /** Vorübergehende Anzeige, ohne die letzte Fortschrittsmeldung zu überschreiben. */
 function emoteMessage(emote: ActiveEmote | null) {

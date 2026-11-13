@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 
 import { desktop, resizeWindow } from "./backend";
 import PartnerInvitePopup from "./panels/PartnerInvitePopup";
+import SchedulePanel from "./panels/SchedulePanel";
 import SettingsPanel from "./panels/SettingsPanel";
 import XpPanel, { XP_TABS, type XpTab } from "./panels/XpPanel";
 import {
@@ -25,10 +26,13 @@ import {
   type Me,
   type PetColor,
   type Report,
+  type ScheduleDay,
+  type ScheduleEvent,
 } from "./pet";
 import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
 import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
+import { useSchedule } from "./useSchedule";
 import { useUiSounds } from "./useUiSounds";
 import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
 import "./optimized.css";
@@ -47,6 +51,7 @@ function panelTitle(panel: GlassPanelId, xpTab: XpTab) {
   const titles: Record<GlassPanelId, string> = {
     lan: XP_TABS.find((tab) => tab.id === xpTab)!.title,
     settings: "Ein bisschen Feintuning.",
+    schedule: "Zeitplan",
   };
   return titles[panel];
 }
@@ -108,6 +113,8 @@ interface PanelContentProps {
   me: Me;
   xpTab: XpTab;
   sliders: ReturnType<typeof useSettingSliders>;
+  /** Der Zeitplan der LAN, siehe `useSchedule`. */
+  days: ScheduleDay[];
   /** Wirksame Einstellung „Weniger Bewegung“: die eigene oder die des Betriebssystems. */
   reducedMotion: boolean;
   onXpTab: (tab: XpTab) => void;
@@ -119,6 +126,7 @@ function PanelContent(props: PanelContentProps) {
   const { panel, game, me, xpTab, sliders, reducedMotion, onXpTab } = props;
   const { catalog, ready, busy } = game;
   const disabled = busy || !ready;
+  if (panel === "schedule") return <SchedulePanel days={props.days} offset={game.offset} />;
   if (panel === "lan") {
     const report = (action: Report) => void game.interact(action);
     return (
@@ -151,10 +159,13 @@ function PanelContent(props: PanelContentProps) {
 function PetDock({
   me,
   panel,
+  due,
   onToggle,
 }: {
   me: Me;
   panel: PanelId | null;
+  /** Was gleich beginnt. Dann trägt der Zeitplan einen Punkt. */
+  due: ScheduleEvent | null;
   onToggle: (panel: PanelId) => void;
 }) {
   return (
@@ -165,6 +176,14 @@ function PetDock({
         title={`${me.name} · Level ${me.level} · ${me.xp} XP`}
         expanded={panel === "lan"}
         onClick={() => onToggle("lan")}
+      />
+      <DockButton
+        icon="calendar"
+        label="Zeitplan"
+        title={due ? `Gleich: ${due.title}` : "Zeitplan"}
+        expanded={panel === "schedule"}
+        data-due={due ? "" : undefined}
+        onClick={() => onToggle("schedule")}
       />
       <DockButton
         icon="palette"
@@ -231,7 +250,7 @@ function useDocumentTheme(color: Me["color"], reducedMotion: boolean, optimized:
 
 /** Ob das Panel seinen Inhalt über dem Dock zeigt. */
 function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
-  return panel === "lan" || panel === "settings";
+  return panel === "lan" || panel === "settings" || panel === "schedule";
 }
 
 /** Was über dem Dock steht: eine Aufforderung oder das offene Panel. Beim Einstieg nichts. */
@@ -310,6 +329,7 @@ export default function App() {
   useDocumentTheme(me.color, reducedMotion, settings.optimizedRendering);
   useUiSounds(game);
 
+  const schedule = useSchedule(game, !joining && !game.hatching);
   const close = useCallback(() => setPanel(null), []);
   useDuetClosesPanel(game, panel, close);
   const onSlowDevice = useSlowDeviceSwitch(game, joining);
@@ -339,11 +359,12 @@ export default function App() {
         <section className="pet-controls" aria-label="Pet-Steuerung">
           <OverDock
             {...{ panel, joining, game, me, xpTab, sliders, reducedMotion, onClose: close }}
+            days={schedule.days}
             onXpTab={setXpTab}
           />
           {/* Beim Einstieg und beim Aufstieg steht eine Kapsel an der Stelle des Docks. */}
           {joining || game.hatching || panel === "levelup" ? null : (
-            <PetDock me={me} panel={panel} onToggle={toggle} />
+            <PetDock me={me} panel={panel} due={schedule.due} onToggle={toggle} />
           )}
         </section>
         <Status game={game} joining={joining} />

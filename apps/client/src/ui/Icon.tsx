@@ -45,7 +45,9 @@ export type IconName =
   | "cube"
   | "dice"
   | "search"
-  | "map";
+  | "map"
+  | "calendar"
+  | "lotus";
 
 /** SVG-Pfad (`d`) je Icon, 24 × 24, nur Konturen. */
 const paths: Record<IconName, string> = {
@@ -85,6 +87,9 @@ const paths: Record<IconName, string> = {
   back: "m15 5-7 7 7 7",
   next: "M5 12h14m-6-6 6 6-6 6",
   search: "M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm2 10-4.35-4.35",
+  calendar: "M5 5h14v16H5V5Zm3-3v6m8-6v6M5 10h14M8 14h2m4 0h2m-8 3.5h2",
+  lotus:
+    "M12 5c-2 2.5-2 9.5 0 13 2-3.5 2-10.5 0-13Zm0 13c-3.5 0-7-2-8.5-6 3.5-.5 6.5 1.5 8.5 6Zm0 0c3.5 0 7-2 8.5-6-3.5-.5-6.5 1.5-8.5 6Z",
   map: "M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5ZM9 4v13.5m6-11V20",
   sign: "M5 3h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 14H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 3Zm7 11v8M8 8.5h8",
   users:

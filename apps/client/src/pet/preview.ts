@@ -198,6 +198,17 @@ export const PREVIEW_ME: Me = {
   awards: [],
 };
 
+/**
+ * Mitternacht des letzten Donnerstags, heute eingeschlossen: Donnerstag bis Sonntag zeigt der
+ * Zeitplan die LAN mittendrin.
+ */
+function lastThursday() {
+  const day = new Date();
+  day.setHours(0, 0, 0, 0);
+  day.setDate(day.getDate() - ((day.getDay() + 3) % 7));
+  return day.getTime();
+}
+
 /** Startzustand der Oberfläche, solange Rust noch nichts geliefert hat. */
 export const PREVIEW_GAME: Game = {
   settings: {
@@ -211,7 +222,7 @@ export const PREVIEW_GAME: Game = {
   me: PREVIEW_ME,
   lan: {
     server_time: 0,
-    current: { slug: "vorschau", name: "Vorschau-LAN", starts_at: 0, ends_at: 0 },
+    current: { slug: "vorschau", name: "Vorschau-LAN", starts_at: lastThursday(), ends_at: 0 },
     next: null,
     rules: PREVIEW_RULES,
     joined: true,

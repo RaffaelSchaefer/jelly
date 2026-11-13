@@ -80,6 +80,10 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/pet/frameRate.ts`: der Regler der Bildrate (`Settings.frameLimit`, `null` heißt unbegrenzt).
   `packages/jelly-stage/src/framePacing.ts` entscheidet für Jelly, Karte und Karten-Glas, welche
   Bildschirmaktualisierung ein Bild wird.
+- `src/pet/schedule.ts`: der Zeitplan der LAN, fest im Client. Seine Tage beginnen am ersten Donnerstag ab
+  `starts_at` der LAN. `src/panels/SchedulePanel.tsx` und `src/schedule.css` zeigen ihn hinter dem Kalender im Dock,
+  `src/useSchedule.ts` lässt das Jelly zehn Minuten vor jedem Punkt erinnern. In der Browser-Vorschau beginnt die LAN
+  am letzten Donnerstag.
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
   Cosmetics), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,

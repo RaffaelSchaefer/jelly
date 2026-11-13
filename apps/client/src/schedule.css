@@ -1,0 +1,74 @@
+/* Panel „Zeitplan“ und der Punkt am Dock. Farbe trägt nur der Knoten (`--kind`, wie im Plan der Orga). Die Farbe des Pets (`--accent`) zeigt, wo jetzt ist. Keine Animation: Der Plan ändert sich im Minutentakt. */
+.schedule { display: flex; flex-direction: column; }
+/* Deckend wie die Karte: In einem durchsichtigen Fenster kann `backdrop-filter` nichts weichzeichnen, durch 5 % Durchsicht schiene der Desktop als Muster durch. Die klebenden Köpfe tragen dieselbe Fläche. */
+.panel:has(.schedule) { background: var(--surface-solid); }
+.schedule [data-kind='orga'] { --kind: #dfe7ea; }
+.schedule [data-kind='food'] { --kind: #a6dc7c; }
+.schedule [data-kind='yoga'] { --kind: #a8c3f5; }
+.schedule [data-kind='tournament'] { --kind: #f7ad86; }
+.schedule [data-kind='together'] { --kind: #f6d97a; }
+
+/* Oben: was läuft, sonst das Nähere von vorbei und gleich. Klebt am Panel, deckend, denn die Zeitleiste rollt darunter durch. `--spot` rückt die Tagesköpfe darunter. */
+.schedule:has(.schedule-spot) { --spot: 48px; }
+.schedule-spot { position: sticky; top: -16px; z-index: 4; display: flex; align-items: center; gap: 10px; height: 48px; border-bottom: 1px solid var(--line); background: var(--surface-solid); }
+.schedule-spot > div { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.schedule-spot strong { font-size: 13px; font-weight: 600; }
+.schedule-spot small { font-size: 11px; color: var(--text-muted); }
+.schedule-spot p { margin: 2px 0 0; overflow: hidden; text-overflow: ellipsis; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.schedule-spot[data-spot='live'] p { color: var(--accent); }
+
+/* Tageskopf. Er bleibt unter dem Kasten stehen, bis der nächste Tag ihn wegschiebt. */
+.schedule-day h3 { position: sticky; top: calc(-16px + var(--spot, 0px)); z-index: 3; display: flex; align-items: baseline; gap: 6px; margin: 0; padding: 12px 0 6px; background: var(--surface-solid); font-size: 12px; font-weight: 600; }
+.schedule-day h3 small { font-size: 11px; font-weight: 400; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.schedule-day h3 span { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--accent); }
+
+/* Zeitleiste: Uhrzeit, Knoten auf der Schiene, Titel. `--gap` ist die Pause davor, gestaucht aus der Zeit (`timelineEntries`). */
+.schedule-timeline { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.schedule-item, .schedule-now, .schedule-end { position: relative; display: grid; grid-template-columns: 38px 24px minmax(0, 1fr); gap: 10px; align-items: center; }
+.schedule-item, .schedule-now { margin-top: var(--gap, 0px); }
+.schedule-item time { font-size: 11px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.schedule-card { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; padding: 5px 0; }
+.schedule-card strong { font-size: 11.5px; font-weight: 550; }
+.schedule-card small { flex-basis: 100%; margin-top: 1px; font-size: 10.5px; color: var(--text-muted); }
+.schedule-when { margin-left: auto; font-size: 10.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Knoten in der Farbe der Art. Deckend und über der Schiene, die hinter ihnen durchläuft. */
+.schedule-icon { position: relative; z-index: 1; justify-self: center; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: var(--kind); background: color-mix(in srgb, var(--kind) 16%, var(--surface-solid)); }
+.schedule-icon svg { width: 14px; height: 14px; }
+
+/* Die Schiene, je Zeile ein Stück: von der Pause davor bis zur Mitte und von der Mitte bis unten. Bis „Jetzt“ in der Farbe des Pets. */
+.schedule-item::before, .schedule-item::after, .schedule-now::before, .schedule-now::after { content: ''; position: absolute; left: 59.25px; width: 1.5px; background: var(--line); }
+.schedule-item::before, .schedule-now::before { top: calc(-1 * var(--gap, 0px)); height: calc(50% + var(--gap, 0px)); }
+.schedule-item::after, .schedule-now::after { top: 50%; bottom: 0; }
+.schedule-timeline > :first-child::before, .schedule-timeline > :last-child::after { content: none; }
+.schedule-item:is([data-state='past'], [data-state='live'])::before, .schedule-item:is([data-state='past'], [data-state='live'])::after, .schedule-now::before { background: var(--accent); }
+
+/* Vorbei: nur Uhrzeit und Titel, der Knoten wird ein Halt auf der Schiene. */
+.schedule-item[data-state='past'] > :not(.schedule-icon) { opacity: 0.5; }
+.schedule-item[data-state='past'] .schedule-card { padding: 2px 0; }
+.schedule-item[data-state='past'] small, .schedule-item[data-state='past'] .schedule-icon svg { display: none; }
+.schedule-item[data-state='past'] .schedule-icon { width: 8px; height: 8px; background: var(--surface-solid); box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+/* Läuft: ein dünner Ring um den Knoten zeigt, wie viel schon vorbei ist (`--progress` von 0 bis 1). Läuft und als Nächstes heben sich nur durch Gewicht ab. */
+.schedule-item:is([data-state='live'], [data-state='next']) .schedule-card strong { font-weight: 650; }
+.schedule-item[data-state='live'] .schedule-when, .schedule-item[data-due] .schedule-when { color: var(--accent); }
+/* Direkt am Knoten, ohne Spalt: Durch einen Spalt schiene die Schiene hindurch. */
+.schedule-ring::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--progress, 0) * 1turn), var(--line) 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); }
+
+/* Jetzt: Punkt auf der Schiene, Uhrzeit und eine feine Linie. */
+.schedule-now { height: 14px; color: var(--accent); }
+.schedule-now time { font-size: 11px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.schedule-now-dot { position: relative; z-index: 1; justify-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.schedule-now-line { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 500; }
+.schedule-now-line::after { content: ''; flex: 1; height: 1px; background: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* Das Ende: die Schiene läuft in einen eckigen Halt. Sie reicht bis in die Mitte der letzten Zeile hinauf, deren eigenes Stück dort aufhört. */
+.schedule-end { margin-top: 18px; padding-bottom: 2px; font-size: 11px; color: var(--text-muted); }
+.schedule-end::before { content: ''; position: absolute; left: 59.25px; bottom: 50%; height: calc(50% + 30px); width: 1.5px; background: var(--line); }
+.schedule-end-stop { position: relative; z-index: 1; justify-self: center; width: 8px; height: 8px; border-radius: 2px; background: var(--text-muted); }
+.schedule-end[data-done] { color: #eef3f5; }
+.schedule-end[data-done]::before, .schedule-end[data-done] .schedule-end-stop { background: var(--accent); }
+
+/* Gleich beginnt etwas: ein Punkt am Knopf im Dock, bis es losgeht. */
+.dock nav button[data-due] { position: relative; }
+.dock nav button[data-due]::after { content: ''; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface-solid); }
