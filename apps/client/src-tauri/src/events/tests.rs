@@ -39,6 +39,25 @@ fn only_own_progress_passes() {
 }
 
 #[test]
+fn coins_and_purchases_reach_their_own_jelly() {
+    let coins = json!({ "amount": 2, "source": "admin" });
+    assert!(is_own_event(
+        &event("coins.gained", Some(7), coins.clone()),
+        7
+    ));
+    assert!(!is_own_event(&event("coins.gained", Some(8), coins), 7));
+    let bought = json!({ "key": "beanie", "price": 2 });
+    assert!(is_own_event(
+        &event("cosmetic.purchased", Some(7), bought.clone()),
+        7
+    ));
+    assert!(!is_own_event(
+        &event("cosmetic.purchased", Some(8), bought),
+        7
+    ));
+}
+
+#[test]
 fn a_removed_player_is_read_from_the_payload() {
     let removed = |id| event(PLAYER_REMOVED, None, json!({ "player_id": id }));
     assert!(is_own_event(&removed(7), 7));
@@ -106,7 +125,7 @@ fn messages_from_a_newer_server_are_skipped() {
 }
 
 #[test]
-fn the_map_closes_for_a_new_invite_and_for_the_duet() {
+fn map_and_shop_close_for_a_new_invite_and_for_the_duet() {
     let invite = |state: &str| {
         event(
             PARTNER_INVITE,
@@ -114,22 +133,25 @@ fn the_map_closes_for_a_new_invite_and_for_the_duet() {
             json!({ "id": 1, "key": "hop", "from_id": 7, "partner_id": 8, "state": state }),
         )
     };
-    assert!(closes_map(&invite("pending"), 8));
-    assert!(!closes_map(&invite("pending"), 7), "wer auffordert, wartet");
-    assert!(!closes_map(&invite("pending"), 9));
-    assert!(!closes_map(&invite("declined"), 8));
+    assert!(closes_popouts(&invite("pending"), 8));
+    assert!(
+        !closes_popouts(&invite("pending"), 7),
+        "wer auffordert, wartet"
+    );
+    assert!(!closes_popouts(&invite("pending"), 9));
+    assert!(!closes_popouts(&invite("declined"), 8));
 
     let duet = event(
         PARTNER_EMOTE,
         Some(8),
         json!({ "key": "hop", "partner_id": 7 }),
     );
-    assert!(closes_map(&duet, 7));
+    assert!(closes_popouts(&duet, 7));
     assert!(
-        !closes_map(&duet, 8),
+        !closes_popouts(&duet, 8),
         "wer annimmt, hat keine Karte mehr offen"
     );
-    assert!(!closes_map(&event("xp.gained", Some(7), json!({})), 7));
+    assert!(!closes_popouts(&event("xp.gained", Some(7), json!({})), 7));
 }
 
 #[test]

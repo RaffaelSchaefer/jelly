@@ -10,7 +10,7 @@
 //! - [`store`]: lädt und speichert den lokalen Stand atomar als `jelly.json`.
 //! - [`api`]: Typen aus dem Server-Vertrag und der HTTP-Client.
 //! - [`events`]: leitet den Ereignis-Stream des Servers an die Oberfläche weiter.
-//! - [`map`]: das Fenster mit der Karte.
+//! - [`popout`]: die Fenster von Karte und Shop, die das Pet vertreten.
 //! - [`error`]: alle Fehler samt deutscher Meldung für die Oberfläche.
 //! - [`commands`]: die Tauri-Befehle, die die Oberfläche aufruft.
 //!
@@ -26,8 +26,8 @@ pub mod api;
 mod commands;
 pub mod error;
 pub mod events;
-pub mod map;
 pub mod pet;
+pub mod popout;
 pub mod store;
 
 use tauri::{AppHandle, Manager, WindowEvent};
@@ -49,10 +49,15 @@ pub fn run() {
         }))
         .manage(commands::GameState::default())
         .on_window_event(|window, event| match (window.label(), event) {
-            // Ohne das Pet hat die Karte keinen Sinn, und die App liefe mit ihr ohne Pet weiter.
-            (MAIN_WINDOW, WindowEvent::CloseRequested { .. }) => map::close(window.app_handle()),
-            // Die Karte vertritt das Pet. Ist sie zu, kommt das Pet zurück.
-            (map::MAP_WINDOW, WindowEvent::Destroyed) => map::on_closed(window.app_handle()),
+            // Ohne das Pet haben Karte und Shop keinen Sinn, und die App liefe mit ihnen ohne Pet
+            // weiter.
+            (MAIN_WINDOW, WindowEvent::CloseRequested { .. }) => {
+                popout::close_all(window.app_handle());
+            }
+            // Karte und Shop vertreten das Pet. Ist das letzte zu, kommt das Pet zurück.
+            (label, WindowEvent::Destroyed) if popout::is_popout(label) => {
+                popout::on_closed(window.app_handle(), label);
+            }
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![
@@ -69,11 +74,13 @@ pub fn run() {
             commands::stage::go_to,
             commands::stage::highlight_player,
             commands::stage::open_map,
+            commands::stage::open_shop,
             commands::redeem_code,
             commands::partner::invite_partner,
             commands::partner::answer_partner,
             commands::update_profile,
             commands::equip_cosmetic,
+            commands::purchase_cosmetic,
             commands::update_settings,
             commands::presence
         ])

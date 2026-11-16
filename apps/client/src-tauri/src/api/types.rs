@@ -38,6 +38,9 @@ pub struct Rules {
     pub near_distance: f64,
     /// XP je Level, linear.
     pub xp_per_level: i64,
+    /// Münzen je Level-Aufstieg für den Shop. Ältere Server kennen keinen Shop.
+    #[serde(default)]
+    pub coins_per_level: i64,
 }
 
 /// Antwort von `GET /v1/lans/current`.
@@ -163,6 +166,9 @@ pub struct Me {
     pub xp: i64,
     /// Level in dieser LAN.
     pub level: i64,
+    /// Münzen für den Shop in dieser LAN, außerhalb einer laufenden LAN 0.
+    #[serde(default)]
+    pub coins: i64,
     /// XP über alle LANs.
     pub total_xp: i64,
     /// Ab wann ein Stupser wieder XP gibt. `None` außerhalb einer laufenden LAN.
@@ -205,6 +211,17 @@ pub struct Redeemed {
     pub title: String,
     /// Gewonnene XP.
     pub xp_gained: i64,
+    /// Neuer Stand.
+    pub me: Me,
+}
+
+/// Antwort von `POST /v1/purchases`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Purchased {
+    /// Das gekaufte Cosmetic.
+    pub cosmetic_key: String,
+    /// Bezahlte Münzen.
+    pub coins_spent: i64,
     /// Neuer Stand.
     pub me: Me,
 }
