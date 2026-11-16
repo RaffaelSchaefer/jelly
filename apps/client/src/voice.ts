@@ -346,6 +346,12 @@ function openAudio(volume: number) {
   return { context, level, output: createVoiceOutput(context, level) };
 }
 
+/** Eine Uhr ab jetzt in Sekunden, für einen Laut, den man nicht hört: Der Mund bewegt sich trotzdem. */
+export function startClock() {
+  const startedAt = performance.now();
+  return () => (performance.now() - startedAt) / 1000;
+}
+
 /**
  * Die Stimme der App. Hält genau einen `AudioContext`, aber erst, wenn es wirklich etwas zu hören
  * gibt: Wer stumm schaltet, hält kein Audiogerät offen.

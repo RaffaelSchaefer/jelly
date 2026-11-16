@@ -25,3 +25,4 @@ export * from "./types";
 export * from "./uiSounds";
 export * from "./voice";
 export * from "./voiceClips";
+export * from "./wizard";
