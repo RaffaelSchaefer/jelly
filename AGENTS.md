@@ -102,11 +102,16 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
   `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/PopoutDrops.tsx`: die Glas-Tropfen am Jelly,
   die Karte und Shop öffnen.
-- `shop.html`, `src/shop/`: der Shop im eigenen Fenster, mit React. `Shop.tsx` (Liste und Anprobe mit `PetScene`),
-  `ShopAction.tsx` (Kaufen, Anlegen, Ablegen), `useShop.ts` (Stand, Ereignisse, Vorschau ohne Server). Was im Shop
-  steht und was fehlt, rechnet `src/pet/shop.ts`. Münzen gibt es je Level-Aufstieg (`coins_per_level`), gekauft wird mit
-  `POST /v1/purchases`. Der Aufstieg (`src/LevelUp.tsx`) zeigt die Münzen und führt zum Shop. Wie die Karte vertritt der
-  Shop das Pet, solange er offen ist.
+- `shop.html`, `src/shop/`: der Shop als Zauberladen im eigenen Fenster, mit React. `Shop.tsx` (Rahmen),
+  `ShopStage.tsx` (Ladentheke: Wand, Tresen und Sprechblase als DOM um `src/scene/ShopScene.tsx`), `ShopLedger.tsx`
+  (Pergament-Rolle), `ShopSeal.tsx` (Wachssiegel: Kaufen, Anlegen, Ablegen), `useShop.ts` (Stand, Ereignisse, Vorschau
+  ohne Server), `useWizard.ts` (Sätze, Gesten, tiefere Stimme, Dösen), `shop.css`. Was im Shop steht, rechnet
+  `src/pet/shop.ts`, was der Zauberer sagt, `src/pet/wizard.ts`. Den Zauberer zeichnet `src/scene/Wizard.tsx`: eigene
+  Palette, halb geschlossene Augen, Hut, Bart und Kristallkugel aus `@jelly/scene/wizard` (Modelle aus
+  `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS`, nicht im Katalog). Die Lage von Tresen, Teppich und
+  Blase in `shop.css` folgt aus der Kamera (`SHOP_VIEW` in `ShopScene.tsx`), beide Seiten ändern sich zusammen. Münzen
+  gibt es je Level-Aufstieg (`coins_per_level`), gekauft wird mit `POST /v1/purchases`. Der Aufstieg
+  (`src/LevelUp.tsx`) zeigt die Münzen und führt zum Shop. Wie die Karte vertritt der Shop das Pet, solange er offen ist.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
   `events.rs` (Server-Stream), `popout.rs` (Fenster von Karte und Shop), `error.rs`, `pet.rs` (lokaler Stand,
@@ -136,7 +141,10 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - **Neues Cosmetic:** Export aus `apps/client/blender/` nach `packages/jelly-scene/src/cosmetics/`, dazu eine
   Import-Zeile in `COSMETIC_MODELS` (`cosmetic.ts`). App, Karte und Beamer zeigen es dann, in der App als Sticker,
   auf der Bühne mit echter Tiefe. Die Modelle liegen im Bundle: Die CSP der App verbietet `fetch`, und `tauri dev`
-  zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary.
+  zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary. Ein Material kann sein
+  Leuchten von unten mit der Blender-Eigenschaft `glow` (0 bis 1) dämpfen, sonst wirken dunkle Farben unten grau.
+- **Schriften** liegen als Datei bei (`src/fonts/`, mit Lizenz) und nie als `data:`: Die CSP lädt Schriften nur von
+  `'self'`, `vite.config.ts` legt `.woff2` deshalb nie inline.
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.
   Das Paket spricht nicht mit dem Netz: Jeder Nutzer bringt seine `StageSource` mit, die App holt
   alles über Rust. Was nur die Karte braucht (Markierungen, Treffer), bleibt auf dem Beamer aus.
@@ -144,7 +152,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `data-liquid`-Element bekommt in `src/optimized.css` einen eigenen Hintergrund, reine Vorlagen werden dort
   ausgeblendet. Jede Schwebe-Animation wird dort abgeschaltet. Die Karte lässt ihr Glas (`src/map/glass.ts`) im
   optimierten Modus ebenfalls weg, ihre `.glass-pill`-Knöpfe bleiben dann einfarbig (`src/map/map.css`).
-- **Takt des Jellys:** `AnimationClock` in `src/scene/PetScene.tsx` zeichnet mit `advance`. Ein `invalidate` aus einem
+- **Takt des Jellys:** `src/scene/AnimationClock.tsx` zeichnet mit `advance`, für Pet und Shop. Ein `invalidate` aus einem
   `requestAnimationFrame` käme erst im nächsten Bild an und halbierte die Bildrate am Bildschirmtakt.
 - **Identifier** `de.ucb.jelly` nicht ändern, sonst findet die App vorhandene Spielstände nicht mehr.
 - **Kein TypeDoc**, solange es TypeScript 7 nicht unterstützt (Begründung in der README).

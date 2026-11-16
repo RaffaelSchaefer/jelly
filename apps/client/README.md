@@ -77,10 +77,12 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Transparentes, rahmenloses, verschiebbares Fenster, stets im Vordergrund.
 - Animiertes Jelly-Pet mit Raymarching-Shader; drei Farben und ein eigener Name.
 - Cosmetics aus dem Shop, von Events und von der Orga. Jeder Level-Aufstieg bringt Münzen
-  (`coins_per_level`), der Shop im eigenen Fenster verkauft dafür Cosmetics und lässt sie vorher
-  am eigenen Jelly anprobieren (`POST /v1/purchases`). Die 3D-Modelle kommen aus der
-  Blender-Pipeline in `blender/`, bisher gibt es zwei Headsets, Mütze und Pixel-Brille. Karte und
-  Beamer zeigen sie mit.
+  (`coins_per_level`), der Shop im eigenen Fenster verkauft dafür Cosmetics (`POST /v1/purchases`).
+  Er ist ein Zauberladen aus Holz, Pergament und Messing: Hinter dem Tresen steht ein alter
+  Zauberer-Jelly mit Spitzhut, Bart und Kristallkugel, begrüßt, kommentiert die Auswahl mit eigener
+  tieferer Stimme, jubelt beim Kauf und döst ein, wenn niemand etwas tut. Daneben probiert das
+  eigene Jelly an. Die 3D-Modelle kommen aus der Blender-Pipeline in `blender/`, bisher gibt es zwei
+  Headsets, Mütze und Pixel-Brille. Karte und Beamer zeigen sie mit, die Teile des Zauberers nicht.
 - Kleine Glas-Leiste mit LAN-Aktionen, Studio und Einstellungen.
 - Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Händen, Körper, Aura und Farbe öffnen flüssige Popovers für
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
@@ -230,7 +232,8 @@ src/
   Hatch.tsx           Einstieg auf der Bühne: Ei aus Glas, Name, Farbe, Code und das Schlüpfen
   PopoutDrops.tsx     Tropfen für Karte und Shop
   map/                Karte im eigenen Fenster (map.html), ohne React: Seite, Daten, Partner-Emotes, Vorschau
-  shop/               Shop im eigenen Fenster (shop.html): Liste, Anprobe, Kaufen und Anlegen
+  shop/               Zauberladen im eigenen Fenster (shop.html): Theke, Rolle, Siegel, Zauberer
+  fonts/              mitgelieferte Schriften (Cinzel für den Zauberladen, OFL)
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
   panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
