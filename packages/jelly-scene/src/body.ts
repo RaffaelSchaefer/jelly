@@ -50,7 +50,7 @@ const CLARITY = 0.3;
  * Alles, was das Jelly erreichen kann: weit ausgestreckte Hände, der wippende Kopf, die Outline.
  * Alle Jellies teilen sich diesen Kasten.
  */
-const BOUNDS = new BoxGeometry(3.3, 2.7, 1.7).translate(0, 0.16, 0.03);
+const BOUNDS = new BoxGeometry(3.3, 2.7, 1.9).translate(0, 0.16, 0.13);
 /**
  * Derselbe Kasten ohne die Hände. Meist sind sie eingezogen, und jedes Pixel des Kastens kostet
  * einen Raymarch, auch wo nur Hintergrund ist.
@@ -61,6 +61,8 @@ const BOUNDS_WITHOUT_HANDS = new BoxGeometry(2.0, 2.7, 1.7).translate(0, 0.16, 0
 export interface BodyParts {
   head: Object3D;
   hands: Object3D[];
+  /** Je Hand, wie weit Zeigefinger (x), übrige Finger (y) und Daumen (z) gebeugt sind. */
+  curls: Vector3[];
 }
 
 /** Uniforms des Shaders. Als eigener Typ, damit jeder Zugriff ohne Index-Signatur typsicher ist. */
@@ -73,6 +75,8 @@ function createUniforms() {
     uHead: { value: new Vector3(HEAD.x, HEAD.y, HEAD.z) },
     uTilt: { value: new Vector2(1, 0) },
     uHands: { value: [new Vector4(), new Vector4()] },
+    uHandRot: { value: [new Vector4(0, 0, 0, 1), new Vector4(0, 0, 0, 1)] },
+    uHandCurl: { value: [new Vector3(), new Vector3()] },
     uColor: { value: new Color() },
     uGlow: { value: new Color() },
     uInk: { value: new Color() },
@@ -117,8 +121,8 @@ interface FrameInput {
 }
 
 /**
- * Überträgt Kamera, Kopf und Hände in die Uniforms. Läuft in `onBeforeRender`, also nach der
- * Animation: Kopf und Hände stehen dann schon dort, wo sie hingesetzt wurden.
+ * Überträgt Kamera, Kopf und Hände samt ihrer Drehung in die Uniforms. Läuft in `onBeforeRender`,
+ * also nach der Animation: Kopf und Hände stehen dann schon dort, wo sie hingesetzt wurden.
  */
 function updateUniforms({ mesh, uniforms: u, renderer, camera, parts, drawingBuffer }: FrameInput) {
   u.uModel.value.copy(mesh.matrixWorld);
@@ -131,6 +135,9 @@ function updateUniforms({ mesh, uniforms: u, renderer, camera, parts, drawingBuf
     // Radius 0 schaltet eine versteckte Hand im Shader ab.
     const radius = hand.visible ? HAND.radius * hand.scale.x : 0;
     u.uHands.value[index]?.set(hand.position.x, hand.position.y, hand.position.z, radius);
+    const { x, y, z, w } = hand.quaternion;
+    u.uHandRot.value[index]?.set(x, y, z, w);
+    u.uHandCurl.value[index]?.copy(parts.curls[index]!);
   });
   // Größe eines Bildschirmpixels pro Abstandseinheit, für eine gleich breite Kantenglättung.
   renderer.getDrawingBufferSize(drawingBuffer);

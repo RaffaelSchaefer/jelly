@@ -221,15 +221,20 @@ function Capsule({
       </span>
       {reward ? (
         <>
-          <button className="levelup-later" onClick={onClose}>
+          <button className="levelup-later" data-sound="close" onClick={onClose}>
             Später
           </button>
-          <PrimaryButton className="levelup-go" disabled={disabled} onClick={() => onEquip(reward)}>
+          <PrimaryButton
+            className="levelup-go"
+            data-sound="success"
+            disabled={disabled}
+            onClick={() => onEquip(reward)}
+          >
             Anlegen
           </PrimaryButton>
         </>
       ) : (
-        <PrimaryButton className="levelup-go" onClick={onClose}>
+        <PrimaryButton className="levelup-go" data-sound="close" onClick={onClose}>
           Weiter
         </PrimaryButton>
       )}

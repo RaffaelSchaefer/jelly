@@ -39,7 +39,12 @@ interface RulesFormParts {
 
 /** Names the unit shown inside the field, if the label does not say it already. */
 function nameUnit(rule: RuleText): string {
-  const names: Partial<Record<RuleText["unit"], string>> = { seconds: "s", percent: "%", xp: "XP" };
+  const names: Partial<Record<RuleText["unit"], string>> = {
+    seconds: "s",
+    percent: "%",
+    xp: "XP",
+    meters: "m",
+  };
   return names[rule.unit] ?? "";
 }
 

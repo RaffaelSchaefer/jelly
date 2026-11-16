@@ -8,15 +8,17 @@
  * @module
  */
 
-import type { ScreenPoint, StageEvent, StageHighlight } from "@jelly/stage";
+import type { JellyOnScreen, ScreenPoint, StageEvent, StageHighlight } from "@jelly/stage";
 
 import type { MapSource } from "./source";
 
 import { classifyInvite, type CatalogEntry, type PartnerInvite } from "../pet";
 
-/** Abstand des Fensters zum Klick und zum Rand. */
-const MENU_OFFSET = 24;
+/** Abstand des Fensters zum Jelly und zum Rand, in Pixeln. */
+const MENU_OFFSET = 10;
 const MENU_MARGIN = 12;
+/** Ein Jelly ist auf dem Bild etwa so breit wie diese Teile seiner Höhe, halbiert. */
+const HALF_WIDTH_SHARE = 0.37;
 const SECOND_MS = 1000;
 const INVITE_EVENT = "partner_emote.updated";
 
@@ -32,6 +34,10 @@ export interface PartnerContext {
   source: MapSource;
   /** Das Jelly, das am Punkt gewählt werden kann. */
   pickAt: (point: ScreenPoint) => number | null;
+  /** Wo ein Jelly auf dem Bild ist, `null`, wenn es nicht in der Halle steht. */
+  locate: (playerId: number) => JellyOnScreen | null;
+  /** Fliegt die Kamera zum aufgeforderten Jelly. */
+  flyTo: (playerId: number) => void;
   findName: (playerId: number) => string;
   /** Uhrzeit des Servers jetzt. */
   readServerTime: () => number;
@@ -112,19 +118,33 @@ function fillMenu(flow: PartnerFlow, entries: CatalogEntry[]) {
   );
 }
 
-/** Setzt das Fenster neben den Klick, ganz innerhalb der Karte. */
-export function placeMenu(menu: HTMLElement, at: ScreenPoint) {
+/**
+ * Setzt das Fenster rechts neben ein Jelly, ganz innerhalb der Karte. `false`, wenn das Jelly nicht
+ * zu sehen ist: Dann gehört das Fenster zu.
+ */
+export function placeMenu(menu: HTMLElement, jelly: JellyOnScreen | null): boolean {
   const area = menu.parentElement!;
+  if (!jelly || jelly.x < 0 || jelly.y < 0) return false;
+  if (jelly.x > area.clientWidth || jelly.y > area.clientHeight) return false;
   const maxLeft = area.clientWidth - menu.offsetWidth - MENU_MARGIN;
   const maxTop = area.clientHeight - menu.offsetHeight - MENU_MARGIN;
-  const left = Math.min(maxLeft, at.x + MENU_OFFSET);
-  const top = Math.min(maxTop, at.y - menu.offsetHeight / 2);
+  const left = Math.min(maxLeft, jelly.x + jelly.height * HALF_WIDTH_SHARE + MENU_OFFSET);
+  const top = Math.min(maxTop, jelly.y - menu.offsetHeight / 2);
   menu.style.left = `${Math.max(MENU_MARGIN, left)}px`;
   menu.style.top = `${Math.max(MENU_MARGIN, top)}px`;
+  return true;
+}
+
+/** Rückt die Gesten an das eigene Jelly. Ist es nicht mehr zu sehen, gehen sie zu. */
+export function placeGestures(flow: PartnerFlow) {
+  if (flow.step.kind !== "gesture") return;
+  const ownId = flow.context.source.readOwn().id;
+  const own = ownId === null ? null : flow.context.locate(ownId);
+  if (!placeMenu(flow.menu, own)) show(flow, { kind: "idle" });
 }
 
 /** Öffnet das Fenster mit den Gesten neben dem eigenen Jelly. Eine laufende Aufforderung geht vor. */
-export async function openGestures(flow: PartnerFlow, at: ScreenPoint) {
+export async function openGestures(flow: PartnerFlow) {
   if (flow.step.kind !== "idle") return;
   try {
     if (!flow.entries) {
@@ -136,7 +156,7 @@ export async function openGestures(flow: PartnerFlow, at: ScreenPoint) {
     return;
   }
   show(flow, { kind: "gesture" });
-  placeMenu(flow.menu, at);
+  placeGestures(flow);
 }
 
 /** Fordert ein Jelly auf. Sagt der Server `too_far`, bleibt die Wahl offen. */
@@ -145,6 +165,7 @@ async function invite(flow: PartnerFlow, key: string, playerId: number) {
   try {
     const sent = await flow.context.source.invitePartner(key, playerId);
     show(flow, { kind: "waiting", invite: sent, name: flow.context.findName(playerId) });
+    flow.context.flyTo(playerId);
   } catch (cause) {
     flow.context.report(String(cause));
   }

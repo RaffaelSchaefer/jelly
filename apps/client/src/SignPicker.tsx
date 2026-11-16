@@ -95,6 +95,7 @@ function SignPill({
       aria-label={selected ? `${label}, Schild senken` : label}
       aria-pressed={selected}
       aria-disabled={disabled}
+      data-sound={selected ? "close" : "select"}
       onPointerEnter={() => onPreview(selected ? null : key)}
       onClick={() => onPick(selected ? null : key)}
     >

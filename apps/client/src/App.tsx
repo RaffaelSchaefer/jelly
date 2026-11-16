@@ -29,6 +29,7 @@ import {
 import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
 import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
+import { useUiSounds } from "./useUiSounds";
 import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
 import "./optimized.css";
 
@@ -307,6 +308,7 @@ export default function App() {
   usePokeKeys(game.interact, panel === null && !joining && !game.hatching);
 
   useDocumentTheme(me.color, reducedMotion, settings.optimizedRendering);
+  useUiSounds(game);
 
   const close = useCallback(() => setPanel(null), []);
   useDuetClosesPanel(game, panel, close);

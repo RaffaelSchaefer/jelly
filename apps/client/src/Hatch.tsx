@@ -292,7 +292,7 @@ function HatchWelcome({ game }: { game: PetGame }) {
         <strong>Willkommen, {me?.name ?? "Jelly"}!</strong>
         <small>{lan.current?.name ?? "Bis zur nächsten LAN"}</small>
       </span>
-      <PrimaryButton ref={go} className="levelup-go" onClick={game.endHatch}>
+      <PrimaryButton ref={go} className="levelup-go" data-sound="success" onClick={game.endHatch}>
         Los geht’s
       </PrimaryButton>
     </div>

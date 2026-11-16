@@ -122,7 +122,9 @@ export function Panel({
     <section className="panel" aria-labelledby="panel-title">
       <div className="panel-heading">
         <h2 id="panel-title">{title}</h2>
-        {onClose ? <IconButton icon="close" label="Panel schließen" onClick={onClose} /> : null}
+        {onClose ? (
+          <IconButton icon="close" label="Panel schließen" data-sound="close" onClick={onClose} />
+        ) : null}
       </div>
       {children}
     </section>

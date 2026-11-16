@@ -17,8 +17,11 @@ import type { Jelly } from "./jelly.ts";
 
 import { tintGeometry } from "./jellyGeometry.ts";
 
-/** Die Namen der Mundformen: die fünf Vokale und `m` für den geschlossenen Mund. */
-export const MOUTH_SHAPE_NAMES = ["a", "e", "i", "o", "u", "m"] as const;
+/**
+ * Die Namen der Mundformen: die fünf Vokale und `m` für den geschlossenen Mund beim Sprechen, dazu
+ * für Ausdrücke `sad` (Bogen nach unten), `grin` (breites Grinsen) und `flat` (gerader Strich).
+ */
+export const MOUTH_SHAPE_NAMES = ["a", "e", "i", "o", "u", "m", "sad", "grin", "flat"] as const;
 
 /** Eine Mundform. */
 export type MouthShape = (typeof MOUTH_SHAPE_NAMES)[number];
@@ -71,6 +74,37 @@ function oval(y: number, radiusX: number, radiusY: number) {
   return new Shape().absellipse(0, y, radiusX, radiusY, 0, Math.PI * 2, false);
 }
 
+/** Maße eines Mundstrichs: halbe Breite, Wölbung nach oben in der Mitte, Lage der Enden. */
+interface Line {
+  halfWidth: number;
+  rise: number;
+  y: number;
+  thickness: number;
+}
+
+/**
+ * Ein gewölbter Strich mit runden Enden, wie ein mit dem Stift gezogener Mund. Die Mitte liegt um
+ * `rise` über den Enden. Ein kleines `rise` ergibt einen fast geraden Strich.
+ */
+function line({ halfWidth, rise, y, thickness }: Line) {
+  const radius = (halfWidth * halfWidth + rise * rise) / (2 * rise);
+  const centerY = y + rise - radius;
+  const spread = Math.asin(halfWidth / radius);
+  const [right, left] = [Math.PI / 2 - spread, Math.PI / 2 + spread];
+  const cap = thickness / 2;
+  const end = (angle: number): [number, number] => [
+    radius * Math.cos(angle),
+    centerY + radius * Math.sin(angle),
+  ];
+  const [leftX, leftY] = end(left);
+  const [rightX, rightY] = end(right);
+  return new Shape()
+    .absarc(0, centerY, radius + cap, right, left, false)
+    .absarc(leftX, leftY, cap, left, left + Math.PI, false)
+    .absarc(0, centerY, radius - cap, left, right, true)
+    .absarc(rightX, rightY, cap, right + Math.PI, right + Math.PI * 2, false);
+}
+
 /** Wie eine Mundform gezeichnet ist. */
 interface MouthDrawing {
   outline: Shape;
@@ -88,6 +122,12 @@ const DRAWINGS: Record<MouthShape, MouthDrawing> = {
   o: { outline: oval(-0.035, 0.05, 0.06), tongue: oval(-0.072, 0.028, 0.016) },
   u: { outline: oval(-0.032, 0.036, 0.042) },
   m: { outline: crescent({ halfWidth: 0.055, top: 0, sag: 0.006, depth: 0.03 }) },
+  sad: { outline: line({ halfWidth: 0.06, rise: 0.028, y: -0.045, thickness: 0.022 }) },
+  grin: {
+    outline: crescent({ halfWidth: 0.11, top: 0.014, sag: 0.016, depth: 0.1 }),
+    tongue: oval(-0.062, 0.05, 0.024),
+  },
+  flat: { outline: line({ halfWidth: 0.055, rise: 0.003, y: -0.02, thickness: 0.022 }) },
 };
 
 /** Eine flache Fläche in der Farbe `hex`, um `lift` vor dem Ursprung. */
@@ -111,27 +151,20 @@ const SHAPES_BY_INK = new Map<string, Record<MouthShape, BufferGeometry>>();
 export function findMouthShapes(ink: string) {
   const cached = SHAPES_BY_INK.get(ink);
   if (cached) return cached;
-  const shapes = {
-    a: buildMouthShape(DRAWINGS.a, ink),
-    e: buildMouthShape(DRAWINGS.e, ink),
-    i: buildMouthShape(DRAWINGS.i, ink),
-    o: buildMouthShape(DRAWINGS.o, ink),
-    u: buildMouthShape(DRAWINGS.u, ink),
-    m: buildMouthShape(DRAWINGS.m, ink),
-  };
+  const shapes = Object.fromEntries(
+    MOUTH_SHAPE_NAMES.map((name) => [name, buildMouthShape(DRAWINGS[name], ink)]),
+  ) as Record<MouthShape, BufferGeometry>;
   SHAPES_BY_INK.set(ink, shapes);
   return shapes;
 }
 
 /**
- * Legt die Mundform über die frisch berechnete Grundpose. Größe des Munds und Lage des Kopfes setzt
- * die Animation jedes Bild neu, es sammelt sich also nichts an. Ohne Frame lächelt das Jelly.
+ * Legt die Mundform beim Sprechen über Grundpose und Ausdruck. Form und Größe des Munds und die
+ * Lage des Kopfes setzt die Animation jedes Bild neu, es sammelt sich also nichts an. Ohne Frame
+ * bleibt der Mund, wie Grundpose und Ausdruck ihn gesetzt haben.
  */
 export function animateMouth({ face, head }: Jelly, frame?: MouthFrame) {
-  if (!frame) {
-    face.mouth.geometry = face.smile;
-    return;
-  }
+  if (!frame) return;
   face.mouth.geometry = face.mouthShapes[frame.shape];
   face.mouth.scale.set(frame.width, frame.height, 1);
   head.position.y -= frame.nod * NOD_DISTANCE;

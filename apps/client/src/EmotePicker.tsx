@@ -67,6 +67,7 @@ export default function EmotePicker({
             aria-label={label}
             aria-disabled={disabled}
             data-tip={label}
+            data-sound="select"
             onClick={() => void pick(key)}
           >
             {isEmoteKey(key) ? <span aria-hidden="true">{EMOTE_GLYPHS[key]}</span> : label}

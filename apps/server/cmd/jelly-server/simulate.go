@@ -30,6 +30,17 @@ func runSimulate(ctx context.Context, arguments []string, logger *slog.Logger) e
 	maxDelay := flags.Duration("max-delay", simulator.DefaultMaxDelay, "longest wait")
 	limit := flags.Duration("duration", 0, "ends the run after this time, 0 runs until a signal")
 	runID := flags.String("run-id", simulator.GenerateRunID(), "part of the player names")
+	streams := flags.Bool(
+		"streams",
+		false,
+		"every jelly keeps an event stream open, as the app does",
+	)
+	stages := flags.Int("stages", 0, "stage screens watching the stream, need JELLY_STAGE_KEY")
+	topics := flags.String(
+		"stream-topics",
+		"",
+		"topics of the jelly streams, events for an app without map",
+	)
 	err := flags.Parse(arguments)
 	if err != nil {
 		return fmt.Errorf("parse options: %w", err)
@@ -46,6 +57,8 @@ func runSimulate(ctx context.Context, arguments []string, logger *slog.Logger) e
 	config := simulator.Config{
 		BaseURL: *address, JoinCode: joinCode, RunID: *runID, Players: *players,
 		MinDelay: *minDelay, MaxDelay: *maxDelay, Now: time.Now,
+		Streams: *streams, StreamTopics: *topics, Stages: *stages,
+		StageKey: os.Getenv("JELLY_STAGE_KEY"),
 	}
 	httpClient := &http.Client{Timeout: simulatorHTTPLimit}
 	stats, err := simulator.Run(ctx, httpClient, config, logger)
@@ -55,6 +68,8 @@ func runSimulate(ctx context.Context, arguments []string, logger *slog.Logger) e
 	logger.InfoContext(ctx, "simulation ended", "accepted", stats.Accepted,
 		"rejected", stats.Rejected, "failed_actions", stats.FailedActions,
 		"dead_bots", stats.DeadBots, "mean_latency", stats.MeanLatency,
-		"max_latency", stats.MaxLatency)
+		"max_latency", stats.MaxLatency, "stream_messages", stats.StreamMessages,
+		"stream_bytes", stats.StreamBytes,
+		"stream_drops", stats.StreamDrops, "first_stream_drop", stats.FirstStreamDrop)
 	return nil
 }

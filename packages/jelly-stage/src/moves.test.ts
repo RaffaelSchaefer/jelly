@@ -13,6 +13,9 @@ import {
 } from "./moves.ts";
 import { toFloorPoint } from "./world.ts";
 
+/** The room the server measures in, so the numbers below are its jelly units. */
+const room = { width: 21, depth: 40 };
+
 function makePlayer(id: number): StagePlayer {
   return {
     id,
@@ -41,9 +44,9 @@ const move: StageMove = {
 };
 
 test("a jelly with a move plays it, one without stands at home", () => {
-  const positions = findPositions([makePlayer(1), makePlayer(2)], new Map([[1, move]]), 3000);
-  assert.deepEqual(positions.get(1), toFloorPoint({ x: 40, y: 30 }));
-  assert.deepEqual(positions.get(2), toFloorPoint({ x: 10, y: 20 }));
+  const positions = findPositions([makePlayer(1), makePlayer(2)], new Map([[1, move]]), 3000, room);
+  assert.deepEqual(positions.get(1), toFloorPoint({ x: 40, y: 30 }, room));
+  assert.deepEqual(positions.get(2), toFloorPoint({ x: 10, y: 20 }, room));
 });
 
 test("a jelly reaches its height on a stack only when it arrives", () => {
@@ -67,9 +70,9 @@ test("all others light up, or only those near the own jelly, never the own", () 
     [2, { x: 3, z: 4 }],
     [3, { x: 6, z: 8 }],
   ]);
-  assert.deepEqual([...listHighlighted(positions, 1, { kind: "others" })], [2, 3]);
-  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 5 })], [2]);
-  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 1 })], []);
+  assert.deepEqual([...listHighlighted(positions, 1, { kind: "others" }, room)], [2, 3]);
+  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 5 }, room)], [2]);
+  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 1 }, room)], []);
 });
 
 test("a ring grows in, fades out and is forgotten once it is gone", () => {
@@ -86,8 +89,8 @@ test("a ring grows in, fades out and is forgotten once it is gone", () => {
 
 test("without the own jelly on the stage nobody counts as near", () => {
   const positions = new Map([[2, { x: 0, z: 0 }]]);
-  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 5 })], []);
-  assert.deepEqual([...listHighlighted(positions, null, { kind: "others" })], [2]);
+  assert.deepEqual([...listHighlighted(positions, 1, { kind: "near", reach: 5 }, room)], []);
+  assert.deepEqual([...listHighlighted(positions, null, { kind: "others" }, room)], [2]);
 });
 
 test("the winner grows while the ceremony runs", () => {

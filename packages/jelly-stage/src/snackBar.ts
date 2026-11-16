@@ -21,6 +21,7 @@ import {
   createZoneShadow,
   FACE_LIFT,
   findMiddle,
+  fitIntoZone,
   LED_MATERIAL,
   mergeParts,
   placeMesh,
@@ -28,7 +29,7 @@ import {
 } from "./props.ts";
 import { createSignMaterial } from "./signs.ts";
 import { listSnacks } from "./snacks.ts";
-import { COUNTER_HEIGHT } from "./zones.ts";
+import { COUNTER_HEIGHT, toLocalRect } from "./zones.ts";
 
 const COUNTER = { top: 0.08, overhang: 0.08, inset: 0.03, plinth: 0.07 };
 const SLAT = { width: 0.26, gap: 0.025, depth: 0.04 };
@@ -37,7 +38,7 @@ const MARQUEE = { width: 2, height: 0.55, share: 0.62, bottom: 0.25, frame: 0.05
 const MARQUEE_BULBS = { radius: 0.034, gap: 0.12, lift: 0.04 };
 /** Counters at least this long get a drinks fridge at their right end. */
 const FRIDGE_FROM = 3;
-const FRIDGE = { width: 0.95, height: 1.85, rounding: 0.06 };
+const FRIDGE = { width: 0.95, depth: 1.2, height: 1.85, rounding: 0.06 };
 const WINDOW = { inset: 0.11, bottom: 0.34, top: 0.3 };
 const HEADER = { height: 0.12, inset: 0.08, depth: 0.03 };
 const HANDLE = { width: 0.04, height: 0.5, bottom: 0.72, inset: 0.06 };
@@ -174,8 +175,13 @@ function listFramePoints(corners: { left: number; right: number; bottom: number;
   });
 }
 
-/** Builds the drinks fridge: a white cabinet with a lit window full of bottles. */
+/** Builds the drinks fridge in a zone: a white cabinet with a lit window full of bottles. */
 export function createFridge(rect: FloorRect): Group {
+  return fitIntoZone(buildFridge(toLocalRect(FRIDGE)), FRIDGE, rect);
+}
+
+/** Builds the fridge at its own size, filling `rect`. */
+function buildFridge(rect: FloorRect): Group {
   const fridge = new Group();
   const width = rect.maxX - rect.minX;
   const depth = rect.maxZ - rect.minZ;

@@ -1,22 +1,47 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import type { RoomMeters } from "./world.ts";
+
 import {
   calculateCameraDistance,
   calculateCanvasDensity,
+  DEFAULT_ROOM,
   fromFloorPoint,
   isOnStage,
-  ROOM_DEPTH,
-  ROOM_WIDTH,
+  JELLY_WIDTH,
+  measureRoom,
+  measureServerDistance,
   shrinkRect,
   toFloorPoint,
   toFloorRect,
+  toRoomRect,
 } from "./world.ts";
 
+/** A hall wider than deep, like the lecture hall. */
+const room = { width: 80, depth: 50 };
+
+test("the lecture hall fits 44 jellies side by side, whatever a jelly measures", () => {
+  const hall = measureRoom({ width_m: 22, depth_m: 16.1, jelly_m: 0.5 });
+  assert.equal((hall.width / JELLY_WIDTH).toFixed(3), "44.000");
+  assert.equal((hall.depth / JELLY_WIDTH).toFixed(3), "32.200");
+  const twice = measureRoom({ width_m: 44, depth_m: 32.2, jelly_m: 1 });
+  assert.equal(twice.width.toFixed(3), hall.width.toFixed(3));
+  assert.equal(twice.depth.toFixed(3), hall.depth.toFixed(3));
+});
+
+test("a server without meters shows the lecture hall", () => {
+  assert.deepEqual(measureRoom({} as RoomMeters), DEFAULT_ROOM);
+  assert.deepEqual(measureRoom({ width_m: 22, depth_m: 16.1, jelly_m: 0 }), DEFAULT_ROOM);
+  assert.equal(DEFAULT_ROOM.width.toFixed(3), "74.800");
+});
+
 test("the stage corners become the room corners, the back is far from the camera", () => {
-  assert.deepEqual(toFloorPoint({ x: 0, y: 0 }), { x: -ROOM_WIDTH / 2, z: -ROOM_DEPTH / 2 });
-  assert.deepEqual(toFloorPoint({ x: 100, y: 100 }), { x: ROOM_WIDTH / 2, z: ROOM_DEPTH / 2 });
-  assert.deepEqual(toFloorPoint({ x: 50, y: 50 }), { x: 0, z: 0 });
+  const rect = toRoomRect(room);
+  assert.deepEqual(toFloorPoint({ x: 0, y: 0 }, room), { x: rect.minX, z: rect.minZ });
+  assert.deepEqual(toFloorPoint({ x: 100, y: 100 }, room), { x: rect.maxX, z: rect.maxZ });
+  assert.deepEqual(toFloorPoint({ x: 50, y: 50 }, room), { x: 0, z: 0 });
+  assert.deepEqual(rect, { minX: -40, minZ: -25, maxX: 40, maxZ: 25 });
 });
 
 test("a floor point goes back to its stage position", () => {
@@ -25,8 +50,13 @@ test("a floor point goes back to its stage position", () => {
     { x: 100, y: 100 },
     { x: 25, y: 75 },
   ]) {
-    assert.deepEqual(fromFloorPoint(toFloorPoint(position)), position);
+    assert.deepEqual(fromFloorPoint(toFloorPoint(position, room), room), position);
   }
+});
+
+test("distances count as the server measures them, in its room of 21 by 40", () => {
+  const twiceServer = { width: 42, depth: 80 };
+  assert.equal(measureServerDistance({ x: 0, z: 0 }, { x: 6, z: 8 }, twiceServer), 5);
 });
 
 test("the stage ends at 0 and 100 percent", () => {
@@ -36,8 +66,8 @@ test("the stage ends at 0 and 100 percent", () => {
 });
 
 test("an area becomes a rectangle on the floor", () => {
-  const rect = toFloorRect({ x: 0, y: 50, width: 50, height: 50 });
-  assert.deepEqual(rect, { minX: -ROOM_WIDTH / 2, minZ: 0, maxX: 0, maxZ: ROOM_DEPTH / 2 });
+  const rect = toFloorRect({ x: 0, y: 50, width: 50, height: 50 }, room);
+  assert.deepEqual(rect, { minX: -40, minZ: 0, maxX: 0, maxZ: 25 });
 });
 
 test("shrinking keeps a margin and collapses short sides to their middle", () => {

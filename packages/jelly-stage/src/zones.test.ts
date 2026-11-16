@@ -3,11 +3,13 @@ import { test } from "node:test";
 
 import type { FloorRect } from "./world.ts";
 
-import { createDemoRoom } from "./demoRoom.fixture.ts";
+import { createDemoRoom, DEMO_HALL } from "./demoRoom.fixture.ts";
+import { JELLY_WIDTH, measureRoom } from "./world.ts";
 import {
   containsPoint,
   findFloorHeight,
   findPedestalRect,
+  fitFootprint,
   listPlatforms,
   listScreenRects,
   listSpeakerRects,
@@ -18,25 +20,55 @@ import {
   toRoomPoint,
 } from "./zones.ts";
 
+/** The room the server measures in, so the desk below is 2 by 1 jelly units. */
+const hall = { width: 21, depth: 40 };
 const room = createDemoRoom();
-const platform = listPlatforms(room)[0];
+const demoHall = measureRoom(DEMO_HALL);
+const platform = listPlatforms(room, hall)[0];
 const stage = platform && toLocalRect(platform);
 const middleOf = (rect: FloorRect) => ({
   x: (rect.minX + rect.maxX) / 2,
   z: (rect.minZ + rect.maxZ) / 2,
 });
 /** A desk of 2 by 1 units in the middle of the room, turned by a quarter clockwise. */
-const turnedDesk = placeArea({
-  id: 1,
-  x: 45,
-  y: 48.75,
-  width: 10,
-  height: 2.5,
-  rotation: 90,
-  kind: "none",
-  blocks: true,
-  prop: "desk",
-  name: null,
+const turnedDesk = placeArea(
+  {
+    id: 1,
+    x: 45,
+    y: 48.75,
+    width: 10,
+    height: 2.5,
+    rotation: 90,
+    kind: "none",
+    blocks: true,
+    prop: "desk",
+    name: null,
+  },
+  hall,
+);
+
+test("every desk of the demo hall is two jellies wide and one jelly deep", () => {
+  const desks = room.filter((area) => area.prop === "desk");
+  assert.ok(desks.length > 0);
+  for (const desk of desks.map((area) => placeArea(area, demoHall))) {
+    assert.equal((desk.width / JELLY_WIDTH).toFixed(3), "2.000");
+    assert.equal((desk.depth / JELLY_WIDTH).toFixed(3), "1.000");
+  }
+});
+
+test("two rows of gaming desks leave the floor of three desks between them", () => {
+  const seats = room.filter((area) => area.kind === "seats");
+  assert.ok(seats.length > 0);
+  // A desk is one jelly deep, and the seats of both rows make up the aisle.
+  for (const seat of seats.map((area) => placeArea(area, demoHall))) {
+    assert.equal(((2 * seat.depth) / JELLY_WIDTH).toFixed(3), "3.000");
+  }
+});
+
+test("a model of a fixed shape grows evenly until it fills the shorter side of its zone", () => {
+  const zone = { minX: 0, maxX: 2, minZ: 0, maxZ: 3 };
+  assert.equal(fitFootprint(zone, { width: 1, depth: 0.8 }), 2);
+  assert.equal(fitFootprint(zone, { width: 1, depth: 2 }), 1.5);
 });
 
 test("speakers stand in the back corners and the trophy between the beamers", () => {
@@ -63,7 +95,7 @@ test("the beamers stand on the back of the stage, left and right of the middle",
 
 test("the floor is raised on the stage only", () => {
   assert.ok(platform && stage);
-  const platforms = listPlatforms(room);
+  const platforms = listPlatforms(room, hall);
   assert.equal(findFloorHeight(platform.middle, platforms), STAGE_HEIGHT);
   assert.equal(findFloorHeight({ x: 0, z: platform.middle.z + stage.maxZ + 1 }, platforms), 0);
 });

@@ -53,7 +53,7 @@ export interface MotionPose {
 /** A running animation of one jelly. */
 export type StageEffect = { playerId: number; startedAt: number; endsAt: number } & (
   | { kind: "bubble"; glyph: string }
-  | { kind: "toast"; text: string }
+  | { kind: "toast"; text: string; isReward: boolean }
   | { kind: "motion"; motion: MotionKey }
   | { kind: "emote"; key: EmoteKey }
   | { kind: "spotlight"; hue: number }
@@ -110,7 +110,7 @@ function createRewardEffects(
   if (text === undefined) {
     return [];
   }
-  return [{ ...start, endsAt: start.startedAt + TOAST_MS, kind: "toast", text }];
+  return [{ ...start, endsAt: start.startedAt + TOAST_MS, kind: "toast", text, isReward: true }];
 }
 
 /**
@@ -153,6 +153,7 @@ function createXPEffects(
       endsAt: start.startedAt + XP_TOAST_MS,
       kind: "toast",
       text: `+${payload.amount ?? 0} XP`,
+      isReward: false,
     },
   ];
 }

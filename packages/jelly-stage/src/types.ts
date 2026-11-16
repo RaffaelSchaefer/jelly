@@ -116,11 +116,17 @@ export interface StageStack {
   member_ids: number[];
 }
 
-/** Size of the stage in the unit of all positions. */
+/** Size of the stage in the unit of all positions, and of the real hall in meters. */
 export interface StageRoom {
   width: number;
   height: number;
   unit: string;
+  /** Width of the real hall from left to right. */
+  width_m: number;
+  /** Depth of the real hall from back to front. */
+  depth_m: number;
+  /** Width of a jelly in the real hall. */
+  jelly_m: number;
 }
 
 /** Response of `GET /v1/stage`. */

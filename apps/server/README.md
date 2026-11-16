@@ -47,7 +47,8 @@ Jeder Spieltisch ist ein Platz, die Spieler stehen im Gang davor, und die Plätz
 einer Reihe sind eine Gruppe (`seats`). Tische, die Theke der Snackbar und auf der Bühne Beamer, Boxen
 und Pokal sind Zonen mit `blocks`, um die die Jellies herumlaufen. Jellies ohne Platz chillen in der
 Lounge, auf die Bühne stellt sie ein Admin, etwa für ein Turnier. Wer Essen oder Trinken meldet, stellt
-sich kurz in der Anstellzone an. Der Aufbau steht in `scripts/demo-room.sh`. Die Bühne zeichnet noch nach
+sich kurz in der Anstellzone an. Der Aufbau steht in `scripts/demo-room.sh`. Die Demo-LAN ist 10 × 20,5 m groß. Jeder Tisch
+misst 1 × 0,5 m, zwischen zwei Reihen ist Platz für drei Tische. Die Bühne zeichnet noch nach
 der alten Zuweisung und muss `prop` erst übernehmen, Tische und Theke fehlen bis dahin im Bild.
 
 ![Die 3D-Bühne mit 70 simulierten Jellies](docs/images/stage-3d.jpg)
@@ -111,8 +112,11 @@ JELLY_JOIN_CODE=geheim go run ./cmd/jelly-server simulate -url http://localhost:
 | `-max-delay` | `20s`                   | Längste Zeit zwischen zwei Aktionen    |
 | `-duration`  | `0`                     | Laufzeit, `0` läuft bis zu einem Signal |
 | `-run-id`    | zufällig                | Teil der Namen, gleiche ID auf derselben Datenbank kollidiert |
+| `-streams`   | aus                     | Jedes Jelly hält wie die App einen Stream offen |
+| `-stream-topics` | alles               | Themen dieser Streams, `events` wie eine App ohne Karte |
+| `-stages`    | 0                       | Bühnen, die den Stream lesen, brauchen `JELLY_STAGE_KEY` |
 
-Am Ende stehen im Log angenommene und abgelehnte Aktionen, Fehler und Antwortzeiten. Können alle Bots
+Am Ende stehen im Log angenommene und abgelehnte Aktionen, Fehler, Antwortzeiten und was die Streams empfangen haben. Können alle Bots
 sich nicht anmelden, endet der Lauf mit dem Grund. Messungen stehen in
 [benchmarks/README.md](benchmarks/README.md).
 

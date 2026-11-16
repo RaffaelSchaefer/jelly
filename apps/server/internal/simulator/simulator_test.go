@@ -160,3 +160,29 @@ func TestGenerateRunIDDiffers(t *testing.T) {
 		t.Fatalf("two runs in one second must not share names: %s", first)
 	}
 }
+
+func TestRunWatchesStreamsLikeTheAppAndTheStage(t *testing.T) {
+	server, _ := startServer(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+
+	config := buildTestConfig(server.URL, testJoinCode)
+	config.Streams = true
+	config.Stages = 2
+	config.StageKey = testStageKey
+	stats, err := simulator.Run(ctx, server.Client(), config, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.StreamMessages == 0 || stats.StreamBytes == 0 || stats.StreamDrops != 0 {
+		t.Fatalf("streams: %+v", stats)
+	}
+}
+
+func TestStagesNeedTheStageKey(t *testing.T) {
+	config := buildTestConfig("http://localhost:8080", testJoinCode)
+	config.Stages = 1
+	if !errors.Is(simulator.ValidateConfig(config), simulator.ErrInvalidConfig) {
+		t.Fatal("stages without a key must be refused")
+	}
+}

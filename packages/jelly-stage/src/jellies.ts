@@ -14,10 +14,8 @@ import {
   disposeCosmetic,
   disposeJelly,
   HEAD,
-  JELLY_COLORS,
   loadCosmetic,
   type Jelly,
-  type JellyPalette,
   type Motion,
 } from "@jelly/scene";
 import { Euler, Group, Matrix4, Object3D, Quaternion, Vector3, type InstancedMesh } from "three";
@@ -27,6 +25,7 @@ import type { StagePlayer } from "./types.ts";
 import type { FloorPoint, ScenePoint } from "./world.ts";
 
 import { findEmote, findMotionPose } from "./effects.ts";
+import { findPalette } from "./palette.ts";
 import { calculateRandomValue } from "./random.ts";
 import { createShadowInstances, disposeShadow, SHADOW_HEIGHT } from "./shadow.ts";
 import {
@@ -136,10 +135,7 @@ export function createJellyCast(): JellyCast {
   return { root, jellies: new Map(), shadows };
 }
 
-/** Returns the colors of a jelly. Unknown colors look like mint. */
-export function findPalette(color: string): JellyPalette {
-  return Object.entries(JELLY_COLORS).find(([key]) => key === color)?.[1] ?? JELLY_COLORS.mint;
-}
+export { findPalette };
 
 /** Builds a jelly that appears where its move puts it. */
 function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): void {

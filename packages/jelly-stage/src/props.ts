@@ -30,6 +30,7 @@ import type { FloorPoint, FloorRect, ScenePoint } from "./world.ts";
 import ledFragmentShader from "./shaders/led.frag.glsl?raw";
 import propVertexShader from "./shaders/prop.vert.glsl?raw";
 import { createShadow } from "./shadow.ts";
+import { fitFootprint, type Footprint } from "./zones.ts";
 
 /** Props are drawn after the shadows, so no shadow lies on top of them. */
 export const PROP_ORDER = 3;
@@ -102,6 +103,21 @@ export const LED_MATERIAL = keepMaterial(
 /** Returns the middle of a rectangle. */
 export function findMiddle(rect: FloorRect): FloorPoint {
   return { x: (rect.minX + rect.maxX) / 2, z: (rect.minZ + rect.maxZ) / 2 };
+}
+
+/**
+ * Puts a model of a fixed shape, built around the origin at the size of `footprint`, into the middle
+ * of a zone. It grows or shrinks evenly, so a zone of another shape never stretches it.
+ */
+export function fitIntoZone<Model extends Object3D>(
+  model: Model,
+  footprint: Footprint,
+  rect: FloorRect,
+): Model {
+  const middle = findMiddle(rect);
+  model.position.set(middle.x, model.position.y, middle.z);
+  model.scale.setScalar(fitFootprint(rect, footprint));
+  return model;
 }
 
 /** Creates a soft shadow under a rectangle, on a floor of the given height. */

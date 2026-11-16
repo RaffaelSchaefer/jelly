@@ -28,4 +28,7 @@ export type {
   StageState,
   StageTrip,
 } from "./types.ts";
-export { createStageView, type StageMarks, type StageView, type StageViewOptions } from "./view.ts";
+export type { CameraReading } from "./cameraControls.ts";
+export type { JellyOnScreen, StageMarks } from "./overlay.ts";
+export type { StageInsets } from "./insets.ts";
+export { createStageView, type StageView, type StageViewOptions } from "./view.ts";

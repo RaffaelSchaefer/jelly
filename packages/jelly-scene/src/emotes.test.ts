@@ -4,7 +4,7 @@
  * @module
  */
 
-import { MeshBasicMaterial } from "three";
+import { MeshBasicMaterial, Quaternion } from "three";
 import { expect, test } from "vitest";
 
 import { EMOTE_GLYPHS, EMOTE_SECONDS, isEmoteKey, type EmoteKey } from "./emotes.ts";
@@ -15,14 +15,17 @@ const keys = Object.keys(EMOTE_GLYPHS) as EmoteKey[];
 
 /** Alle von einer Geste veränderten Eigenschaften. */
 function pose(jelly: Jelly) {
-  const parts = [jelly.root, jelly.head, ...jelly.hands, ...jelly.face.eyes, jelly.face.mouth];
+  const { eyes, brows, mouth } = jelly.face;
+  const parts = [jelly.root, jelly.head, ...jelly.hands, ...eyes, ...brows, mouth];
   return {
+    shapes: [...eyes, mouth].map((part) => part.geometry.uuid),
     parts: parts.map((part) => [
       part.visible,
       ...part.position,
       ...part.scale,
       ...part.rotation.toArray(),
     ]),
+    curls: jelly.curls.map((curl) => curl.toArray()),
     cheeks: jelly.face.cheeks.map((cheek) => [
       cheek.visible,
       (cheek.material as MeshBasicMaterial).opacity,
@@ -75,6 +78,38 @@ test.each(keys)("%s hat bei reduzierter Bewegung eine ruhige Pose mit klarem End
   expect(pose(jelly)).toEqual(first);
   animateJelly(jelly, motion, { ...input, emote: { key, elapsed: EMOTE_SECONDS } });
   expect(pose(jelly)).toEqual(baseline);
+});
+
+test.each([undefined, "cheer", "love", "shrug"] as const)(
+  "Die linke Hand spiegelt die rechte (Geste: %s)",
+  (key) => {
+    const jelly = createJelly(JELLY_COLORS.mint);
+    // Ohne Bewegung, denn in Ruhe wippen die Hände absichtlich versetzt.
+    const input = { ...frame, reducedMotion: true, pulse: 1, emote: key && { key, elapsed: 0.9 } };
+    animateJelly(jelly, createMotion(0), input);
+    const [left, right] = jelly.hands;
+    // Spiegeln an der Mittelebene kehrt x um, beim Quaternion den y- und z-Anteil.
+    const mirrored = [-right!.position.x, ...right!.position.toArray().slice(1)];
+    expect(left!.position.toArray()).toEqual(mirrored.map((value) => expect.closeTo(value, 9)));
+    const { x, y, z, w } = right!.quaternion;
+    expect(left!.quaternion.toArray()).toEqual([x, -y, -z, w].map((v) => expect.closeTo(v, 9)));
+    expect(right!.quaternion.equals(new Quaternion())).toBe(false);
+  },
+);
+
+test("Wut zeigt gesenkte Brauen, danach sind sie weg und die Augen wieder offen", () => {
+  const jelly = createJelly(JELLY_COLORS.mint);
+  const motion = createMotion(0);
+  animateJelly(jelly, motion, { ...frame, emote: { key: "angry", elapsed: 0.9 } });
+  const [left, right] = jelly.face.brows;
+  expect(left!.visible && right!.visible).toBe(true);
+  // Die inneren Enden sinken: links dreht die Braue nach rechts unten, rechts gespiegelt.
+  expect(left!.rotation.z).toBeLessThan(0);
+  expect(right!.rotation.z).toBeGreaterThan(0);
+  animateJelly(jelly, motion, frame);
+  expect(jelly.face.brows.some((brow) => brow.visible)).toBe(false);
+  expect(jelly.face.eyes.every((eye) => eye.geometry === jelly.face.eyeShapes.open)).toBe(true);
+  expect(jelly.face.mouth.geometry).toBe(jelly.face.smile);
 });
 
 test("Ein Wechsel verwirft die alte Geste, auch ihre Mimik", () => {

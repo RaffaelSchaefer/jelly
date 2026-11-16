@@ -35,7 +35,7 @@ test("buddy is a round head sitting on a wider, rounded body", () => {
   expect(body.max.x).toBeCloseTo(-body.min.x, 3);
 });
 
-test("orb hands float clear of the body", () => {
+test("hands float clear of the body", () => {
   const hand = bounds(createHandGeometry());
   const body = bounds(createBodyGeometry());
   expect(HAND.x - (hand.max.x - hand.min.x) / 2).toBeGreaterThan(body.max.x);

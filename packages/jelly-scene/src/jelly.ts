@@ -10,7 +10,7 @@
  * @module
  */
 
-import { Mesh, Object3D, type Material } from "three";
+import { Mesh, Object3D, Vector3, type Material } from "three";
 
 import type { JellyPalette } from "./colors.ts";
 import type { EmoteFrame } from "./emotes.ts";
@@ -31,8 +31,13 @@ export interface Jelly {
   root: Object3D;
   /** Kopf. Der Körper-Shader folgt seiner Lage. */
   head: Object3D;
-  /** Die zwei Kugel-Hände, links zuerst. */
+  /** Die zwei Hände, links zuerst. Der Shader liest Lage, Drehung und Größe. */
   hands: Object3D[];
+  /**
+   * Je Hand, wie weit Zeigefinger (x), übrige Finger (y) und Daumen (z) gebeugt sind: 0 offen, 1
+   * Faust.
+   */
+  curls: Vector3[];
   /** Hängt im Kopf, aber in Koordinaten des Jellys. Kopf-Cosmetics gehören hier hinein. */
   faceAnchor: Object3D;
   /** Augen, Wangen und Mund. */
@@ -74,6 +79,7 @@ function createHand(side: number) {
 export function createJelly(palette: JellyPalette, quality: JellyQuality = "full"): Jelly {
   const root = new Object3D();
   const hands = SIDES.map(createHand);
+  const curls = SIDES.map(() => new Vector3());
   const head = new Object3D();
   head.position.set(HEAD.x, HEAD.y, HEAD.z);
   const faceAnchor = new Object3D();
@@ -82,8 +88,8 @@ export function createJelly(palette: JellyPalette, quality: JellyQuality = "full
   faceAnchor.add(face.root);
   head.add(faceAnchor);
   // Körper, Kopf und Hände müssen Geschwister sein: der Shader liest ihre lokale Lage.
-  root.add(createJellyBody(palette, { head, hands }, quality), ...hands, head);
-  return { root, head, hands, faceAnchor, face };
+  root.add(createJellyBody(palette, { head, hands, curls }, quality), ...hands, head);
+  return { root, head, hands, curls, faceAnchor, face };
 }
 
 /** Bewegt das Jelly für ein Bild: Wippen, Hüpfen, Blinzeln, Strahlen und die Hände. */
@@ -91,7 +97,7 @@ export function animateJelly(jelly: Jelly, motion: Motion, input: JellyFrameInpu
   const frame = startFrame(motion, input);
   animateBody(jelly.root, jelly.head, frame);
   animateFace(jelly.face, motion, frame);
-  animateHands(jelly.hands, motion, frame, input.holding);
+  animateHands(jelly, motion, frame, input.holding);
   if (input.emote) animateEmote(jelly, input.emote, input.reducedMotion);
   animateMouth(jelly, input.mouth);
 }

@@ -24,10 +24,15 @@ export default function PartnerInvitePopup({
         {incoming.label}?
       </p>
       <div className="report-grid">
-        <button className="secondary-button" disabled={disabled} onClick={() => onAnswer(false)}>
+        <button
+          className="secondary-button"
+          data-sound="close"
+          disabled={disabled}
+          onClick={() => onAnswer(false)}
+        >
           Lieber nicht
         </button>
-        <PrimaryButton disabled={disabled} onClick={() => onAnswer(true)}>
+        <PrimaryButton data-sound="success" disabled={disabled} onClick={() => onAnswer(true)}>
           Mitmachen
         </PrimaryButton>
       </div>

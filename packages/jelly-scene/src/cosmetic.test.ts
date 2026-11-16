@@ -28,9 +28,11 @@ async function loadModel(key: string) {
 }
 
 describe("Cosmetic-Modelle", () => {
-  it("kennt beide Headsets und nichts anderes", () => {
+  it("kennt die Modelle im Bundle und nichts anderes", () => {
+    expect(hasCosmeticModel("beanie")).toBe(true);
     expect(hasCosmeticModel("headset")).toBe(true);
     expect(hasCosmeticModel("headset-neutral")).toBe(true);
+    expect(hasCosmeticModel("pixel-glasses")).toBe(true);
     expect(hasCosmeticModel("unbekannt")).toBe(false);
     expect(hasCosmeticModel("constructor")).toBe(false);
   });

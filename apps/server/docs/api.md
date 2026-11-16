@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.18.0**
+Aktuelle Version: **1.20.0**
 
 ## Versionen
 
@@ -27,7 +27,9 @@ Aktuelle Version: **1.18.0**
 
 | Version | Änderung |
 | ------- | -------- |
-| 1.18.0  | Punkteshop: Regel `coins_per_level`, `coins` im Stand, `unlock: shop` mit `price` im Katalog statt Freischaltung per Level, `POST /purchases`, Ereignisse `coins.gained` und `cosmetic.purchased`, Achievements `first-purchase` und `shopaholic`. Admin: Münzen schenken und Käufe zurücknehmen, Bots-Aktion `purchase` |
+| 1.20.0  | Punkteshop: Regel `coins_per_level`, `coins` im Stand, `unlock: shop` mit `price` im Katalog statt Freischaltung per Level, `POST /purchases`, Ereignisse `coins.gained` und `cosmetic.purchased`, Achievements `first-purchase` und `shopaholic`. Admin: Münzen schenken und Käufe zurücknehmen, Bots-Aktion `purchase` |
+| 1.19.0  | Neue Emotes `angry`, `sad` und `shy` im Katalog |
+| 1.18.0  | Neue Emotes `shrug`, `point` und `think` im Katalog |
 | 1.17.0  | Meter: Regeln `room_width`, `room_depth` und `jelly_width`, `room` und `areas` in `GET /stage` nennen dazu `width_m`, `depth_m`, `jelly_m` und `x_m`, `y_m`, `width_m`, `height_m`. Kartendatei Version 2 mit Zonen in Metern. Positionen bleiben Prozent |
 | 1.16.0  | `is_bot` in `players` von `GET /stage`: Bots der Orga, die eine Bühne kennzeichnen kann. Dazu Bots, XP, Achievements und der Link zur Bühne in der Admin-API |
 | 1.15.0  | Neues Cosmetic `headset-neutral` im Katalog, ab Level 2 frei wie `headset` |
@@ -491,7 +493,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`, der Schlüssel muss im Katalog stehen |
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
-| `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments"}`        |
+| `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments","sizes"}`, `sizes` nennt `width_m` und `height_m` je Zone |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","rotation","kind","name","blocks","prop"}` |
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
 | `GET`, `POST /admin/api/lans/{id}/bots`          | Antwort: `{"bots","auto_count"}`. `POST` mit `{"count"}` legt bis zu 100 Bots an, siehe unten |

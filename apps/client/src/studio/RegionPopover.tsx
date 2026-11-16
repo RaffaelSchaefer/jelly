@@ -84,6 +84,7 @@ export default function RegionPopover({
             aria-pressed={item.state === "equipped"}
             aria-disabled={busy || locked}
             data-tip={label}
+            data-sound={item.state === "equipped" ? "none" : "select"}
             onClick={() => {
               if (!busy && item.state === "unlocked") onPick(item.id);
             }}

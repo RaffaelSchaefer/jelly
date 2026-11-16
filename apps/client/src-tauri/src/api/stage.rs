@@ -74,7 +74,7 @@ pub struct StagePlayer {
     pub home_y: f64,
 }
 
-/// Größe der Bühne in der Einheit aller Positionen.
+/// Größe der Bühne in der Einheit aller Positionen, dazu die echte Halle in Metern.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Room {
     /// Breite.
@@ -83,6 +83,15 @@ pub struct Room {
     pub height: f64,
     /// Einheit, zum Beispiel `percent`.
     pub unit: String,
+    /// Breite der echten Halle in Metern. Ein Server vor API 1.17.0 schickt sie nicht, dann 0.
+    #[serde(default)]
+    pub width_m: f64,
+    /// Tiefe der echten Halle in Metern, 0 wie bei `width_m`.
+    #[serde(default)]
+    pub depth_m: f64,
+    /// Breite eines Jellys in Metern, 0 wie bei `width_m`.
+    #[serde(default)]
+    pub jelly_m: f64,
 }
 
 /// Ein Punkt eines Wegs, in Prozent der Bühne.

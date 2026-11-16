@@ -262,6 +262,16 @@ func TestMapInMetersBecomesPercentOfTheRoomAndTheStageSaysBothWays(t *testing.T)
 	if area.XMeters != 5 || area.YMeters != 2 || area.WidthMeters != 1 || area.HeightMeters != 0.5 {
 		t.Fatalf("area in meters: %+v", area)
 	}
+	listing := decodeBody[struct {
+		Sizes []struct {
+			WidthMeters  float64 `json:"width_m"`
+			HeightMeters float64 `json:"height_m"`
+		} `json:"sizes"`
+	}](t, testFixture.callAdmin("GET", "/admin/api/lans/1/areas", ""))
+	if len(listing.Sizes) != 1 || listing.Sizes[0].WidthMeters != 1 ||
+		listing.Sizes[0].HeightMeters != 0.5 {
+		t.Fatalf("admin sizes: %+v", listing.Sizes)
+	}
 }
 
 func TestMapInMetersOutsideTheRoomIsRefused(t *testing.T) {
