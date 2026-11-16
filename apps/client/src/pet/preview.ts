@@ -1,7 +1,8 @@
 /**
  * Beispieldaten für die Browser-Vorschau, in der es weder Rust noch Server gibt.
  *
- * `PREVIEW_CATALOG` ist ein Auszug aus `GET /v1/catalog`, `PREVIEW_ME` ein Spieler auf Level 3.
+ * `PREVIEW_CATALOG` ist ein Auszug aus `GET /v1/catalog`, `PREVIEW_ME` ein Spieler auf Level 3 mit
+ * drei Münzen.
  *
  * @module
  */
@@ -18,7 +19,7 @@ import {
 } from "./types";
 
 /** Die Standardregeln des Servers, soweit die App sie kennt. */
-export const PREVIEW_RULES: Rules = { near_distance: 6, xp_per_level: 100 };
+export const PREVIEW_RULES: Rules = { near_distance: 6, xp_per_level: 100, coins_per_level: 1 };
 
 /** Auszug aus dem Server-Katalog. */
 export const PREVIEW_CATALOG: Catalog = {
@@ -63,8 +64,8 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "head",
       colorable: false,
-      unlock: "level",
-      level: 2,
+      unlock: "shop",
+      price: 1,
     },
     {
       key: "headset-neutral",
@@ -72,8 +73,8 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "head",
       colorable: false,
-      unlock: "level",
-      level: 2,
+      unlock: "shop",
+      price: 1,
     },
     {
       key: "beanie",
@@ -81,8 +82,8 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "head",
       colorable: true,
-      unlock: "level",
-      level: 3,
+      unlock: "shop",
+      price: 2,
     },
     {
       key: "party-hat",
@@ -98,8 +99,8 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "face",
       colorable: false,
-      unlock: "level",
-      level: 5,
+      unlock: "shop",
+      price: 3,
     },
     {
       key: "hood",
@@ -107,8 +108,8 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "permanent",
       slot: "head",
       colorable: true,
-      unlock: "level",
-      level: 6,
+      unlock: "shop",
+      price: 4,
     },
     {
       key: "crown",
@@ -116,8 +117,8 @@ export const PREVIEW_CATALOG: Catalog = {
       scope: "lan",
       slot: "head",
       colorable: false,
-      unlock: "level",
-      level: 10,
+      unlock: "shop",
+      price: 6,
     },
     {
       key: "golden-cup",
@@ -185,6 +186,7 @@ export const PREVIEW_ME: Me = {
   lan: { slug: "vorschau", name: "Vorschau-LAN", active: true },
   xp: 235,
   level: 3,
+  coins: 3,
   total_xp: 235,
   next_poke_at: 0,
   reports: { food_ready_at: 0, drink_ready_at: 0, reports_left: 8 },

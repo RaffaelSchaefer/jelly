@@ -28,16 +28,11 @@ import {
 } from "./pet";
 import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
+import { OS_REDUCED_MOTION, useDocumentTheme } from "./useDocumentTheme";
 import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
 import { useUiSounds } from "./useUiSounds";
 import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
 import "./optimized.css";
-
-/**
- * Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt, solange die Einstellung im Pet nicht
- * gesetzt ist.
- */
-const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Panels im Glas-Stil. „Aussehen“, Emotes, Schilder und der Aufstieg liegen direkt auf der Bühne. */
 type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs" | "levelup">;
@@ -207,26 +202,6 @@ function Status({ game, joining }: { game: PetGame; joining: boolean }) {
       Verbinde mit dem Server …
     </p>
   );
-}
-
-/**
- * Legt Pet-Farbe, reduzierte Bewegung und den optimierten Modus als Attribute auf `<html>`. Das CSS
- * liest sie.
- */
-function useDocumentTheme(color: Me["color"], reducedMotion: boolean, optimized: boolean) {
-  // Das UI-Theme (Akzent, Panels, Sprechblase) folgt der Farbe des Pets.
-  useEffect(() => {
-    document.documentElement.dataset.petColor = color;
-  }, [color]);
-
-  // CSS-Animationen sehen die Einstellung und das Betriebssystem an einem Attribut.
-  useEffect(() => {
-    document.documentElement.toggleAttribute("data-reduced-motion", reducedMotion);
-  }, [reducedMotion]);
-
-  useEffect(() => {
-    document.documentElement.toggleAttribute("data-optimized-rendering", optimized);
-  }, [optimized]);
 }
 
 /** Ob das Panel seinen Inhalt über dem Dock zeigt. */

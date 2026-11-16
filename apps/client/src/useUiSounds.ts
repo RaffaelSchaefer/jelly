@@ -9,7 +9,7 @@ import { useEffect, useRef } from "react";
 
 import type { PetGame } from "./usePet";
 
-import { gameSoundFor, type GameMoment } from "./pet";
+import { gameSoundFor, type GameMoment, type Settings } from "./pet";
 import { listenForUiSounds, uiSounds } from "./uiSound";
 
 /** Spielt zu jeder hörbaren Änderung im Spielstand ihr Geräusch: XP, Erfolge, Einladung, Schlüpfen. */
@@ -30,11 +30,11 @@ function useGameSounds(game: PetGame) {
 }
 
 /**
- * Hört auf Klicks, Schalter und Schreiben, solange die App läuft, folgt Schalter und Regler der
- * Geräusche und lässt jeden neuen Fehler einmal klingen.
+ * Hört auf Klicks, Schalter und Schreiben, solange das Fenster lebt, folgt Schalter und Regler der
+ * Geräusche und lässt jeden neuen Fehler einmal klingen. Auch für den Shop.
  */
-export function useUiSounds(game: PetGame) {
-  const { sound, volume } = game.game.settings;
+export function useClickSounds(settings: Settings, error: string) {
+  const { sound, volume } = settings;
   useEffect(listenForUiSounds, []);
 
   useEffect(() => {
@@ -42,8 +42,12 @@ export function useUiSounds(game: PetGame) {
   }, [sound, volume]);
 
   useEffect(() => {
-    if (game.error) uiSounds.play("error");
-  }, [game.error]);
+    if (error) uiSounds.play("error");
+  }, [error]);
+}
 
+/** Alle Geräusche des Pet-Fensters: Klicks, Fehler und die schönen Momente im Spiel. */
+export function useUiSounds(game: PetGame) {
+  useClickSounds(game.game.settings, game.error);
   useGameSounds(game);
 }

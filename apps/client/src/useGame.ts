@@ -13,10 +13,20 @@ import { PREVIEW_CATALOG, previewGame, type Catalog, type Game, type ServerEvent
 
 /** Abstand der Lebenszeichen. Der Server wartet `presence_window` (90 min), bis er abwesend meldet. */
 const PRESENCE_INTERVAL_MS = 5 * 60_000;
-/** Die Karte in der Vorschau, so groß wie das Fenster in `src-tauri/src/map.rs`. */
-const MAP_PAGE = "/map.html";
-const MAP_PREVIEW_NAME = "jelly-map";
-const MAP_PREVIEW_FEATURES = "width=960,height=800";
+/** Karte und Shop in der Vorschau: Seite, Fenstername und Größe wie in `src-tauri/src/popout.rs`. */
+const PREVIEW_POPOUTS = {
+  map: ["/map.html", "jelly-map", "width=960,height=800"],
+  shop: ["/shop.html", "jelly-shop", "width=720,height=600"],
+} as const;
+
+/** Ein Fenster, das statt des Pets erscheint. */
+export type Popout = keyof typeof PREVIEW_POPOUTS;
+
+/** Die Befehle, die Karte und Shop öffnen. */
+const OPEN_POPOUT: Record<Popout, () => Promise<void>> = {
+  map: backend.openMap,
+  shop: backend.openShop,
+};
 
 /** Ob das Jelly gerade an einer laufenden LAN teilnimmt. In der Vorschau spielt es immer mit. */
 export function inRunningLan(game: Game, ready: boolean) {
@@ -95,16 +105,19 @@ export function useBackendCall(onFailure: () => void) {
     await backend.windowAction(action).catch((cause) => setError(String(cause)));
   }, []);
 
-  /** Öffnet die Karte, in der Vorschau als Browser-Fenster. Fehler landen ebenfalls in der Anzeige. */
-  const openMap = useCallback(async () => {
+  /**
+   * Öffnet Karte oder Shop, in der Vorschau als Browser-Fenster. Fehler landen ebenfalls in der
+   * Anzeige.
+   */
+  const openPopout = useCallback(async (popout: Popout) => {
     if (!desktop) {
-      window.open(MAP_PAGE, MAP_PREVIEW_NAME, MAP_PREVIEW_FEATURES);
+      window.open(...PREVIEW_POPOUTS[popout]);
       return;
     }
-    await backend.openMap().catch((cause) => setError(String(cause)));
+    await OPEN_POPOUT[popout]().catch((cause) => setError(String(cause)));
   }, []);
 
-  return { busy, error, clearError, inFlight, run, windowAction, openMap };
+  return { busy, error, clearError, inFlight, run, windowAction, openPopout };
 }
 
 /** Hört auf Ereignisse zum eigenen Jelly, solange `enabled` gilt. */

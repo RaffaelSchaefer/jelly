@@ -86,6 +86,8 @@ export interface Rules {
   near_distance: number;
   /** XP je Level, linear. */
   xp_per_level: number;
+  /** Münzen je Level-Aufstieg für den Shop. */
+  coins_per_level: number;
 }
 
 /** Welche LAN läuft und welche kommt (`GET /v1/lans/current`). */
@@ -124,6 +126,8 @@ export interface Me {
   /** XP in der jüngsten LAN. */
   xp: number;
   level: number;
+  /** Münzen für den Shop in der laufenden LAN, sonst 0. Jeder Aufstieg bringt `coins_per_level`. */
+  coins: number;
   /** XP über alle LANs. */
   total_xp: number;
   /** Ab wann ein Stupser wieder XP gibt. `null` außerhalb einer laufenden LAN. */
@@ -199,8 +203,8 @@ export interface CatalogEntry {
 }
 
 /**
- * Ein Cosmetic im Katalog. `unlock` sagt, wie man es bekommt: `level` ab `level`, `event` über
- * einen Event-Code, `award` als Preis der Orga, `none` gar nicht. Unbekannte Werte gelten wie
+ * Ein Cosmetic im Katalog. `unlock` sagt, wie man es bekommt: `shop` für `price` Münzen, `event`
+ * über einen Event-Code, `award` als Preis der Orga, `none` gar nicht. Unbekannte Werte gelten wie
  * `none`.
  */
 export interface CatalogCosmetic {
@@ -211,8 +215,8 @@ export interface CatalogCosmetic {
   /** Ob es eine Farbe aus `cosmetic_colors` annimmt. */
   colorable: boolean;
   unlock: string;
-  /** Das Level, ab dem es frei ist, nur bei `unlock` `level`. */
-  level?: number;
+  /** Preis in Münzen, nur bei `unlock` `shop`. */
+  price?: number;
 }
 
 /** Ein Erfolg im Katalog. Geheime fehlen dort, bis man sie verdient hat. */

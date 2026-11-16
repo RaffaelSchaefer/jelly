@@ -69,8 +69,8 @@ html:not([data-optimized-rendering]) .pet-stage:has(.levelup) .ground-shadow { b
 .levelup-drop b { font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums; text-shadow: var(--glass-ink-shadow); }
 .levelup-drop svg { width: 24px; height: 24px; opacity: 0.85; filter: drop-shadow(0 1px 2px #0008); }
 .levelup-ring { position: absolute; inset: 6px; border-radius: 50%; background: conic-gradient(#fff calc(var(--levelup-fill) * 1turn), #ffffff33 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px)); filter: drop-shadow(0 0 3px var(--accent)); animation: levelup-fill 1300ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--boom) + 900ms) both; }
-.levelup-lock { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #ffffffe8; color: #1a2630; }
-.levelup-lock svg { width: 10px; height: 10px; opacity: 1; filter: none; }
+.levelup-badge { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #ffffffe8; color: #1a2630; }
+.levelup-badge svg { width: 10px; height: 10px; opacity: 1; filter: none; }
 
 /* Kapsel an der Stelle des Docks */
 .levelup-capsule { position: absolute; left: 50%; bottom: -50px; translate: -50% 0; display: flex; align-items: center; gap: 10px; width: min(340px, 100%); height: 58px; padding: 4px 10px 0; border-radius: 29px; background: var(--glass-fallback); color: #fff; pointer-events: auto; transform-origin: 50% 100%; animation: levelup-capsule 620ms var(--spring) calc(var(--boom) + 420ms) both; }

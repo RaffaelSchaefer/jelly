@@ -15,16 +15,16 @@ import * as backend from "./backend";
 import { desktop } from "./backend";
 import {
   achievementTitle,
+  coinLabel,
   equipColor,
-  levelCosmetic,
   needsCode,
   pokeWaitMinutes,
   previewAccess,
   REPORTS,
+  withEquipped,
   type Action,
   type Catalog,
   type CosmeticSlot,
-  type Equipped,
   type Game,
   type Me,
   type PetColor,
@@ -57,13 +57,14 @@ function pokeMessage(xpGained: number, after: Me | null) {
 }
 
 /** Was das Pet nach einer Aktion sagt, und ob es dabei ein Level aufgestiegen ist. */
-function reactionTo(action: Action, result: backend.ActResult, before: Me, catalog: Catalog) {
+function reactionTo(action: Action, result: backend.ActResult, before: Me) {
   const after = result.game.me;
   if (after && after.level > before.level) {
-    const unlocked = levelCosmetic(after.level, catalog);
-    const message = unlocked
-      ? `Level ${after.level}! Neu für mich: ${unlocked.name}.`
-      : `Level ${after.level}! Weiter so.`;
+    const coins = result.game.lan.rules.coins_per_level;
+    const message =
+      coins > 0
+        ? `Level ${after.level}! ${coinLabel(coins)} mehr für den Shop.`
+        : `Level ${after.level}! Weiter so.`;
     return { message, levelUp: true };
   }
   if (action === "poke") return { message: pokeMessage(result.xpGained, after), levelUp: false };
@@ -86,6 +87,19 @@ function eventMessage(event: ServerEvent, catalog: Catalog) {
     return `Neuer Erfolg: ${achievementTitle(String(payload.key), catalog, null)}!`;
   if (event.type === "award.given") return `Die Orga ehrt mich: ${String(payload.title)}.`;
   if (event.type === "player.hidden") return "Die Orga hat mich gerade von der Bühne genommen.";
+  return coinsMessage(event);
+}
+
+/**
+ * Was das Pet zu Münzen sagt, die nicht aus einem Aufstieg kommen. Den Aufstieg feiert es schon
+ * selbst, und ein Kauf zahlt ohne Ereignis.
+ */
+function coinsMessage(event: ServerEvent) {
+  if (event.type !== "coins.gained") return null;
+  const coins = coinLabel(Number(event.payload?.amount ?? 0));
+  if (event.payload?.source === "admin") return `Die Orga schenkt mir ${coins}!`;
+  if (event.payload?.source === "refund")
+    return `${coins} zurück, die Orga hat einen Kauf storniert.`;
   return null;
 }
 
@@ -218,12 +232,12 @@ export function usePet(onLevelUp: () => void) {
       const result = await run(() => backend.act(action));
       if (!result) return;
       setGame(result.game);
-      const reaction = reactionTo(action, result, before, catalog);
+      const reaction = reactionTo(action, result, before);
       setMessage(reaction.message);
       setPulse((value) => value + 1);
       if (reaction.levelUp) onLevelUp();
     },
-    [ready, game.me, inFlight, run, setGame, catalog, setMessage, onLevelUp],
+    [ready, game.me, inFlight, run, setGame, setMessage, onLevelUp],
   );
 
   /** Ein Event-Code, Schild, Standort oder Partner: Das Jelly hüpft und sagt etwas dazu. */
@@ -268,12 +282,6 @@ export function usePet(onLevelUp: () => void) {
     ...signs,
     ...partner,
   };
-}
-
-/** Was ein Jelly danach trägt, für die Vorschau ohne Server. */
-function withEquipped(equipped: Equipped, slot: string, key: string | null, color?: string) {
-  const { [slot]: _taken, ...others } = equipped;
-  return key ? { ...others, [slot]: { key, color: color ?? null } } : others;
 }
 
 /** Was {@link useLook} braucht. */

@@ -1,0 +1,64 @@
+/*
+ * Das Shop-Fenster. Wie die Karte eine feste Fläche mit runden Ecken im durchsichtigen Fenster: Durch
+ * Glas schiene der Desktop, und `backdrop-filter` kann nicht verwischen, was hinter dem Fenster liegt.
+ * Links probiert das Jelly an, rechts steht die Liste.
+ */
+.shop {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) minmax(250px, 1fr);
+  grid-template-rows: 30px auto minmax(0, 1fr);
+  column-gap: 18px;
+  height: 100vh;
+  padding: 10px 18px 18px;
+  border-radius: 26px;
+  background: radial-gradient(ellipse at 26% 52%, var(--backdrop) 0%, var(--base) 55%, var(--backdrop-deep) 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+  overflow: hidden;
+}
+html[data-surface='preview'] .shop { border-radius: 0; box-shadow: none; }
+.shop .window-tools { grid-column: 1 / -1; }
+
+.shop-header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 4px 14px; }
+.shop-header h1 { margin: 0; font-size: 20px; font-weight: 750; letter-spacing: -0.2px; }
+.shop-coins { display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 6px 13px 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); font-size: 12.5px; }
+.shop-coins svg { width: 17px; height: 17px; color: #ffd45c; }
+.shop-coins small { color: var(--text-muted); font-size: 11px; }
+
+/* Die Canvas ragt wie am Pet über ihren Kasten hinaus und lässt Klicks durch. Ihr Kasten hat das
+   Seitenverhältnis der Bühne, so steht das Jelly wie im Pet-Fenster. */
+.shop-stage { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 0; }
+.shop-jelly { position: relative; width: 100%; aspect-ratio: 396 / 315; }
+.shop-jelly .render-fallback { padding-top: 90px; }
+
+.shop-action { position: relative; z-index: 1; display: grid; justify-items: center; gap: 7px; min-height: 104px; padding: 0 10px; text-align: center; }
+.shop-action > strong { font-size: 15px; font-weight: 700; }
+.shop-action .primary-button { width: min(250px, 100%); padding: 11px 16px; font-size: 12px; }
+.shop-action .primary-button.shop-secondary { border-color: var(--line); background: transparent; color: #eef3f5; }
+.shop-action .primary-button.shop-secondary:hover:enabled { background: #ffffff12; }
+.shop-hint { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+p.shop-hint { margin: 0; padding-top: 18px; }
+.shop-notice { min-height: 16px; color: var(--accent); font-size: 11.5px; font-weight: 650; }
+
+.shop-list { position: relative; z-index: 1; display: grid; align-content: start; gap: 6px; min-height: 0; margin: 0; padding: 0 4px 4px 0; list-style: none; overflow-y: auto; scrollbar-width: thin; }
+.shop-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 8px 12px 8px 8px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface-solid) 70%, transparent); text-align: left; transition: background 120ms, border-color 120ms; }
+.shop-row:hover { background: var(--surface-solid); }
+.shop-row[aria-pressed='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface-solid)); }
+.shop-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #ffffff10; }
+.shop-icon svg { width: 22px; height: 22px; }
+.shop-name strong, .shop-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shop-name strong { font-size: 13px; font-weight: 650; }
+.shop-name small { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
+.shop-price { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; background: #ffd45c24; color: #ffe08a; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.shop-price svg { width: 14px; height: 14px; }
+.shop-row[data-state='short'] .shop-price { background: #ffffff0d; color: var(--text-muted); }
+.shop-owned { color: var(--accent); font-size: 11px; font-weight: 650; }
+
+.shop-empty { grid-column: 1 / -1; align-self: center; margin: 0; color: var(--text-muted); font-size: 13px; text-align: center; }
+
+/* Schmale Fenster: Anprobe über der Liste. */
+@media (max-width: 600px) {
+  .shop { grid-template-columns: minmax(0, 1fr); grid-template-rows: 30px auto auto minmax(0, 1fr); }
+  .shop-jelly { width: min(300px, 100%); margin: 0 auto; }
+  .shop-action { min-height: 0; padding-bottom: 12px; }
+}

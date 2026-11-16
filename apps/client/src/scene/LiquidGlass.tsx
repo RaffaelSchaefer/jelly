@@ -29,12 +29,13 @@ import { createGlass, FULLSCREEN, readShapes, type GlassUniforms } from "./glass
 
 /**
  * Plätze in der Reihenfolge des DOM. Im Studio: Namensschild, Fertig-Knopf, sechs Blobs und ein
- * Popover. Am Jelly: Emote-Tropfen, Emote-Auswahl (geschlossen leer), Karten-Tropfen,
+ * Popover. Am Jelly: Emote-Tropfen, Emote-Auswahl (geschlossen leer), Karten- und Shop-Tropfen,
  * Schild-Tropfen, Füllung der Säule und ihre Kapseln, zuletzt die Sprechblase mit ihrem Schwanz.
- * Beim Aufstieg: Kapsel, XP-Tropfen und, falls es sie gibt, die nächste Belohnung. Beim Einstieg:
- * das Ei und die Kapsel, die beide für sich bleiben, dann die Sprechblase mit ihrem Schwanz.
+ * Beim Aufstieg: Kapsel, XP-Tropfen und, falls die LAN Münzen zahlt, der Münz-Tropfen. Beim
+ * Einstieg: das Ei und die Kapsel, die beide für sich bleiben, dann die Sprechblase mit ihrem
+ * Schwanz.
  *
- * Ponytail: Platz für zehn Kapseln, solange die Blase weg ist. Darüber fehlt das Glas, zuerst der
+ * Ponytail: Platz für neun Kapseln, solange die Blase weg ist. Darüber fehlt das Glas, zuerst der
  * Blase, während die Säule zurückläuft. Mehr Plätze kosten jedes Pixel einen Blick mehr, also erst
  * anheben, wenn der Katalog der Schilder so weit wächst.
  */

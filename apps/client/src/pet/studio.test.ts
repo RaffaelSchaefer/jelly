@@ -41,7 +41,7 @@ describe("studio regions", () => {
     });
     expect(head.find((item) => item.id === "crown")).toMatchObject({
       state: "locked",
-      note: "Level 10",
+      note: "6 Münzen",
     });
   });
   it("wearing something only changes its own region", () => {
