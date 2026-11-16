@@ -8,7 +8,8 @@
     "./colors": "./src/colors.ts",
     "./emotes": "./src/emotes.ts",
     "./partner-emotes": "./src/partnerEmotes.ts",
-    "./geometry": "./src/jellyGeometry.ts"
+    "./geometry": "./src/jellyGeometry.ts",
+    "./wizard": "./src/wizard.ts"
   },
   "scripts": {
     "test": "vitest run",

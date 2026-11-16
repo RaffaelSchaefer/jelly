@@ -1,9 +1,10 @@
 // Toon-Shader, Fragment-Teil: glänzendes Fruchtgummi-Material für Cosmetics.
-// vGlowRange ist der y-Bereich des Teils, von unten (volles Leuchten) nach oben (Grundfarbe).
+// vGlowRange ist der y-Bereich des Teils, von unten (volles Leuchten) nach oben (Grundfarbe), und
+// in z, wie stark es leuchtet.
 
 varying vec3 vColor;
 varying vec3 vGlow;
-varying vec2 vGlowRange;
+varying vec3 vGlowRange;
 varying vec3 vNormal;
 varying vec3 vPosition;
 varying vec3 vViewPosition;
@@ -13,7 +14,7 @@ void main() {
   float facing = max(dot(n, view), 0.0);
   float rim = pow(1.0 - facing, 2.5);
   // Jedes Teil leuchtet von seiner eigenen Unterkante aus und wird nach oben dunkler.
-  float lowerGlow = 1.0 - smoothstep(vGlowRange.x, vGlowRange.y, vPosition.y);
+  float lowerGlow = (1.0 - smoothstep(vGlowRange.x, vGlowRange.y, vPosition.y)) * vGlowRange.z;
   vec3 color = mix(vColor, vGlow, lowerGlow * 0.85);
   color *= 0.62 + 0.38 * facing;
   // Analytische Softbox-Reflexe halten das Jelly auch auf transparentem Desktop glänzend.

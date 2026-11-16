@@ -62,6 +62,7 @@ def export(collections):
             use_selection=True,
             export_apply=True,  # bakes modifiers (mirror, subdivision, ...)
             export_yup=True,  # back to the app's Y-up axes
+            export_extras=True,  # custom properties, e.g. a material's "glow" (see cosmetic.ts)
             export_animations=False,
             export_cameras=False,
             export_lights=False,

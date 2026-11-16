@@ -82,27 +82,42 @@ function decodeDataUrl(url: string) {
   return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)).buffer;
 }
 
-/** Ein Mesh aus der glTF-Datei in Koordinaten des Jellys, mit Farbe und y-Bereich je Vertex. */
+/**
+ * Wie stark ein Teil von unten leuchtet, 0 bis 1. Ein Material kann es in Blender mit der
+ * Eigenschaft `glow` dämpfen, die als glTF-`extras` ankommt: Das Leuchten mischt bis zu 38 % Weiß
+ * hinein, im linearen Farbraum, und dunkle Farben wirken unten dadurch fast grau.
+ */
+function glowOf(material: MeshStandardMaterial) {
+  const glow: unknown = material.userData.glow;
+  return typeof glow === "number" ? Math.min(1, Math.max(0, glow)) : 1;
+}
+
+/**
+ * Ein Mesh aus der glTF-Datei in Koordinaten des Jellys, mit Farbe sowie y-Bereich und Stärke des
+ * Leuchtens je Vertex.
+ */
 function createPart(mesh: Mesh) {
   const source = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
   source.computeBoundingBox();
   const { min, max } = source.boundingBox!;
-  const { color } = (
+  const material = (
     Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
   ) as MeshStandardMaterial;
+  const { color } = material;
+  const glow = glowOf(material);
   const count = source.getAttribute("position").count;
   const colors = new Float32Array(count * 3);
-  const ranges = new Float32Array(count * 2);
+  const ranges = new Float32Array(count * 3);
   for (let index = 0; index < count; index++) {
     colors.set([color.r, color.g, color.b], index * 3);
-    ranges.set([min.y, max.y], index * 2);
+    ranges.set([min.y, max.y, glow], index * 3);
   }
   // Nur was der Shader liest: Mit weiteren Attributen scheiterte das Zusammenfassen an Unterschieden.
   const part = new BufferGeometry();
   part.setAttribute("position", source.getAttribute("position"));
   part.setAttribute("normal", source.getAttribute("normal"));
   part.setAttribute("aColor", new BufferAttribute(colors, 3));
-  part.setAttribute("aGlowRange", new BufferAttribute(ranges, 2));
+  part.setAttribute("aGlowRange", new BufferAttribute(ranges, 3));
   part.setIndex(source.getIndex());
   return part;
 }
@@ -119,22 +134,33 @@ function mergeParts(scene: Object3D) {
   return merged;
 }
 
-/** Bereits geladene Modelle. Alle Jellies teilen sie, darum werden sie nie freigegeben. */
-const LOADED = new Map<string, Promise<BufferGeometry | null>>();
+/** Bereits geladene Modelle je Data-URL. Alle Jellies teilen sie, darum werden sie nie freigegeben. */
+const LOADED = new Map<string, Promise<BufferGeometry>>();
+
+/** Für Schlüssel ohne Modell: immer dasselbe Promise, so wartet React nicht jedes Mal neu. */
+const NO_MODEL = Promise.resolve(null);
+
+/**
+ * Lädt ein Modell aus seiner Data-URL als eine Geometrie. Für dieselbe URL kommt immer dasselbe
+ * Promise. Für Modelle außerhalb von {@link COSMETIC_MODELS}, etwa die des Zauberers.
+ */
+export function loadModel(url: string) {
+  const known = LOADED.get(url);
+  if (known) return known;
+  const loading = new GLTFLoader()
+    .parseAsync(decodeDataUrl(url), "")
+    .then(({ scene }) => mergeParts(scene));
+  LOADED.set(url, loading);
+  return loading;
+}
 
 /**
  * Lädt das Modell `key` als eine Geometrie, ohne Modell ist das Ergebnis `null`. Für denselben
  * Schlüssel kommt immer dasselbe Promise, so kann React darauf warten.
  */
-export function loadCosmetic(key: string) {
-  const known = LOADED.get(key);
-  if (known) return known;
+export function loadCosmetic(key: string): Promise<BufferGeometry | null> {
   const url = findModelUrl(key);
-  const loading = url
-    ? new GLTFLoader().parseAsync(decodeDataUrl(url), "").then(({ scene }) => mergeParts(scene))
-    : Promise.resolve(null);
-  LOADED.set(key, loading);
-  return loading;
+  return url ? loadModel(url) : NO_MODEL;
 }
 
 /**

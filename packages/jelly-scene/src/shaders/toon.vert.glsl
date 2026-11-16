@@ -2,14 +2,14 @@
 // Alle Teile eines Cosmetics sind ein Mesh, Farbe und y-Bereich stehen deshalb je Teil in den Vertices.
 
 attribute vec3 aColor;
-attribute vec2 aGlowRange;
+attribute vec3 aGlowRange;
 uniform float uDepthBias;
 varying vec3 vNormal;
 varying vec3 vPosition;
 varying vec3 vViewPosition;
 varying vec3 vColor;
 varying vec3 vGlow;
-varying vec2 vGlowRange;
+varying vec3 vGlowRange;
 void main() {
   vNormal = normalize(normalMatrix * normal);
   vPosition = position;

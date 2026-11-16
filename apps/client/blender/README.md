@@ -28,7 +28,8 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
 2. Stay inside **Sichtbereich**. Anything above its top edge ends up behind the speech bubble.
 3. One material per mesh. Only the **Base Color** of the Principled BSDF is used: the app shades every
    cosmetic like the pet (jelly gloss, light lower edge, outline in the pet's ink colour).
-   Textures, roughness and transparency are ignored.
+   Textures, roughness and transparency are ignored. A custom property `glow` (0–1) on the material
+   dampens the light lower edge: dark colours turn grey there otherwise (the wizard's hat uses 0.15).
 4. Use **Shade Smooth**. The outline is the mesh pushed out along its normals, so hard edges crack open.
 5. Cosmetics are drawn on top of the head like a sticker. Parts that would be hidden behind the head
    (the back of a hood, the far ear cup) still show, so model only what is seen from the front.
@@ -57,6 +58,21 @@ on).
    `setup_cosmetics.py` for fresh setups), model, export.
 3. Add an import line and an entry to `COSMETIC_MODELS` in `packages/jelly-scene/src/cosmetic.ts`.
    Without it nothing shows it, and only then does its test run.
+
+## The shopkeeper
+
+The wizard in the app's shop wears his own hat, beard and crystal orb (`wizard-hat`, `wizard-face`,
+`wizard-orb`). `build_wizard.py` generates them in Python; change its numbers and run
+
+```bash
+blender blender/cosmetics.blend --background --python blender/build_wizard.py -- --save --export
+```
+
+It rebuilds only these three collections and writes only their `.glb` files. They are not in
+`COSMETICS` or `COSMETIC_MODELS`: the shop loads them through `@jelly/scene/wizard`
+(`packages/jelly-scene/src/wizard.ts`), so neither the catalog, the map nor the stage shows them.
+Keep the mouth (|x| < 0.12, y 0.38–0.52) and the half-closed eyes free and the hat below y 2.1;
+`wizard.test.ts` checks that.
 
 ## When the pet changes
 
