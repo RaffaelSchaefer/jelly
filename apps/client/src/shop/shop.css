@@ -1,64 +1,148 @@
 /*
- * Das Shop-Fenster. Wie die Karte eine feste Fläche mit runden Ecken im durchsichtigen Fenster: Durch
+ * Der Zauberladen. Wie die Karte eine feste Fläche mit runden Ecken im durchsichtigen Fenster: Durch
  * Glas schiene der Desktop, und `backdrop-filter` kann nicht verwischen, was hinter dem Fenster liegt.
- * Links probiert das Jelly an, rechts steht die Liste.
+ * Holz, Pergament und Messing sind Verläufe, Rahmen und Regal kleine SVGs als `data:`-Bild (die CSP
+ * erlaubt das für Bilder, für Schriften nicht: Cinzel liegt als Datei bei).
  */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("../fonts/cinzel-latin-wght-normal.woff2") format("woff2");
+}
+
 .shop {
+  --wood-deep: #140c07;
+  --wood: #2c1a10;
+  --wood-light: #4a2e1b;
+  --brass: #c9a24a;
+  --brass-light: #f3d68d;
+  --brass-dark: #6e5020;
+  --parchment: #f2e3bf;
+  --parchment-shade: #dcc493;
+  --quill: #3a2414;
+  --quill-soft: #6b4a2c;
+  --wax: #9e2430;
+  --candle: #ffcf7a;
+  --display: "Cinzel", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --book: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  /* Ein Messingrahmen mit Eckbeschlägen und Nieten, für `border-image`. */
+  --brass-frame: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f3d68d'/%3E%3Cstop offset='.5' stop-color='%23c9a24a'/%3E%3Cstop offset='1' stop-color='%236e5020'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23b)'%3E%3Crect x='3' y='3' width='90' height='90' rx='6' stroke-width='3'/%3E%3Crect x='9' y='9' width='78' height='78' rx='3' stroke-width='1.2'/%3E%3C/g%3E%3Cg fill='url(%23b)'%3E%3Cpath d='M2 2h25l-7 7H9v11l-7 7zM94 2H69l7 7h11v11l7 7zM2 94h25l-7-7H9V76l-7-7zM94 94H69l7-7h11V76l7-7z'/%3E%3Ccircle cx='15' cy='15' r='2.6'/%3E%3Ccircle cx='81' cy='15' r='2.6'/%3E%3Ccircle cx='15' cy='81' r='2.6'/%3E%3Ccircle cx='81' cy='81' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
+
   position: relative;
   display: grid;
-  grid-template-columns: minmax(230px, 1fr) minmax(250px, 1fr);
-  grid-template-rows: 30px auto minmax(0, 1fr);
-  column-gap: 18px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(190px, 1fr);
+  grid-template-rows: 34px auto minmax(0, 1fr);
+  gap: 10px 14px;
   height: 100vh;
-  padding: 10px 18px 18px;
-  border-radius: 26px;
-  background: radial-gradient(ellipse at 26% 52%, var(--backdrop) 0%, var(--base) 55%, var(--backdrop-deep) 100%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+  padding: 8px 14px 14px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, #ffcf7a1c, transparent),
+    repeating-linear-gradient(90deg, #ffffff05 0 2px, transparent 2px 9px, #0000000f 9px 11px, transparent 11px 29px),
+    linear-gradient(180deg, var(--wood-light), var(--wood) 32%, var(--wood-deep));
+  box-shadow: inset 0 0 0 2px var(--brass-dark), inset 0 0 0 4px #0009, inset 0 0 48px #000b;
+  color: var(--parchment);
   overflow: hidden;
 }
-html[data-surface='preview'] .shop { border-radius: 0; box-shadow: none; }
-.shop .window-tools { grid-column: 1 / -1; }
+html[data-surface='preview'] .shop { border-radius: 0; }
+.shop button:focus-visible { outline-color: var(--brass-light); }
+.shop .window-tools { grid-row: 1; grid-column: 1 / -1; }
 
-.shop-header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 4px 14px; }
-.shop-header h1 { margin: 0; font-size: 20px; font-weight: 750; letter-spacing: -0.2px; }
-.shop-coins { display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 6px 13px 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); font-size: 12.5px; }
-.shop-coins svg { width: 17px; height: 17px; color: #ffd45c; }
-.shop-coins small { color: var(--text-muted); font-size: 11px; }
+.shop-title { grid-row: 1; grid-column: 1 / -1; justify-self: center; align-self: center; margin: 0; color: var(--brass-light); font: 700 15px/1 var(--display); letter-spacing: 0.2em; text-transform: uppercase; text-shadow: 0 1px 0 #000, 0 0 12px #ffcf7a55; pointer-events: none; }
+.shop-title::before, .shop-title::after { content: '✦'; margin: 0 0.6em; color: var(--brass); font-size: 10px; vertical-align: 2px; }
 
-/* Die Canvas ragt wie am Pet über ihren Kasten hinaus und lässt Klicks durch. Ihr Kasten hat das
-   Seitenverhältnis der Bühne, so steht das Jelly wie im Pet-Fenster. */
-.shop-stage { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 0; }
-.shop-jelly { position: relative; width: 100%; aspect-ratio: 396 / 315; }
-.shop-jelly .render-fallback { padding-top: 90px; }
+.shop-empty { grid-row: 2 / -1; grid-column: 1 / -1; align-self: center; margin: 0; color: var(--parchment-shade); font: italic 14px var(--book); text-align: center; }
 
-.shop-action { position: relative; z-index: 1; display: grid; justify-items: center; gap: 7px; min-height: 104px; padding: 0 10px; text-align: center; }
-.shop-action > strong { font-size: 15px; font-weight: 700; }
-.shop-action .primary-button { width: min(250px, 100%); padding: 11px 16px; font-size: 12px; }
-.shop-action .primary-button.shop-secondary { border-color: var(--line); background: transparent; color: #eef3f5; }
-.shop-action .primary-button.shop-secondary:hover:enabled { background: #ffffff12; }
-.shop-hint { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
-p.shop-hint { margin: 0; padding-top: 18px; }
-.shop-notice { min-height: 16px; color: var(--accent); font-size: 11.5px; font-weight: 650; }
+/*
+ * Die Bühne im Seitenverhältnis 12 : 5, so liegen Tresen, Teppich und Blase in Prozent immer an
+ * derselben Stelle der Szene. Die Werte folgen aus `SHOP_VIEW` in `scene/ShopScene.tsx`: sichtbar ist
+ * y 2,49 (oben) bis −1,25 (unten), x ±4,49. Darunter bleiben mindestens 180 px für Rolle und Siegel.
+ */
+.shop-stage { position: relative; grid-row: 2; grid-column: 1 / -1; justify-self: center; width: min(100%, calc((100vh - 256px) * 2.4)); aspect-ratio: 12 / 5; border-radius: 10px; overflow: hidden; box-shadow: 0 10px 24px #000b; }
+.shop-stage::after { content: ''; position: absolute; inset: 0; z-index: 5; border: 22px solid transparent; border-image: var(--brass-frame) 28 / 22px stretch; pointer-events: none; }
+.stage-wall { position: absolute; inset: 0; background:
+    radial-gradient(ellipse 26% 50% at 40% 70%, #ffcf7a2e, transparent),
+    radial-gradient(ellipse 30% 55% at 86% 20%, #ffcf7a1f, transparent),
+    linear-gradient(180deg, transparent 0 89%, #1a0f08 89%, #24150c),
+    repeating-linear-gradient(90deg, #ffffff07 0 1px, transparent 1px 42px),
+    linear-gradient(180deg, #3d2617, #27170d 70%, #1c1009); }
+/* Regal mit Tränken und Büchern hinter dem Zauberer, zwei Bretter übereinander. */
+.stage-shelf { position: absolute; left: 3%; top: 20%; width: 44%; height: 48%; opacity: 0.85; background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='70' viewBox='0 0 240 70'%3E%3Crect y='58' width='240' height='7' fill='%235a3a22'/%3E%3Crect y='58' width='240' height='2' fill='%237a5232'/%3E%3Cpath d='M18 65h10l-5 5zM212 65h10l-5 5z' fill='%233a2416'/%3E%3Ccircle cx='28' cy='44' r='13' fill='%238a2f4a'/%3E%3Crect x='24' y='24' width='8' height='9' fill='%238a2f4a'/%3E%3Crect x='23' y='20' width='10' height='5' rx='1.5' fill='%23a07040'/%3E%3Cellipse cx='23' cy='40' rx='3' ry='5' fill='%23ffffff40'/%3E%3Crect x='52' y='26' width='16' height='32' rx='5' fill='%232f6a4a'/%3E%3Crect x='56' y='16' width='8' height='11' fill='%232f6a4a'/%3E%3Crect x='55' y='12' width='10' height='5' rx='1.5' fill='%23a07040'/%3E%3Crect x='56' y='30' width='3' height='18' rx='1.5' fill='%23ffffff33'/%3E%3Crect x='84' y='24' width='11' height='34' fill='%236b3a2a'/%3E%3Crect x='84' y='29' width='11' height='2' fill='%23c9a24a'/%3E%3Crect x='96' y='28' width='9' height='30' fill='%232f3f6b'/%3E%3Crect x='106' y='22' width='12' height='36' fill='%236b5a2a'/%3E%3Crect x='106' y='27' width='12' height='2' fill='%23c9a24a'/%3E%3Cpath d='M121 58l14-32 9 4-14 32z' fill='%234a2a3a'/%3E%3Cpath d='M160 30h8v8l9 17q1 3-2 3h-22q-3 0-2-3l9-17z' fill='%233b5f9a'/%3E%3Crect x='158' y='26' width='12' height='5' rx='1.5' fill='%23a07040'/%3E%3Crect x='190' y='38' width='18' height='20' rx='4' fill='%236a5a8a'/%3E%3Crect x='188' y='34' width='22' height='5' rx='2' fill='%237a5232'/%3E%3Ccircle cx='199' cy='48' r='4' fill='%23ffcf7a99'/%3E%3C/svg%3E") 0 0 / auto 46% repeat-x,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='70' viewBox='0 0 240 70'%3E%3Crect y='58' width='240' height='7' fill='%235a3a22'/%3E%3Crect y='58' width='240' height='2' fill='%237a5232'/%3E%3Cpath d='M18 65h10l-5 5zM212 65h10l-5 5z' fill='%233a2416'/%3E%3Crect x='20' y='30' width='12' height='28' fill='%232f4a3b'/%3E%3Crect x='33' y='26' width='10' height='32' fill='%237a3a2a'/%3E%3Crect x='44' y='32' width='12' height='26' fill='%23574a7a'/%3E%3Ccircle cx='86' cy='46' r='11' fill='%233b6a8a'/%3E%3Crect x='82' y='28' width='8' height='8' fill='%233b6a8a'/%3E%3Crect x='81' y='24' width='10' height='5' rx='1.5' fill='%23a07040'/%3E%3Cellipse cx='82' cy='43' rx='2.5' ry='4' fill='%23ffffff40'/%3E%3Crect x='140' y='34' width='26' height='24' rx='3' fill='%236b4a2a'/%3E%3Crect x='140' y='40' width='26' height='3' fill='%23c9a24a'/%3E%3Ccircle cx='153' cy='50' r='3' fill='%23c9a24a'/%3E%3Cpath d='M190 58c0-14 6-24 14-24s14 10 14 24z' fill='%238a6a3a'/%3E%3Ccircle cx='204' cy='44' r='4' fill='%23ffcf7a88'/%3E%3C/svg%3E") 70px 100% / auto 46% repeat-x; }
+/* Der Teppich unter dem eigenen Jelly: Seine Füße stehen bei 94,6 %. */
+.stage-rug { position: absolute; left: 59%; top: 90%; width: 30%; height: 9%; border-radius: 50%; background: radial-gradient(closest-side, #00000080 0 32%, transparent 33%), radial-gradient(closest-side, #7a2030 0 70%, var(--brass) 72% 77%, #5a1520 79% 96%, transparent 98%); }
+.stage-scene { position: absolute; inset: 0; z-index: 1; }
+.shop-stage .render-fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; color: var(--parchment-shade); font: italic 13px var(--book); }
+/* Der Tresen vor dem Zauberer. Seine Oberkante liegt bei y −0,3: Kopf, Bart und Kugel bleiben frei. */
+.stage-counter { position: absolute; z-index: 2; left: 0; top: 74.6%; bottom: 0; width: 44%; border-top: 3px solid var(--brass); border-top-right-radius: 6px; background:
+    linear-gradient(180deg, #7a4e2e 0 6px, #2a180d 6px 9px, transparent 9px),
+    repeating-linear-gradient(90deg, transparent 0 52px, #00000047 52px 55px),
+    linear-gradient(180deg, #4e311d, #2a180d); box-shadow: 8px 0 14px #000a; }
+.stage-candle { position: absolute; right: 9%; bottom: calc(100% + 3px); width: 9px; height: 22px; border-radius: 3px 3px 2px 2px; background: linear-gradient(90deg, #d8caa8, #fff6e0 45%, #c2ad86); }
+.stage-candle::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 8px; height: 15px; translate: -50% 0; border-radius: 50% 50% 45% 45% / 62% 62% 38% 38%; background: radial-gradient(ellipse at 50% 72%, #fffbe0, var(--candle) 45%, #ff8a2a 74%, transparent 76%); transform-origin: 50% 100%; animation: candle-flicker 1.7s ease-in-out infinite alternate; }
+.stage-candle::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 130px; height: 110px; translate: -50% 35%; background: radial-gradient(closest-side, #ffcf7a3a, transparent); pointer-events: none; animation: candle-glow 2.4s ease-in-out infinite alternate; }
+@keyframes candle-flicker { 0% { scale: 1 1; rotate: -3deg; } 50% { scale: 0.9 1.08; } 100% { scale: 1.05 0.95; rotate: 3deg; } }
+@keyframes candle-glow { from { opacity: 0.7; } to { opacity: 1; } }
 
-.shop-list { position: relative; z-index: 1; display: grid; align-content: start; gap: 6px; min-height: 0; margin: 0; padding: 0 4px 4px 0; list-style: none; overflow-y: auto; scrollbar-width: thin; }
-.shop-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 8px 12px 8px 8px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface-solid) 70%, transparent); text-align: left; transition: background 120ms, border-color 120ms; }
-.shop-row:hover { background: var(--surface-solid); }
-.shop-row[aria-pressed='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface-solid)); }
-.shop-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #ffffff10; }
-.shop-icon svg { width: 22px; height: 22px; }
-.shop-name strong, .shop-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.shop-name strong { font-size: 13px; font-weight: 650; }
-.shop-name small { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
-.shop-price { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; background: #ffd45c24; color: #ffe08a; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.shop-price svg { width: 14px; height: 14px; }
-.shop-row[data-state='short'] .shop-price { background: #ffffff0d; color: var(--text-muted); }
-.shop-owned { color: var(--accent); font-size: 11px; font-weight: 650; }
+/* Die Sprechblase des Zauberers als Pergament. Der Schwanz zeigt nach links zu ihm. */
+.stage-bubble { position: absolute; z-index: 3; left: 34%; top: 8%; width: 31%; display: flex; pointer-events: none; }
+.shop .stage-bubble .speech { margin: 0; max-width: 100%; padding: 9px 14px; border-radius: 14px; background: linear-gradient(180deg, #f8edcf, var(--parchment-shade)); color: var(--quill); font: 600 13px/1.35 var(--book); letter-spacing: 0; text-align: left; text-shadow: none; box-shadow: 0 0 0 2px var(--brass-dark), 0 0 0 4px #0005, 0 8px 18px #000a; transform-origin: 0% 100%; animation: speech-pop 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.shop .stage-bubble .speech-tail { left: -8px; top: auto; bottom: 12px; width: 14px; height: 14px; border-radius: 2px; rotate: 45deg; background: var(--parchment-shade); border-left: 2px solid var(--brass-dark); border-bottom: 2px solid var(--brass-dark); animation: none; }
 
-.shop-empty { grid-column: 1 / -1; align-self: center; margin: 0; color: var(--text-muted); font-size: 13px; text-align: center; }
+/* Die Börse in der Ecke der Bühne. */
+.stage-purse { position: absolute; z-index: 6; top: 24px; right: 26px; display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 5px 12px 5px 7px; border-radius: 999px; background: linear-gradient(180deg, #3d2617f0, #1c1009f0); box-shadow: 0 0 0 1.5px var(--brass), 0 3px 10px #000a; color: var(--parchment); font: 700 12px var(--display); letter-spacing: 0.04em; }
+.stage-purse svg { width: 18px; height: 18px; color: var(--candle); filter: drop-shadow(0 0 4px #ffcf7a99); }
+.stage-purse small { color: var(--parchment-shade); font: italic 400 10.5px var(--book); letter-spacing: 0; }
 
-/* Schmale Fenster: Anprobe über der Liste. */
-@media (max-width: 600px) {
-  .shop { grid-template-columns: minmax(0, 1fr); grid-template-rows: 30px auto auto minmax(0, 1fr); }
-  .shop-jelly { width: min(300px, 100%); margin: 0 auto; }
-  .shop-action { min-height: 0; padding-bottom: 12px; }
+/* Die Pergament-Rolle mit den Waren. */
+.shop-ledger { grid-row: 3; grid-column: 1; display: flex; flex-direction: column; min-height: 0; padding: 10px 8px 8px 12px; border-radius: 6px; color: var(--quill); background:
+    radial-gradient(ellipse at 50% 50%, transparent 58%, #8a5a2a3d 100%),
+    linear-gradient(180deg, #f8edcf, var(--parchment) 45%, #e6cf9d); box-shadow: 0 0 0 1px #8a6a3a, 0 8px 22px #000a, inset 0 0 26px #a0763a59; }
+.shop-ledger h2 { margin: 0 0 6px; color: var(--quill-soft); font: 700 12px var(--display); letter-spacing: 0.18em; text-align: center; text-transform: uppercase; }
+.shop-ledger h2::before, .shop-ledger h2::after { content: '—'; margin: 0 0.5em; color: #a0763a; }
+.shop-ledger ul { display: grid; align-content: start; gap: 2px; min-height: 0; margin: 0; padding: 0 4px 0 0; list-style: none; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #a0763a transparent; }
+.ledger-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 5px 8px; border: 0; border-bottom: 1px dashed #a0763a66; border-radius: 6px; background: transparent; color: inherit; text-align: left; transition: background 120ms; }
+.ledger-row:hover { background: #a0763a1f; }
+.ledger-row[aria-pressed='true'] { background: #9e24301a; box-shadow: inset 3px 0 0 var(--wax); }
+.ledger-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff70, transparent 60%), #dcc493; box-shadow: 0 0 0 1.5px var(--brass-dark); color: #4a2e14; }
+.ledger-icon svg { width: 18px; height: 18px; }
+.ledger-name strong, .ledger-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ledger-name strong { font: 700 13.5px var(--book); }
+.ledger-name small { color: var(--quill-soft); font: italic 11px var(--book); }
+.ledger-price { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 6px; border-radius: 999px; background: linear-gradient(180deg, var(--brass-light), var(--brass)); box-shadow: 0 0 0 1px var(--brass-dark), 0 1px 2px #0005; color: var(--quill); font: 800 12px var(--book); font-variant-numeric: tabular-nums; }
+.ledger-price svg { width: 14px; height: 14px; }
+.ledger-row[data-state='short'] .ledger-price { background: #d8c49a; box-shadow: 0 0 0 1px #a08a60; color: #7a6040; }
+.ledger-owned { color: #2f5a2a; font: italic 700 12px var(--book); }
+
+/* Das Siegel-Feld: das gewählte Teil und ein Wachssiegel. */
+.shop-seal { position: relative; grid-row: 3; grid-column: 2; display: grid; align-content: center; justify-items: center; gap: 8px; min-height: 0; padding: 20px 18px; border-radius: 8px; background: radial-gradient(ellipse at 50% 25%, #ffcf7a1f, transparent 70%), linear-gradient(180deg, #2c1a10e6, #170d07e6); text-align: center; }
+.shop-seal::after { content: ''; position: absolute; inset: 0; border: 18px solid transparent; border-image: var(--brass-frame) 28 / 18px stretch; pointer-events: none; }
+.shop-seal h2 { margin: 0; color: var(--brass-light); font: 700 16px var(--display); letter-spacing: 0.06em; text-shadow: 0 1px 0 #000; }
+.seal-item { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff55, transparent 60%), var(--parchment-shade); box-shadow: 0 0 0 2px var(--brass), 0 0 16px #ffcf7a44; color: var(--quill); }
+.seal-item svg { width: 26px; height: 26px; }
+.seal-hint { max-width: 230px; margin: 0; color: var(--parchment-shade); font: italic 12px/1.45 var(--book); }
+.seal { display: inline-flex; align-items: center; padding: 0; border: 0; background: transparent; color: inherit; transition: translate 140ms; }
+.seal:active:enabled { translate: 0 1px; }
+.seal-wax { position: relative; z-index: 1; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 47% 53% 50% 50% / 52% 48% 52% 48%; background: radial-gradient(circle at 35% 30%, #ff9a9a, var(--wax) 55%, #5a0f16); box-shadow: 0 2px 0 #3a0a0e, 0 4px 10px #0009, inset 0 0 0 3px #7a1820, inset 0 0 0 5px #c2414a66; color: #ffe0e0; transition: scale 160ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.seal-wax svg { width: 22px; height: 22px; }
+.seal:hover:enabled .seal-wax { scale: 1.07; }
+.seal[data-wax='wear'] .seal-wax { background: radial-gradient(circle at 35% 30%, #a8e8a8, #2f7a3a 55%, #12381a); box-shadow: 0 2px 0 #0c2a12, 0 4px 10px #0009, inset 0 0 0 3px #245c2c, inset 0 0 0 5px #6ac07466; color: #e6ffe6; }
+.seal[data-wax='off'] .seal-wax { background: radial-gradient(circle at 35% 30%, #e0d8c8, #7a7060 55%, #3a3428); box-shadow: 0 2px 0 #2a251c, 0 4px 10px #0009, inset 0 0 0 3px #5a5244, inset 0 0 0 5px #b0a89866; color: #fff8ec; }
+.seal-label { margin-left: -14px; padding: 9px 16px 9px 22px; border-radius: 0 8px 8px 0; background: linear-gradient(180deg, #f8edcf, var(--parchment-shade)); box-shadow: 0 0 0 1px var(--brass-dark), 0 3px 8px #0008; color: var(--quill); font: 700 12px var(--display); letter-spacing: 0.04em; white-space: nowrap; }
+
+@media (max-height: 520px) {
+  .seal-item { display: none; }
 }
+
+/* Ruhig: keine Kerze, die flackert, kein Siegel, das wippt. */
+html[data-reduced-motion] .shop :is(.stage-candle, .ledger-row, .seal, .seal-wax),
+html[data-reduced-motion] .shop .stage-candle::before,
+html[data-reduced-motion] .shop .stage-candle::after { animation: none; transition: none; }
+/* Optimierter Modus: nichts flackert, keine Filter. Die Flächen bleiben, sie sind ohnehin fest. */
+html[data-optimized-rendering] .shop .stage-candle::before,
+html[data-optimized-rendering] .shop .stage-candle::after { animation: none; }
+html[data-optimized-rendering] .shop .stage-purse svg { filter: none; }
+html[data-optimized-rendering] .shop .stage-bubble .speech { animation: none; }

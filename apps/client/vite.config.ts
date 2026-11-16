@@ -12,6 +12,8 @@ export default defineConfig({
   },
   build: {
     target: ["es2022", "chrome105", "safari15"],
+    // Schriften nie als `data:`: Die CSP der App lädt Schriften nur als Datei (`default-src 'self'`).
+    assetsInlineLimit: (file) => (file.endsWith(".woff2") ? false : undefined),
     // Pet, Karte und Shop sind je eine Seite, Karte und Shop in eigenen Fenstern.
     rolldownOptions: { input: { main: "index.html", map: "map.html", shop: "shop.html" } },
   },
