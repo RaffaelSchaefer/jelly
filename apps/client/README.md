@@ -76,8 +76,11 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 
 - Transparentes, rahmenloses, verschiebbares Fenster, stets im Vordergrund.
 - Animiertes Jelly-Pet mit Raymarching-Shader; drei Farben und ein eigener Name.
-- Cosmetics zum Freischalten über Level, Erfolge und Events. Die 3D-Modelle kommen aus der
-  Blender-Pipeline in `blender/`, bisher gibt es zwei Headsets. Karte und Beamer zeigen sie mit.
+- Cosmetics aus dem Shop, von Events und von der Orga. Jeder Level-Aufstieg bringt Münzen
+  (`coins_per_level`), der Shop im eigenen Fenster verkauft dafür Cosmetics und lässt sie vorher
+  am eigenen Jelly anprobieren (`POST /v1/purchases`). Die 3D-Modelle kommen aus der
+  Blender-Pipeline in `blender/`, bisher gibt es zwei Headsets, Mütze und Pixel-Brille. Karte und
+  Beamer zeigen sie mit.
 - Kleine Glas-Leiste mit LAN-Aktionen, Studio und Einstellungen.
 - Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Händen, Körper, Aura und Farbe öffnen flüssige Popovers für
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
@@ -92,7 +95,8 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Cosmetics liegen auf Plätzen, je Platz eines (`PUT /v1/cosmetics/equipped`). Die App zeigt die Plätze
   Kopf, Gesicht und Aura. Einfärbbare Cosmetics bekommen vorerst die erste Farbe der Palette.
 - XP, Level, Cosmetics und Erfolge kommen vom Server. Mit seinen Standardregeln: Stupser +3 XP alle
-  15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level.
+  15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level
+  und eine Münze für den Shop.
   Die App fragt nur beim Server, wenn ein Stupser wieder etwas bringt.
 - Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen,
   Herz, Schulterzucken, Zeigen, Grübeln, Wütend, Traurig und Schüchtern auswählen. Die Hände haben
@@ -101,7 +105,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   eine eigene Stimmlage und ein eigenes Tempo: Wut klingt tief und schnell, Trauer tief und langsam,
   Freude hoch und flott. Bewegung und Laut laufen dabei im selben Takt.
 - Die Oberfläche hat leise Geräusche: Tippen, Auf- und Zuklappen, Wählen, Sperren, Schalter,
-  Öffnen und Schließen von Karte und Pet-Fenster, Erfolg und Fehler. Dazu klingen XP (Münze), neue
+  Öffnen und Schließen von Karte, Shop und Pet-Fenster, Erfolg und Fehler. Dazu klingen XP (Münze), neue
   Erfolge, Einladungen zu Partner-Emotes und das Schlüpfen. Die Töne stammen aus der Bibliothek von
   [reactsounds.com](https://www.reactsounds.com) (MIT, `src/sounds/LICENSE`), liegen im Bundle,
   sind aufeinander abgestimmt laut und folgen dem Schalter und dem Regler der Geräusche. Ein neuer
@@ -224,8 +228,9 @@ src/
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
   SignPicker.tsx      Schild-Tropfen und Kapsel-Säule
   Hatch.tsx           Einstieg auf der Bühne: Ei aus Glas, Name, Farbe, Code und das Schlüpfen
-  MapDrop.tsx         Karten-Tropfen
+  PopoutDrops.tsx     Tropfen für Karte und Shop
   map/                Karte im eigenen Fenster (map.html), ohne React: Seite, Daten, Partner-Emotes, Vorschau
+  shop/               Shop im eigenen Fenster (shop.html): Liste, Anprobe, Kaufen und Anlegen
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
   panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
@@ -244,7 +249,7 @@ src-tauri/
   src/api.rs          HTTP-Client und Weitergabe der Server-Typen
   src/api/types.rs    Typen aus dem Server-Vertrag
   src/events.rs       Ereignis-Stream des Servers an die Oberfläche weiterleiten
-  src/map.rs          Fenster der Karte öffnen und schließen
+  src/popout.rs       Fenster von Karte und Shop öffnen und schließen, das Pet solange verstecken
   src/error.rs        alle Fehler mit deutscher Meldung für die Oberfläche
   src/pet.rs          lokaler Stand und reine Regeln, ohne Dateizugriff und Netz
   src/store.rs        lokalen Stand atomar laden und speichern

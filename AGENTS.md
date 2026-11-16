@@ -61,7 +61,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (`POST` und `PATCH /v1/partner-emotes`): Auffordern geht in `src/map/partner.ts`, Antworten und Duett im Pet
   (`src/usePartnerEmote.ts`, `src/panels/PartnerInvitePopup.tsx`). Das andere Jelly erfährt davon per
   `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`. Beide Ereignisse schließen
-  die Karte (`closes_map` in `src-tauri/src/events.rs`).
+  Karte und Shop (`closes_popouts` in `src-tauri/src/events.rs`).
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
   (Noten, reine Logik): die Stimme des Jellys. Tonhöhe und Tempo je Geste stehen in `EMOTE_MOODS`
   (`packages/jelly-scene/src/emotes.ts`), Bewegung und Laut teilen sich das Tempo. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
@@ -100,11 +100,16 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `page.ts` (Stand der Seite), `commands.ts` (Aktionen mit Bestätigung und Kameraflug), `dock.ts` (Leiste
   unten), `zoom.ts` (Mausrad, Ziehen, Tasten), `notice.ts` (Statuszeile),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
-  `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
-  sie öffnet.
+  `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/PopoutDrops.tsx`: die Glas-Tropfen am Jelly,
+  die Karte und Shop öffnen.
+- `shop.html`, `src/shop/`: der Shop im eigenen Fenster, mit React. `Shop.tsx` (Liste und Anprobe mit `PetScene`),
+  `ShopAction.tsx` (Kaufen, Anlegen, Ablegen), `useShop.ts` (Stand, Ereignisse, Vorschau ohne Server). Was im Shop
+  steht und was fehlt, rechnet `src/pet/shop.ts`. Münzen gibt es je Level-Aufstieg (`coins_per_level`), gekauft wird mit
+  `POST /v1/purchases`. Der Aufstieg (`src/LevelUp.tsx`) zeigt die Münzen und führt zum Shop. Wie die Karte vertritt der
+  Shop das Pet, solange er offen ist.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
-  `events.rs` (Server-Stream), `map.rs` (Fenster der Karte), `error.rs`, `pet.rs` (lokaler Stand,
+  `events.rs` (Server-Stream), `popout.rs` (Fenster von Karte und Shop), `error.rs`, `pet.rs` (lokaler Stand,
   reine Regeln), `store.rs` (atomares Speichern von `jelly.json`).
 
 ## Regeln, die man leicht übersieht
