@@ -264,3 +264,41 @@ func TestBuyingEarnsTheShopAchievements(t *testing.T) {
 		}
 	}
 }
+
+// listEarnedKeysOf returns the achievement keys that a player has earned.
+func listEarnedKeysOf(testFixture *fixture, token string) []string {
+	earned := []string{}
+	for _, achievement := range testFixture.loadMe(token).Achievements {
+		earned = append(earned, achievement.Key)
+	}
+	return earned
+}
+
+// TestAnAwardedCosmeticCountsForTheShopAchievement makes sure that a prize cosmetic closes the
+// shopaholic gap, because an awarded player can never buy the same cosmetic again.
+func TestAnAwardedCosmeticCountsForTheShopAchievement(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Belohnt")
+	playerID := testFixture.loadMe(token).ID
+	playerPath := strconv.FormatInt(playerID, 10)
+	if admin := testFixture.callAdmin("POST", "/admin/api/awards",
+		`{"player_id":`+playerPath+`,"title":"Lauter Player","cosmetic_key":"headset"}`,
+	); admin.status != http.StatusOK {
+		t.Fatalf("award headset: %d %s", admin.status, admin.body)
+	}
+	if admin := testFixture.callAdmin(
+		"POST", "/admin/api/players/"+playerPath+"/coins", `{"coins":100}`,
+	); admin.status != http.StatusOK {
+		t.Fatalf("give coins: %d %s", admin.status, admin.body)
+	}
+	for _, key := range []string{"headset-neutral", "beanie", "pixel-glasses", "hood"} {
+		if bought := testFixture.callAPI(
+			"POST", "/v1/purchases", token, `{"key":"`+key+`"}`,
+		); bought.status != http.StatusOK {
+			t.Fatalf("purchase %s: %d %s", key, bought.status, bought.body)
+		}
+	}
+	if earned := listEarnedKeysOf(testFixture, token); !slices.Contains(earned, "shopaholic") {
+		t.Errorf("shopaholic is missing in %v", earned)
+	}
+}
