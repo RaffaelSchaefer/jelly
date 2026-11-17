@@ -1,96 +1,108 @@
 /**
- * Die Pergament-Rolle des Zauberladens: alle Teile mit Preis, oder dass sie schon dem Jelly
- * gehören. Ein Klick probiert ein Teil an, gekauft wird erst am Siegel.
+ * Die Pergament-Rolle des Zauberladens: eine Liste aller Waren. Oben steht, was man kaufen kann,
+ * unter „In deiner Truhe“, was dem Jelly schon gehört. Wählen probiert eine Ware an, gekauft wird
+ * erst am Siegel. Die Pfeiltasten gehen durch die Rolle (`useLedgerKeys.ts`).
  *
  * @module
  */
 
-import { coinLabel, slotLabel, type Catalog, type Me, type ShopItem } from "../pet";
+import { useMemo } from "react";
+
+import type { Catalog, Me, ShopItem } from "../pet";
+
+import { isWorn, ledgerOrder, ledgerView } from "../pet/shopLedger";
 import { Icon } from "../ui";
+import { useLedgerKeys } from "./useLedgerKeys";
+import WareCard from "./WareCard";
+import "./css/ledger.css";
 
-/** Ob `me` das Teil gerade trägt. */
-export function isWorn(me: Me, item: ShopItem) {
-  return me.equipped[item.cosmetic.slot]?.key === item.cosmetic.id;
-}
+export { isWorn };
 
-/** Was rechts in einer Zeile steht: der Preis, oder dass es schon da ist. */
-function RowState({ item, worn }: { item: ShopItem; worn: boolean }) {
-  if (item.state === "owned") {
-    return <span className="ledger-owned">{worn ? "Angelegt" : "Gekauft"}</span>;
-  }
-  return (
-    <span className="ledger-price" aria-label={coinLabel(item.price)}>
-      <Icon name="coin" />
-      {item.price}
-    </span>
-  );
-}
-
-/** Eine Zeile der Rolle. */
-function LedgerRow({
-  item,
-  me,
-  catalog,
-  selected,
-  onChoose,
-}: {
-  item: ShopItem;
+/** Eigenschaften von {@link ShopLedger}. */
+export interface LedgerProps {
+  items: ShopItem[];
   me: Me;
   catalog: Catalog;
-  selected: boolean;
-  onChoose: (item: ShopItem) => void;
-}) {
-  const { cosmetic } = item;
-  const where = slotLabel(cosmetic.slot, catalog);
-  return (
-    <li>
-      <button
-        type="button"
-        className="ledger-row"
-        data-state={item.state}
-        data-sound="select"
-        aria-pressed={selected}
-        onClick={() => onChoose(item)}
-      >
-        <span className="ledger-icon">
-          <Icon name={cosmetic.icon} />
-        </span>
-        <span className="ledger-name">
-          <strong>{cosmetic.name}</strong>
-          <small>{item.perLan ? `${where} · nur für diese LAN` : where}</small>
-        </span>
-        <RowState item={item} worn={isWorn(me, item)} />
-      </button>
-    </li>
-  );
+  /** Die Ware, die das Jelly gerade anprobiert. */
+  chosenId: string | null;
+  /** Die eben gekaufte Ware: Sie bleibt oben stehen, bis eine andere gewählt wird. */
+  keepId: string | null;
+  /** Ob gerade eine LAN läuft. */
+  open: boolean;
+  /** Solange das Siegel stempelt, bleibt die Wahl, wie sie ist. */
+  frozen: boolean;
+  /** Wählt eine Ware, `null` legt die Anprobe ab. */
+  onChoose: (item: ShopItem | null) => void;
 }
 
-/** Die ganze Rolle. `chosen` ist das Teil, das das Jelly gerade anprobiert. */
+/** Was die Rolle sagt, wenn oben nichts mehr zu kaufen ist. */
+function LedgerNote({ wares, chest }: { wares: number; chest: number }) {
+  if (wares > 0) return null;
+  const note = chest > 0 ? "Ausverkauft! Alles gehört dir." : "Die Regale sind leer.";
+  return <p className="ledger-empty">{note}</p>;
+}
+
+/** Die ganze Rolle. */
 export default function ShopLedger({
   items,
   me,
   catalog,
-  chosen,
+  chosenId,
+  keepId,
+  open,
+  frozen,
   onChoose,
-}: {
-  items: ShopItem[];
-  me: Me;
-  catalog: Catalog;
-  chosen: ShopItem | null;
-  onChoose: (item: ShopItem) => void;
-}) {
+}: LedgerProps) {
+  const view = useMemo(() => ledgerView(items, me, keepId), [items, me, keepId]);
+  const order = useMemo(() => ledgerOrder(view), [view]);
+  const sections = useMemo(() => [view.wares.length, view.chest.length], [view]);
+  const keys = useLedgerKeys({ order, sections, frozen, onChoose });
+  // Genau ein Tab-Halt: die gewählte Ware, sonst die erste.
+  const focusId = chosenId ?? order[0]?.cosmetic.id ?? null;
+
+  /** Ein Klick wählt. Die Anprobe klingt selbst (`useShopMoments.ts`). */
+  function pick(item: ShopItem) {
+    if (frozen) return;
+    onChoose(item);
+  }
+
+  const card = (item: ShopItem, index: number) => (
+    <WareCard
+      key={item.cosmetic.id}
+      {...{ item, catalog, index, open }}
+      worn={isWorn(me, item)}
+      chosen={item.cosmetic.id === chosenId}
+      focusable={item.cosmetic.id === focusId}
+      justBought={item.cosmetic.id === keepId}
+      onPick={pick}
+    />
+  );
+
   return (
     <section className="shop-ledger" aria-labelledby="ledger-title">
-      <h2 id="ledger-title">Waren</h2>
-      <ul>
-        {items.map((item) => (
-          <LedgerRow
-            key={item.cosmetic.id}
-            {...{ item, me, catalog, onChoose }}
-            selected={item === chosen}
-          />
-        ))}
-      </ul>
+      <div className="ledger-paper" data-rustle="">
+        <h2 id="ledger-title" className="ledger-title">
+          Waren
+        </h2>
+        <LedgerNote wares={view.wares.length} chest={view.chest.length} />
+        <ul
+          ref={keys.listRef}
+          className="ledger-list"
+          role="listbox"
+          aria-labelledby="ledger-title"
+          data-gaze="ledger"
+          onKeyDown={keys.onKeyDown}
+        >
+          {view.wares.map((item, index) => card(item, index))}
+          {view.chest.length > 0 ? (
+            <li className="ledger-divider" aria-hidden="true">
+              <Icon name="chest" />
+              In deiner Truhe
+            </li>
+          ) : null}
+          {view.chest.map((item, index) => card(item, view.wares.length + index))}
+        </ul>
+      </div>
     </section>
   );
 }

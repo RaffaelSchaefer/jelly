@@ -1,55 +1,102 @@
 /**
- * Lässt den Zauberer leben: Er sagt etwas, macht eine Geste dazu, spricht mit eigener, tieferer
- * Stimme und nickt ein, wenn eine Weile niemand etwas tut. Was er sagt, rechnet `pet/wizard.ts`.
+ * Lässt den Zauberer leben. Sein Gehirn (`pet/wizardBrain.ts`) entscheidet, was er wann tut, der
+ * Spieler (`useWizardPlayer.ts`) führt es aus, seine Sinne (`useWizardSenses.ts`) melden, was im
+ * Fenster geschieht. Ein einziger Zeitgeber wartet auf den nächsten Termin des Gehirns.
+ *
+ * Die Oberfläche meldet sich mit Hinweisen (`notice`). Er spricht mit seiner alten Stimme über den
+ * Klang des Ladens (`shopSound.voiceRoute`), der das Ambiente unter seinen Sätzen duckt. Seine
+ * Geräusche spielt `shopSound`, seine Effekte `shopFx` und die Rolle (`wizardEffects.ts`). Er grüßt
+ * 350 ms nachdem die Szene steht, spätestens 2,5 s nachdem die Daten da sind, und auch im
+ * StrictMode nur einmal. In der Vorschau döst er mit `#shop-doesen` schon nach 4 s und schläft nach
+ * 8 s.
  *
  * @module
  */
 
-import { EMOTE_SECONDS } from "@jelly/scene/emotes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
+import type { Settings } from "../pet/types";
 import type { ActiveEmote } from "../useEmotes";
 import type { ActiveVoice } from "../useJellyVoice";
 
-import { wizardLine, wizardNotes, type Settings, type WizardLine, type WizardMoment } from "../pet";
-import { createVoice, startClock } from "../voice";
+import { desktop } from "../backend";
+import { WIZARD_TIMBRE } from "../pet/voiceTimbre";
+import { createWizardMind, wizardStep, type WizardMind } from "../pet/wizardBrain";
+import { type DozeTiming } from "../pet/wizardIdle";
+import { type WizardEvent, type WizardNotice, type WizardPose } from "../pet/wizardScripts";
+import { OS_REDUCED_MOTION } from "../useDocumentTheme";
+import { createVoice } from "../voice";
+import { shopSound } from "./sound/shopSound";
+import {
+  useWizardPlayer,
+  type CustomerCue,
+  type SaidLine,
+  type WizardEffectCue,
+  type WizardPlayer,
+} from "./useWizardPlayer";
+import { useWizardSenses, type WizardWorld } from "./useWizardSenses";
+import { showWizardEffect } from "./wizardEffects";
+import { wizardVoiceLayers } from "./wizardVoiceLayers";
 
-/** Seine Stimme. Das Shop-Fenster hat seine eigene, unabhängig von der des Pets. */
-const voice = createVoice();
-
-/** Was als Geste des Nutzers zählt: Sie macht den Ton frei und hält ihn wach. */
-const GESTURES = ["pointerdown", "keydown"] as const;
-
-/** So lange ohne Eingabe, bis er einnickt. */
-const DOZE_AFTER_MS = 45_000;
+export type { CustomerCue, SaidLine, WizardEffectCue } from "./useWizardPlayer";
+export type { WizardWorld } from "./useWizardSenses";
 
 /**
- * So lange wartet er nach dem Aufwecken mit seinem Satz. Ein Klick auf ein Teil geht vor: Dann
- * spricht er nur darüber.
+ * Seine alte, dunkle Stimme mit Brust, Knarren und Luft. Sie singt in den Klang des Ladens, links
+ * bei ihm, und hat kein eigenes Audiogerät.
  */
-const WAKE_DELAY_MS = 350;
+const voice = createVoice({
+  timbre: WIZARD_TIMBRE,
+  layers: wizardVoiceLayers,
+  route: () => shopSound.voiceRoute("wizard"),
+});
 
-/** Ein Satz mit Zähler: Auch derselbe Satz ist eine neue Meldung. */
-export interface SaidLine {
-  line: WizardLine;
-  id: number;
-  /** Wann er ihn begann, auf der Uhr von `performance.now()`, für die Sprechblase. */
-  at: number;
+/** Was als Geste des Nutzers zählt: Sie macht den Ton frei. */
+const GESTURES = ["pointerdown", "keydown"] as const;
+
+/** Wann er grüßt: nach der Szene, spätestens nach den Daten. */
+const GREET = { afterSceneMs: 350, fallbackMs: 2500 } as const;
+
+/** Der Zeitgeber wartet mindestens so lange und höchstens so lange, wie der Browser kann. */
+const TICK = { minMs: 10, maxMs: 2 ** 31 - 1 } as const;
+
+/** Dösen in der Vorschau mit `#shop-doesen`: schläfrig nach 4 s, eingeschlafen nach 8 s. */
+const DOZE_PREVIEW: Partial<DozeTiming> =
+  !desktop && location.hash === "#shop-doesen" ? { drowsyMs: 4000, asleepMs: 4000 } : {};
+
+/** Alles, was der Zauberer dem Laden bietet. */
+export interface WizardControls {
+  /** Was er zuletzt sagte, `null` vor dem ersten Satz. */
+  said: SaidLine | null;
+  /** Die laufende Geste als geteiltes Emote. */
+  emote: ActiveEmote | null;
+  /** Ob er schläft. */
+  dozing: boolean;
+  /** Was er gerade singt. Sein Mund folgt den Vokalen. */
+  voiced: RefObject<ActiveVoice | null>;
+  /** Ein Hinweis der Oberfläche. Stabil. */
+  notice: (notice: WizardNotice) => void;
+  /** Seine Haltung, Bild für Bild gelesen. */
+  pose: RefObject<WizardPose>;
+  /** Steigt, wenn sich die Haltung ändert. */
+  poseVersion: number;
+  /** Steigt mit jedem losbrechenden Zauber: Der Kern der Kristallkugel flammt auf. */
+  pulse: number;
+  /** Die letzten Effekte, der jüngste zuletzt. */
+  effects: readonly WizardEffectCue[];
+  /** Was die Kundschaft tut. */
+  customer: CustomerCue;
+  /** Die Szene steht. Stabil. */
+  onSceneReady: () => void;
 }
 
-/** Die Geste zu einem Satz, ab jetzt. */
-function gestureOf(line: WizardLine): ActiveEmote | null {
-  return line.gesture ? { key: line.gesture, label: "", startedAt: performance.now() } : null;
-}
-
-/** Folgt Ton-Schalter und Lautstärke. Die erste Geste macht den Ton frei. */
-function useVoiceSettings({ sound, volume }: Settings) {
+/** Folgt dem Ton-Schalter, die Lautstärke regelt der Klang des Ladens. Die erste Geste macht frei. */
+function useVoiceSettings({ sound }: Settings) {
   const soundOn = useRef(sound);
   useEffect(() => {
     soundOn.current = sound;
-    voice.setVolume(volume);
     if (!sound) voice.stop();
-  }, [sound, volume]);
+  }, [sound]);
   useEffect(() => {
     const arm = () => voice.arm();
     for (const gesture of GESTURES) window.addEventListener(gesture, arm, true);
@@ -60,78 +107,85 @@ function useVoiceSettings({ sound, volume }: Settings) {
   return soundOn;
 }
 
-/** Nimmt eine Geste nach ihrer Dauer wieder weg, sonst stünde sie still in der letzten Pose. */
-function useGestureEnd(emote: ActiveEmote | null, clear: () => void) {
-  useEffect(() => {
-    if (!emote) return;
-    const timer = window.setTimeout(clear, EMOTE_SECONDS * 1000);
-    return () => window.clearTimeout(timer);
-  }, [emote, clear]);
-}
-
 /**
- * Nach {@link DOZE_AFTER_MS} ohne Eingabe nickt er ein, die nächste Geste weckt ihn.
- *
- * @param say - Sollte stabil sein.
+ * Das Gehirn mit seinem einen Zeitgeber. `dispatch` ist stabil und nimmt jedes Ereignis, auch den
+ * fälligen Termin.
  */
-function useDozing(dozing: boolean, say: (moment: WizardMoment) => void, wake: () => void) {
-  useEffect(() => {
-    let timer = window.setTimeout(() => say({ kind: "doze" }), DOZE_AFTER_MS);
-    function stir() {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => say({ kind: "doze" }), DOZE_AFTER_MS);
-      if (dozing) wake();
-    }
-    for (const gesture of GESTURES) window.addEventListener(gesture, stir, true);
-    return () => {
-      window.clearTimeout(timer);
-      for (const gesture of GESTURES) window.removeEventListener(gesture, stir, true);
-    };
-  }, [dozing, say, wake]);
-}
-
-/**
- * Der Zauberer: was er zuletzt sagte, seine Geste, ob er döst, und was sein Mund formt.
- *
- * @returns `say` lässt ihn zu einem Anlass sprechen und ist stabil.
- */
-export function useWizard(settings: Settings) {
-  const [said, setSaid] = useState<SaidLine | null>(null);
-  const [emote, setEmote] = useState<ActiveEmote | null>(null);
-  const voiced = useRef<ActiveVoice | null>(null);
-  const turn = useRef(0);
-  const waking = useRef<number | undefined>(undefined);
-  const soundOn = useVoiceSettings(settings);
-
-  const say = useCallback(
-    (moment: WizardMoment) => {
-      window.clearTimeout(waking.current);
-      const line = wizardLine(moment, turn.current);
-      turn.current += 1;
-      const notes = wizardNotes(line);
-      const clock = soundOn.current ? voice.play(notes) : null;
-      // Auch stumm bewegt sich der Mund, so wie die Sprechblase weitertippt.
-      voiced.current = { notes, partnerNotes: [], elapsed: clock ?? startClock() };
-      setSaid({ line, id: turn.current, at: performance.now() });
-      setEmote(gestureOf(line));
+function useMind({ play, look }: Pick<WizardPlayer, "play" | "look">) {
+  const mind = useRef<WizardMind | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const nextAt = useRef(Infinity);
+  const dispatch = useCallback(
+    function step(event: WizardEvent) {
+      const now = performance.now();
+      mind.current ??= createWizardMind(Date.now(), now, DOZE_PREVIEW);
+      const result = wizardStep(mind.current, event, now);
+      mind.current = result.mind;
+      if (result.look) look(result.look);
+      if (result.script) play(result.script, result.interrupt, now);
+      nextAt.current = result.nextTickAt;
+      window.clearTimeout(timer.current);
+      if (!Number.isFinite(result.nextTickAt)) return;
+      const wait = Math.min(TICK.maxMs, Math.max(TICK.minMs, result.nextTickAt - now));
+      timer.current = window.setTimeout(() => step({ kind: "tick" }), wait);
     },
-    [soundOn],
+    [play, look],
   );
-
-  const wake = useCallback(() => {
-    // Wach ist er sofort, der Satz dazu darf einem Klick auf ein Teil weichen.
-    setSaid((last) => last && { ...last, line: { ...last.line, doze: undefined } });
-    waking.current = window.setTimeout(() => say({ kind: "wake" }), WAKE_DELAY_MS);
-  }, [say]);
-
-  const clearEmote = useCallback(() => setEmote(null), []);
-  useGestureEnd(emote, clearEmote);
-  const dozing = said?.line.doze === true;
-  useDozing(dozing, say, wake);
-  useEffect(() => () => window.clearTimeout(waking.current), []);
-
-  return { said, emote, dozing, voiced, say };
+  useEffect(() => {
+    // Nach dem Probe-Abbau im StrictMode wartet der Termin von vorher wieder.
+    if (Number.isFinite(nextAt.current)) dispatch({ kind: "tick" });
+    return () => window.clearTimeout(timer.current);
+  }, [dispatch]);
+  return { dispatch };
 }
 
-/** Alles, was {@link useWizard} liefert. */
-export type WizardControls = ReturnType<typeof useWizard>;
+/** Grüßt, wenn Daten und Szene da sind. Das Gehirn grüßt nur einmal, auch wenn es zweimal hört. */
+function useGreeting(dispatch: (event: WizardEvent) => void, dataReady: boolean) {
+  const [sceneReady, setSceneReady] = useState(false);
+  useEffect(() => {
+    if (!dataReady) return;
+    const wait = sceneReady ? GREET.afterSceneMs : GREET.fallbackMs;
+    const timer = window.setTimeout(() => dispatch({ kind: "ready" }), wait);
+    return () => window.clearTimeout(timer);
+  }, [dispatch, dataReady, sceneReady]);
+  return useCallback(() => setSceneReady(true), []);
+}
+
+/** Döst er, wird das Ambiente leiser und das Knistern seltener. */
+function useDozingSound(dozing: boolean) {
+  useEffect(() => shopSound.setMood(dozing ? "dozing" : "awake"), [dozing]);
+}
+
+/**
+ * Der Zauberer: was er sagt und tut, wie er dasteht und was die Kundschaft dazu macht.
+ *
+ * @param world - Was der Laden über Kundschaft und Waren weiß.
+ */
+export function useWizard(settings: Settings, world: WizardWorld): WizardControls {
+  const soundOn = useVoiceSettings(settings);
+  const player = useWizardPlayer({
+    voice,
+    soundOn: () => soundOn.current,
+    onSfx: (sound) => void shopSound.sfx(sound),
+    onEffect: showWizardEffect,
+  });
+  const { dispatch } = useMind(player);
+  const onSceneReady = useGreeting(dispatch, Boolean(world.me));
+  useWizardSenses(dispatch, settings.reducedMotion ?? OS_REDUCED_MOTION, world);
+  const notice = useCallback((next: WizardNotice) => dispatch(next), [dispatch]);
+  const { said, emote, dozing, voiced, pose, poseVersion, pulse, effects, customer } = player;
+  useDozingSound(dozing);
+  return {
+    said,
+    emote,
+    dozing,
+    voiced,
+    notice,
+    pose,
+    poseVersion,
+    pulse,
+    effects,
+    customer,
+    onSceneReady,
+  };
+}

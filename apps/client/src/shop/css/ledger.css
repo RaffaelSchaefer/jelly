@@ -1,0 +1,503 @@
+/*
+ * Die Pergament-Rolle mit den Waren, zwischen zwei Holzstäben. Unter 300 px Breite stehen die Waren
+ * als Zeilen untereinander, darüber als Kacheln in zwei Spalten. Ring und Stein der Medaillons
+ * zeigen die Güte, ein rotes Lesezeichen die gewählte Ware.
+ */
+.shop-ledger {
+  position: relative;
+  grid-area: ledger;
+  container: ledger / inline-size;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 7px 4px;
+}
+
+/* Die beiden Stäbe mit Messingkappen, oben und unten, je 6 px über das Blatt hinaus. */
+.shop-ledger::before,
+.shop-ledger::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  left: -2px;
+  z-index: 1;
+  height: 12px;
+  border-radius: 6px;
+  background:
+    linear-gradient(
+      90deg,
+      #6e5020,
+      #f3d68d 3px,
+      #c9a24a 7px,
+      #6e5020 10px,
+      transparent 10px calc(100% - 10px),
+      #6e5020 calc(100% - 10px),
+      #c9a24a calc(100% - 7px),
+      #f3d68d calc(100% - 3px),
+      #6e5020
+    ),
+    linear-gradient(180deg, #9a6a3e, #5a3a20 50%, #2c1a10);
+  box-shadow: 0 2px 4px #0009;
+}
+
+.shop-ledger::before {
+  top: 0;
+}
+
+.shop-ledger::after {
+  bottom: 0;
+}
+
+/* Das Blatt. Schatten oben und unten zeigen, dass es weitergeht. */
+.ledger-paper {
+  --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .2 0 0 0 0 .08 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23f)' opacity='.08'/%3E%3C/svg%3E");
+
+  flex: 1;
+  min-height: 0;
+  padding: 6px 6px 10px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Eine gewählte Ware rollt ganz unter den Stäben hervor, samt Ring des Fokus. */
+  scroll-padding-block: 14px;
+  background:
+    linear-gradient(#f8edcf 30%, #f8edcf00) top / 100% 24px no-repeat local,
+    linear-gradient(#e9d4a400, #e9d4a4 70%) bottom / 100% 24px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, #3a241440, transparent) top / 100% 10px no-repeat,
+    radial-gradient(farthest-side at 50% 100%, #3a241440, transparent) bottom / 100% 10px no-repeat,
+    radial-gradient(ellipse at 50% 50%, transparent 62%, #8a5a2a33 100%),
+    var(--fibre),
+    linear-gradient(180deg, #f8edcf, var(--parchment) 45%, #e9d4a4);
+  box-shadow:
+    0 0 0 1px #8a6a3a,
+    0 8px 22px #000a,
+    inset 0 0 26px #a0763a59;
+  color: var(--quill);
+  scrollbar-color: #a0763a transparent;
+  scrollbar-width: thin;
+}
+
+.ledger-title {
+  margin: 2px 0 6px;
+  color: var(--quill-soft);
+  font: 700 calc(11px * var(--hud-type)) / 1 var(--display);
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.ledger-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ledger-divider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 2px 3px;
+  color: var(--quill-soft);
+  font: 700 calc(10.5px * var(--hud-type)) / 1 var(--display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ledger-divider svg {
+  flex: none;
+  width: calc(15px * var(--hud-type));
+  height: calc(15px * var(--hud-type));
+}
+
+.ledger-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #a0763a99, transparent);
+}
+
+.ledger-empty {
+  margin: 6px 0 2px;
+  color: var(--quill-soft);
+  font: italic calc(13px * var(--hud-type)) / 1.4 var(--book);
+  text-align: center;
+}
+
+/* Die Güte färbt Ring, Stein und Leuchten. */
+.shop [data-tier] {
+  --tier: var(--tier-schlicht);
+}
+
+.shop [data-tier="fein"] {
+  --tier: var(--tier-fein);
+}
+
+.shop [data-tier="edel"] {
+  --tier: var(--tier-edel);
+}
+
+.shop [data-tier="sagenhaft"] {
+  --tier: var(--tier-sagenhaft);
+}
+
+/* Eine Ware als Zeile: Medaillon, Name mit Platz und Güte, rechts der Preis. */
+.ware {
+  --medal: 30px;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--medal) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 8px 4px 6px;
+  border-radius: 6px;
+  color: var(--quill);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    translate var(--t-hover) var(--ease-out),
+    background-color var(--t-select);
+}
+
+/* Das Leuchten der Güte unter dem Zeiger. */
+.ware::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 1px var(--tier),
+    0 0 12px var(--tier);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-hover);
+}
+
+.ware:hover {
+  translate: 0 -2px;
+}
+
+.ware:hover::before {
+  opacity: 0.6;
+}
+
+/* Der Zauberer zeigt auf diese Ware (`data-wizard-highlight`, 1,6 s): Ihre Güte leuchtet ganz auf. */
+.ware[data-wizard-highlight] {
+  background-color: #ffd76a33;
+}
+
+.ware[data-wizard-highlight]::before {
+  opacity: 1;
+}
+
+.ware:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: var(--focus-paper);
+}
+
+/* Gewählt: rot gerahmt, mit Lesezeichen aus Wachspapier. */
+.ware[aria-selected="true"] {
+  background: #9e243014;
+  box-shadow: inset 0 0 0 1.5px var(--ink-red);
+}
+
+.ware[aria-selected="true"]:focus-visible {
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink-red),
+    var(--focus-paper);
+}
+
+.ware[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -2px;
+  width: 10px;
+  height: 22px;
+  background: linear-gradient(180deg, #b52a37, #7d1a24);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
+}
+
+/* Das Medaillon: Ring aus Metall in der Farbe der Güte, Pergament innen, das Symbol in Tinte. */
+.medallion {
+  --medal-ring: 3px;
+
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--medal, 44px);
+  height: var(--medal, 44px);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, #ffffff80, transparent 55%),
+    radial-gradient(
+      closest-side,
+      var(--parchment-light) calc(100% - var(--medal-ring)),
+      transparent calc(100% - var(--medal-ring) + 0.5px)
+    ),
+    conic-gradient(
+      from 210deg,
+      var(--tier),
+      #fffbe6 14%,
+      var(--tier) 30%,
+      #3a2414 52%,
+      var(--tier) 72%,
+      #fff3c4 88%,
+      var(--tier)
+    );
+  box-shadow: 0 1px 2px #0006;
+  color: var(--quill);
+}
+
+.medallion svg {
+  width: 56%;
+  height: 56%;
+}
+
+.medallion-gem {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--tier) 55%, #2a1a10);
+  box-shadow: 0 0 0 1px #3a2414b3;
+}
+
+.ware-text {
+  display: grid;
+  min-width: 0;
+}
+
+.ware-name,
+.ware-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ware-name {
+  font: 700 calc(13.5px * var(--hud-type)) / 1.2 var(--book);
+}
+
+.ware-meta {
+  color: var(--quill-soft);
+  font: italic 500 calc(11.5px * var(--hud-type)) / 1.25 var(--book);
+}
+
+.ware-cost {
+  display: grid;
+  justify-items: end;
+}
+
+/* Der Preis als Messingmarke. */
+.price-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px 2px 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--brass-light), var(--brass));
+  box-shadow:
+    0 0 0 1px var(--brass-dark),
+    0 1px 2px #0005;
+  color: var(--quill);
+  font: 700 calc(12px * var(--hud-type)) / 1.15 var(--display);
+  font-variant-numeric: lining-nums tabular-nums;
+  white-space: nowrap;
+}
+
+.price-token svg {
+  width: calc(13px * var(--hud-type));
+  height: calc(13px * var(--hud-type));
+}
+
+/* Zu teuer: matte Marke (5,2 : 1), blasser Ring, und auf Kacheln, was fehlt. */
+.ware[data-state="short"] .price-token {
+  background: #d8c49a;
+  box-shadow: 0 0 0 1px #a08a60;
+  color: #5a4630;
+}
+
+.ware[data-state="short"] .medallion {
+  opacity: 0.55;
+}
+
+.ware-missing {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  color: var(--ink-red);
+  font: italic 600 calc(11px * var(--hud-type)) / 1 var(--book);
+  white-space: nowrap;
+}
+
+.ware-owned {
+  color: var(--quill-soft);
+  font: italic 700 calc(11.5px * var(--hud-type)) / 1 var(--book);
+  white-space: nowrap;
+}
+
+/* Angelegt: ein grüner Wachstropfen. */
+.ware[data-worn] .ware-owned {
+  color: var(--ink-green);
+}
+
+.ware[data-worn] .ware-owned::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #a8e8a8, var(--wax-wear) 60%, #12381a);
+}
+
+/* Eben gekauft: ein Stempel in roter Tinte, bis eine andere Ware gewählt wird. */
+.ware-stamp {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  padding: 2px 5px;
+  translate: 0 -50%;
+  rotate: -10deg;
+  border: 2px solid var(--ink-red);
+  border-radius: 3px;
+  color: var(--ink-red);
+  font: 900 calc(10px * var(--hud-type)) / 1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
+  animation: ware-stamp 300ms var(--ease-stamp) both;
+}
+
+.ware[data-just-bought] .ware-owned {
+  visibility: hidden;
+}
+
+@keyframes ware-stamp {
+  from {
+    opacity: 0;
+    scale: 1.8;
+    rotate: -24deg;
+  }
+}
+
+/* Ab 300 px: Kacheln in zwei Spalten, mit Stein der Güte und dem, was fehlt. */
+@container ledger (min-width: 300px) {
+  .ledger-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .ware {
+    --medal: 40px;
+
+    grid-template-columns: var(--medal) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    column-gap: 9px;
+    row-gap: 1px;
+    min-height: 58px;
+    padding: 6px 8px;
+    background: #fffaf02e;
+    box-shadow: inset 0 0 0 1px #a0763a40;
+  }
+
+  .ware > .medallion {
+    grid-row: 1 / -1;
+  }
+
+  .ware-text {
+    display: contents;
+  }
+
+  .ware-cost {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ware-cost,
+  .ware-owned {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 2px;
+  }
+
+  .ware-missing {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .medallion-gem {
+    display: block;
+  }
+
+  .ware-stamp {
+    top: auto;
+    bottom: 7px;
+    translate: none;
+  }
+}
+
+/* Breite Rolle: größere Kacheln, der Name wächst auf 15 px, in L um das Schriftmaß mehr. */
+@container ledger (min-width: 520px) {
+  .ware {
+    --medal: calc(48px * var(--hud-type));
+
+    min-height: calc(68px * var(--hud-type));
+    padding: 8px 12px;
+    column-gap: 12px;
+  }
+
+  .ware-name {
+    font-size: calc(15px * var(--hud-type));
+  }
+
+  .ware-meta {
+    font-size: calc(12.5px * var(--hud-type));
+  }
+}
+
+/* Ruhig: nichts hebt sich, Übergänge nur in der Deckkraft. */
+html[data-reduced-motion] .shop .ware {
+  transition: background-color 120ms;
+}
+
+html[data-reduced-motion] .shop .ware:hover {
+  translate: none;
+}
+
+html[data-reduced-motion] .shop .ware::before {
+  transition: opacity 120ms;
+}
+
+html[data-reduced-motion] .shop .ware-stamp {
+  animation: none;
+}
+
+/* Optimiert: keine Faser, kein Schein, die Güte als feste Linie. */
+html[data-optimized-rendering] .shop .ledger-paper {
+  background: linear-gradient(180deg, #f8edcf, var(--parchment) 45%, #e9d4a4);
+}
+
+html[data-optimized-rendering] .shop .ware::before {
+  box-shadow: 0 0 0 2px var(--tier);
+}
+
+html[data-optimized-rendering] .shop .ware-stamp {
+  animation: none;
+}

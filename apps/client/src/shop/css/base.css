@@ -1,0 +1,232 @@
+/*
+ * Grundlagen des Zauberladens: Schriften, Farben, Bewegung und das Raster des Fensters.
+ *
+ * Wie die Karte ist der Laden eine feste Fläche mit runden Ecken im durchsichtigen Fenster. Holz,
+ * Pergament und Messing sind Verläufe, Rahmen kleine SVGs als `data:`-Bild. Die CSP erlaubt das für
+ * Bilder, für Schriften nicht: Cinzel und Alegreya liegen als Datei bei.
+ *
+ * Drei Größen: S als Grundmaß, M ab 700 × 560 (das Fenster öffnet mit 720 × 600) und L ab
+ * 1000 × 760. Die Bühne behält 12 : 5 und wird höchstens 1400 px breit, darunter bleiben
+ * mindestens `--hud-min` für Rolle und Kaufbrief. Die Bühne selbst füllt `stage.css`.
+ */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("../../fonts/cinzel-latin-wght-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("../../fonts/alegreya-latin-wght-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya";
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("../../fonts/alegreya-latin-wght-italic.woff2") format("woff2");
+}
+
+.shop {
+  /* Holz */
+  --wood-deep: #140c07;
+  --wood: #2c1a10;
+  --wood-light: #4a2e1b;
+  /* Messing */
+  --brass: #c9a24a;
+  --brass-light: #f3d68d;
+  --brass-dark: #6e5020;
+  --brass-shine: #fff3c4;
+  /* Pergament und Velin */
+  --parchment: #f2e3bf;
+  --parchment-light: #f8edcf;
+  --parchment-shade: #dcc493;
+  --parchment-edge: #b8925a;
+  --vellum: #f7efd8;
+  /* Tinte: --quill-soft hält 6,3 : 1 auf Pergament, --ink-red 6,9 : 1. */
+  --quill: #3a2414;
+  --quill-soft: #6b4a2c;
+  --ink-red: #8e1f2a;
+  --ink-green: #2f5a2a;
+  /* Wachs */
+  --wax: #9e2430;
+  --wax-buy: #9e2430;
+  --wax-wear: #2f7a3a;
+  --wax-off: #7a7060;
+  --wax-locked: #5a4a66;
+  --candle: #ffcf7a;
+  /* Güte der Waren, nach dem Rang ihres Preises */
+  --tier-schlicht: #b39b6e;
+  --tier-fein: #5fc7b0;
+  --tier-edel: #b48cff;
+  --tier-sagenhaft: #ffd45c;
+  /*
+   * Fokus auf Holz und auf Papier. Jeder Fokus trägt dazu einen durchsichtigen Umriss: Bei hohem
+   * Kontrast fallen Schatten weg, den Umriss aber malt das System in seiner Farbe.
+   */
+  --focus-wood: 0 0 0 2px #140c07, 0 0 0 4px #f3d68d;
+  --focus-paper: 0 0 0 2px #f8edcf, 0 0 0 4px #8e1f2a;
+  /* Schrift: Cinzel für Titel, Etiketten und Zahlen, Alegreya für Text */
+  --display: "Cinzel", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --book: "Alegreya", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  /* Bewegung */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-stamp: cubic-bezier(0.2, 0.9, 0.3, 1.25);
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --t-hover: 140ms;
+  --t-select: 200ms;
+  --t-panel: 280ms;
+  --t-unroll: 560ms;
+  /* Maße der Größe S */
+  --pad: 10px;
+  /* Schriftmaß von Rolle, Kaufbrief und Siegel. L hebt es, sonst stünde kleine Schrift in großen Kacheln. */
+  --hud-type: 1;
+  --gap: 8px;
+  --head-h: 40px;
+  --hud-min: 184px;
+  --frame-w: 16px;
+  --stage-aspect: 2.4;
+  --stage-max: 1400px;
+  /* Ab 1400 px rücken Bühne, Rolle und Brief zusammen in die Mitte. */
+  --inset: max(var(--pad), calc((100vw - var(--stage-max)) / 2));
+  /* Ein Messingrahmen mit Eckbeschlägen und Nieten, für `border-image`. */
+  --brass-frame: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f3d68d'/%3E%3Cstop offset='.5' stop-color='%23c9a24a'/%3E%3Cstop offset='1' stop-color='%236e5020'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23b)'%3E%3Crect x='3' y='3' width='90' height='90' rx='6' stroke-width='3'/%3E%3Crect x='9' y='9' width='78' height='78' rx='3' stroke-width='1.2'/%3E%3C/g%3E%3Cg fill='url(%23b)'%3E%3Cpath d='M2 2h25l-7 7H9v11l-7 7zM94 2H69l7 7h11v11l7 7zM2 94h25l-7-7H9V76l-7-7zM94 94H69l7-7h11V76l7-7z'/%3E%3Ccircle cx='15' cy='15' r='2.6'/%3E%3Ccircle cx='81' cy='15' r='2.6'/%3E%3Ccircle cx='15' cy='81' r='2.6'/%3E%3Ccircle cx='81' cy='81' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
+
+  position: relative;
+  display: grid;
+  grid-template:
+    "head head" var(--head-h)
+    "stage stage" auto
+    "ledger brief" minmax(var(--hud-min), 1fr)
+    / minmax(0, 1.3fr) minmax(200px, 1fr);
+  gap: var(--gap);
+  height: 100vh;
+  padding: 0 var(--inset) var(--pad);
+  border-radius: 22px;
+  background:
+    radial-gradient(40% 30% at 28% 62%, #ffcf7a14, transparent),
+    radial-gradient(ellipse 70% 40% at 50% 0%, #ffcf7a1c, transparent),
+    repeating-linear-gradient(
+      90deg,
+      #ffffff05 0 2px,
+      transparent 2px 9px,
+      #0000000f 9px 11px,
+      transparent 11px 29px
+    ),
+    linear-gradient(180deg, var(--wood-light), var(--wood) 32%, var(--wood-deep));
+  box-shadow:
+    inset 0 0 0 2px var(--brass-dark),
+    inset 0 0 0 4px #0009,
+    inset 0 0 48px #000b;
+  color: var(--parchment);
+  font-family: var(--book);
+  /* Alegreya setzt Ziffern sonst als Mediävalziffern: Die 0 sähe aus wie ein o. */
+  font-variant-numeric: lining-nums;
+  overflow: hidden;
+}
+
+html[data-surface="preview"] .shop {
+  border-radius: 0;
+}
+
+/* Größe M: das Fenster, wie es aufgeht. */
+@media (min-width: 700px) and (min-height: 560px) {
+  .shop {
+    --pad: 14px;
+    --gap: 10px;
+    --head-h: 44px;
+    --hud-min: 228px;
+    --frame-w: 20px;
+  }
+}
+
+/* Größe L: Die Rolle bekommt mehr Platz, der Brief mindestens 300 px. */
+@media (min-width: 1000px) and (min-height: 760px) {
+  .shop {
+    --pad: 18px;
+    --gap: 14px;
+    --head-h: 52px;
+    --hud-min: 300px;
+    --frame-w: 22px;
+    --hud-type: 1.2;
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+  }
+}
+
+/*
+ * Die Bühne im Seitenverhältnis 12 : 5. So liegen Tresen, Runen und Blase in Prozent immer an
+ * derselben Stelle der Szene. Ihre Höhe lässt dem Kopf, zwei Abständen und der unteren Zeile Platz.
+ */
+.shop-stage,
+.skeleton-stage {
+  position: relative;
+  grid-area: stage;
+  justify-self: center;
+  width: min(
+    100%,
+    var(--stage-max),
+    calc(
+      (100vh - var(--head-h) - var(--hud-min) - 2 * var(--gap) - 6px - var(--pad)) *
+        var(--stage-aspect)
+    )
+  );
+  aspect-ratio: var(--stage-aspect);
+  border-radius: 10px;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: 0 10px 24px #000b;
+}
+
+/* Der Messingrahmen liegt über allem, was die Bühne zeigt. */
+.shop-stage::after,
+.skeleton-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  border: var(--frame-w) solid transparent;
+  border-image: var(--brass-frame) 28 / var(--frame-w) stretch;
+  pointer-events: none;
+}
+
+/* Ein Knopf aus Messing, etwa im Zettel eines Fehlers. */
+.shop .brass-button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #f8e2a6, #d9b45e 45%, #a87e34);
+  box-shadow:
+    0 0 0 1px #5a3e16,
+    0 2px 6px #0007;
+  color: var(--quill);
+  font: 700 12px/1 var(--display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: translate var(--t-hover) var(--ease-out);
+}
+
+.shop .brass-button:hover:enabled {
+  background: linear-gradient(180deg, #fff0c4, #e6c370 45%, #b58b3d);
+}
+
+.shop .brass-button:active:enabled {
+  translate: 0 1px;
+}
+
+.shop .brass-button:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: var(--focus-wood);
+}
+
+/* Ruhig: Knöpfe bewegen sich nicht. */
+html[data-reduced-motion] .shop .brass-button {
+  transition: none;
+}
