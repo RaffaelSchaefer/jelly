@@ -191,11 +191,11 @@ describe("suggestionFor", () => {
     const rich = context({}, 10);
     expect(suggestionFor(rich, ware("pixel-glasses", 10))).toMatchObject({
       topic: "buy.suggestNext",
-      item: { cosmetic: { id: "hood" } },
+      item: { cosmetic: { id: "sprout" } },
     });
     expect(suggestionFor(context(), ware("pixel-glasses"))).toMatchObject({
       topic: "buy.suggestSave",
-      item: { cosmetic: { id: "hood" } },
+      item: { cosmetic: { id: "sprout" } },
     });
   });
 

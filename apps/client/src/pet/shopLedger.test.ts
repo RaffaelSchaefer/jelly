@@ -47,7 +47,7 @@ function ware(id: string, me: Me = PREVIEW_ME) {
 describe("ledgerView", () => {
   it("stellt Kaufbares vor zu Teures und beides vor die Truhe", () => {
     expect(view(PREVIEW_ME)).toEqual({
-      wares: ["pixel-glasses", "hood", "crown"],
+      wares: ["sprout", "pixel-glasses", "hood", "crown"],
       chest: ["headset", "headset-neutral", "beanie"],
     });
   });
@@ -57,6 +57,7 @@ describe("ledgerView", () => {
       "headset",
       "headset-neutral",
       "beanie",
+      "sprout",
       "pixel-glasses",
       "hood",
       "crown",
@@ -68,6 +69,7 @@ describe("ledgerView", () => {
       "headset",
       "headset-neutral",
       "beanie",
+      "sprout",
       "pixel-glasses",
       "hood",
       "crown",
@@ -81,8 +83,13 @@ describe("ledgerView", () => {
 
   it("lässt die eben gekaufte Ware oben stehen, bis eine andere gewählt wird", () => {
     const bought = jelly({ coins: 0, cosmetics: [...PREVIEW_ME.cosmetics, "pixel-glasses"] });
-    expect(view(bought, "pixel-glasses").wares).toEqual(["pixel-glasses", "hood", "crown"]);
-    expect(view(bought).wares).toEqual(["hood", "crown"]);
+    expect(view(bought, "pixel-glasses").wares).toEqual([
+      "sprout",
+      "pixel-glasses",
+      "hood",
+      "crown",
+    ]);
+    expect(view(bought).wares).toEqual(["sprout", "hood", "crown"]);
     expect(view(bought).chest).toContain("pixel-glasses");
   });
 
@@ -95,6 +102,7 @@ describe("ledgerView", () => {
   it("geht die Rolle von oben nach unten durch", () => {
     const items = shopItems(PREVIEW_CATALOG, PREVIEW_ME);
     expect(ids(ledgerOrder(ledgerView(items, PREVIEW_ME)))).toEqual([
+      "sprout",
       "pixel-glasses",
       "hood",
       "crown",
@@ -174,13 +182,13 @@ describe("shopSummary", () => {
   });
 
   it("zählt, was sich das Jelly leisten kann", () => {
-    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir eine Ware leisten.");
-    expect(summary(jelly({ coins: 4 }))).toBe("Mit 4 Münzen kannst du dir 2 Waren leisten.");
+    expect(summary(jelly({ coins: 2 }))).toBe("Mit 2 Münzen kannst du dir eine Ware leisten.");
+    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 2 Waren leisten.");
   });
 
   it("nennt, was zur günstigsten Ware fehlt", () => {
-    expect(summary(jelly({ coins: 2 }))).toBe("Für die Pixel-Brille fehlt dir noch 1 Münze.");
-    expect(summary(jelly({ coins: 0 }))).toBe("Für die Pixel-Brille fehlen dir noch 3 Münzen.");
+    expect(summary(jelly({ coins: 1 }))).toBe("Für den Spross fehlt dir noch 1 Münze.");
+    expect(summary(jelly({ coins: 0 }))).toBe("Für den Spross fehlen dir noch 2 Münzen.");
   });
 
   it("nennt eine unbekannte Ware ohne Artikel", () => {

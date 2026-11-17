@@ -89,6 +89,15 @@ export const PREVIEW_CATALOG: Catalog = {
       price: 2,
     },
     {
+      key: "sprout",
+      name: "Spross",
+      scope: "permanent",
+      slot: "head",
+      colorable: false,
+      unlock: "shop",
+      price: 2,
+    },
+    {
       key: "party-hat",
       name: "Party-Hut",
       scope: "permanent",

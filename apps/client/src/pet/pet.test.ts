@@ -31,6 +31,7 @@ describe("shop", () => {
       ["headset", "owned", 0],
       ["headset-neutral", "owned", 0],
       ["beanie", "owned", 0],
+      ["sprout", "affordable", 0],
       ["pixel-glasses", "affordable", 0],
       ["hood", "short", 1],
       ["crown", "short", 3],
@@ -48,7 +49,7 @@ describe("shop", () => {
       ...PREVIEW_CATALOG,
       cosmetics: [
         { ...PREVIEW_CATALOG.cosmetics[0], price: undefined },
-        { ...PREVIEW_CATALOG.cosmetics[0], key: "sprout" },
+        { ...PREVIEW_CATALOG.cosmetics[0], key: "top-hat" },
       ],
     };
     expect(shopItems(catalog, PREVIEW_ME)).toEqual([]);
