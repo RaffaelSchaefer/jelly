@@ -40,6 +40,7 @@ describe("Cosmetic-Modelle", () => {
     expect(hasCosmeticModel("crown")).toBe(true);
     expect(hasCosmeticModel("golden-cup")).toBe(true);
     expect(hasCosmeticModel("sprout")).toBe(true);
+    expect(hasCosmeticModel("schnoerbi-mask")).toBe(true);
     expect(hasCosmeticModel("glow-aura")).toBe(false);
     expect(hasCosmeticModel("unbekannt")).toBe(false);
     expect(hasCosmeticModel("constructor")).toBe(false);

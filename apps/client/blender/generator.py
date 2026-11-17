@@ -1,7 +1,7 @@
 """The frame every cosmetic generator shares: materials, meshes in Three.js coordinates and the flags.
 
 A generator (`build_party_hat.py`, `build_hood.py`, `build_crown.py`, `build_golden_cup.py`,
-`build_sprout.py`) holds only its numbers and a `build(collection)` and ends with `generator.run(...)`:
+`build_sprout.py`, `build_schnoerbi_mask.py`) holds only its numbers and a `build(collection)` and ends with `generator.run(...)`:
 
     blender blender/cosmetics.blend --background --python blender/build_crown.py -- [--save] [--export]
 
