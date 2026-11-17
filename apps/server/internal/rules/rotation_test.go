@@ -8,6 +8,11 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
 
+// testRoom has the shape of the old fixed room of 21 by 40, for which these cases were written.
+func testRoom() rules.RoomMeters {
+	return rules.RoomMeters{Width: 21, Depth: 40}
+}
+
 func TestValidateAreaChecksTheRotatedCorners(t *testing.T) {
 	cases := []struct {
 		name string
@@ -32,7 +37,7 @@ func TestValidateAreaChecksTheRotatedCorners(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		testCase.area.Kind = rules.AreaKindNone
-		err := rules.ValidateArea(testCase.area)
+		err := rules.ValidateArea(testCase.area, testRoom())
 		if testCase.want != (err == nil) {
 			t.Errorf("%s: %v", testCase.name, err)
 		}
@@ -57,7 +62,7 @@ func TestFreeFloorFollowsTheRotationOfABlockingZone(t *testing.T) {
 		{"beside the turned table", rules.StagePoint{X: 56, Y: 47.5}, true},
 	}
 	for _, testCase := range cases {
-		if got := rules.IsOnFreeFloor(testCase.point, areas); got != testCase.want {
+		if got := rules.IsOnFreeFloor(testCase.point, areas, testRoom()); got != testCase.want {
 			t.Errorf("%s: %v", testCase.name, got)
 		}
 	}
@@ -66,9 +71,9 @@ func TestFreeFloorFollowsTheRotationOfABlockingZone(t *testing.T) {
 func TestHomeSpotsStayInsideARotatedArea(t *testing.T) {
 	area := rules.Area{X: 30, Y: 40, Width: 40, Height: 12, Rotation: 30, Blocks: true}
 	for place := range 200 {
-		home := rules.CalculateHomeSpot(area, place)
+		home := rules.CalculateHomeSpot(area, place, testRoom())
 		point := rules.StagePoint(home)
-		if rules.IsOnFreeFloor(point, []rules.Area{area}) {
+		if rules.IsOnFreeFloor(point, []rules.Area{area}, testRoom()) {
 			t.Fatalf("place %d lies outside at %+v", place, home)
 		}
 	}
@@ -92,7 +97,7 @@ func TestAMapZoneTakesItsRotationAlong(t *testing.T) {
 		t.Fatalf("rotation %v", got)
 	}
 	zone.Rotation = 400
-	if invalid := rules.ListInvalidMapZones([]rules.MapZone{zone}); len(invalid) != 1 {
+	if invalid := rules.ListInvalidMapZones([]rules.MapZone{zone}, testRoom()); len(invalid) != 1 {
 		t.Fatalf("invalid: %v", invalid)
 	}
 }
