@@ -9,10 +9,10 @@
  */
 
 import { FRAME_RATE } from "./frameRate";
+import { PREVIEW_CATALOG } from "./previewCatalog";
 import {
   PET_SIZE,
   VOLUME,
-  type Catalog,
   type Game,
   type Me,
   type PetColor,
@@ -21,180 +21,10 @@ import {
   type Settings,
 } from "./types";
 
+export { PREVIEW_CATALOG };
+
 /** Die Standardregeln des Servers, soweit die App sie kennt. */
 export const PREVIEW_RULES: Rules = { near_distance: 6, xp_per_level: 100, coins_per_level: 1 };
-
-/** Auszug aus dem Server-Katalog. */
-export const PREVIEW_CATALOG: Catalog = {
-  colors: [
-    { key: "mint", label: "Aqua" },
-    { key: "lilac", label: "Flieder" },
-    { key: "peach", label: "Pfirsich" },
-    { key: "lime", label: "Hellgrün" },
-  ],
-  emotes: [
-    { key: "wave", label: "Winken" },
-    { key: "dance", label: "Tanzen" },
-    { key: "cheer", label: "Jubeln" },
-    { key: "laugh", label: "Lachen" },
-    { key: "sleep", label: "Schlafen" },
-    { key: "love", label: "Herz" },
-    { key: "shrug", label: "Schulterzucken" },
-    { key: "point", label: "Zeigen" },
-    { key: "think", label: "Grübeln" },
-    { key: "angry", label: "Wütend" },
-    { key: "sad", label: "Traurig" },
-    { key: "shy", label: "Schüchtern" },
-  ],
-  partner_emotes: [
-    { key: "hop", label: "Zusammen hüpfen" },
-    { key: "spin", label: "Zusammen drehen" },
-    { key: "wiggle", label: "Zusammen wackeln" },
-  ],
-  signs: [
-    { key: "any", label: "Suche Mitspieler" },
-    { key: "cs2", label: "Suche CS2" },
-    { key: "lol", label: "Suche LoL" },
-    { key: "rocket-league", label: "Suche Rocket League" },
-    { key: "mario-kart", label: "Suche Mario Kart" },
-    { key: "minecraft", label: "Suche Minecraft" },
-    { key: "board-game", label: "Suche Brettspiel" },
-    { key: "food", label: "Wer holt mit Essen?" },
-  ],
-  cosmetics: [
-    {
-      key: "headset",
-      name: "Headset",
-      scope: "permanent",
-      slot: "head",
-      colorable: false,
-      unlock: "shop",
-      price: 1,
-    },
-    {
-      key: "headset-neutral",
-      name: "Headset schlicht",
-      scope: "permanent",
-      slot: "head",
-      colorable: false,
-      unlock: "shop",
-      price: 1,
-    },
-    {
-      key: "beanie",
-      name: "Mütze",
-      scope: "permanent",
-      slot: "head",
-      colorable: true,
-      unlock: "shop",
-      price: 2,
-    },
-    {
-      key: "sprout",
-      name: "Spross",
-      scope: "permanent",
-      slot: "head",
-      colorable: false,
-      unlock: "shop",
-      price: 2,
-    },
-    {
-      key: "party-hat",
-      name: "Party-Hut",
-      scope: "permanent",
-      slot: "head",
-      colorable: false,
-      unlock: "event",
-    },
-    {
-      key: "pixel-glasses",
-      name: "Pixel-Brille",
-      scope: "permanent",
-      slot: "face",
-      colorable: false,
-      unlock: "shop",
-      price: 3,
-    },
-    {
-      key: "schnoerbi-mask",
-      name: "Schnörbi-Maske",
-      scope: "permanent",
-      slot: "face",
-      colorable: false,
-      unlock: "shop",
-      price: 3,
-    },
-    {
-      key: "hood",
-      name: "Kapuze",
-      scope: "permanent",
-      slot: "head",
-      colorable: true,
-      unlock: "shop",
-      price: 4,
-    },
-    {
-      key: "crown",
-      name: "Krone",
-      scope: "lan",
-      slot: "head",
-      colorable: false,
-      unlock: "shop",
-      price: 6,
-    },
-    {
-      key: "golden-cup",
-      name: "Goldener Pokal",
-      scope: "permanent",
-      slot: "hands",
-      colorable: false,
-      unlock: "award",
-    },
-  ],
-  cosmetic_slots: [
-    { key: "head", label: "Kopf" },
-    { key: "hands", label: "Hände" },
-    { key: "body", label: "Körper" },
-    { key: "face", label: "Gesicht" },
-    { key: "aura", label: "Aura" },
-  ],
-  cosmetic_colors: ["#ffffff", "#2b2d42", "#e5534b", "#ff9f43", "#ffd45c"],
-  achievements: [
-    {
-      key: "hatched",
-      title: "Frisch geschlüpft",
-      description: "Willkommen auf der LAN!",
-      scope: "permanent",
-      secret: false,
-      goal: 1,
-    },
-    {
-      key: "hydrated",
-      title: "Gut hydriert",
-      description: "10 Getränke geholt.",
-      scope: "lan",
-      secret: false,
-      goal: 10,
-    },
-    {
-      key: "tournament",
-      title: "Turnierheld",
-      description: "Bei 3 Events mitgemacht.",
-      scope: "lan",
-      secret: false,
-      goal: 3,
-    },
-    {
-      key: "marathon",
-      title: "Marathon",
-      description: "10 Stunden am Stück aktiv.",
-      scope: "lan",
-      secret: false,
-      goal: 10,
-      record_unit: "Stunden",
-    },
-  ],
-};
 
 /** Ein Spieler auf Level 3, mitten in einer laufenden LAN. */
 export const PREVIEW_ME: Me = {

@@ -39,6 +39,10 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Aus Sonnengold geschmiedet, die Büschel vom Plapperkauz. Wer sie trägt, schnattert bis zum Morgen.",
     article: "die",
   },
+  "long-schnoerbi": {
+    lore: "Gestrickt aus einem endlosen Wollknäuel. Wo er aufhört, weiß keiner so genau.",
+    article: "den",
+  },
   hood: {
     lore: "Für geheime Wege durch die Halle. Niemand erkennt dich. Fast niemand.",
     article: "die",
