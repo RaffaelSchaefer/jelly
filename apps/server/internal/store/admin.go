@@ -49,10 +49,34 @@ type NewAward struct {
 	CosmeticKey *string `json:"cosmetic_key"`
 }
 
-// ListPlayers returns players whose name contains `search`, newest first.
+// ListPlayers returns players whose name contains `search`, newest first. Balances and purchases
+// come from one read snapshot, so a purchase between the two queries cannot mix newer ownership
+// with an older balance.
 func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSummary, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
+	transaction, err := store.readDB.BeginTx(queryCtx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin player list: %w", err)
+	}
+	defer func() { _ = transaction.Rollback() }()
+	players, err := searchPlayers(queryCtx, transaction, search)
+	if err != nil {
+		return nil, err
+	}
+	err = loadPurchasesOfPlayers(queryCtx, transaction, players)
+	if err != nil {
+		return nil, err
+	}
+	err = transaction.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("commit player list: %w", err)
+	}
+	return players, nil
+}
+
+// searchPlayers reads the player rows whose name contains `search`, newest first.
+func searchPlayers(ctx context.Context, database querier, search string) ([]PlayerSummary, error) {
 	escaper := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	pattern := "%" + escaper.Replace(rules.BuildNameKey(strings.TrimSpace(search))) + "%"
 	const searchPlayersSQL = `SELECT p.id, p.name, p.color, p.is_bot, p.hidden_at,
@@ -61,8 +85,7 @@ func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSum
 				WHERE e2.player_id = p.id ORDER BY l2.starts_at DESC LIMIT 1), 0)
 		FROM players p LEFT JOIN lan_entries e ON e.player_id = p.id
 		WHERE p.name_key LIKE ? ESCAPE '\' GROUP BY p.id ORDER BY p.id DESC LIMIT ?`
-	rows, err := store.readDB.QueryContext(queryCtx, searchPlayersSQL,
-		pattern, maxPlayerListRows)
+	rows, err := database.QueryContext(ctx, searchPlayersSQL, pattern, maxPlayerListRows)
 	if err != nil {
 		return nil, fmt.Errorf("list players: %w", err)
 	}
@@ -82,10 +105,6 @@ func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSum
 	}
 	if rowsErr := rows.Err(); rowsErr != nil {
 		return nil, fmt.Errorf("list players: %w", rowsErr)
-	}
-	purchaseErr := loadPurchasesOfPlayers(queryCtx, store.readDB, players)
-	if purchaseErr != nil {
-		return nil, purchaseErr
 	}
 	return players, nil
 }
