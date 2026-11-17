@@ -41,6 +41,7 @@ describe("Cosmetic-Modelle", () => {
     expect(hasCosmeticModel("golden-cup")).toBe(true);
     expect(hasCosmeticModel("sprout")).toBe(true);
     expect(hasCosmeticModel("schnoerbi-mask")).toBe(true);
+    expect(hasCosmeticModel("long-schnoerbi")).toBe(true);
     expect(hasCosmeticModel("glow-aura")).toBe(false);
     expect(hasCosmeticModel("unbekannt")).toBe(false);
     expect(hasCosmeticModel("constructor")).toBe(false);
@@ -53,6 +54,7 @@ describe("Cosmetic-Modelle", () => {
     expect(model.getAttribute("normal").count).toBe(count);
     expect(model.getAttribute("aColor").count).toBe(count);
     expect(model.getAttribute("aGlowRange").count).toBe(count);
+    expect(model.getAttribute("aFluff").count).toBe(count);
     model.computeBoundingBox();
     expect(model.boundingBox!.max.y + COSMETIC_OUTLINE).toBeLessThan(BUBBLE_Y);
   });
@@ -187,7 +189,10 @@ function sceneJson(byteLength: number) {
     meshes: [{ primitives: [primitive(0)] }, { primitives: [primitive(1)] }],
     materials: [
       { pbrMetallicRoughness: { baseColorFactor: [1, 0, 0, 1] } },
-      { pbrMetallicRoughness: { baseColorFactor: [0, 0, 1, 1] }, extras: { glow: 0.5 } },
+      {
+        pbrMetallicRoughness: { baseColorFactor: [0, 0, 1, 1] },
+        extras: { glow: 0.5, fluff: 0.75 },
+      },
     ],
     buffers: [{ byteLength }],
     bufferViews: [
@@ -240,7 +245,7 @@ describe("loadModelParts", () => {
     const parts = await loadModelParts(url);
     expect([...parts.keys()].sort()).toEqual(["beard", "hat"]);
     const hat = parts.get("hat")!;
-    for (const name of ["position", "normal", "aColor", "aGlowRange"]) {
+    for (const name of ["position", "normal", "aColor", "aGlowRange", "aFluff"]) {
       expect(hat.getAttribute(name).count).toBe(6);
     }
     expect(hat.getAttribute("uv")).toBeUndefined();
@@ -258,6 +263,10 @@ describe("loadModelParts", () => {
       hat.getAttribute("aGlowRange").getZ(0),
       hat.getAttribute("aGlowRange").getZ(3),
     ]).toEqual([1, 0.5]);
+    // Ohne `fluff` glänzt ein Teil wie immer, das blaue ist zu drei Vierteln Plüsch.
+    expect([hat.getAttribute("aFluff").getX(0), hat.getAttribute("aFluff").getX(3)]).toEqual([
+      0, 0.75,
+    ]);
   });
 
   it("gibt für dieselbe URL dasselbe Promise", () => {

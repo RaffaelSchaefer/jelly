@@ -16,7 +16,8 @@ This writes `blender/cosmetics.blend` with:
   frame **Sichtbereich**, which shows what the app's camera sees. None of it can be selected or is
   exported.
 - **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `headset-neutral`, `beanie`, `party-hat`,
-  `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`). The collection name is the id.
+  `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`). The collection name is
+  the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -30,6 +31,8 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    cosmetic like the pet (jelly gloss, light lower edge, outline in the pet's ink colour).
    Textures, roughness and transparency are ignored. A custom property `glow` (0–1) on the material
    dampens the light lower edge: dark colours turn grey there otherwise (the wizard's hat uses 0.15).
+   A custom property `fluff` (0–1) makes it plush: no jelly gloss, fur grain and a light, fuzzy rim
+   (the long Schnörbi's fur uses 1).
 4. Use **Shade Smooth**. The outline is the mesh pushed out along its normals, so hard edges crack open.
 5. Cosmetics are drawn on top of the head like a sticker. Parts that would be hidden behind the head
    (the back of a hood, the far ear cup) still show, so model only what is seen from the front.
