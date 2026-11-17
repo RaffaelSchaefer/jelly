@@ -51,15 +51,15 @@ const EVERY_WARE = [
   "beanie",
   "sprout",
   "pixel-glasses",
+  "schnoerbi-mask",
   "hood",
   "crown",
-  "schnoerbi-mask",
 ];
 
 describe("ledgerView", () => {
   it("stellt Kaufbares vor zu Teures und beides vor die Truhe", () => {
     expect(view(PREVIEW_ME)).toEqual({
-      wares: ["sprout", "pixel-glasses", "hood", "crown", "schnoerbi-mask"],
+      wares: ["sprout", "pixel-glasses", "schnoerbi-mask", "hood", "crown"],
       chest: ["headset", "headset-neutral", "beanie"],
     });
   });
@@ -82,11 +82,11 @@ describe("ledgerView", () => {
     expect(view(bought, "pixel-glasses").wares).toEqual([
       "sprout",
       "pixel-glasses",
+      "schnoerbi-mask",
       "hood",
       "crown",
-      "schnoerbi-mask",
     ]);
-    expect(view(bought).wares).toEqual(["sprout", "hood", "crown", "schnoerbi-mask"]);
+    expect(view(bought).wares).toEqual(["sprout", "schnoerbi-mask", "hood", "crown"]);
     expect(view(bought).chest).toContain("pixel-glasses");
   });
 
@@ -101,9 +101,9 @@ describe("ledgerView", () => {
     expect(ids(ledgerOrder(ledgerView(items, PREVIEW_ME)))).toEqual([
       "sprout",
       "pixel-glasses",
+      "schnoerbi-mask",
       "hood",
       "crown",
-      "schnoerbi-mask",
       "headset",
       "headset-neutral",
       "beanie",
@@ -181,7 +181,7 @@ describe("shopSummary", () => {
 
   it("zählt, was sich das Jelly leisten kann", () => {
     expect(summary(jelly({ coins: 2 }))).toBe("Mit 2 Münzen kannst du dir eine Ware leisten.");
-    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 2 Waren leisten.");
+    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 3 Waren leisten.");
   });
 
   it("nennt, was zur günstigsten Ware fehlt", () => {

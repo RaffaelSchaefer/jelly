@@ -277,12 +277,12 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
   },
   "schnoerbi-mask": {
     offer: [
-      "Die Schnörbi-Maske! Sagenhaft selten, sagenhaft albern.",
+      "Die Schnörbi-Maske! Golden, flauschig, herrlich albern.",
       "Gold, Schnabel, Büschel. Mehr Würde passt in keine Maske.",
     ],
     short: ["Die Schnörbi-Maske will noch einen Beutel Gold."],
     worn: ["Schnörbi? Fast hätte ich dich nicht erkannt."],
-    bought: ["Sagenhaft, {name}! Schnatter mit Stil."],
+    bought: ["Herrlich, {name}! Schnatter mit Stil."],
     hover: ["Psst! Die Büschel wackeln, wenn du lachst."],
   },
   hood: {

@@ -33,9 +33,9 @@ describe("shop", () => {
       ["beanie", "owned", 0],
       ["sprout", "affordable", 0],
       ["pixel-glasses", "affordable", 0],
+      ["schnoerbi-mask", "affordable", 0],
       ["hood", "short", 1],
       ["crown", "short", 3],
-      ["schnoerbi-mask", "short", 3],
     ]);
   });
   it("counts an awarded part as owned, the server would not sell it", () => {
