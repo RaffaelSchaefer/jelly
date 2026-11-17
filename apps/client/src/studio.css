@@ -39,8 +39,8 @@
 .opens-up { translate: -50% calc(-100% - 20px); transform-origin: 50% 100%; }
 .opens-down { translate: -50% 18px; transform-origin: 50% 0; }
 .opens-left { translate: calc(-100% - 22px) -50%; transform-origin: 100% 50%; }
-/* Links fehlt der Platz: Solange die Farben offen sind, rückt der Blob nach rechts, die drei Farben enden 8 px vor dem Fensterrand. */
-.studio:has(.pop.at-farbe) .at-farbe { --x: max(var(--anchor-farbe-x), calc(50% - 36px)); }
+/* Links fehlt der Platz: Solange die Farben offen sind, rückt der Blob nach rechts, die vier Farben enden 8 px vor dem Fensterrand. */
+.studio:has(.pop.at-farbe) .at-farbe { --x: max(var(--anchor-farbe-x), calc(50% + 4px)); }
 .opens-right { translate: 18px -50%; transform-origin: 0 50%; }
 .ink .pop > button { animation: pop-ink 200ms ease-out 140ms both; }
 

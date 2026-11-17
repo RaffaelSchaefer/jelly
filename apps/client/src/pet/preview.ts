@@ -30,6 +30,7 @@ export const PREVIEW_CATALOG: Catalog = {
     { key: "mint", label: "Aqua" },
     { key: "lilac", label: "Flieder" },
     { key: "peach", label: "Pfirsich" },
+    { key: "lime", label: "Hellgrün" },
   ],
   emotes: [
     { key: "wave", label: "Winken" },

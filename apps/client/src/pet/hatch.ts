@@ -15,6 +15,7 @@ const COLOR_LINES: Record<PetColor, string> = {
   mint: "Aqua! Frisch wie ein Schluck Wasser.",
   lilac: "Flieder! Das ist so was von meins.",
   peach: "Pfirsich! Süß und ein bisschen frech.",
+  lime: "Hellgrün! Ich wachse über mich hinaus.",
 };
 
 /** Datum als „25.11., 12:00“. */

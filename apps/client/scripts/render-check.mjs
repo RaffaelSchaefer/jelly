@@ -41,7 +41,7 @@ const VARIANTS = {
 };
 
 /** Wer im Duett herüberkommt. */
-const PARTNER = { color: "peach", equipped: {} };
+const PARTNER = { color: "lime", equipped: {} };
 
 /** Dieselben Zustände für jede Variante. `every` läuft regelmäßig erneut, `setup` einmal. */
 const SCENES = {
