@@ -47,8 +47,13 @@ const NO_SCALE = new Vector3(1, 1, 1);
 /** Faces such as signs and screens sit this far in front of their board, so the two never flicker. */
 export const FACE_LIFT = 0.003;
 
-/** The glow colors of the jellies, the accent colors of the whole venue. */
-export const GLOW_COLORS = Object.values(JELLY_COLORS).map((palette) => palette.glow);
+/**
+ * The glow colors of the first three jelly colors, the accent colors of the whole venue. The shaders
+ * of floor, LEDs, screens and rug hold exactly three, so a new jelly color leaves the venue as it is.
+ */
+export const GLOW_COLORS = [JELLY_COLORS.mint, JELLY_COLORS.lilac, JELLY_COLORS.peach].map(
+  (palette) => palette.glow,
+);
 
 /** Seconds since the page opened. Every moving prop reads this one uniform. */
 export const VENUE_TIME = { value: 0 };

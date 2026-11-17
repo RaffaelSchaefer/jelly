@@ -25,6 +25,7 @@ export const JELLY_COLORS = {
   mint: { hex: "#2059ed", glow: "#23f5dc", outline: "#16248a", ink: "#0b1550" },
   lilac: { hex: "#8045df", glow: "#f1a5f3", outline: "#45188a", ink: "#2a0f52" },
   peach: { hex: "#ed7448", glow: "#ffdc8a", outline: "#8a3216", ink: "#4f1c0b" },
+  lime: { hex: "#36b83c", glow: "#c6ff66", outline: "#1f6b24", ink: "#0e3a12" },
 } as const satisfies Record<string, JellyPalette>;
 
 /** Schlüssel einer Farbvariante. */

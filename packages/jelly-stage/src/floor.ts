@@ -4,10 +4,11 @@
  * @module
  */
 
-import { JELLY_COLORS } from "@jelly/scene/colors";
 import { Color, Mesh, PlaneGeometry, ShaderMaterial, type Object3D } from "three";
 
 import type { RoomSize } from "./world.ts";
+
+import { GLOW_COLORS } from "./props.ts";
 
 import fragmentShader from "./shaders/floor.frag.glsl?raw";
 import vertexShader from "./shaders/floor.vert.glsl?raw";
@@ -40,7 +41,7 @@ export function createFloor(): Mesh {
       uTile: { value: new Color(TILE_COLOR) },
       uGrout: { value: new Color(GROUT_COLOR) },
       uBackground: { value: new Color(BACKGROUND_COLOR) },
-      uTints: { value: Object.values(JELLY_COLORS).map((palette) => new Color(palette.glow)) },
+      uTints: { value: GLOW_COLORS.map((color) => new Color(color)) },
     },
     vertexShader,
     fragmentShader,
