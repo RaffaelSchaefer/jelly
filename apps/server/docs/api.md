@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.23.0**
+Aktuelle Version: **1.24.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.23.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.24.0  | Neue Farbe `lime` (Hellgrün) in `colors` des Katalogs, für alle frei wählbar |
 | 1.23.0  | Neues Cosmetic `sprout` (Spross) im Shop, dauerhaft für 2 Münzen. „Ausverkauft“ verlangt damit 6 Shop-Cosmetics |
 | 1.22.0  | Stream: Ein Cursor vor dem neuesten Ereignis, wie nach einem Neustart des Servers, bekommt `reset`, statt still zu warten. Die Bühne liest ihren Zustand bei jedem (Wieder-)Öffnen des Streams neu |
 | 1.21.0  | Brechend: Bewegung in Metern — `walk_speed` zählt in m/s (Standard 0,4), `near_distance` in m (Standard 1,8). Der Planer rechnet in der echten Halle, Abstände wachsen mit `jelly_width`. Gespeicherte Regeln werden umgerechnet. Gründe und Umrechnung stehen unter [Brechende Änderungen](#brechende-änderungen) |

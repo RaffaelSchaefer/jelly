@@ -144,7 +144,7 @@ function useStepFocus(step: HatchStep, error: string) {
   return capsule;
 }
 
-/** Die drei Farben als kleine Jellies. Jede Wahl färbt sofort das echte Jelly und die Oberfläche. */
+/** Die Farben als kleine Jellies. Jede Wahl färbt sofort das echte Jelly und die Oberfläche. */
 function ColorPicker({ color, onPick }: { color: PetColor; onPick: (color: PetColor) => void }) {
   return (
     <fieldset className="hatch-colors">

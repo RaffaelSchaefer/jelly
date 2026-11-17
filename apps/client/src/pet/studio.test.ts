@@ -68,7 +68,7 @@ describe("studio regions", () => {
   });
   it("offers the body colours", () => {
     const colors = items("farbe");
-    expect(colors).toHaveLength(3);
+    expect(colors).toHaveLength(4);
     expect(colors[0]).toMatchObject({
       id: "mint",
       state: "equipped",

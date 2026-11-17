@@ -46,6 +46,8 @@ pub enum Color {
     Lilac,
     /// Pfirsich.
     Peach,
+    /// Hellgrün.
+    Lime,
 }
 
 /// Was die Oberfläche beim Server auslösen kann. In JSON klein geschrieben (`"poke"`).
