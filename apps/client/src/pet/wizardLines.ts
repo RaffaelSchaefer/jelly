@@ -285,6 +285,16 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Herrlich, {name}! Schnatter mit Stil."],
     hover: ["Psst! Die Büschel wackeln, wenn du lachst."],
   },
+  "long-schnoerbi": {
+    offer: [
+      "Der Long Schnörbi! Er hört einfach nicht auf.",
+      "So lang, ich musste ihn zweimal falten.",
+    ],
+    short: ["Für so viel Schnörbi fehlt noch etwas Gold."],
+    worn: ["Halt ihn gut fest, er ist länger als du!"],
+    bought: ["Knuddel ihn gut, {name}! Alle drei Meter."],
+    hover: ["Psst! Sein Schwanz liegt noch im Lager."],
+  },
   hood: {
     offer: [
       "Die Kapuze! Geheimnisvoll wie ein Zauberer.",

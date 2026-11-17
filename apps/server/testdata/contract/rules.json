@@ -95,6 +95,20 @@
       "owned": false,
       "error": "not_enough_coins"
     },
+    {
+      "name": "the long schnoerbi costs four coins",
+      "key": "long-schnoerbi",
+      "coins": 4,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "three coins are too few for the long schnoerbi",
+      "key": "long-schnoerbi",
+      "coins": 3,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
     { "name": "too few coins", "key": "crown", "coins": 5, "owned": false, "error": "not_enough_coins" },
     { "name": "second buy", "key": "beanie", "coins": 100, "owned": true, "error": "already_owned" },
     {

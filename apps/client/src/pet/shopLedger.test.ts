@@ -53,13 +53,14 @@ const EVERY_WARE = [
   "pixel-glasses",
   "schnoerbi-mask",
   "hood",
+  "long-schnoerbi",
   "crown",
 ];
 
 describe("ledgerView", () => {
   it("stellt Kaufbares vor zu Teures und beides vor die Truhe", () => {
     expect(view(PREVIEW_ME)).toEqual({
-      wares: ["sprout", "pixel-glasses", "schnoerbi-mask", "hood", "crown"],
+      wares: ["sprout", "pixel-glasses", "schnoerbi-mask", "hood", "long-schnoerbi", "crown"],
       chest: ["headset", "headset-neutral", "beanie"],
     });
   });
@@ -84,9 +85,16 @@ describe("ledgerView", () => {
       "pixel-glasses",
       "schnoerbi-mask",
       "hood",
+      "long-schnoerbi",
       "crown",
     ]);
-    expect(view(bought).wares).toEqual(["sprout", "schnoerbi-mask", "hood", "crown"]);
+    expect(view(bought).wares).toEqual([
+      "sprout",
+      "schnoerbi-mask",
+      "hood",
+      "long-schnoerbi",
+      "crown",
+    ]);
     expect(view(bought).chest).toContain("pixel-glasses");
   });
 
@@ -103,6 +111,7 @@ describe("ledgerView", () => {
       "pixel-glasses",
       "schnoerbi-mask",
       "hood",
+      "long-schnoerbi",
       "crown",
       "headset",
       "headset-neutral",

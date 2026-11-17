@@ -1,8 +1,10 @@
 // Toon-Shader, Vertex-Teil: Normale, Objekt- und Blickposition für toon.frag.glsl, dazu die Farben.
-// Alle Teile eines Cosmetics sind ein Mesh, Farbe und y-Bereich stehen deshalb je Teil in den Vertices.
+// Alle Teile eines Cosmetics sind ein Mesh, Farbe, y-Bereich und Flausch stehen deshalb je Teil in
+// den Vertices.
 
 attribute vec3 aColor;
 attribute vec3 aGlowRange;
+attribute float aFluff;
 uniform float uDepthBias;
 varying vec3 vNormal;
 varying vec3 vPosition;
@@ -10,6 +12,7 @@ varying vec3 vViewPosition;
 varying vec3 vColor;
 varying vec3 vGlow;
 varying vec3 vGlowRange;
+varying float vFluff;
 #ifdef SCENE_LIGHT
 varying vec3 vWorldPos;
 varying vec3 vWorldNormal;
@@ -21,6 +24,7 @@ void main() {
   // Die Leuchtfarbe ist die Grundfarbe, 45 % in Richtung Weiß.
   vGlow = mix(aColor, vec3(1.0), 0.45);
   vGlowRange = aGlowRange;
+  vFluff = aFluff;
 #ifdef SCENE_LIGHT
   // Lage und Normale in der Welt fürs Licht der Szene. Die Normale kommt aus der Blick-Normale zurück:
   // Die Ansicht dreht nur, und so stimmt sie auch am gestauchten Jelly.

@@ -171,7 +171,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Import-Zeile in `COSMETIC_MODELS` (`cosmetic.ts`). App, Karte und Beamer zeigen es dann, in der App als Sticker,
   auf der Bühne mit echter Tiefe. Die Modelle liegen im Bundle: Die CSP der App verbietet `fetch`, und `tauri dev`
   zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary. Ein Material kann sein
-  Leuchten von unten mit der Blender-Eigenschaft `glow` (0 bis 1) dämpfen, sonst wirken dunkle Farben unten grau.
+  Leuchten von unten mit der Blender-Eigenschaft `glow` (0 bis 1) dämpfen, sonst wirken dunkle Farben unten grau. Mit
+  `fluff` (0 bis 1) wird es zu Plüsch: ohne Glanz, mit Fellkörnung und hellem Rand (`plush` in `toon.frag.glsl`).
 - **Zauberladen ändern:** Vor einem Jelly steht nur DOM oder die Canvas2D der Effekte, denn Sticker übermalen alles
   in 3D davor. DOM und Szene passen nur bei Seitenverhältnis 2,4 und derselben Kamera (`src/pet/shopStage.ts`)
   zusammen. Zeiten kommen aus `src/pet/shopTimeline.ts`, nicht aus eigenen Konstanten. Jede Schleife (CSS, Licht,

@@ -1,7 +1,8 @@
 """The frame every cosmetic generator shares: materials, meshes in Three.js coordinates and the flags.
 
 A generator (`build_party_hat.py`, `build_hood.py`, `build_crown.py`, `build_golden_cup.py`,
-`build_sprout.py`, `build_schnoerbi_mask.py`) holds only its numbers and a `build(collection)` and ends with `generator.run(...)`:
+`build_sprout.py`, `build_schnoerbi_mask.py`, `build_long_schnoerbi.py`) holds only its numbers and
+a `build(collection)` and ends with `generator.run(...)`:
 
     blender blender/cosmetics.blend --background --python blender/build_crown.py -- [--save] [--export]
 
@@ -30,9 +31,10 @@ def linear(channel):
     return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
 
 
-def material(name, hex_color, glow=None):
+def material(name, hex_color, glow=None, fluff=None):
     """The material `name` in `hex_color`, created or updated. `glow` (0–1) dampens the light lower
-    edge the app adds; without it the material lights up fully."""
+    edge the app adds; without it the material lights up fully. `fluff` (0–1) turns it into plush:
+    no jelly gloss, fur grain and a light, fuzzy rim instead."""
     mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     if mat.node_tree is None:
         mat.use_nodes = True
@@ -41,10 +43,11 @@ def material(name, hex_color, glow=None):
     bsdf.inputs["Base Color"].default_value = (*rgb, 1)
     bsdf.inputs["Roughness"].default_value = 0.35
     mat.diffuse_color = (*rgb, 1)
-    if glow is None:
-        mat.pop("glow", None)
-    else:
-        mat["glow"] = glow
+    for key, value in (("glow", glow), ("fluff", fluff)):
+        if value is None:
+            mat.pop(key, None)
+        else:
+            mat[key] = value
     return mat
 
 

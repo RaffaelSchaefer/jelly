@@ -27,6 +27,7 @@ import goldenCup from "./cosmetics/golden-cup.glb?url&inline";
 import headsetNeutral from "./cosmetics/headset-neutral.glb?url&inline";
 import headset from "./cosmetics/headset.glb?url&inline";
 import hood from "./cosmetics/hood.glb?url&inline";
+import longSchnoerbi from "./cosmetics/long-schnoerbi.glb?url&inline";
 import partyHat from "./cosmetics/party-hat.glb?url&inline";
 import pixelGlasses from "./cosmetics/pixel-glasses.glb?url&inline";
 import schnoerbiMask from "./cosmetics/schnoerbi-mask.glb?url&inline";
@@ -50,6 +51,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   headset,
   "headset-neutral": headsetNeutral,
   hood,
+  "long-schnoerbi": longSchnoerbi,
   "party-hat": partyHat,
   "pixel-glasses": pixelGlasses,
   "schnoerbi-mask": schnoerbiMask,
@@ -129,8 +131,17 @@ function glowOf(material: MeshStandardMaterial) {
 }
 
 /**
- * Ein Mesh aus der glTF-Datei in Koordinaten des Jellys, mit Farbe sowie y-Bereich und Stärke des
- * Leuchtens je Vertex.
+ * Wie flauschig ein Teil ist, 0 bis 1: die Eigenschaft `fluff` des Materials aus Blender. Plüsch
+ * glänzt nicht wie Fruchtgummi, er zeigt Fellkörnung und einen hellen, flaumigen Rand.
+ */
+function fluffOf(material: MeshStandardMaterial) {
+  const fluff: unknown = material.userData.fluff;
+  return typeof fluff === "number" ? Math.min(1, Math.max(0, fluff)) : 0;
+}
+
+/**
+ * Ein Mesh aus der glTF-Datei in Koordinaten des Jellys, mit Farbe, y-Bereich und Stärke des
+ * Leuchtens sowie Flausch je Vertex.
  */
 function createPart(mesh: Mesh) {
   const source = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
@@ -154,6 +165,10 @@ function createPart(mesh: Mesh) {
   part.setAttribute("normal", source.getAttribute("normal"));
   part.setAttribute("aColor", new BufferAttribute(colors, 3));
   part.setAttribute("aGlowRange", new BufferAttribute(ranges, 3));
+  part.setAttribute(
+    "aFluff",
+    new BufferAttribute(new Float32Array(count).fill(fluffOf(material)), 1),
+  );
   part.setIndex(source.getIndex());
   return part;
 }

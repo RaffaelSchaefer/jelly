@@ -1,10 +1,12 @@
 // Toon-Shader, Fragment-Teil: glänzendes Fruchtgummi-Material für Cosmetics.
 // vGlowRange ist der y-Bereich des Teils, von unten (volles Leuchten) nach oben (Grundfarbe), und
-// in z, wie stark es leuchtet. Mit SCENE_LIGHT kommt das Licht einer Szene dazu (Block <scene-light>).
+// in z, wie stark es leuchtet. vFluff macht ein Teil zu Plüsch: ohne Glanz, mit Fell und hellem Rand.
+// Mit SCENE_LIGHT kommt das Licht einer Szene dazu (Block <scene-light>).
 
 varying vec3 vColor;
 varying vec3 vGlow;
 varying vec3 vGlowRange;
+varying float vFluff;
 varying vec3 vNormal;
 varying vec3 vPosition;
 varying vec3 vViewPosition;
@@ -48,6 +50,34 @@ vec3 sceneRim(vec3 nW, vec3 vW) {
 #endif
 // </scene-light>
 
+// Wertrauschen fest am Modell, für die Büschel und die Körnung des Plüschs.
+float fluffHash(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.zyx + 31.32);
+  return fract((p.x + p.y) * p.z);
+}
+
+float fluffNoise(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  float a = mix(fluffHash(i), fluffHash(i + vec3(1.0, 0.0, 0.0)), u.x);
+  float b = mix(fluffHash(i + vec3(0.0, 1.0, 0.0)), fluffHash(i + vec3(1.0, 1.0, 0.0)), u.x);
+  float c = mix(fluffHash(i + vec3(0.0, 0.0, 1.0)), fluffHash(i + vec3(1.0, 0.0, 1.0)), u.x);
+  float d = mix(fluffHash(i + vec3(0.0, 1.0, 1.0)), fluffHash(i + vec3(1.0, 1.0, 1.0)), u.x);
+  return mix(mix(a, b, u.y), mix(c, d, u.y), u.z);
+}
+
+// Plüsch: Büschel heben und senken die Farbe, dazu feine Körnung wie Fell, die verblasst, sobald sie
+// feiner als ein Pixel würde. Wo sich der Plüsch abwendet, leuchtet er hell und flaumig.
+vec3 plush(vec3 color, float facing) {
+  float clumps = fluffNoise(vPosition * 9.0 + 17.0);
+  float grain = fluffNoise(vPosition * 34.0) - 0.5;
+  float sharp = clamp(1.6 - length(fwidth(vPosition)) * 34.0, 0.0, 1.0);
+  vec3 fur = color * (0.88 + 0.24 * clumps) * (1.0 + grain * 0.3 * sharp);
+  return fur + mix(vColor, vec3(1.0), 0.6) * pow(1.0 - facing, 1.6) * 0.5;
+}
+
 void main() {
   vec3 n = normalize(vNormal);
   vec3 view = normalize(vViewPosition);
@@ -61,18 +91,21 @@ void main() {
   vec3 worldNormal = normalize(vWorldNormal);
   color = color * uSceneShade + sceneDiffuse(color, vWorldPos, worldNormal);
 #endif
-  // Analytische Softbox-Reflexe halten das Jelly auch auf transparentem Desktop glänzend.
+  // Analytische Softbox-Reflexe halten das Jelly auch auf transparentem Desktop glänzend. Plüsch
+  // glänzt nicht.
+  float gloss = 1.0 - vFluff;
   float softbox = exp(-pow((n.x + 0.28) / 0.48, 2.0) - pow((n.y - 0.66) / 0.22, 2.0));
   float sideLight = exp(-pow((n.x + 0.88) / 0.12, 2.0) - pow((n.y - 0.12) / 0.65, 2.0));
   float underLight = pow(max(dot(n, normalize(vec3(0.3, -0.8, 0.4))), 0.0), 14.0);
-  color += vec3(0.8, 0.92, 1.0) * softbox * 0.85;
+  color += vec3(0.8, 0.92, 1.0) * softbox * 0.85 * gloss;
   // Scharfes Glanzlicht oben auf jedem Teil, wie Licht auf einem Fruchtgummi.
   float cap = exp(-pow((n.x + 0.05) / 0.42, 2.0) - pow((n.y - 0.7) / 0.2, 2.0)) * smoothstep(0.0, 0.35, n.z);
-  color = mix(color, vec3(0.9, 0.97, 1.0), smoothstep(0.3, 0.8, cap) * 0.6);
-  color += vec3(0.65, 0.9, 1.0) * sideLight * 0.6;
-  color += vGlow * underLight * 0.55;
-  color = mix(color, vColor * 0.22, rim * 0.8);
+  color = mix(color, vec3(0.9, 0.97, 1.0), smoothstep(0.3, 0.8, cap) * 0.6 * gloss);
+  color += vec3(0.65, 0.9, 1.0) * sideLight * 0.6 * gloss;
+  color += vGlow * underLight * 0.55 * gloss;
+  color = mix(color, vColor * 0.22, rim * 0.8 * gloss);
   color += vGlow * pow(1.0 - facing, 5.0) * 0.28;
+  color = mix(color, plush(color, facing), vFluff);
 #ifdef SCENE_LIGHT
   color += sceneRim(worldNormal, normalize(cameraPosition - vWorldPos));
 #endif
