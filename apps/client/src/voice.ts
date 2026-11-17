@@ -3,59 +3,30 @@
  *
  * Zwei leicht verstimmte Sägezähne geben den Ton, drei Formant-Filter machen daraus Vokale, leises
  * Rauschen klingt nach Atem und kurze Rausch-Stöße nach Konsonanten. Die Noten kommen aus
- * `pet/voice.ts`. Klingt die Stimme falsch, sind `FORMANTS`, `DETUNE_CENTS`, `BREATH` und
- * `MASTER_GAIN` hier sowie Grundton und Tempo dort die Stellschrauben.
+ * `pet/voice.ts`, die Klangfarbe und ihre Stellschrauben aus `pet/voiceTimbre.ts`. Der Zauberer im
+ * Shop singt in seiner eigenen, mit Schichten aus `shop/wizardVoiceLayers.ts`.
  *
  * @module
  */
 
-import { VIBRATO_HZ, volumeGain, type VoiceNote, type Vowel } from "./pet";
+import { VIBRATO_HZ, volumeGain, type VoiceNote } from "./pet";
+import {
+  JELLY_TIMBRE,
+  type PhraseSetup,
+  type VoiceLayers,
+  type VoiceRoute,
+  type VoiceTimbre,
+} from "./pet/voiceTimbre";
 
-/** Die drei Formanten je Vokal in Hertz, für eine kleine, helle Stimme. */
-const FORMANTS: Record<Vowel, readonly [number, number, number]> = {
-  a: [950, 1500, 3100],
-  e: [560, 2200, 3200],
-  i: [340, 2700, 3700],
-  o: [560, 1000, 3000],
-  u: [360, 800, 2700],
-};
-
-/** Lautstärke und Schärfe der drei Formant-Filter. */
-const FORMANT_GAINS = [1, 0.75, 0.35] as const;
-const FORMANT_Q = [4, 6, 8] as const;
-
-/** Wie schnell die Filter zum nächsten Vokal gleiten, als Zeitkonstante in Sekunden. */
-const VOWEL_GLIDE = 0.015;
-
-/**
- * Anteil des ungefilterten Tons: Er hält die Stimme auch dort, wo kein Oberton einen Formanten
- * trifft.
- */
-const BODY_GAIN = 0.16;
-const BODY_CUTOFF = 2400;
-
-/** Abstand der zwei Oszillatoren in Cent. Etwas Schwebung nimmt dem Ton das Piepsige. */
-const DETUNE_CENTS = 7;
-
-/** Grundstärke des Vibratos in Cent. Lange Töne bringen ihre eigene Stärke mit. */
-const VIBRATO_CENTS = 5;
+export type { PhraseSetup, VoiceLayers, VoiceRoute } from "./pet/voiceTimbre";
 
 /** Anteil des Tonhöhen-Gleitens an der Note. */
 const GLIDE_SHARE = 0.55;
 
-/**
- * Hüllkurve einer Note: Einschwingen in Sekunden, bis zu diesem Anteil der Note halten, dann
- * ausklingen.
- */
+/** Hüllkurve einer Note: Einschwingen in Sekunden, halten bis zu diesem Anteil, dann ausklingen. */
 const ATTACK = 0.012;
 const SUSTAIN = 0.78;
 const HOLD_SHARE = 0.8;
-
-/** Pegel des Tons vor dem Clipping. Weit darüber würde das Clipping hart und die Stimme kratzig. */
-const VOICE_LEVEL = 0.38;
-
-/** Lautstärke des Atems. */
-const BREATH = 0.05;
 
 /** So weit über dem Grundton liegt der erste Formant mindestens. */
 const FIRST_FORMANT_ABOVE_PITCH = 1.05;
@@ -66,9 +37,6 @@ const ONSETS = {
   hiss: { seconds: 0.032, gain: 0.22 },
 } as const;
 const ONSET_CUTOFF = 2600;
-
-/** Stärke des weichen Clippings. */
-const DRIVE = 1.8;
 
 /** Pegel am Ende der Kette. */
 const MASTER_GAIN = 0.7;
@@ -103,17 +71,20 @@ export interface Phrase {
   fade: (at: number) => void;
 }
 
-/** Die Kennlinie des weichen Clippings. */
-function createDriveCurve() {
+/** Die Kennlinien des weichen Clippings je Stärke, einmal gerechnet. */
+const DRIVE_CURVES = new Map<number, Float32Array<ArrayBuffer>>();
+
+/** Die Kennlinie des weichen Clippings mit Stärke `drive`. */
+function driveCurve(drive: number) {
+  const known = DRIVE_CURVES.get(drive);
+  if (known) return known;
   const curve = new Float32Array(1025);
   curve.forEach((_, index) => {
-    curve[index] = Math.tanh(((index - 512) / 512) * DRIVE) / Math.tanh(DRIVE);
+    curve[index] = Math.tanh(((index - 512) / 512) * drive) / Math.tanh(drive);
   });
+  DRIVE_CURVES.set(drive, curve);
   return curve;
 }
-
-/** Einmal gerechnet, jede Phrase nutzt dieselbe Kennlinie. */
-const DRIVE_CURVE = createDriveCurve();
 
 /** Eine Sekunde weißes Rauschen. */
 function createNoise(context: BaseAudioContext) {
@@ -129,7 +100,7 @@ function createNoise(context: BaseAudioContext) {
 const NOISE = new WeakMap<BaseAudioContext, AudioBuffer>();
 
 /** Das Rauschen dieses Kontexts als laufende Schleife. */
-function startNoise(context: BaseAudioContext, start: number) {
+export function startNoise(context: BaseAudioContext, start: number) {
   const buffer = NOISE.get(context) ?? createNoise(context);
   NOISE.set(context, buffer);
   const source = context.createBufferSource();
@@ -140,7 +111,7 @@ function startNoise(context: BaseAudioContext, start: number) {
 }
 
 /** Gleitet je Note von ihrer Anfangs- zur Zieltonhöhe. */
-function schedulePitch(frequency: AudioParam, notes: VoiceNote[], start: number) {
+export function schedulePitch(frequency: AudioParam, notes: VoiceNote[], start: number) {
   for (const note of notes) {
     frequency.setValueAtTime(note.from, start + note.at);
     frequency.exponentialRampToValueAtTime(note.to, start + note.at + note.duration * GLIDE_SHARE);
@@ -148,7 +119,7 @@ function schedulePitch(frequency: AudioParam, notes: VoiceNote[], start: number)
 }
 
 /** Linear, denn ein exponentieller Verlauf darf 0 nicht erreichen. `level` skaliert die ganze Kurve. */
-function scheduleEnvelope(gain: AudioParam, notes: VoiceNote[], start: number, level = 1) {
+export function scheduleEnvelope(gain: AudioParam, notes: VoiceNote[], start: number, level = 1) {
   gain.setValueAtTime(0, start);
   for (const note of notes) {
     const begin = start + note.at;
@@ -176,26 +147,21 @@ function scheduleOnsets(gain: AudioParam, notes: VoiceNote[], start: number) {
  * Wo ein Formant bei dieser Note liegt. Der erste läge bei „i“ und „u“ unter dem Grundton und ließe
  * nichts durch, der Ton bräche weg. Hohe Stimmen heben ihn deshalb mit dem Ton an, hier ebenso.
  */
-function formantOf(note: VoiceNote, index: number) {
-  const target = FORMANTS[note.vowel][index] ?? 1000;
+function formantOf(timbre: VoiceTimbre, note: VoiceNote, index: number) {
+  const target = timbre.formants[note.vowel][index] ?? 1000;
   return index === 0 ? Math.max(target, note.to * FIRST_FORMANT_ABOVE_PITCH) : target;
 }
 
 /** Baut die Formant-Filter und führt sie je Note zu ihrem Vokal. Alle laufen in `output` zusammen. */
-function createFormants(
-  context: BaseAudioContext,
-  notes: VoiceNote[],
-  start: number,
-  output: AudioNode,
-) {
-  return FORMANT_GAINS.map((level, index) => {
+function createFormants({ context, notes, start, timbre }: PhraseSetup, output: AudioNode) {
+  return timbre.formantGains.map((level, index) => {
     const filter = context.createBiquadFilter();
     filter.type = "bandpass";
-    filter.Q.value = FORMANT_Q[index] ?? 1;
+    filter.Q.value = timbre.formantQ[index] ?? 1;
     for (const note of notes) {
-      const target = formantOf(note, index);
+      const target = formantOf(timbre, note, index);
       if (note === notes[0]) filter.frequency.setValueAtTime(target, start);
-      filter.frequency.setTargetAtTime(target, start + note.at, VOWEL_GLIDE);
+      filter.frequency.setTargetAtTime(target, start + note.at, timbre.vowelGlide);
     }
     const gain = context.createGain();
     gain.gain.value = level;
@@ -205,23 +171,18 @@ function createFormants(
 }
 
 /** Die zwei Oszillatoren samt Vibrato, je Note mit eigener Stärke. Liefert alle Quellen. */
-function startOscillators(
-  context: BaseAudioContext,
-  notes: VoiceNote[],
-  start: number,
-  output: AudioNode,
-) {
+function startOscillators({ context, notes, start, timbre }: PhraseSetup, output: AudioNode) {
   const vibrato = context.createOscillator();
   vibrato.frequency.value = VIBRATO_HZ;
   const depth = context.createGain();
-  depth.gain.setValueAtTime(VIBRATO_CENTS, start);
+  depth.gain.setValueAtTime(timbre.vibratoCents, start);
   for (const note of notes) {
     if (note.shake)
       depth.gain.setTargetAtTime(note.shake, start + note.at + note.duration * 0.25, 0.06);
   }
   vibrato.connect(depth);
   vibrato.start(start);
-  const voices = [-DETUNE_CENTS, DETUNE_CENTS].map((detune) => {
+  const voices = [-timbre.detuneCents, timbre.detuneCents].map((detune) => {
     const oscillator = context.createOscillator();
     oscillator.type = "sawtooth";
     oscillator.detune.value = detune;
@@ -235,36 +196,28 @@ function startOscillators(
 }
 
 /** Der Weg vom Ton über die Vokale bis zum Ausgang der Phrase. Liefert seinen Eingang. */
-function createThroat(
-  context: BaseAudioContext,
-  notes: VoiceNote[],
-  start: number,
-  output: AudioNode,
-) {
+function createThroat(setup: PhraseSetup, output: AudioNode) {
+  const { context, timbre } = setup;
   const drive = context.createWaveShaper();
-  drive.curve = DRIVE_CURVE;
+  drive.curve = driveCurve(timbre.drive);
   drive.connect(output);
   const throat = context.createGain();
-  for (const filter of createFormants(context, notes, start, drive)) throat.connect(filter);
+  for (const filter of createFormants(setup, drive)) throat.connect(filter);
   const body = context.createBiquadFilter();
   body.type = "lowpass";
-  body.frequency.value = BODY_CUTOFF;
+  body.frequency.value = timbre.bodyCutoff;
   const bodyGain = context.createGain();
-  bodyGain.gain.value = BODY_GAIN;
+  bodyGain.gain.value = timbre.bodyGain;
   throat.connect(body).connect(bodyGain).connect(drive);
   return throat;
 }
 
 /** Atem und Konsonanten aus demselben Rauschen. */
-function startNoiseVoices(
-  context: BaseAudioContext,
-  notes: VoiceNote[],
-  start: number,
-  routes: { throat: AudioNode; output: AudioNode },
-) {
+function startNoiseVoices(setup: PhraseSetup, routes: { throat: AudioNode; output: AudioNode }) {
+  const { context, notes, start, timbre } = setup;
   const noise = startNoise(context, start);
   const breath = context.createGain();
-  scheduleEnvelope(breath.gain, notes, start, BREATH);
+  scheduleEnvelope(breath.gain, notes, start, timbre.breath);
   noise.connect(breath).connect(routes.throat);
   const highpass = context.createBiquadFilter();
   highpass.type = "highpass";
@@ -276,42 +229,48 @@ function startNoiseVoices(
 }
 
 /**
- * Spielt Noten ab `start` in `output`. Geht auch mit einem `OfflineAudioContext`, deshalb lässt
- * sich der Klang rendern und prüfen.
- *
- * @param notes - Darf nicht leer sein, Noten dürfen sich nicht überlappen.
- * @returns Die laufende Phrase. Sie räumt sich nach ihrem Ende selbst auf.
+ * Ein Spieler für Noten in der Klangfarbe `timbre`, mit zusätzlichen Schichten `layers`. Er spielt
+ * Noten ab `start` in `output`, auch in einem `OfflineAudioContext`: So lässt sich der Klang
+ * rendern und prüfen. Die Noten dürfen nicht leer sein und sich nicht überlappen. Die Phrase räumt
+ * sich nach ihrem Ende selbst auf.
  */
-export function playNotes(
-  context: BaseAudioContext,
-  output: AudioNode,
-  notes: VoiceNote[],
-  start: number,
-): Phrase {
-  // Die Hüllkurven liegen eine Stufe davor: So kann `fade` ausblenden, ohne ihre Rampen anzufassen.
-  const fader = context.createGain();
-  fader.connect(output);
-  const throat = createThroat(context, notes, start, fader);
-  const envelope = context.createGain();
-  scheduleEnvelope(envelope.gain, notes, start, VOICE_LEVEL);
-  envelope.connect(throat);
-  const sources = [
-    ...startOscillators(context, notes, start, envelope),
-    startNoiseVoices(context, notes, start, { throat, output: fader }),
-  ];
-  const last = notes.at(-1);
-  const end = start + (last ? last.at + last.duration : 0) + RELEASE_SECONDS;
-  for (const source of sources) source.stop(end);
-  sources[0]?.addEventListener("ended", () => fader.disconnect());
-  return {
-    end,
-    fade(at) {
-      fader.gain.setTargetAtTime(0, at, FADE_CONSTANT);
-      const silent = Math.min(end, at + FADE_SECONDS);
-      for (const source of sources) source.stop(silent);
-    },
+export function phrasePlayer(timbre: VoiceTimbre, layers?: VoiceLayers) {
+  return (
+    context: BaseAudioContext,
+    output: AudioNode,
+    notes: VoiceNote[],
+    start: number,
+  ): Phrase => {
+    const setup = { context, notes, start, timbre };
+    // Die Hüllkurven liegen eine Stufe davor: So kann `fade` ausblenden, ohne ihre Rampen anzufassen.
+    const fader = context.createGain();
+    fader.connect(output);
+    const throat = createThroat(setup, fader);
+    const envelope = context.createGain();
+    scheduleEnvelope(envelope.gain, notes, start, timbre.voiceLevel);
+    envelope.connect(throat);
+    const sources = [
+      ...startOscillators(setup, envelope),
+      startNoiseVoices(setup, { throat, output: fader }),
+      ...(layers?.(setup, fader) ?? []),
+    ];
+    const last = notes.at(-1);
+    const end = start + (last ? last.at + last.duration : 0) + RELEASE_SECONDS;
+    for (const source of sources) source.stop(end);
+    sources[0]?.addEventListener("ended", () => fader.disconnect());
+    return {
+      end,
+      fade(at) {
+        fader.gain.setTargetAtTime(0, at, FADE_CONSTANT);
+        const silent = Math.min(end, at + FADE_SECONDS);
+        for (const source of sources) source.stop(silent);
+      },
+    };
   };
 }
+
+/** Spielt Noten in der Stimme des Jellys, siehe {@link phrasePlayer}. */
+export const playNotes = phrasePlayer(JELLY_TIMBRE);
 
 /**
  * Das Ende der Kette: Pegel und Kompressor. Liefert den Eingang.
@@ -352,21 +311,66 @@ export function startClock() {
   return () => (performance.now() - startedAt) / 1000;
 }
 
-/**
- * Die Stimme der App. Hält genau einen `AudioContext`, aber erst, wenn es wirklich etwas zu hören
- * gibt: Wer stumm schaltet, hält kein Audiogerät offen.
- */
-export function createVoice() {
-  let armed = false;
-  let volume = 1;
+/** Wie eine Stimme klingt und wohin sie singt. */
+export interface VoiceOptions {
+  timbre?: VoiceTimbre;
+  layers?: VoiceLayers;
+  /** Je Phrase der Weg in einen fremden Mischer, `null` solange nichts klingen darf. */
+  route?: () => VoiceRoute | null;
+}
+
+/** Pegel und Kompressor je fremdem Eingang, einmal gebaut. */
+const ROUTED = new WeakMap<AudioNode, AudioNode>();
+
+/** Der Weg, den `route` gerade in einen fremden Mischer gibt: ohne eigenes Audiogerät und Ruhepause. */
+function routedWay(route: () => VoiceRoute | null) {
+  const found = route();
+  if (!found) return null;
+  const output = ROUTED.get(found.output) ?? createVoiceOutput(found.context, found.output);
+  ROUTED.set(found.output, output);
+  return { context: found.context, output, started: found.onPhrase };
+}
+
+/** Das eigene Audiogerät: erst geöffnet, wenn etwas klingt, nach etwas Stille wieder frei. */
+function ownDevice() {
   let audio: ReturnType<typeof openAudio> | null = null;
-  let phrase: Phrase | null = null;
+  let volume = 1;
   let idle: number | undefined;
+  return {
+    setVolume(gain: number) {
+      volume = gain;
+      audio?.level.gain.setTargetAtTime(volume, audio.context.currentTime, VOLUME_GLIDE);
+    },
+    way() {
+      audio ??= openAudio(volume);
+      const { context, output } = audio;
+      // Nicht abwarten: WebKit kann das Versprechen lange offen lassen, die Uhr steht bis dahin nur.
+      void context.resume().catch(() => null);
+      const started = (_start: number, end: number) => {
+        window.clearTimeout(idle);
+        const wait = (end - context.currentTime + IDLE_SECONDS) * 1000;
+        idle = window.setTimeout(() => void context.suspend().catch(() => null), wait);
+      };
+      return { context, output, started };
+    },
+  };
+}
+
+/**
+ * Eine Stimme. Ohne Optionen die des Jellys: Sie hält genau einen `AudioContext`, aber erst, wenn
+ * es wirklich etwas zu hören gibt. Wer stumm schaltet, hält kein Audiogerät offen.
+ */
+export function createVoice(options: VoiceOptions = {}) {
+  const sing = phrasePlayer(options.timbre ?? JELLY_TIMBRE, options.layers);
+  const own = ownDevice();
+  const way = () => (options.route ? routedWay(options.route) : own.way());
+  let armed = false;
+  let current: { phrase: Phrase; context: BaseAudioContext } | null = null;
 
   /** Löst die laufende Phrase ab. */
   function hush() {
-    if (audio) phrase?.fade(audio.context.currentTime);
-    phrase = null;
+    current?.phrase.fade(current.context.currentTime);
+    current = null;
   }
 
   return {
@@ -376,8 +380,7 @@ export function createVoice() {
     },
     /** Setzt die Lautstärke in Prozent, auch für einen Ton, der gerade läuft. */
     setVolume(percent: number) {
-      volume = volumeGain(percent);
-      audio?.level.gain.setTargetAtTime(volume, audio.context.currentTime, VOLUME_GLIDE);
+      own.setVolume(volumeGain(percent));
     },
     /**
      * Spielt Noten und löst dabei ab, was gerade läuft. Fehler bleiben hier: Ton darf nie stören.
@@ -389,19 +392,15 @@ export function createVoice() {
     play(notes: VoiceNote[]) {
       if (!armed || notes.length === 0) return null;
       try {
-        audio ??= openAudio(volume);
-        const { context, output } = audio;
+        const target = way();
+        if (!target) return null;
+        const { context, output } = target;
         hush();
-        // Nicht abwarten: WebKit kann das Versprechen lange offen lassen, die Uhr steht bis dahin nur.
-        void context.resume().catch(() => null);
         const start = context.currentTime + LEAD_SECONDS;
         const sentAt = performance.now();
-        phrase = playNotes(context, output, notes, start);
-        window.clearTimeout(idle);
-        idle = window.setTimeout(
-          () => void context.suspend().catch(() => null),
-          (phrase.end - context.currentTime + IDLE_SECONDS) * 1000,
-        );
+        const phrase = sing(context, output, notes, start);
+        current = { phrase, context };
+        target.started(start, phrase.end);
         const late = () => (performance.now() - sentAt) / 1000 - MAX_WAKE_SECONDS;
         return () => Math.max(context.currentTime - start, late());
       } catch {

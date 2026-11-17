@@ -59,14 +59,14 @@ export function DockButton({ icon, label, expanded, ...rest }: DockButtonProps) 
  * Die sichtbare Blase. Das Glas zeichnet `scene/LiquidGlass.tsx` aus ihrer Lage und der ihres
  * Schwanzes, ohne WebGL bleibt ein fester Hintergrund.
  */
-function SpeechDrop({ text, saidAt }: { text: string; saidAt?: number }) {
+function SpeechDrop({ text, saidAt, tempo }: { text: string; saidAt?: number; tempo: number }) {
   // Einmal je Text: Spätere Renderdurchläufe dürfen das laufende Aufdecken nicht verschieben. Wer erst
   // nach dem Sprechen auftaucht, etwa hinter einem Panel hervor, zeigt den Text gleich ganz.
   const [parts] = useState(() => {
     const elapsed = saidAt === undefined ? Infinity : (performance.now() - saidAt) / 1000;
     return speechSyllables(text).map(({ text: part, at }) => ({
       part,
-      delay: Math.max(0, at - elapsed),
+      delay: Math.max(0, at / tempo - elapsed),
     }));
   });
   return (
@@ -88,22 +88,28 @@ function SpeechDrop({ text, saidAt }: { text: string; saidAt?: number }) {
  * @param saidAt - Seit wann das Pet den Text spricht, auf der Uhr von `performance.now()`. Solange
  *   erscheint er Silbe für Silbe. Ohne Wert steht er gleich da.
  * @param hidden - Nur die Meldung für Screenreader, keine Blase.
+ * @param tempo - Sprechtempo der Stimme: Darunter erscheinen die Silben langsamer, im Takt.
+ * @param announce - Ob Screenreader den Text vorlesen. Beiläufiges bleibt still.
  */
 export function SpeechBubble({
   text,
   saidAt,
   hidden = false,
+  tempo = 1,
+  announce = true,
 }: {
   text: string;
   saidAt?: number;
   hidden?: boolean;
+  tempo?: number;
+  announce?: boolean;
 }) {
   return (
     <>
       <p className="sr-only" role="status">
-        {text}
+        {announce ? text : ""}
       </p>
-      {hidden ? null : <SpeechDrop key={text} text={text} saidAt={saidAt} />}
+      {hidden ? null : <SpeechDrop key={text} text={text} saidAt={saidAt} tempo={tempo} />}
     </>
   );
 }
