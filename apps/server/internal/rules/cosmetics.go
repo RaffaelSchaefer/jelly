@@ -40,6 +40,7 @@ const (
 const (
 	priceHeadset      = 1
 	priceBeanie       = 2
+	priceSprout       = 2
 	pricePixelGlasses = 3
 	priceHood         = 4
 	priceCrown        = 6
@@ -106,6 +107,10 @@ func ListCosmetics() []Cosmetic {
 		{
 			Key: "beanie", Name: "Mütze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
 			Unlock: UnlockShop, Price: priceBeanie,
+		},
+		{
+			Key: "sprout", Name: "Spross", Scope: ScopePermanent, Slot: SlotHead,
+			Unlock: UnlockShop, Price: priceSprout,
 		},
 		{
 			Key: "party-hat", Name: "Party-Hut", Scope: ScopePermanent, Slot: SlotHead,

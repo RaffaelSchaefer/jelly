@@ -255,6 +255,16 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Bleib warm, {name}! Die Mütze passt."],
     hover: ["Die Mütze hat schon zwei Winter überlebt."],
   },
+  sprout: {
+    offer: [
+      "Ein Spross! Er wächst mit jeder guten Laune.",
+      "Frisch gekeimt aus meinem Kräutergarten.",
+    ],
+    short: ["Für den Spross fehlt noch etwas Dünger."],
+    worn: ["Da sprießt ja was! Steht dir prächtig."],
+    bought: ["Wachse und gedeihe, {name}!"],
+    hover: ["Psst! Er wächst, wenn keiner hinsieht."],
+  },
   "pixel-glasses": {
     offer: [
       "Durch die Pixel-Brille wird alles schön eckig.",

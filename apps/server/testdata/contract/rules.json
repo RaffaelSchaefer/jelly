@@ -73,6 +73,14 @@
   ],
   "purchases": [
     { "name": "exact price buys", "key": "headset", "coins": 1, "owned": false, "error": null },
+    { "name": "the sprout costs two coins", "key": "sprout", "coins": 2, "owned": false, "error": null },
+    {
+      "name": "one coin is too few for the sprout",
+      "key": "sprout",
+      "coins": 1,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
     { "name": "too few coins", "key": "crown", "coins": 5, "owned": false, "error": "not_enough_coins" },
     { "name": "second buy", "key": "beanie", "coins": 100, "owned": true, "error": "already_owned" },
     {

@@ -42,8 +42,6 @@
 /* Links fehlt der Platz: Solange die Farben offen sind, rückt der Blob nach rechts, die drei Farben enden 8 px vor dem Fensterrand. */
 .studio:has(.pop.at-farbe) .at-farbe { --x: max(var(--anchor-farbe-x), calc(50% - 36px)); }
 .opens-right { translate: 18px -50%; transform-origin: 0 50%; }
-/* Die Kopf-Auswahl ist die längste: Mittig ragte sie in „Fertig“. Sie rückt nach links und wächst weiter aus dem Blob. */
-.pop.at-kopf { translate: calc(-50% - 28px) calc(-100% - 20px); transform-origin: calc(50% + 28px) 100%; }
 .ink .pop > button { animation: pop-ink 200ms ease-out 140ms both; }
 
 .pop button { position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #fff; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1), background 150ms; }
@@ -73,6 +71,8 @@
 /* Vom Fenstermittelpunkt aus gerechnet, damit es bei jeder Pet-Größe im Fenster bleibt. */
 .studio-done { position: absolute; top: 2px; left: calc(50% + 122px); padding: 6px 14px; border: 0; border-radius: 14px; background: transparent; color: #fff; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px #0008; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 .studio-done:hover { scale: 1.08; }
+/* Die Kopf-Auswahl ist die längste und füllt fast die Fensterbreite. Solange sie offen ist, rückt „Fertig“ unter sie, neben den Kopf-Blob. */
+.studio:has(.pop.at-kopf) .studio-done { top: calc(var(--anchor-kopf-y) - 12px); }
 
 /* Der Bodenschatten bliebe beim Zoom in der Luft hängen. */
 .ground-shadow { transition: opacity 300ms, width 500ms ease; }

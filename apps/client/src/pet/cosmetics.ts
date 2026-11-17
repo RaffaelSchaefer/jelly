@@ -31,6 +31,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: "headset", name: "Headset", slot: "head", icon: "teddyheadset" },
   { id: "headset-neutral", name: "Headset schlicht", slot: "head", icon: "headset" },
   { id: "beanie", name: "Mütze", slot: "head", icon: "beanie" },
+  { id: "sprout", name: "Spross", slot: "head", icon: "sprout" },
   { id: "party-hat", name: "Party-Hut", slot: "head", icon: "partyhat" },
   { id: "pixel-glasses", name: "Pixel-Brille", slot: "face", icon: "glasses" },
   { id: "hood", name: "Kapuze", slot: "head", icon: "hood" },

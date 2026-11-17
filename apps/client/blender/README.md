@@ -16,7 +16,7 @@ This writes `blender/cosmetics.blend` with:
   frame **Sichtbereich**, which shows what the app's camera sees. None of it can be selected or is
   exported.
 - **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `headset-neutral`, `beanie`, `party-hat`,
-  `pixel-glasses`, `hood`, `crown`, `golden-cup`). The collection name is the id.
+  `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`). The collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).

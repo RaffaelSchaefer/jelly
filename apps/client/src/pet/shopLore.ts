@@ -27,6 +27,10 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Gestrickt aus Mondwolle. Hält warm, auch wenn der Server friert.",
     article: "die",
   },
+  sprout: {
+    lore: "Gekeimt aus einem Zaubersamen. Gießen muss man ihn nicht, gute Laune reicht.",
+    article: "den",
+  },
   "pixel-glasses": {
     lore: "Zeigt die Welt in 8 Bit. Nebenwirkung: unverschämt cool.",
     article: "die",
