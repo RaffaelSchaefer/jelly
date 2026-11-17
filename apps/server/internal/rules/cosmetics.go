@@ -38,12 +38,13 @@ const (
 )
 
 const (
-	priceHeadset      = 1
-	priceBeanie       = 2
-	priceSprout       = 2
-	pricePixelGlasses = 3
-	priceHood         = 4
-	priceCrown        = 6
+	priceHeadset       = 1
+	priceBeanie        = 2
+	priceSprout        = 2
+	pricePixelGlasses  = 3
+	priceSchnoerbiMask = 3
+	priceHood          = 4
+	priceCrown         = 6
 )
 
 // Cosmetic is one item. It unlocks through a purchase, an event, or only through an award.
@@ -119,6 +120,10 @@ func ListCosmetics() []Cosmetic {
 		{
 			Key: "pixel-glasses", Name: "Pixel-Brille", Scope: ScopePermanent, Slot: SlotFace,
 			Unlock: UnlockShop, Price: pricePixelGlasses,
+		},
+		{
+			Key: "schnoerbi-mask", Name: "Schnörbi-Maske", Scope: ScopePermanent, Slot: SlotFace,
+			Unlock: UnlockShop, Price: priceSchnoerbiMask,
 		},
 		{
 			Key: "hood", Name: "Kapuze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,

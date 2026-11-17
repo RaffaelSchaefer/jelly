@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.24.0**
+Aktuelle Version: **1.25.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.24.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.25.0  | Neues Cosmetic `schnoerbi-mask` (Schnörbi-Maske) im Shop, dauerhaft für 3 Münzen im Platz `face`. „Ausverkauft“ verlangt damit 7 Shop-Cosmetics |
 | 1.24.0  | Neue Farbe `lime` (Hellgrün) in `colors` des Katalogs, für alle frei wählbar |
 | 1.23.0  | Neues Cosmetic `sprout` (Spross) im Shop, dauerhaft für 2 Münzen. „Ausverkauft“ verlangt damit 6 Shop-Cosmetics |
 | 1.22.0  | Stream: Ein Cursor vor dem neuesten Ereignis, wie nach einem Neustart des Servers, bekommt `reset`, statt still zu warten. Die Bühne liest ihren Zustand bei jedem (Wieder-)Öffnen des Streams neu |
