@@ -15,6 +15,8 @@ import { inRunningLan, type useBackendCall, type useGameState } from "./useGame"
 /** Angezeigtes Emote mit Beginn auf der monotonen Browser-Uhr in Millisekunden. */
 export interface ActiveEmote extends CatalogEntry {
   startedAt: number;
+  /** Wie lange die Geste läuft, in Sekunden. Ohne Angabe ihre übliche Dauer. */
+  seconds?: number;
   /** Wer beim Partner-Emote herüberkommt. Ohne Aussehen tanzt das eigene Jelly allein. */
   partner?: PartnerLook | null;
 }

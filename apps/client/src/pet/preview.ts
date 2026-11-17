@@ -2,7 +2,8 @@
  * Beispieldaten für die Browser-Vorschau, in der es weder Rust noch Server gibt.
  *
  * `PREVIEW_CATALOG` ist ein Auszug aus `GET /v1/catalog`, `PREVIEW_ME` ein Spieler auf Level 3 mit
- * drei Münzen.
+ * drei Münzen. Hashes wie `#join` oder `#shop-pleite` holen andere Zustände in den Browser, die
+ * Abfragen `?optimized`, `?ruhig` und `?fps=30` andere Einstellungen.
  *
  * @module
  */
@@ -16,6 +17,8 @@ import {
   type Me,
   type PetColor,
   type Rules,
+  type ServerEvent,
+  type Settings,
 } from "./types";
 
 /** Die Standardregeln des Servers, soweit die App sie kennt. */
@@ -230,11 +233,59 @@ const PREVIEW_NEXT_LAN = {
   ends_at: Date.UTC(2027, 3, 18, 10),
 };
 
+/** Alle Hashes, mit denen `shop.html` in der Vorschau einen Zustand des Zauberladens zeigt. */
+export const PREVIEW_SHOP_HASHES = [
+  "#shop-pleite",
+  "#shop-reich",
+  "#shop-alles",
+  "#shop-zu",
+  "#shop-leer",
+  "#shop-laden",
+  "#shop-fehler",
+  "#shop-langsam",
+  "#shop-muenzen",
+  "#shop-nacht",
+  "#shop-doesen",
+  "#shop-runen",
+  "#shop-anprobe",
+  "#shop-zauber",
+] as const;
+
+/** Ein Hash aus {@link PREVIEW_SHOP_HASHES}. */
+export type PreviewShopHash = (typeof PREVIEW_SHOP_HASHES)[number];
+
+/** Alles, was der Shop verkauft. */
+const SHOP_KEYS = PREVIEW_CATALOG.cosmetics
+  .filter((entry) => entry.unlock === "shop")
+  .map((entry) => entry.key);
+
+/** Der Stand mit geändertem Jelly. */
+function withMe(game: Game, patch: Partial<Me>): Game {
+  return { ...game, me: game.me && { ...game.me, ...patch } };
+}
+
 /**
- * Der Stand, mit dem die Vorschau startet. Die Zustände des Einstiegs gibt es sonst nur mit Server,
- * ein Hash in der Adresse holt sie in den Browser.
+ * Der Stand des Zauberladens je Hash. Uhrzeit, Dösen, Runen und Zauber der übrigen Hashes spielen
+ * Zauberer und Bühne selbst, sie starten mit dem normalen Stand.
+ */
+const SHOP_GAMES: Readonly<Record<string, (game: Game) => Game>> = {
+  "#shop-pleite": (game) => withMe(game, { coins: 0 }),
+  "#shop-reich": (game) => withMe(game, { coins: 12, cosmetics: [] }),
+  "#shop-alles": (game) => withMe(game, { coins: 2, cosmetics: SHOP_KEYS }),
+  "#shop-zu": (game) => ({
+    ...withMe(game, { coins: 0 }),
+    lan: { ...game.lan, current: null, joined: null },
+  }),
+  "#shop-leer": (game) => ({ ...game, me: null }),
+};
+
+/**
+ * Der Stand, mit dem die Vorschau startet. Die Zustände des Einstiegs und des Ladens gibt es sonst
+ * nur mit Server, ein Hash in der Adresse holt sie in den Browser.
  */
 export function previewGame(hash: string): Game {
+  const shop = Object.hasOwn(SHOP_GAMES, hash) ? SHOP_GAMES[hash] : undefined;
+  if (shop) return shop(PREVIEW_GAME);
   const { lan } = PREVIEW_GAME;
   switch (hash) {
     case "#join":
@@ -264,4 +315,79 @@ export function previewAccess(code: string, name?: string, color?: PetColor) {
   const me = name && color ? { ...PREVIEW_ME, name, color } : PREVIEW_ME;
   const lan = code === "offen" ? { ...PREVIEW_GAME.lan, joined: false } : PREVIEW_GAME.lan;
   return Promise.resolve({ seatAssigned: true, game: { ...PREVIEW_GAME, me, lan } });
+}
+
+/** Wie sich der Zauberladen in der Vorschau verhält, wo kein Server antwortet. */
+export interface PreviewShop {
+  /** Ob der Laden fertig lädt. Sonst bleibt das Gerüst stehen. */
+  ready: boolean;
+  /** Nach so vielen Millisekunden antwortet ein Kauf. */
+  purchaseMs: number;
+  /** Die Meldung, mit der jeder Kauf scheitert, sonst `null`. */
+  purchaseError: string | null;
+  /** Nach so vielen Millisekunden kommen eine Münze und ein Level dazu, `null` nie. */
+  giftMs: number | null;
+}
+
+/** So verhält sich der Laden ohne Hash: Ein Kauf braucht eine Viertelsekunde. */
+const PREVIEW_SHOP: PreviewShop = {
+  ready: true,
+  purchaseMs: 250,
+  purchaseError: null,
+  giftMs: null,
+};
+
+/** Was ein Hash daran ändert. */
+const SHOP_BEHAVIOUR: Readonly<Record<string, Partial<PreviewShop>>> = {
+  "#shop-laden": { ready: false },
+  "#shop-fehler": { purchaseMs: 400, purchaseError: "Der Server hat den Kauf abgelehnt." },
+  "#shop-langsam": { purchaseMs: 2000 },
+  "#shop-muenzen": { giftMs: 5000 },
+};
+
+/** Wie sich der Zauberladen in der Vorschau mit `hash` verhält. */
+export function previewShop(hash: string): PreviewShop {
+  const change = Object.hasOwn(SHOP_BEHAVIOUR, hash) ? SHOP_BEHAVIOUR[hash] : {};
+  return { ...PREVIEW_SHOP, ...change };
+}
+
+/**
+ * Die Einstellungen der Vorschau mit den Abfragen der Adresse: `?optimized` schaltet den
+ * optimierten Modus an, `?ruhig` reduziert die Bewegung und `?fps=30` begrenzt die Bildrate.
+ */
+export function previewSettings(search: string, settings: Settings): Settings {
+  const query = new URLSearchParams(search);
+  const fps = Number(query.get("fps"));
+  return {
+    ...settings,
+    optimizedRendering: query.has("optimized") || settings.optimizedRendering,
+    reducedMotion: query.has("ruhig") ? true : settings.reducedMotion,
+    frameLimit: Number.isInteger(fps) && fps > 0 ? fps : settings.frameLimit,
+  };
+}
+
+/**
+ * Was der Server zum Level-Aufstieg der Vorschau (`#shop-muenzen`) schicken würde: die Münzen für
+ * den Aufstieg und das neue Level. So zählt der Zauberer auch ohne Server mit.
+ */
+export function previewGiftEvents(level: number, coins: number): ServerEvent[] {
+  const event = (type: string, payload: Record<string, unknown>) => ({
+    id: 0,
+    type,
+    player_id: null,
+    payload,
+    created_at: 0,
+  });
+  return [
+    event("coins.gained", { amount: coins, source: "level" }),
+    event("level.up", { level: level + 1 }),
+  ];
+}
+
+/** Ein Level-Aufstieg in der Vorschau (`#shop-muenzen`): ein Level mehr und seine Münzen. */
+export function previewCoinGift(game: Game): Game {
+  const { me } = game;
+  if (!me) return game;
+  const coins = me.coins + game.lan.rules.coins_per_level;
+  return { ...game, me: { ...me, coins, level: me.level + 1 } };
 }

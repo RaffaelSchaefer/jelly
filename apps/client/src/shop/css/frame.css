@@ -1,0 +1,356 @@
+/*
+ * Kopf und Rahmen des Zauberladens: das Messingschild an zwei Ketten, die Lederbörse, Griff und
+ * Fensterknöpfe als Messingknäufe und Filigrane in den Ecken des Fensters.
+ */
+.shop-head {
+  position: relative;
+  /* Über der Bühne: Das Schild hängt ein Stück in ihren Rahmen. */
+  z-index: 6;
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  margin-inline: calc(var(--pad) - var(--inset));
+  --plaque-h: 28px;
+  --plaque-pad: 16px;
+  --plaque-size: 13px;
+  --plaque-track: 0.16em;
+  --purse-h: 30px;
+  --coin-size: 20px;
+  --count-size: 16px;
+}
+
+.shop .window-tools {
+  flex: 1;
+  height: 28px;
+  align-items: center;
+  transform: none;
+  transition: none;
+}
+
+/* Griff und Fensterknöpfe als Messingknäufe. */
+.shop .window-tools-right {
+  gap: 6px;
+  border: 0;
+}
+
+.shop .window-tools .icon-button {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3c4, #c9a24a 55%, #6e5020);
+  box-shadow:
+    0 0 0 1px #3a2810,
+    0 2px 4px #0008;
+  color: var(--wood);
+  transition:
+    scale var(--t-hover) var(--ease-out),
+    box-shadow var(--t-hover);
+}
+
+.shop .window-tools .icon-button svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+  filter: none;
+}
+
+.shop .window-tools .icon-button:hover:enabled {
+  scale: 1.06;
+  background: radial-gradient(circle at 35% 30%, #fff3c4, #c9a24a 55%, #6e5020);
+  box-shadow:
+    0 0 0 1px #3a2810,
+    0 2px 4px #0008,
+    0 0 10px #ffcf7a66;
+}
+
+.shop .window-tools .icon-button:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  background: radial-gradient(circle at 35% 30%, #fff3c4, #c9a24a 55%, #6e5020);
+  box-shadow: var(--focus-wood);
+}
+
+/* `optimized.css` gibt Griff und Knöpfen sonst eine feste Fläche. Die Knäufe sind schon fest. */
+html[data-optimized-rendering] .shop .window-tools-right,
+html[data-optimized-rendering] .shop .drag-handle {
+  border-color: transparent;
+}
+
+html[data-optimized-rendering] .shop .window-tools-right {
+  background: none;
+}
+
+html[data-optimized-rendering] .shop .window-tools .icon-button {
+  background: radial-gradient(circle at 35% 30%, #fff3c4, #c9a24a 55%, #6e5020);
+}
+
+html[data-optimized-rendering] .shop .window-tools .icon-button:is(:hover:enabled, :focus-visible) {
+  background: radial-gradient(circle at 35% 30%, #fff3c4, #c9a24a 55%, #6e5020);
+}
+
+/* Das Messingschild. Es hängt an zwei Ketten bis in den Rahmen der Bühne und zieht das Fenster. */
+.shop-plaque {
+  position: absolute;
+  top: calc(var(--head-h) + var(--gap) + 10px - var(--plaque-h));
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  height: var(--plaque-h);
+  margin: 0;
+  padding: 0 calc(var(--plaque-pad) - var(--plaque-track)) 0 var(--plaque-pad);
+  translate: -50% 0;
+  border-radius: 4px 4px 12px 12px / 4px 4px 16px 16px;
+  background: linear-gradient(180deg, #f8e2a6, #d9b45e 45%, #a87e34);
+  box-shadow:
+    0 0 0 1px #5a3e16,
+    0 0 0 3px var(--wood),
+    0 0 0 4px #c9a24a66,
+    0 6px 14px #000a;
+  color: var(--quill);
+  font: 700 var(--plaque-size) / 1 var(--display);
+  letter-spacing: var(--plaque-track);
+  text-shadow: 0 1px 0 #fff4c880;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.shop-plaque::before,
+.shop-plaque::after {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 1px);
+  width: 2px;
+  height: calc(var(--head-h) + var(--gap) + 10px - var(--plaque-h));
+  background: repeating-linear-gradient(180deg, var(--brass) 0 3px, transparent 3px 5px);
+}
+
+.shop-plaque::before {
+  left: 16%;
+}
+
+.shop-plaque::after {
+  right: 16%;
+}
+
+.plaque-star {
+  flex: none;
+  fill: var(--brass-dark);
+}
+
+/* Die Lederbörse mit Naht, rechts neben dem Griff. */
+.shop-purse {
+  position: absolute;
+  top: 50%;
+  left: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--purse-h);
+  margin: 0;
+  padding: 0 12px 0 6px;
+  translate: 0 -50%;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #6b4428, #3d2617 60%, #24150c);
+  box-shadow:
+    0 0 0 1.5px var(--brass),
+    0 3px 10px #000a;
+  outline: 1px dashed #c9a24a55;
+  outline-offset: -4px;
+  color: var(--parchment);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.purse-coin,
+.purse-flip {
+  display: grid;
+  place-items: center;
+}
+
+.purse-coin {
+  width: var(--coin-size);
+  height: var(--coin-size);
+  color: var(--candle);
+}
+
+.purse-coin svg {
+  width: var(--coin-size);
+  height: var(--coin-size);
+}
+
+.shop-purse[data-open="false"] .purse-coin {
+  color: var(--parchment-shade);
+}
+
+.purse-count {
+  min-width: 1ch;
+  color: var(--brass-light);
+  font: 700 var(--count-size) / 1 var(--display);
+  font-variant-numeric: lining-nums tabular-nums;
+  text-shadow: 0 1px 0 #000;
+}
+
+.purse-label {
+  color: var(--parchment-shade);
+  font: italic 500 11.5px / 1 var(--book);
+}
+
+/* Jeder Schritt dreht die Münze und schiebt die Zahl nach. */
+.shop-purse[data-trend] .purse-flip {
+  animation: purse-flip 180ms ease-in-out;
+}
+
+.shop-purse[data-trend] .purse-count {
+  animation: purse-nudge 90ms var(--ease-out);
+}
+
+.purse-plus {
+  position: absolute;
+  top: -4px;
+  left: 18px;
+  color: #ffe08a;
+  font: 700 12px / 1 var(--display);
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+  animation: purse-plus 700ms var(--ease-out) forwards;
+}
+
+@keyframes purse-flip {
+  50% {
+    scale: 0.15 1;
+  }
+}
+
+@keyframes purse-nudge {
+  from {
+    translate: 0 -3px;
+  }
+}
+
+@keyframes purse-plus {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -18px;
+  }
+}
+
+/* Schmal ist nur Platz für Münze und Zahl. Ohne LAN zeigt die breite Börse Schloss und „Geschlossen“. */
+@media (max-width: 599px) {
+  .purse-label {
+    display: none;
+  }
+}
+
+@media (min-width: 600px) {
+  .shop-purse[data-open="false"] .purse-count {
+    display: none;
+  }
+}
+
+@media (min-width: 700px) and (min-height: 560px) {
+  .shop-head {
+    --plaque-h: 32px;
+    --plaque-pad: 22px;
+    --plaque-size: 15px;
+    --plaque-track: 0.2em;
+    --purse-h: 34px;
+    --coin-size: 22px;
+    --count-size: 17px;
+  }
+}
+
+@media (min-width: 1000px) and (min-height: 760px) {
+  .shop-head {
+    --plaque-h: 38px;
+    --plaque-pad: 28px;
+    --plaque-size: 18px;
+    --plaque-track: 0.22em;
+    --purse-h: 38px;
+    --coin-size: 24px;
+    --count-size: 19px;
+  }
+}
+
+/*
+ * Filigrane in den Ecken des Fensters. Ihre Bögen folgen der runden Ecke, die Linien bleiben im
+ * Rand: Knäufe, Rolle und Brief beginnen erst dahinter.
+ */
+.shop-frame {
+  --corner-tl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3c4'/%3E%3Cstop offset='.45' stop-color='%23c9a24a'/%3E%3Cstop offset='1' stop-color='%236e5020'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M5 56V25A20 20 0 0 1 25 5h31'/%3E%3Cpath d='M9 40V25A16 16 0 0 1 25 9h15'/%3E%3Cpath d='M56 5c3 0 5 1.6 5 3.8s-1.7 3.4-3.6 3.4c-1.6 0-2.6-1.1-2.6-2.4'/%3E%3Cpath d='M5 56c0 3 1.6 5 3.8 5s3.4-1.7 3.4-3.6c0-1.6-1.1-2.6-2.4-2.6'/%3E%3Cpath d='M34 5c2.6-3 7.4-3 10 0-2.6 3-7.4 3-10 0Z'/%3E%3Cpath d='M5 34c-3 2.6-3 7.4 0 10 3-2.6 3-7.4 0-10Z'/%3E%3C/g%3E%3Ccircle cx='10.9' cy='10.9' r='2.3' fill='url(%23g)'/%3E%3C/svg%3E");
+  --corner-tr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3c4'/%3E%3Cstop offset='.45' stop-color='%23c9a24a'/%3E%3Cstop offset='1' stop-color='%236e5020'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg transform='matrix(-1 0 0 1 64 0)'%3E%3Cg fill='none' stroke='url(%23g)' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M5 56V25A20 20 0 0 1 25 5h31'/%3E%3Cpath d='M9 40V25A16 16 0 0 1 25 9h15'/%3E%3Cpath d='M56 5c3 0 5 1.6 5 3.8s-1.7 3.4-3.6 3.4c-1.6 0-2.6-1.1-2.6-2.4'/%3E%3Cpath d='M5 56c0 3 1.6 5 3.8 5s3.4-1.7 3.4-3.6c0-1.6-1.1-2.6-2.4-2.6'/%3E%3Cpath d='M34 5c2.6-3 7.4-3 10 0-2.6 3-7.4 3-10 0Z'/%3E%3Cpath d='M5 34c-3 2.6-3 7.4 0 10 3-2.6 3-7.4 0-10Z'/%3E%3C/g%3E%3Ccircle cx='10.9' cy='10.9' r='2.3' fill='url(%23g)'/%3E%3C/g%3E%3C/svg%3E");
+  --corner-bl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3c4'/%3E%3Cstop offset='.45' stop-color='%23c9a24a'/%3E%3Cstop offset='1' stop-color='%236e5020'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg transform='matrix(1 0 0 -1 0 64)'%3E%3Cg fill='none' stroke='url(%23g)' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M5 56V25A20 20 0 0 1 25 5h31'/%3E%3Cpath d='M9 40V25A16 16 0 0 1 25 9h15'/%3E%3Cpath d='M56 5c3 0 5 1.6 5 3.8s-1.7 3.4-3.6 3.4c-1.6 0-2.6-1.1-2.6-2.4'/%3E%3Cpath d='M5 56c0 3 1.6 5 3.8 5s3.4-1.7 3.4-3.6c0-1.6-1.1-2.6-2.4-2.6'/%3E%3Cpath d='M34 5c2.6-3 7.4-3 10 0-2.6 3-7.4 3-10 0Z'/%3E%3Cpath d='M5 34c-3 2.6-3 7.4 0 10 3-2.6 3-7.4 0-10Z'/%3E%3C/g%3E%3Ccircle cx='10.9' cy='10.9' r='2.3' fill='url(%23g)'/%3E%3C/g%3E%3C/svg%3E");
+  --corner-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3c4'/%3E%3Cstop offset='.45' stop-color='%23c9a24a'/%3E%3Cstop offset='1' stop-color='%236e5020'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg transform='matrix(-1 0 0 -1 64 64)'%3E%3Cg fill='none' stroke='url(%23g)' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M5 56V25A20 20 0 0 1 25 5h31'/%3E%3Cpath d='M9 40V25A16 16 0 0 1 25 9h15'/%3E%3Cpath d='M56 5c3 0 5 1.6 5 3.8s-1.7 3.4-3.6 3.4c-1.6 0-2.6-1.1-2.6-2.4'/%3E%3Cpath d='M5 56c0 3 1.6 5 3.8 5s3.4-1.7 3.4-3.6c0-1.6-1.1-2.6-2.4-2.6'/%3E%3Cpath d='M34 5c2.6-3 7.4-3 10 0-2.6 3-7.4 3-10 0Z'/%3E%3Cpath d='M5 34c-3 2.6-3 7.4 0 10 3-2.6 3-7.4 0-10Z'/%3E%3C/g%3E%3Ccircle cx='10.9' cy='10.9' r='2.3' fill='url(%23g)'/%3E%3C/g%3E%3C/svg%3E");
+  --corner: 44px;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  border-radius: 22px;
+  background:
+    var(--corner-tl) top 3px left 3px / var(--corner) no-repeat,
+    var(--corner-tr) top 3px right 3px / var(--corner) no-repeat,
+    var(--corner-bl) bottom 3px left 3px / var(--corner) no-repeat,
+    var(--corner-br) bottom 3px right 3px / var(--corner) no-repeat;
+  pointer-events: none;
+}
+
+/* Eine feine Messinglinie innen am Rand. */
+.shop-frame::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid #c9a24a33;
+  border-radius: 16px;
+}
+
+html[data-surface="preview"] .shop-frame,
+html[data-surface="preview"] .shop-frame::before {
+  border-radius: 0;
+}
+
+@media (min-width: 700px) and (min-height: 560px) {
+  .shop-frame {
+    --corner: 56px;
+  }
+}
+
+@media (min-width: 1000px) and (min-height: 760px) {
+  .shop-frame {
+    --corner: 68px;
+  }
+}
+
+/* Ruhig: Knäufe wachsen nicht, die Börse springt ohne Drehen und ohne „+1“. */
+html[data-reduced-motion] .shop .window-tools .icon-button {
+  transition: none;
+}
+
+html[data-reduced-motion] .shop .window-tools .icon-button:hover:enabled {
+  scale: none;
+}
+
+html[data-reduced-motion] .shop-purse :is(.purse-flip, .purse-count, .purse-plus) {
+  animation: none;
+}
+
+html[data-reduced-motion] .purse-plus {
+  display: none;
+}
+
+/* Optimiert: Die Börse zählt ohne Animation. */
+html[data-optimized-rendering] .shop-purse :is(.purse-flip, .purse-count, .purse-plus) {
+  animation: none;
+}
+
+html[data-optimized-rendering] .purse-plus {
+  display: none;
+}

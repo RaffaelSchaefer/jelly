@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { PetGame } from "./usePet";
 
 import { pickClip, type VoiceMoment, type VoiceNote } from "./pet";
-import { createVoice } from "./voice";
+import { createVoice, startClock } from "./voice";
 
 /** Eine Stimme für die ganze App. */
 const voice = createVoice();
@@ -29,12 +29,6 @@ export interface ActiveVoice {
   partnerNotes: VoiceNote[];
   /** Sekunden seit dem Anfang des Lauts. */
   elapsed: () => number;
-}
-
-/** Eine Uhr ab jetzt, für einen Laut, den man nicht hört. */
-function startClock() {
-  const startedAt = performance.now();
-  return () => (performance.now() - startedAt) / 1000;
 }
 
 /**

@@ -1,198 +1,139 @@
 /**
- * Das Shop-Fenster: Münzstand, die Cosmetics mit Preis und eine Anprobe am eigenen Jelly.
+ * Das Shop-Fenster als Zauberladen: oben Messingschild und Börse, darunter die Ladentheke mit dem
+ * Zauberer und dem eigenen Jelly zur Anprobe, unten die Rolle mit den Waren und der Kaufbrief mit
+ * seinem Siegel.
  *
- * Wählen probiert ein Teil an, erst der Knopf darunter kauft oder legt es an. Preise und Kauf
- * entscheidet der Server, `pet/shop.ts` rechnet nur aus, was dasteht.
+ * Wählen probiert eine Ware an (`useShopMoments.ts`), erst das Siegel kauft sie oder legt sie an
+ * (`useSealRitual.ts`). Beide lenken Funken, Klang, Licht, Runen, Börse und Zauberer im Takt aus
+ * `pet/shopTimeline.ts`. Preise und Kauf entscheidet der Server, `pet/shop.ts` rechnet nur aus, was
+ * dasteht. Den Klang des Fensters hält `useShopSound`.
  *
  * @module
  */
 
-import { lazy, Suspense, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import type { WindowAction } from "../backend";
+
+import { desktop } from "../backend";
 import {
-  coinLabel,
   equipColor,
-  FULL_RENDERING,
-  OPTIMIZED_RENDERING,
   shopItems,
-  slotLabel,
   withEquipped,
   type Catalog,
   type Equipped,
   type Me,
-  type Settings,
   type ShopItem,
 } from "../pet";
-import { ErrorAlert, Icon } from "../ui";
 import { OS_REDUCED_MOTION, useDocumentTheme } from "../useDocumentTheme";
 import { useClickSounds } from "../useUiSounds";
-import { WindowTools } from "../WindowChrome";
-import ShopAction from "./ShopAction";
+import ShopHeader from "./ShopHeader";
+import ShopLedger from "./ShopLedger";
+import ShopNotice from "./ShopNotice";
+import ShopSeal from "./ShopSeal";
+import ShopStage from "./ShopStage";
+import { NoJellyLetter, ShopSkeleton } from "./ShopStates";
+import { shopSound } from "./sound/shopSound";
+import { useShopSound } from "./sound/useShopSound";
+import { useSealRitual, type PurseHold } from "./useSealRitual";
 import { useShop, type ShopControls } from "./useShop";
+import { useShopMoments } from "./useShopMoments";
+import { useStageCues } from "./useStageCues";
+import { useWizard, type WizardWorld } from "./useWizard";
 
-/** Three.js erst laden, wenn die Liste schon dasteht. */
-const PetScene = lazy(() => import("../scene/PetScene"));
-
-/** Was statt des Jellys dasteht, solange Three.js lädt. */
-const WAKING_UP = <span className="render-fallback">Dein Begleiter kommt …</span>;
-
-/** Was das Jelly zur Probe trägt: alles wie bisher und dazu das gewählte Teil. */
+/** Was das Jelly zur Probe trägt: alles wie bisher und dazu die gewählte Ware. */
 function tryOn(me: Me, item: ShopItem | null, catalog: Catalog): Equipped {
   if (!item) return me.equipped;
   const { id, slot } = item.cosmetic;
   return withEquipped(me.equipped, slot, id, equipColor(id, catalog));
 }
 
-/** Das Jelly mit der Anprobe. Ohne Glas: Im Shop gibt es keine Tropfen am Jelly. */
-function TryOn({
-  me,
-  equipped,
-  pulse,
-  settings,
-}: {
-  me: Me;
-  equipped: Equipped;
-  pulse: number;
-  settings: Settings;
-}) {
-  const profile = settings.optimizedRendering ? OPTIMIZED_RENDERING : FULL_RENDERING;
-  return (
-    <div className="shop-jelly">
-      <Suspense fallback={WAKING_UP}>
-        <PetScene
-          {...{ equipped, pulse }}
-          color={me.color}
-          reducedMotion={settings.reducedMotion ?? OS_REDUCED_MOTION}
-          rendering={{ ...profile, glass: false }}
-          frameLimit={settings.frameLimit}
-        />
-      </Suspense>
-    </div>
+/** Was der Zauberer über den Laden weiß. */
+function useWorld(shop: ShopControls, me: Me, items: readonly ShopItem[]): WizardWorld {
+  const { coins_per_level: perLevel, xp_per_level: xpPerLevel } = shop.game.lan.rules;
+  const { open } = shop;
+  return useMemo(
+    () => ({ me, items, open, perLevel, xpPerLevel }),
+    [me, items, open, perLevel, xpPerLevel],
   );
 }
 
-/** Was rechts in einer Zeile steht: der Preis, oder dass es schon da ist. */
-function RowState({ item, worn }: { item: ShopItem; worn: boolean }) {
-  if (item.state === "owned")
-    return <span className="shop-owned">{worn ? "Angelegt" : "Gekauft"}</span>;
-  return (
-    <span className="shop-price" aria-label={coinLabel(item.price)}>
-      <Icon name="coin" />
-      {item.price}
-    </span>
-  );
+/** Was der Laden über ein laufendes Ritual nach außen gibt: Börse und Zeremonie des Siegels. */
+interface RitualHooks {
+  onPurseHold: PurseHold;
+  /** Ob das Siegel gerade stempelt oder trocknet. So lange gehört ein Fehler ihm. */
+  onSealBusy: (busy: boolean) => void;
 }
 
-/** Eine Zeile der Liste. Ein Klick probiert das Teil an. */
-function ShopRow({
-  item,
-  me,
-  catalog,
-  selected,
-  onSelect,
-}: {
-  item: ShopItem;
-  me: Me;
-  catalog: Catalog;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const { cosmetic } = item;
-  const worn = me.equipped[cosmetic.slot]?.key === cosmetic.id;
-  const where = slotLabel(cosmetic.slot, catalog);
-  return (
-    <li>
-      <button
-        type="button"
-        className="shop-row"
-        data-state={item.state}
-        data-sound="select"
-        aria-pressed={selected}
-        onClick={onSelect}
-      >
-        <span className="shop-icon">
-          <Icon name={cosmetic.icon} />
-        </span>
-        <span className="shop-name">
-          <strong>{cosmetic.name}</strong>
-          <small>{item.perLan ? `${where} · nur für diese LAN` : where}</small>
-        </span>
-        <RowState item={item} worn={worn} />
-      </button>
-    </li>
-  );
-}
-
-/** Kopf mit dem Münzstand. */
-function ShopHeader({ me, perLevel }: { me: Me | null; perLevel: number }) {
-  return (
-    <header className="shop-header">
-      <h1>Shop</h1>
-      {me ? (
-        <p className="shop-coins" role="status">
-          <Icon name="coin" />
-          <strong>{coinLabel(me.coins)}</strong>
-          {perLevel > 0 ? <small>+{perLevel} je Level</small> : null}
-        </p>
-      ) : null}
-    </header>
-  );
-}
-
-/** Anprobe, Knopf und Liste. */
-function ShopBody({ shop, me }: { shop: ShopControls; me: Me }) {
+/** Theke, Rolle und Kaufbrief. */
+function ShopBody({ shop, me, ritual }: { shop: ShopControls; me: Me; ritual: RitualHooks }) {
+  const { onPurseHold, onSealBusy } = ritual;
   const { catalog } = shop;
-  const items = shopItems(catalog, me);
+  const items = useMemo(() => shopItems(catalog, me), [catalog, me]);
   const [chosen, setChosen] = useState<string | null>(null);
+  const [keep, setKeep] = useState<string | null>(null);
   const selected = items.find((item) => item.cosmetic.id === chosen) ?? null;
+  const equipped = useMemo(() => tryOn(me, selected, catalog), [me, selected, catalog]);
+  const wizard = useWizard(shop.game.settings, useWorld(shop, me, items));
+  const { notice } = wizard;
+  const { cues, director } = useStageCues();
+  useShopMoments({ selected, me, notice, director });
+  const calm = shop.game.settings.reducedMotion ?? OS_REDUCED_MOTION;
+  const seal = useSealRitual({ me, calm, notice, director, onPurseHold, onBought: setKeep });
+  // Solange das Wachs nicht sitzt, bleibt die Wahl: Sonst stünde die Quittung bei der falschen Ware.
+  const frozen = seal.phase === "stamping" || seal.phase === "setting";
+  useEffect(() => () => onPurseHold(null), [onPurseHold]);
+  useEffect(() => {
+    onSealBusy(frozen);
+    return () => onSealBusy(false);
+  }, [frozen, onSealBusy]);
+
+  function choose(item: ShopItem | null) {
+    if (frozen) return;
+    const id = item?.cosmetic.id ?? null;
+    setChosen(id);
+    setKeep((kept) => (kept === id ? kept : null));
+    shop.clearError();
+  }
+
   return (
     <>
-      <section className="shop-stage" aria-label="Anprobe">
-        <TryOn
-          me={me}
-          equipped={tryOn(me, selected, catalog)}
-          pulse={shop.pulse}
-          settings={shop.game.settings}
-        />
-        <ShopAction key={selected?.cosmetic.id} {...{ shop, me }} item={selected} />
-      </section>
-      <ul className="shop-list" aria-label="Cosmetics">
-        {items.map((item) => (
-          <ShopRow
-            key={item.cosmetic.id}
-            {...{ item, me, catalog }}
-            selected={item === selected}
-            onSelect={() => {
-              setChosen(item.cosmetic.id);
-              shop.clearError();
-            }}
-          />
-        ))}
-      </ul>
+      <ShopStage {...{ shop, wizard, me, equipped }} {...cues} />
+      <ShopLedger
+        {...{ items, me, catalog, frozen }}
+        chosenId={chosen}
+        keepId={keep}
+        open={shop.open}
+        onChoose={choose}
+      />
+      <ShopSeal
+        {...{ shop, wizard, me }}
+        item={selected}
+        onPhase={seal.onPhase}
+        onDismiss={() => choose(null)}
+      />
     </>
   );
 }
 
 /**
- * Was unter dem Kopf steht. Bis Rust geantwortet hat, nur ein Hinweis: Vorher hielte der Stand noch
+ * Was unter dem Kopf steht. Bis Rust geantwortet hat, nur das Gerüst: Vorher hielte der Stand noch
  * die Beispieldaten der Vorschau.
  */
-function ShopContent({ shop, me }: { shop: ShopControls; me: Me | null }) {
-  if (!shop.ready) {
-    return (
-      <p className="shop-empty" role="status">
-        Der Shop öffnet …
-      </p>
-    );
-  }
+function ShopContent({
+  shop,
+  me,
+  ritual,
+}: {
+  shop: ShopControls;
+  me: Me | null;
+  ritual: RitualHooks;
+}) {
+  if (!shop.ready) return <ShopSkeleton />;
   if (!me) {
-    return (
-      <p className="shop-empty">
-        Ohne Jelly gibt es nichts anzuprobieren. Löse erst einen Code ein.
-      </p>
-    );
+    return <NoJellyLetter onLeave={desktop ? () => void shop.windowAction("close") : undefined} />;
   }
-  return <ShopBody shop={shop} me={me} />;
+  return <ShopBody shop={shop} me={me} ritual={ritual} />;
 }
 
 /** Das ganze Fenster. */
@@ -200,23 +141,45 @@ export default function Shop() {
   const shop = useShop();
   const { settings, lan } = shop.game;
   const me = shop.ready ? shop.game.me : null;
+  const [hold, setHold] = useState<number | null>(null);
+  const [sealBusy, setSealBusy] = useState(false);
+  const ritual = useMemo(() => ({ onPurseHold: setHold, onSealBusy: setSealBusy }), []);
   useDocumentTheme(
     me?.color ?? "mint",
     settings.reducedMotion ?? OS_REDUCED_MOTION,
     settings.optimizedRendering,
   );
-  useClickSounds(settings, shop.error);
+  // Scheitert ein Kauf, verpufft es erst, wenn das Wachs springt (`useSealRitual.ts`), nicht schon
+  // mitten im Stempel.
+  useClickSounds(settings, sealBusy ? "" : shop.error);
+  useShopSound(settings);
+  // Schließen blendet den Klang erst aus: So knackt nichts, wenn das Fenster zugeht.
+  const onWindow = (action: WindowAction) =>
+    action === "close"
+      ? shopSound.closeThen(() => void shop.windowAction(action))
+      : void shop.windowAction(action);
+  const purse = me
+    ? { coins: me.coins, perLevel: lan.rules.coins_per_level, open: shop.open, hold }
+    : null;
   return (
-    <main className="shop" aria-label="Shop">
-      <WindowTools name="Shop" quietClose onAction={(action) => void shop.windowAction(action)} />
-      <ShopHeader me={me} perLevel={lan.rules.coins_per_level} />
-      <ShopContent shop={shop} me={me} />
-      {shop.error ? (
-        <ErrorAlert
+    <main
+      className="shop"
+      aria-labelledby="shop-title"
+      aria-busy={!shop.ready}
+      data-open={shop.open}
+    >
+      <ShopHeader purse={purse} onWindow={onWindow} />
+      <ShopContent shop={shop} me={me} ritual={ritual} />
+      {/* Solange das Siegel stempelt, hält die Börse die alten Münzen. So lange wartet auch der
+          Zettel: Erst springt das Wachs, dann kommt die Meldung des Servers. */}
+      {shop.error && hold === null ? (
+        <ShopNotice
           message={shop.error}
           onRetry={shop.ready ? undefined : () => void shop.load()}
+          onClose={shop.clearError}
         />
       ) : null}
+      <div className="shop-frame" aria-hidden="true" />
     </main>
   );
 }

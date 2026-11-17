@@ -10,11 +10,15 @@
 
 import {
   BufferGeometry,
+  CircleGeometry,
+  CustomBlending,
   Mesh,
   MeshBasicMaterial,
   Object3D,
+  OneFactor,
+  OneMinusSrcAlphaFactor,
+  SrcAlphaFactor,
   TorusGeometry,
-  CircleGeometry,
 } from "three";
 
 import type { FaceParts } from "./animation.ts";
@@ -28,6 +32,12 @@ const SIDES = [-1, 1] as const;
 
 /** Augenposition relativ zur Kopfmitte. `x` gilt gespiegelt für beide Seiten. */
 const EYE = { x: 0.19, y: 0.0 } as const;
+
+/** Wie weit die Augen im Kopf liegen. Ihre Vorderseite ragt trotzdem heraus. */
+const EYE_INSET = 0.006;
+
+/** So weit dürfen die Augen beim Blicken wandern, seitlich und in der Höhe. */
+export const EYE_GAZE = { x: 0.035, y: 0.022 } as const;
 
 /** Lage der Brauen über den Augen. */
 const BROW = { x: 0.19, y: 0.13 } as const;
@@ -94,7 +104,7 @@ function createPart(
 /** Ein Auge: dunkle Pupille mit großem und kleinem Glanzpunkt. */
 function createEye(ink: string, side: number, material: MeshBasicMaterial) {
   const eye = createPart(findEyeShapes(ink).open, material, [1, 1, 1]);
-  placeOnHead(eye, { x: side * EYE.x, y: EYE.y, inset: 0.006 });
+  placeOnHead(eye, { x: side * EYE.x, y: EYE.y, inset: EYE_INSET });
   return eye;
 }
 
@@ -120,13 +130,24 @@ function findMouthShape(ink: string): BufferGeometry {
   return mouth;
 }
 
-/** Eine Wange. Startet unsichtbar, die Animation blendet sie beim Stupsen ein. */
+/**
+ * Eine Wange. Startet unsichtbar, die Animation blendet sie beim Stupsen ein.
+ *
+ * Sie mischt mit Alpha wie ein durchsichtiges Material, wird aber wie der Körper (`body.ts`) mit
+ * den undurchsichtigen Meshes gezeichnet, gleich nach dem Gesicht: Durchsichtiges käme erst nach
+ * allen Stickern, und wo eine Malschicht die Tiefe gelöscht hat, malte die Röte über Bart oder
+ * Brille.
+ */
 function createCheek(side: number) {
   const material = new MeshBasicMaterial({
     color: BLUSH,
-    transparent: true,
     opacity: 0,
     depthWrite: false,
+    blending: CustomBlending,
+    blendSrc: SrcAlphaFactor,
+    blendDst: OneMinusSrcAlphaFactor,
+    blendSrcAlpha: OneFactor,
+    blendDstAlpha: OneMinusSrcAlphaFactor,
   });
   const cheek = createPart(SHAPES.cheek, material, [0.075, 0.045, 1]);
   cheek.renderOrder = FACE_ORDER + 1;
@@ -161,4 +182,19 @@ export function createFace(ink: string): Face {
     smile: findMouthShape(ink),
     mouthShapes: findMouthShapes(ink),
   };
+}
+
+/**
+ * Setzt beide Augen um (`dx`, `dy`) versetzt auf den Kopf, etwa für einen Blick zur Seite. Die Lage
+ * ist absolut: Mit 0 und 0 sitzen sie wieder wie beim Bau. Größe und Spiegelung bleiben, wie die
+ * Animation sie gesetzt hat. Die Werte werden auf {@link EYE_GAZE} begrenzt, so bleibt die
+ * Vorderseite der Augen vor dem Kopf.
+ */
+export function placeEyes(face: Pick<Face, "eyes">, dx: number, dy: number) {
+  const x = Math.min(EYE_GAZE.x, Math.max(-EYE_GAZE.x, dx));
+  const y = Math.min(EYE_GAZE.y, Math.max(-EYE_GAZE.y, dy));
+  face.eyes.forEach((eye, index) => {
+    const side = SIDES[index] ?? 1;
+    placeOnHead(eye, { x: side * EYE.x + x, y: EYE.y + y, inset: EYE_INSET });
+  });
 }

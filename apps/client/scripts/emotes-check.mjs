@@ -110,7 +110,7 @@ async function checkFailures() {
   }
   check(failures === 3, "Nach jedem Fehler muss der Stand neu geladen werden");
   const before = requests.length;
-  await act(async () => current.state.setGame({ ...PREVIEW_GAME, tokenRejected: true }));
+  await act(async () => current.state.setGame({ ...PREVIEW_GAME, secretRejected: true }));
   check(!(await play("wave")), "Abgelehntes Konto sperrt Emotes");
   await act(async () =>
     current.state.setGame({ ...PREVIEW_GAME, lan: { ...PREVIEW_GAME.lan, joined: false } }),

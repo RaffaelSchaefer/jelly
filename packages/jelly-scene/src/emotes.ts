@@ -58,6 +58,8 @@ export const EMOTE_MOODS: Record<EmoteKey, EmoteMood> = {
 export interface EmoteFrame {
   key: EmoteKey;
   elapsed: number;
+  /** Wie lange sie läuft, in Sekunden. Ohne Angabe {@link EMOTE_SECONDS}. */
+  seconds?: number;
 }
 
 /** Erkennt bekannte Gesten, auch bei einem neueren Server-Katalog. */

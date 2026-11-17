@@ -1,0 +1,417 @@
+/*
+ * Das Wachssiegel unter dem Kaufbrief. Kaufen heißt halten: Ein Messingring füllt sich in 650 ms,
+ * dann schlägt der Stempel auf und prägt ein Z ins Wachs. Ein Fehler lässt das Siegel springen.
+ * Die Zeiten kommen als Variablen aus `pet/sealCeremony.ts`.
+ *
+ * Der Ring zeigt Fortschritt, nicht Schmuck: Er füllt sich auch in ruhiger und optimierter
+ * Darstellung. Er liegt hinter dem Wachs und braucht so keine Maske.
+ */
+@property --seal-hold {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Das Siegel sitzt halb auf der unteren Kante des Briefs. Seine Größe folgt den Stufen in `brief.css`. */
+.brief-seal {
+  --seal-h: calc(58px * var(--hud-type));
+
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  margin-top: calc(var(--seal-h) / -2);
+}
+
+@container brief (max-height: 209px) {
+  .brief-seal {
+    --seal-h: 52px;
+  }
+
+  /* Vor den Grundregeln unten, darum mit dem Brief davor. */
+  .brief-seal .seal-plate {
+    padding: 3px 10px 3px 18px;
+  }
+
+  .brief-seal .seal-label {
+    font-size: 11px;
+  }
+}
+
+@container brief (min-height: 280px) and (min-width: 290px) {
+  .brief-seal {
+    --seal-h: calc(64px * var(--hud-type));
+  }
+}
+
+.seal {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.seal:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: var(--focus-wood);
+}
+
+.seal[data-mode="locked"] {
+  cursor: not-allowed;
+}
+
+.seal-disc {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: none;
+  width: var(--seal-h);
+  height: var(--seal-h);
+}
+
+/* Der Ring: Er füllt sich beim Halten und läuft beim Loslassen schnell leer. */
+.seal-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(var(--brass-light) calc(var(--seal-hold) * 1turn), #1a0f0873 0);
+  box-shadow: 0 0 0 1px #6e502099;
+  transition: --seal-hold 180ms var(--ease-out);
+}
+
+.seal[data-phase="holding"] .seal-ring {
+  --seal-hold: 1;
+
+  transition: --seal-hold var(--seal-hold-time) linear;
+}
+
+.seal:is([data-phase="stamping"], [data-phase="setting"]) .seal-ring {
+  --seal-hold: 1;
+}
+
+/* Zu kurz gedrückt: Der Ring zuckt einmal an, damit man sieht, dass er gefüllt werden will. */
+.seal[data-mode="hold"][data-phase="idle"][data-hint] .seal-ring {
+  animation: seal-nudge 420ms var(--ease-out);
+}
+
+@keyframes seal-nudge {
+  40% {
+    --seal-hold: 0.2;
+  }
+}
+
+/* Gesiegelt: Der volle Ring blitzt auf und weitet sich. */
+.seal-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--brass-light);
+  opacity: 0;
+}
+
+.seal[data-phase="sealed"] .seal-ring {
+  transition: none;
+}
+
+.seal[data-phase="sealed"] .seal-ring::after {
+  animation: seal-flash 220ms ease-out;
+}
+
+/* Das Wachs: rot zum Kaufen, grün zum Anlegen, grau zum Ablegen, violett gesperrt. */
+.seal-wax {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  grid-area: 1 / 1;
+  border-radius: 47% 53% 50% 50% / 52% 48% 52% 48%;
+  background: radial-gradient(circle at 35% 30%, #ff9a9a, var(--wax-buy) 55%, #5a0f16);
+  box-shadow:
+    0 2px 0 #3a0a0e,
+    0 4px 10px #0009,
+    inset 0 0 0 3px #7a1820,
+    inset 0 0 0 5px #c2414a66;
+  color: #ffe0e0;
+  transition: scale 160ms var(--ease-spring);
+}
+
+.seal-wax > svg:not(.seal-cracks) {
+  grid-area: 1 / 1;
+  width: 42%;
+  height: 42%;
+}
+
+.seal[data-wax="wear"] .seal-wax {
+  background: radial-gradient(circle at 35% 30%, #a8e8a8, var(--wax-wear) 55%, #12381a);
+  box-shadow:
+    0 2px 0 #0c2a12,
+    0 4px 10px #0009,
+    inset 0 0 0 3px #245c2c,
+    inset 0 0 0 5px #6ac07466;
+  color: #e6ffe6;
+}
+
+.seal[data-wax="off"] .seal-wax {
+  background: radial-gradient(circle at 35% 30%, #e0d8c8, var(--wax-off) 55%, #3a3428);
+  box-shadow:
+    0 2px 0 #2a251c,
+    0 4px 10px #0009,
+    inset 0 0 0 3px #5a5244,
+    inset 0 0 0 5px #b0a89866;
+  color: #fff8ec;
+}
+
+.seal[data-wax="locked"] .seal-wax {
+  background: radial-gradient(circle at 35% 30%, #c4b4d6, var(--wax-locked) 55%, #2a2033);
+  box-shadow:
+    0 2px 0 #1e1626,
+    0 4px 10px #0009,
+    inset 0 0 0 3px #4a3c56,
+    inset 0 0 0 5px #9a88aa66;
+  color: #f1eaff;
+}
+
+.seal:not([data-mode="locked"]):hover .seal-wax {
+  scale: 1.06;
+}
+
+/* Beim Aufschlag wird aus dem Zeichen ein geprägtes Z. */
+.seal-monogram {
+  grid-area: 1 / 1;
+  color: #ffe6e6;
+  font: 700 calc(var(--seal-h) * 0.42) / 1 var(--display);
+  text-shadow:
+    0 -1px 0 #0007,
+    0 1px 0 #ffffff40;
+  opacity: 0;
+}
+
+.seal:is([data-phase="stamping"], [data-phase="setting"], [data-phase="sealed"]) .seal-monogram {
+  opacity: 1;
+  transition: opacity 120ms linear var(--seal-impact-time);
+}
+
+.seal:is([data-phase="stamping"], [data-phase="setting"], [data-phase="sealed"])
+  .seal-wax
+  > svg:not(.seal-cracks) {
+  opacity: 0;
+  transition: opacity 120ms linear var(--seal-impact-time);
+}
+
+/* Der Stempel: hoch, hart hinunter, federnd zurück. */
+.seal[data-phase="stamping"] .seal-wax {
+  animation: seal-slam var(--seal-stamp-time) both;
+}
+
+.seal[data-phase="stamping"][data-mode="tap"] .seal-wax {
+  animation-duration: var(--seal-tap-time);
+}
+
+.seal[data-phase="stamping"] .seal-plate {
+  animation: seal-shake 140ms linear var(--seal-impact-time);
+}
+
+/* Gesprungen: zwei Risse laufen durch das dunkle Wachs. */
+.seal-cracks {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #1c0305;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+  opacity: 0;
+}
+
+.seal[data-phase="cracked"] .seal-cracks {
+  opacity: 1;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 300ms ease-out;
+}
+
+/* Das Zeichen verblasst unter den Rissen. */
+.seal[data-phase="cracked"] .seal-wax > svg:not(.seal-cracks) {
+  opacity: 0.35;
+}
+
+.seal[data-phase="cracked"] .seal-wax {
+  background: radial-gradient(circle at 35% 30%, #c0606a, #6a1a22 55%, #3a0a0e);
+}
+
+/* Das Etikett aus Pergament neben dem Wachs. */
+.seal-plate {
+  display: grid;
+  align-content: center;
+  min-height: calc(34px * var(--hud-type));
+  margin-left: -12px;
+  padding: 4px 14px 4px 20px;
+  border-radius: 0 8px 8px 0;
+  background: linear-gradient(180deg, var(--parchment-light), var(--parchment-shade));
+  box-shadow:
+    0 0 0 1px var(--brass-dark),
+    0 3px 8px #0008;
+  color: var(--quill);
+  text-align: left;
+}
+
+.seal-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 calc(12px * var(--hud-type)) / 1.15 var(--display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.seal-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.seal-price svg {
+  width: calc(13px * var(--hud-type));
+  height: calc(13px * var(--hud-type));
+}
+
+.seal-sub {
+  color: var(--quill-soft);
+  font: italic 500 calc(11.5px * var(--hud-type)) / 1.2 var(--book);
+  white-space: nowrap;
+}
+
+/* Solange der Server nicht geantwortet hat, schimmert das Etikett. */
+.seal[data-phase="setting"] .seal-plate {
+  background:
+    linear-gradient(105deg, transparent 35%, #fff8 50%, transparent 65%) -150% 0 / 200% 100%
+      no-repeat,
+    linear-gradient(180deg, var(--parchment-light), var(--parchment-shade));
+  animation: seal-shimmer 1.2s ease-in-out infinite;
+}
+
+/* Der Hinweis als Zettel über dem Siegel, nach einem zu kurzen oder gesperrten Druck. */
+.seal-hint {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 3;
+  width: max-content;
+  max-width: min(240px, 92cqw);
+  padding: 6px 10px;
+  translate: -50% 4px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--parchment-light), var(--parchment-shade));
+  box-shadow:
+    0 0 0 1px var(--brass-dark),
+    0 6px 14px #000a;
+  color: var(--quill);
+  font: italic 600 calc(12px * var(--hud-type)) / 1.35 var(--book);
+  text-align: center;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 160ms,
+    translate 160ms var(--ease-out),
+    visibility 0s 160ms;
+}
+
+.seal-hint[data-shown] {
+  visibility: visible;
+  opacity: 1;
+  translate: -50% 0;
+  transition:
+    opacity 160ms,
+    translate 160ms var(--ease-out);
+}
+
+@keyframes seal-flash {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 1.25;
+  }
+}
+
+@keyframes seal-slam {
+  0% {
+    scale: 1;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  21% {
+    scale: 1.16;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
+  }
+  38% {
+    scale: 0.9;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+@keyframes seal-shake {
+  25% {
+    translate: -2px 0;
+  }
+  50% {
+    translate: 2px 0;
+  }
+  75% {
+    translate: -1px 0;
+  }
+}
+
+@keyframes seal-shimmer {
+  to {
+    background-position:
+      250% 0,
+      0 0;
+  }
+}
+
+/* Ruhig: kein Heben, kein Schlag, kein Zittern. Der Ring füllt sich trotzdem. */
+html[data-reduced-motion] .shop .seal-wax,
+html[data-reduced-motion] .shop .seal-plate,
+html[data-reduced-motion] .shop .seal-ring::after {
+  animation: none;
+  transition: none;
+}
+
+html[data-reduced-motion] .shop .seal:hover .seal-wax {
+  scale: none;
+}
+
+html[data-reduced-motion] .shop .seal-hint {
+  transition: none;
+  translate: -50% 0;
+}
+
+html[data-reduced-motion] .shop .seal[data-phase="cracked"] .seal-cracks {
+  transition: opacity 120ms linear;
+}
+
+/* Optimiert: kein Schimmer und kein Schlag. Auch hier füllt sich der Ring. */
+html[data-optimized-rendering] .shop .seal-wax,
+html[data-optimized-rendering] .shop .seal-plate,
+html[data-optimized-rendering] .shop .seal-ring::after {
+  animation: none;
+}

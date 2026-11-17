@@ -91,6 +91,36 @@ Ersparnis wird nicht verlässlich erreicht, es bleibt bei 96 Schritten.
 - Das Ziel „mindestens halbierte GPU-Zeit und 29 FPS auf einem älteren Windows-PC mit integrierter GPU“ ist
   damit noch nicht belegt.
 
+## Zauberladen
+
+Im Shop-Fenster wirkt der optimierte Modus genauso, dazu kommt, was nur der Laden hat (`?optimized` in der
+Browser-Vorschau):
+
+| Hebel                   | Normal                                       | Optimiert                                     |
+| ----------------------- | -------------------------------------------- | --------------------------------------------- |
+| Licht der Szene         | Kerzen flackern, die Kugel atmet, jedes Bild | steht still, Uniforms nur bei einem Moment    |
+| Effekte (`shopFx`)      | bis 240 Funken, additiv, Pixeldichte bis 1,5 | bis 80 Funken, normal gemischt, Pixeldichte 1 |
+| CSS des Raums           | Sterne, Flammen, Staub, Runen drehen sich    | keine Schleifen, nur der Ring des Siegels     |
+| Kristallkugel und Klang | voll                                         | gleich                                        |
+
+Ruhig (`?ruhig`) steht die Uhr der Szene, das Licht bleibt fest, statt Funken kommen Scheine bis 300 ms, die
+Börse springt auf ihre neue Zahl. Die Effekt-Canvas läuft nur, solange etwas lebt.
+
+Gemessen am 17. November 2026 auf dem M1 Pro (ANGLE Metal in Chrome Headless Shell, Pixeldichte 2, Fenster
+720 × 600, 30 FPS): GPU-Zeit aller WebGL-Aufrufe je gezeichnetem Bild, je Lauf der Median, gemittelt über drei
+Läufe (optimiert zwei) zu je 8 s Ruhe und 4 s Kauf ab dem Druck aufs Siegel. v1 ist der Laden vor dem Umbau (Stand `4ab7245`).
+
+| Szene               | v1      | v2      | Unterschied | Budget  |
+| ------------------- | ------- | ------- | ----------- | ------- |
+| Ruhe                | 1,84 ms | 1,91 ms | +0,07 ms    | +0,4 ms |
+| Kauf, Median        | 2,00 ms | 2,34 ms | +0,34 ms    | +0,8 ms |
+| Kauf, 90. Perzentil | 3,00 ms | 2,93 ms | −0,07 ms    | +0,8 ms |
+| Ruhe, optimiert     | 0,97 ms | 1,03 ms | +0,06 ms    | +0,2 ms |
+| Kauf, optimiert     | 1,19 ms | 1,22 ms | +0,03 ms    | +0,2 ms |
+
+Die Zeiten enthalten nur WebGL: Die Canvas2D der Effekte und das DOM des Raums zählt die Messung nicht mit.
+Einzelne Bilder erreichen in beiden Fassungen 3 bis 6 ms.
+
 ## Selbst messen
 
 ```sh

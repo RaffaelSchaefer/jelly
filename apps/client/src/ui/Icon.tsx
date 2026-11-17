@@ -47,7 +47,8 @@ export type IconName =
   | "search"
   | "map"
   | "coin"
-  | "shop";
+  | "shop"
+  | "chest";
 
 /** SVG-Pfad (`d`) je Icon, 24 × 24, nur Konturen. */
 const paths: Record<IconName, string> = {
@@ -90,6 +91,8 @@ const paths: Record<IconName, string> = {
   map: "M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5ZM9 4v13.5m6-11V20",
   coin: "M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z",
   shop: "M5 8h14l-1.2 12H6.2L5 8Zm4 0V7a3 3 0 0 1 6 0v1",
+  chest:
+    "M4 11h16v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8Zm0 0V9a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v2m-9.5-1h3v4h-3v-4Z",
   sign: "M5 3h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 14H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 3Zm7 11v8M8 8.5h8",
   users:
     "M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM3 20a6 6 0 0 1 12 0m.5-15.3a3.5 3.5 0 0 1 0 6.6m2 3.1A6 6 0 0 1 21 20",

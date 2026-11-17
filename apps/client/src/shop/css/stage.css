@@ -1,0 +1,302 @@
+/*
+ * Die Bühne des Zauberladens: der Stapel ihrer Ebenen, die Szene, Schilder, Stupsfläche und die
+ * Sprechblase. Größe, Seitenverhältnis 12 : 5 und Rahmen der Bühne legt der Laden fest, hier steht
+ * nur, was in ihr liegt. Raum, Theke und Runenkreis stehen in `room.css`. Farben und Schriften des
+ * Ladens kommen aus seinen Variablen, mit Ersatz, falls sie fehlen.
+ */
+.shop-stage {
+  --u: 72px;
+  --ink: #120a05;
+  --ink-w: clamp(1.3px, calc(var(--u) * 0.03), 3.2px);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #0d0805;
+}
+
+/* Jede Ebene füllt die Bühne und lässt Zeiger durch. Nur die Stupsfläche nimmt sie an. */
+.shop-stage
+  > :is(.stage-backdrop, .stage-floor3d, .stage-scene, .stage-counter, .stage-air, .stage-signs) {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  margin: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+.shop-stage > .stage-backdrop {
+  z-index: 0;
+  overflow: hidden;
+}
+.shop-stage > .stage-floor3d {
+  z-index: 1;
+}
+.shop-stage > .stage-scene {
+  z-index: 2;
+}
+.shop-stage > .stage-counter {
+  z-index: 3;
+}
+.shop-stage > .stage-air {
+  z-index: 4;
+  overflow: hidden;
+}
+.shop-stage > .stage-signs {
+  z-index: 5;
+}
+.shop-stage > .stage-bubble {
+  z-index: 6;
+}
+
+/* Solange Three.js lädt oder ohne WebGL: ein Satz mitten im Raum. */
+.shop-stage .render-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--parchment-shade, #dcc493);
+  font: italic 13px var(--book, Georgia, serif);
+  text-shadow: 0 1px 2px #000;
+}
+
+/* „Geschlossen“: ein Brett an zwei Schnüren oben links. */
+.stage-sign {
+  position: absolute;
+  left: 2.5%;
+  top: 0;
+  width: max-content;
+  min-width: clamp(78px, 13%, 132px);
+  padding-top: 13px;
+  transform-origin: 50% 0;
+  animation: sign-sway 5.2s ease-in-out infinite alternate;
+}
+.stage-sign::before,
+.stage-sign::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 1.5px;
+  height: 15px;
+  background: #3a2414;
+}
+.stage-sign::before {
+  left: 18%;
+}
+.stage-sign::after {
+  right: 18%;
+}
+.sign-board {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 7px 8px 7px;
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 18% 3.5px, #f3d68d 0 1.4px, #6e5020 1.8px, transparent 2.4px),
+    radial-gradient(circle at 82% 3.5px, #f3d68d 0 1.4px, #6e5020 1.8px, transparent 2.4px),
+    linear-gradient(180deg, #4a2e1b, #2c1a10);
+  box-shadow:
+    0 0 0 1.5px var(--ink),
+    inset 0 1px 0 #7a5232,
+    0 4px 10px #000a;
+  text-align: center;
+}
+.sign-board strong {
+  color: #f0b8a0;
+  font: 700 clamp(8px, calc(var(--u) * 0.14), 12px) / 1.15 var(--display, "Cinzel", Georgia, serif);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sign-board em {
+  color: var(--parchment-shade, #dcc493);
+  font: italic 500 clamp(8.5px, calc(var(--u) * 0.135), 11.5px) / 1.15 var(--book, Georgia, serif);
+}
+@keyframes sign-sway {
+  from {
+    rotate: -1.5deg;
+  }
+  to {
+    rotate: 1.5deg;
+  }
+}
+
+/* „Zur Probe“: ein Pergament-Schildchen an einem Faden in der Farbe des Jellys. Es wächst mit der Bühne. */
+.stage-tag {
+  position: absolute;
+  right: 2.5%;
+  bottom: 5%;
+  margin: 0;
+  font-size: clamp(10px, calc(var(--u) * 0.16), 15px);
+  opacity: 0;
+  transition: opacity 160ms;
+}
+.stage-tag[data-on] {
+  opacity: 1;
+}
+.stage-tag::before {
+  content: "";
+  position: absolute;
+  left: 0.6em;
+  bottom: 50%;
+  width: 1.5px;
+  height: 1.9em;
+  background: var(--accent, #9fe6f2);
+  transform-origin: 50% 100%;
+  rotate: -28deg;
+}
+.tag-card {
+  display: block;
+  padding: 0.26em 0.87em 0.26em 1.4em;
+  background:
+    radial-gradient(circle at 0.7em 50%, #2a1a10 0 0.17em, transparent 0.23em),
+    linear-gradient(180deg, #f8edcf, var(--parchment-shade, #dcc493));
+  clip-path: polygon(0 50%, 0.78em 0, 100% 0, 100% 100%, 0.78em 100%);
+  color: var(--quill, #3a2414);
+  font: italic 600 1em / 1.25 var(--book, Georgia, serif);
+  white-space: nowrap;
+}
+
+/* Die Fläche über dem Zauberer: unsichtbar, nur der Fokusring zeigt sie. */
+.stage-wizard-poke {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: 46% 46% 24% 24%;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+.stage-wizard-poke:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--brass-light, #f3d68d),
+    0 0 0 4px #140c07b3;
+}
+
+/*
+ * Die Sprechblase als Pergament. Ihr Schwanz zeigt nach links unten auf den Mund des Zauberers.
+ * Sie hängt mindestens 22 px tief: Das Messingschild ragt 10 px in die Bühne, sein Ring 4 px
+ * weiter, und 8 px Luft trennen beide. Sonst wirkte die Blase in S und M wie eine Schublade des
+ * Schilds.
+ */
+.shop-stage > .stage-bubble {
+  --bubble-font: clamp(11px, calc(var(--u) * 0.19), 16.5px);
+  position: absolute;
+  left: var(--bubble-x);
+  top: max(var(--bubble-y), 22px);
+  width: var(--bubble-w);
+  display: flex;
+  pointer-events: none;
+}
+.shop-stage .stage-bubble .speech {
+  max-width: 100%;
+  margin: 0;
+  padding: 0.55em 0.95em 0.6em;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8edcf, var(--parchment-shade, #dcc493));
+  box-shadow:
+    0 0 0 2px var(--brass-dark, #6e5020),
+    0 0 0 4px #0005,
+    0 8px 18px #000a;
+  color: var(--quill, #3a2414);
+  font: 600 var(--bubble-font) / 1.35 var(--book, "Palatino Linotype", Palatino, Georgia, serif);
+  letter-spacing: 0;
+  text-align: left;
+  text-shadow: none;
+  text-wrap: pretty;
+  transform-origin: 6% 100%;
+  animation: speech-pop 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.shop-stage .stage-bubble .speech-tail {
+  position: absolute;
+  top: calc(100% - 3px);
+  bottom: auto;
+  left: 14px;
+  width: 1.45em;
+  height: 1.1em;
+  border: 0;
+  border-radius: 0;
+  background: var(--brass-dark, #6e5020);
+  clip-path: polygon(30% 0, 100% 0, 0 100%);
+  rotate: none;
+  translate: none;
+  animation: none;
+}
+.shop-stage .stage-bubble .speech-tail::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--parchment-shade, #dcc493);
+  clip-path: polygon(42% 0, 85% 0, 15% 73%);
+}
+
+/* Gedacht und geschnarcht: kursiv, mit Bläschen statt Schwanz. */
+.shop-stage .stage-bubble:is([data-kind="thought"], [data-kind="snore"]) .speech {
+  border-radius: 18px;
+  font-style: italic;
+}
+.shop-stage .stage-bubble[data-kind="snore"] .speech {
+  padding: 0.3em 0.8em;
+  font-size: 0.92em;
+  opacity: 0.88;
+}
+.shop-stage .stage-bubble:is([data-kind="thought"], [data-kind="snore"]) .speech-tail {
+  top: calc(100% + 5px);
+  left: 12px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--parchment-shade, #dcc493);
+  box-shadow: 0 0 0 2px var(--brass-dark, #6e5020);
+  clip-path: none;
+}
+.shop-stage .stage-bubble:is([data-kind="thought"], [data-kind="snore"]) .speech-tail::before {
+  inset: auto;
+  left: -8px;
+  top: 10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--brass-dark, #6e5020);
+  clip-path: none;
+}
+
+/* Der Zauberspruch: Nachtblau mit Goldschrift und violettem Schein. */
+.shop-stage .stage-bubble[data-kind="incantation"] .speech {
+  background: linear-gradient(180deg, #2b1d6e, #1d1146);
+  box-shadow:
+    0 0 0 2px #c9a24a,
+    0 0 14px 3px #c7a4ff59,
+    0 8px 18px #000a;
+  color: #f3d68d;
+  font-family: var(--display, "Cinzel", Georgia, serif);
+  letter-spacing: 0.05em;
+}
+.shop-stage .stage-bubble[data-kind="incantation"] .speech-tail {
+  background: #c9a24a;
+}
+.shop-stage .stage-bubble[data-kind="incantation"] .speech-tail::before {
+  background: #1d1146;
+}
+
+/* Am Ende des Satzes verblasst die Blase. Die Meldung für Screenreader bleibt. */
+.shop-stage .stage-bubble[data-faded] .speech {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 300ms,
+    visibility 0s 300ms;
+}
+
+/* Ruhig und optimiert: nichts schwingt oder springt auf. */
+html:is([data-reduced-motion], [data-optimized-rendering])
+  .shop-stage
+  :is(.stage-sign, .stage-bubble .speech) {
+  animation: none;
+}

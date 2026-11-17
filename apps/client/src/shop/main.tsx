@@ -3,17 +3,20 @@
  * Rust öffnet die Seite als eigenes Fenster (`src-tauri/src/popout.rs`), die Vorschau als
  * Browser-Fenster.
  *
+ * Die Grundlagen des Ladens (`css/base.css`) kommen nach `styles.css` und `optimized.css`, jedes
+ * Bauteil bringt sein eigenes CSS mit.
+ *
  * @module
  */
 
+import "../styles.css";
+import "../optimized.css";
+import "./css/base.css";
 import React from "react";
 import { createRoot } from "react-dom/client";
 
 import { desktop } from "../backend";
 import Shop from "./Shop";
-import "../styles.css";
-import "../optimized.css";
-import "./shop.css";
 
 document.documentElement.dataset.surface = desktop ? "desktop" : "preview";
 

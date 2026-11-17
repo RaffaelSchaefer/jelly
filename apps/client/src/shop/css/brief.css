@@ -1,0 +1,379 @@
+/*
+ * Der Kaufbrief: ein Brief aus Velin in einem Holzrahmen. Oben Medaillon und Name, darunter eine
+ * Zeile Geschichte und die Fakten, unten sitzt das Siegel über der Kante (`seal.css`). Nach dem
+ * Kauf wird er zur Quittung mit rotem Stempel.
+ *
+ * Der Brief fragt seine eigene Größe ab (`container: brief / size`, gemessen ohne den Rahmen):
+ *
+ * - niedrig (S): kleines Medaillon, die Fakten als Zeilen, die Geschichte nur für Screenreader;
+ * - mittel (M): Fakten als Marken, zwei Zeilen Geschichte, eine, wenn vier Fakten eng stehen;
+ * - hoch (ab 280 px): Überschrift, rote Initiale und ein größeres Siegel;
+ * - sehr hoch (ab 370 px): großes Medaillon, vier Zeilen Geschichte, Fakten im Raster.
+ *
+ * Nichts im Brief schrumpft: Was nicht passt, fällt in diesen Stufen weg, statt halb zu verschwinden.
+ */
+.shop-brief {
+  position: relative;
+  grid-area: brief;
+  container: brief / size;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  /* Unten Platz für den Ring des Siegels: Er steht über den Messinglinien des Rahmens, nicht auf ihnen. */
+  padding: 10px 10px 12px;
+  border-radius: 8px;
+  background:
+    radial-gradient(ellipse at 50% 25%, #ffcf7a1f, transparent 70%),
+    linear-gradient(180deg, #2c1a10e6, #170d07e6);
+  box-shadow: 0 8px 22px #000a;
+}
+
+.shop-brief::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 12px solid transparent;
+  border-image: var(--brass-frame) 28 / 12px stretch;
+  pointer-events: none;
+}
+
+/* Das Velin mit Büttenrand und blassen Linien. Unten bleibt Platz für die obere Hälfte des Siegels. */
+.brief-letter {
+  --seal-h: calc(58px * var(--hud-type));
+  --deckle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0.78 2.5 0.66 5 1.01 7.5 0.6 10 0.93 12.5 0.81 15 0.59 17.5 0.91 20 0.58 22.5 0.85 25 0.6 27.5 0.61 30 0.85 32.5 1.13 35 0.64 37.5 0.71 40 0.99 42.5 1.21 45 0.95 47.5 0.83 50 1.23 52.5 0.58 55 1.15 57.5 0.75 60 0.65 62.5 0.63 65 0.77 67.5 1.12 70 0.68 72.5 0.96 75 1 77.5 0.81 80 0.93 82.5 0.59 85 0.59 87.5 0.69 90 1.03 92.5 0.85 95 0.77 97.5 0.96 99.13 0.76 98.89 2.5 98.96 5 99.28 7.5 99.05 10 99.08 12.5 98.84 15 98.94 17.5 99.25 20 98.76 22.5 99.37 25 99.16 27.5 98.92 30 99.34 32.5 99.11 35 99.42 37.5 98.98 40 98.91 42.5 99.05 45 98.84 47.5 99.23 50 98.96 52.5 99.03 55 99.04 57.5 99.13 60 98.86 62.5 98.79 65 99.12 67.5 98.99 70 99.41 72.5 98.96 75 99 77.5 98.75 80 98.87 82.5 99.25 85 99.18 87.5 98.98 90 99.43 92.5 99.13 95 99.33 97.5 99.37 99.41 97.5 98.91 95 99.36 92.5 99.28 90 99.18 87.5 98.84 85 99.39 82.5 99.14 80 99.07 77.5 98.83 75 98.88 72.5 98.85 70 99.26 67.5 99.16 65 99.2 62.5 98.83 60 98.78 57.5 99.34 55 99.33 52.5 99.29 50 99.29 47.5 99.11 45 99.04 42.5 99.27 40 99.45 37.5 99.16 35 99.19 32.5 99.05 30 98.78 27.5 98.97 25 99.09 22.5 99.02 20 98.98 17.5 99.41 15 98.82 12.5 98.9 10 98.84 7.5 98.89 5 99.18 2.5 99.17 0.62 99.01 0.59 97.5 0.6 95 0.7 92.5 0.66 90 0.79 87.5 0.59 85 0.55 82.5 0.66 80 0.62 77.5 0.8 75 0.57 72.5 1.16 70 0.98 67.5 0.65 65 0.73 62.5 0.79 60 0.8 57.5 0.64 55 1.14 52.5 1.25 50 0.88 47.5 0.89 45 0.61 42.5 0.62 40 0.79 37.5 0.74 35 1.13 32.5 0.66 30 0.57 27.5 1.22 25 0.92 22.5 0.65 20 0.93 17.5 0.57 15 0.92 12.5 1.23 10 1.15 7.5 1.04 5 0.73 2.5Z'/%3E%3C/svg%3E");
+
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  padding: 8px 12px calc(var(--seal-h) / 2 + 4px);
+  overflow: hidden;
+  rotate: -0.6deg;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 21px, #a0763a14 21px 22px),
+    linear-gradient(180deg, var(--vellum), #ecdcb2);
+  color: var(--quill);
+  -webkit-mask: var(--deckle) center / 100% 100% no-repeat;
+  mask: var(--deckle) center / 100% 100% no-repeat;
+}
+
+.brief-letter > * {
+  flex-shrink: 0;
+}
+
+.brief-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.brief-head .medallion {
+  --medal: 44px;
+}
+
+.brief-head .medallion-gem {
+  display: block;
+}
+
+.brief-eyebrow {
+  display: none;
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ink-red);
+  font: 700 calc(10px * var(--hud-type)) / 1 var(--display);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.brief-heading {
+  min-width: 0;
+}
+
+.brief-title {
+  margin: 0;
+  color: var(--quill);
+  font: 700 clamp(16px, 0.9vw + 10px, 24px) / 1.1 var(--display);
+  overflow-wrap: anywhere;
+}
+
+.brief-meta {
+  margin: 2px 0 0;
+  color: var(--quill-soft);
+  font: italic 500 calc(12px * var(--hud-type)) / 1.2 var(--book);
+}
+
+.brief-close {
+  align-self: start;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border-radius: 50%;
+  color: var(--quill-soft);
+}
+
+.shop .brief-close:hover {
+  background: #a0763a26;
+}
+
+.shop .brief-close:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: var(--focus-paper);
+}
+
+/* Die Geschichte: höchstens zwei Zeilen, auf hohen Briefen mehr und mit Initiale. */
+.brief-lore {
+  --lines: 2;
+
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--quill);
+  font: italic 400 calc(13px * var(--hud-type)) / 1.45 var(--book);
+  text-wrap: pretty;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--lines);
+  line-clamp: var(--lines);
+}
+
+/* Die Fakten als kleine Marken. */
+.brief-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 5px;
+  margin: 0;
+}
+
+.brief-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #a0763a1f;
+  box-shadow: inset 0 0 0 1px #a0763a40;
+}
+
+.brief-fact dt {
+  color: var(--quill-soft);
+  font: 700 calc(10px * var(--hud-type)) / 1 var(--display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.brief-fact dd {
+  margin: 0;
+  font: 600 calc(13px * var(--hud-type)) / 1.2 var(--book);
+}
+
+.brief-fact .price-token {
+  padding: 1px 6px 1px 4px;
+}
+
+/* Ohne Wahl: eine Einladung und was der Laden zu bieten hat. */
+.brief-empty {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.brief-empty .brief-title {
+  color: var(--quill-soft);
+  font-size: calc(13px * var(--hud-type));
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.brief-invite,
+.brief-summary {
+  margin: 0;
+  font: italic calc(13px * var(--hud-type)) / 1.45 var(--book);
+  text-wrap: pretty;
+}
+
+.brief-summary {
+  color: var(--ink-red);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Die Quittung blendet über, der Stempel schlägt schräg auf. */
+.brief-receipt {
+  animation: brief-fade 200ms var(--ease-out);
+}
+
+.brief-paid {
+  position: absolute;
+  top: 38px;
+  right: 14px;
+  padding: 3px 8px;
+  border: 2.5px solid var(--ink-red);
+  border-radius: 4px;
+  color: var(--ink-red);
+  font: 900 calc(16px * var(--hud-type)) / 1 var(--display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  rotate: -12deg;
+  opacity: 0.9;
+  pointer-events: none;
+  animation: brief-paid 300ms var(--ease-stamp) both;
+}
+
+@keyframes brief-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes brief-paid {
+  from {
+    opacity: 0;
+    scale: 1.8;
+    rotate: -24deg;
+  }
+}
+
+/* Vier Fakten auf schmalem Brief brauchen drei Reihen: Dann bleibt eine Zeile Geschichte. */
+@container brief (max-width: 319px) and (max-height: 369px) {
+  .brief-letter:has(.brief-fact:nth-child(4)) .brief-lore {
+    --lines: 1;
+  }
+}
+
+/* Niedrig (Größe S): Die Geschichte bleibt nur für Screenreader, die Fakten stehen als Zeilen. */
+@container brief (max-height: 209px) {
+  .brief-letter {
+    --seal-h: 52px;
+
+    padding-top: 6px;
+  }
+
+  .brief-head .medallion {
+    --medal: 32px;
+  }
+
+  .brief-title {
+    font-size: 15px;
+  }
+
+  .brief-lore {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .brief-facts {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1px 8px;
+  }
+
+  .brief-fact {
+    display: contents;
+  }
+
+  .brief-fact dt {
+    font-size: 9px;
+  }
+
+  .brief-fact dd {
+    font-size: 12px;
+  }
+
+  /* Die Quittung hat eine Zeile mehr: Ihr Name bleibt einzeilig, sonst rutschte „Gilt“ unter das Siegel. */
+  .shop-brief[data-receipt] .brief-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Hoch: Überschrift, größeres Medaillon und Siegel, Initiale. */
+@container brief (min-height: 280px) and (min-width: 290px) {
+  .brief-letter {
+    --seal-h: calc(64px * var(--hud-type));
+
+    gap: 8px;
+    padding: 14px 18px calc(var(--seal-h) / 2 + 6px);
+  }
+
+  .brief-eyebrow {
+    display: block;
+  }
+
+  .brief-head .medallion {
+    --medal: calc(56px * var(--hud-type));
+  }
+
+  .brief-lore {
+    font-size: calc(14px * var(--hud-type));
+    line-height: 1.5;
+  }
+
+  /* Eine erhabene Initiale statt einer hängenden: Sie trägt auch eine Geschichte von einer Zeile. */
+  .brief-lore::first-letter {
+    color: var(--ink-red);
+    font: 700 1.55em/1 var(--display);
+  }
+
+  .brief-paid {
+    top: 46px;
+    font-size: calc(20px * var(--hud-type));
+  }
+}
+
+/* Sehr hoch (Größe L): großes Medaillon, vier Zeilen Geschichte, Fakten im Raster. */
+@container brief (min-height: 370px) and (min-width: 290px) {
+  .brief-letter {
+    gap: 10px;
+  }
+
+  .brief-head .medallion {
+    --medal: calc(72px * var(--hud-type));
+  }
+
+  .brief-lore {
+    --lines: 4;
+  }
+
+  .brief-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
+  }
+
+  .brief-fact {
+    display: grid;
+    gap: 3px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+}
+
+/* Ruhig: Quittung und Stempel erscheinen nur. */
+html[data-reduced-motion] .shop :is(.brief-receipt, .brief-paid) {
+  animation: brief-fade 120ms linear;
+}
+
+/* Optimiert: gerader Rand statt Büttenrand, keine Animation. */
+html[data-optimized-rendering] .shop .brief-letter {
+  -webkit-mask: none;
+  mask: none;
+  box-shadow: 0 0 0 1px #b8925a;
+}
+
+html[data-optimized-rendering] .shop :is(.brief-receipt, .brief-paid) {
+  animation: none;
+}

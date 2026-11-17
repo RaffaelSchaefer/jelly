@@ -1,6 +1,15 @@
-import { Group, Mesh, type ShaderMaterial } from "three";
+import {
+  Group,
+  Mesh,
+  PerspectiveCamera,
+  Scene,
+  Vector2,
+  type BufferGeometry,
+  type ShaderMaterial,
+} from "three";
 import { expect, test } from "vitest";
 
+import { BODY_DRAW_RANGES } from "./body.ts";
 import { JELLY_COLORS } from "./colors.ts";
 import { EMOTE_GLYPHS } from "./emotes.ts";
 import { animateJelly, createJelly, createMotion, disposeJelly, type Jelly } from "./index.ts";
@@ -95,4 +104,33 @@ test("disposing frees the materials without breaking the shared shapes", () => {
     return geometries;
   };
   expect(shapes(second)).toEqual(shapes(first));
+});
+
+test("the body draws its box with hands in the very frame the hands come out", () => {
+  const jelly = createJelly(JELLY_COLORS.mint);
+  const body = jelly.root.children.find((child) => child instanceof Mesh) as Mesh<
+    BufferGeometry,
+    ShaderMaterial
+  >;
+  const camera = new PerspectiveCamera(30, 1);
+  const renderer = { getDrawingBufferSize: (size: Vector2) => size.set(100, 100) };
+  const draw = () => {
+    body.onBeforeRender(
+      renderer as never,
+      new Scene(),
+      camera,
+      body.geometry,
+      body.material,
+      new Group(),
+    );
+    const { start, count } = body.geometry.drawRange;
+    return { start, count };
+  };
+  expect(draw()).toEqual(BODY_DRAW_RANGES.withoutHands);
+  jelly.hands[1]!.visible = true;
+  // Dieselbe Geometrie, die der Renderer gleich zeichnet: kein Wechsel erst im nächsten Bild.
+  const geometry = body.geometry;
+  expect(draw()).toEqual(BODY_DRAW_RANGES.withHands);
+  expect(body.geometry).toBe(geometry);
+  expect(geometry.index?.count).toBe(2 * BODY_DRAW_RANGES.withHands.count);
 });

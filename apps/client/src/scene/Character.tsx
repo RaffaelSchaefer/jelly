@@ -21,6 +21,7 @@ import {
   restPose,
   type DuetRole,
   type Jelly,
+  type JellyPalette,
   type JellyQuality,
 } from "@jelly/scene";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
@@ -113,16 +114,16 @@ function poseStand(
 function WornCosmetics({
   jelly,
   worn,
-  color,
+  ink,
 }: {
   jelly: Jelly;
   worn: ReturnType<typeof wornCosmetics>;
-  color: PetColor;
+  ink: string;
 }) {
   const draw = (slots: CosmeticSlot[]) =>
     worn
       .filter((item) => slots.includes(item.slot))
-      .map((item) => <Cosmetic key={item.id} id={item.id} color={color} />);
+      .map((item) => <Cosmetic key={item.id} id={item.id} ink={ink} />);
   return (
     <>
       {createPortal(draw(["head", "face"]), jelly.faceAnchor)}
@@ -136,6 +137,8 @@ function WornCosmetics({
 export interface CharacterProps {
   /** Farbvariante. */
   color: PetColor;
+  /** Eigene Farben statt `color`, etwa für den Zauberer im Shop. Sollte stabil sein. */
+  palette?: JellyPalette;
   /** Zähler, der bei jeder belohnten Aktion steigt. Jede Änderung löst einen Hüpfer aus. */
   pulse: number;
   /** Bewegung auf das Nötigste reduzieren. */
@@ -159,6 +162,7 @@ export interface CharacterProps {
 /** Das Pet mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
 export default function Character({
   color,
+  palette: custom,
   pulse,
   reducedMotion,
   sign = null,
@@ -173,7 +177,8 @@ export default function Character({
   // Ohne Modell zeigt ein Cosmetic nichts, dann hielte das Jelly leere Hände hin.
   const holdsModel = worn.some((item) => item.slot === "hands" && hasCosmeticModel(item.id));
   const holding = Boolean(sign) || holdsModel;
-  const jelly = useMemo(() => createJelly(PET_COLORS[color], quality), [color, quality]);
+  const palette = custom ?? PET_COLORS[color];
+  const jelly = useMemo(() => createJelly(palette, quality), [palette, quality]);
   const motion = useRef(createMotion(pulse));
   const stand = useRef<Group>(null);
   const invalidate = useThree((state) => state.invalidate);
@@ -201,7 +206,11 @@ export default function Character({
       holding,
       emote:
         emote && isEmoteKey(emote.key)
-          ? { key: emote.key, elapsed: (performance.now() - emote.startedAt) / 1000 }
+          ? {
+              key: emote.key,
+              elapsed: (performance.now() - emote.startedAt) / 1000,
+              seconds: emote.seconds,
+            }
           : undefined,
       mouth: currentMouth(voiced, role, reducedMotion),
     });
@@ -211,7 +220,7 @@ export default function Character({
   return (
     <group ref={stand}>
       <primitive object={jelly.root}>
-        <WornCosmetics jelly={jelly} worn={worn} color={color} />
+        <WornCosmetics jelly={jelly} worn={worn} ink={palette.outline} />
         <SignBoard jelly={jelly} label={sign} color={color} reducedMotion={reducedMotion} />
       </primitive>
     </group>

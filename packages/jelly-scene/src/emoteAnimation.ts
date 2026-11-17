@@ -22,7 +22,7 @@ interface Gesture {
 }
 
 /** Ziel einer Hand, angegeben für die rechte. Die linke spiegelt Lage und Drehung. */
-interface HandPose {
+export interface HandPose {
   /** Lage im Jelly. */
   at: [number, number, number];
   /**
@@ -46,7 +46,7 @@ const goal = new Quaternion();
 const goalCurl = new Vector3();
 
 /** Holt Hand `index` (0 links, 1 rechts) aus ihrer Grundpose zum Ziel. */
-function poseHand(jelly: Jelly, index: number, pose: HandPose, strength: number) {
+export function poseHand(jelly: Jelly, index: number, pose: HandPose, strength: number) {
   const hand = jelly.hands[index]!;
   const side = index === 0 ? -1 : 1;
   const { at, turn, curl = [0, 0, 0] } = pose;
@@ -64,7 +64,7 @@ function poseHand(jelly: Jelly, index: number, pose: HandPose, strength: number)
 }
 
 /** Beide Hände, die linke gespiegelt. `pose` bekommt die Seite und darf sie nutzen. */
-function poseHands(jelly: Jelly, pose: (side: number) => HandPose, strength: number) {
+export function poseHands(jelly: Jelly, pose: (side: number) => HandPose, strength: number) {
   poseHand(jelly, 0, pose(-1), strength);
   poseHand(jelly, 1, pose(1), strength);
 }
@@ -211,14 +211,32 @@ const GESTURES: Record<EmoteKey, (jelly: Jelly, gesture: Gesture) => void> = {
 };
 
 /**
+ * Wie stark eine Geste nach `elapsed` von `seconds` Sekunden wirkt: 0 vor dem Beginn und ab dem
+ * Ende, dazwischen weich ein- und ausgeblendet. Bei reduzierter Bewegung gleich ganz.
+ *
+ * @param fade - Dauer des Einblendens in Sekunden. Das Ausblenden dauert immer 0,3 s.
+ */
+export function gestureStrength(
+  elapsed: number,
+  seconds: number,
+  reducedMotion: boolean,
+  fade: number = FADE_SECONDS,
+) {
+  if (!Number.isFinite(elapsed) || elapsed < 0 || !(elapsed < seconds)) return 0;
+  if (reducedMotion) return 1;
+  return Math.min(
+    MathUtils.smoothstep(elapsed, 0, fade),
+    MathUtils.smoothstep(seconds - elapsed, 0, FADE_SECONDS),
+  );
+}
+
+/**
  * Legt eine zeitlich begrenzte Geste über die frisch berechnete Grundpose. Ihre Bewegung läuft im
  * Tempo ihrer Stimmung, das Ein- und Ausblenden in echter Zeit.
  */
 export function animateEmote(jelly: Jelly, emote: EmoteFrame, reducedMotion: boolean) {
-  const { key, elapsed } = emote;
-  if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed >= EMOTE_SECONDS) return;
-  const edge = Math.min(elapsed, EMOTE_SECONDS - elapsed);
-  const strength = reducedMotion ? 1 : MathUtils.smoothstep(edge, 0, FADE_SECONDS);
+  const { key, elapsed, seconds = EMOTE_SECONDS } = emote;
+  const strength = gestureStrength(elapsed, seconds, reducedMotion);
   if (strength === 0) return;
   GESTURES[key](jelly, {
     strength,
