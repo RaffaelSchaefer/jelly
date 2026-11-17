@@ -12,7 +12,11 @@
 /** Die Schlüssel aller Cosmetics mit Modell, wie in `COSMETIC_MODELS`. */
 export const COSMETIC_MODEL_KEYS: readonly string[] = [
   "beanie",
+  "crown",
+  "golden-cup",
   "headset",
   "headset-neutral",
+  "hood",
+  "party-hat",
   "pixel-glasses",
 ];

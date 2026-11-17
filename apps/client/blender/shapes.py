@@ -56,6 +56,16 @@ def skin(rings, ring_size, start_pole=None, end_pole=None):
     return verts, faces
 
 
+def loop_skin(rings):
+    """Quads between consecutive closed rings, the last joined to the first: a seamless torus."""
+    size, count = len(rings[0]), len(rings)
+    faces = []
+    for i in range(count):
+        a, b = i * size, (i + 1) % count * size
+        faces.extend((a + j, a + (j + 1) % size, b + (j + 1) % size, b + j) for j in range(size))
+    return [p for ring in rings for p in ring], faces
+
+
 def ring_at(center, n, b, h, w, ring_size, mod=None):
     """An ellipse of half axes `h` (along n) and `w` (along b). `mod(angle)` scales it per angle."""
     out = []
@@ -280,6 +290,11 @@ def head_z(x, y):
     """Front of the head at (x, y), 0 outside it."""
     inside = HEAD_R**2 - x**2 - (y - HEAD_Y) ** 2
     return HEAD_Z + HEAD_DEPTH * math.sqrt(inside) if inside > 0 else 0.0
+
+
+def head_normal(p):
+    """The head's outward normal at `p`, a point on or near it."""
+    return Vector((p.x, p.y - HEAD_Y, (p.z - HEAD_Z) / HEAD_DEPTH**2)).normalized()
 
 
 def body_z(x, y):

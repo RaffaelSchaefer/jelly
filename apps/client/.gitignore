@@ -10,3 +10,6 @@ src-tauri/gen/
 
 # Blender backup files
 *.blend1
+
+# Python caches of the Blender generators
+__pycache__/
