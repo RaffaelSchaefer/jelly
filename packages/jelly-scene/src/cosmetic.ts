@@ -29,6 +29,7 @@ import headset from "./cosmetics/headset.glb?url&inline";
 import hood from "./cosmetics/hood.glb?url&inline";
 import partyHat from "./cosmetics/party-hat.glb?url&inline";
 import pixelGlasses from "./cosmetics/pixel-glasses.glb?url&inline";
+import sprout from "./cosmetics/sprout.glb?url&inline";
 import outlineFragmentShader from "./shaders/outline.frag.glsl?raw";
 import outlineVertexShader from "./shaders/outline.vert.glsl?raw";
 import fragmentShader from "./shaders/toon.frag.glsl?raw";
@@ -50,6 +51,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   hood,
   "party-hat": partyHat,
   "pixel-glasses": pixelGlasses,
+  sprout,
 };
 
 /** Breite der Outline in Szenen-Einheiten. */
