@@ -331,7 +331,7 @@ func TestSnackRunsPreferTheClosestQueueUntilItIsFull(t *testing.T) {
 			atSecond++
 		}
 	}
-	// The zone is 3.4 by 7.2 jelly units inside its margin, so it has one column of three places.
+	// The zone is 3.4 by 7.2 meters inside its margin, so it has one column of three places.
 	if atFirst != 3 || atSecond != 2 {
 		t.Fatalf("%d in the first queue, %d in the second", atFirst, atSecond)
 	}
