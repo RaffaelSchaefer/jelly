@@ -61,7 +61,7 @@ func TestListUnlockedCosmeticsWithPurchases(t *testing.T) {
 }
 
 func TestListPermanentShopCosmetics(t *testing.T) {
-	if got, want := len(rules.ListPermanentShopCosmetics()), 7; got != want {
+	if got, want := len(rules.ListPermanentShopCosmetics()), 8; got != want {
 		t.Errorf("len(ListPermanentShopCosmetics()) = %d, want %d", got, want)
 	}
 }

@@ -44,6 +44,7 @@ const (
 	pricePixelGlasses  = 3
 	priceSchnoerbiMask = 3
 	priceHood          = 4
+	priceLongSchnoerbi = 4
 	priceCrown         = 6
 )
 
@@ -90,20 +91,12 @@ type UnlockFacts struct {
 func ListCosmetics() []Cosmetic {
 	return []Cosmetic{
 		{
-			Key:    "headset",
-			Name:   "Headset",
-			Scope:  ScopePermanent,
-			Slot:   SlotHead,
-			Unlock: UnlockShop,
-			Price:  priceHeadset,
+			Key: "headset", Name: "Headset", Scope: ScopePermanent, Slot: SlotHead,
+			Unlock: UnlockShop, Price: priceHeadset,
 		},
 		{
-			Key:    "headset-neutral",
-			Name:   "Headset schlicht",
-			Scope:  ScopePermanent,
-			Slot:   SlotHead,
-			Unlock: UnlockShop,
-			Price:  priceHeadset,
+			Key: "headset-neutral", Name: "Headset schlicht", Scope: ScopePermanent, Slot: SlotHead,
+			Unlock: UnlockShop, Price: priceHeadset,
 		},
 		{
 			Key: "beanie", Name: "Mütze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
@@ -132,6 +125,10 @@ func ListCosmetics() []Cosmetic {
 		{
 			Key: "crown", Name: "Krone", Scope: ScopeLAN, Slot: SlotHead,
 			Unlock: UnlockShop, Price: priceCrown,
+		},
+		{
+			Key: "long-schnoerbi", Name: "Long Schnörbi", Scope: ScopePermanent, Slot: SlotHands,
+			Unlock: UnlockShop, Price: priceLongSchnoerbi,
 		},
 		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
