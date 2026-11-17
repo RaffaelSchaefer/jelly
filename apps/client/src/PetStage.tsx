@@ -15,18 +15,17 @@ import { desktop } from "./backend";
 import EmotePicker from "./EmotePicker";
 import Hatch, { useHatchWave } from "./Hatch";
 import LevelUp, { useCelebration } from "./LevelUp";
-import MapDrop from "./MapDrop";
 import {
   hatchesNew,
   REGIONS,
   signLabel,
-  wearingLevelReward,
   type Me,
   type PetColor,
   type RenderProfile,
   type StudioRegionId,
   type CameraFocus,
 } from "./pet";
+import PopoutDrops from "./PopoutDrops";
 import SignPicker from "./SignPicker";
 import Studio from "./Studio";
 import { SpeechBubble } from "./ui";
@@ -198,9 +197,10 @@ function StageDrops({
         onClose={onClose}
         onPick={game.playEmote}
       />
-      <MapDrop
+      <PopoutDrops
+        coins={me.coins}
         disabled={!game.ready || game.incoming !== null}
-        onOpen={() => void game.openMap()}
+        onOpen={(popout) => void game.openPopout(popout)}
       />
       <SignPicker
         catalog={game.catalog}
@@ -264,12 +264,11 @@ function LevelUpOverlay({ game, me, onClose }: { game: PetGame; me: Me; onClose:
     <LevelUp
       key={me.level}
       {...{ me, onClose }}
-      catalog={game.catalog}
       rules={game.game.lan.rules}
-      disabled={game.busy || !game.ready}
-      onEquip={(item) => {
-        void game.equip(item.slot, item.id);
+      disabled={!game.ready}
+      onShop={() => {
         onClose();
+        void game.openPopout("shop");
       }}
     />
   );
@@ -330,7 +329,7 @@ export default function PetStage(props: PetStageProps) {
   const modes = stageModes(panel, joining || game.hatching);
   const { hatch, studio, levelUp, glass, bubble } = modes;
   const { saidAt, voiced } = useJellyVoice(game);
-  const { cheer, revealed } = useCelebration(levelUp || game.hatching);
+  const cheer = useCelebration(levelUp || game.hatching);
   const wave = useHatchWave(joining);
   // Beim nächsten Öffnen soll keine Region mehr offen sein und die Kamera wieder zurückfahren.
   if (!studio && region) setRegion(null);
@@ -340,8 +339,7 @@ export default function PetStage(props: PetStageProps) {
         {...{ game, me, reducedMotion, rendering, frameLimit, voiced }}
         sign={studio ? null : signLabel(preview ?? me.sign, game.catalog)}
         emote={game.activeEmote ?? cheer ?? wave}
-        // Nur beim Aufstieg: Zum Schlüpfen trägt es, was es hat, auch auf einem höheren Level.
-        equipped={revealed && levelUp ? wearingLevelReward(me, game.catalog) : me.equipped}
+        equipped={me.equipped}
         focus={cameraFocus(hatch, levelUp, region)}
         anchors={glass ? stage : undefined}
         onSlowDevice={props.onSlowDevice}

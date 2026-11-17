@@ -14,7 +14,8 @@
     "leaveStack": "The jellies above slide down one level.",
     "listPartnerEmotes": "Lets an app bring back its popups after a restart.",
     "getStage": "Takes a player secret or the stage key. Afterwards open the stream with `since` set to `last_event_id`. `moves` holds the current walk of each jelly.",
-    "endTrip": "Ends a trip or following at once, and the jelly walks back to its place."
+    "endTrip": "Ends a trip or following at once, and the jelly walks back to its place.",
+    "purchaseCosmetic": "Buys a cosmetic from the catalog with the coins of the running LAN. Can answer `unknown_cosmetic`, `not_for_sale`, `already_owned`, `not_enough_coins`, `no_active_lan` and `not_joined`. The purchase unlocks the cosmetic but does not put it on."
   },
   "parameters": {
     "cursor": "Where the page starts, the `next_cursor` of the page before. Empty for the first page.",
@@ -85,8 +86,8 @@
         "scope": "`permanent` counts progress over all LANs, `lan` only counts the current LAN.",
         "slot": "The place on the jelly that wears it, one of `cosmetic_slots`.",
         "colorable": "Whether it takes a color from `cosmetic_colors`. The others always look the same.",
-        "unlock": "How a player gets it: `level` from reaching `level`, `event` from an event code, `award` as a prize from the orga, `none` not at all. Treat new values like `none`.",
-        "level": "The level that unlocks it, only with `unlock` `level`."
+        "unlock": "How a player gets it: `shop` for coins, `event` from an event code, `award` as a prize from the orga, `none` not at all. Treat new values like `none`.",
+        "price": "The price in coins, only with `unlock` `shop`. Buy it with `POST /v1/purchases`."
       }
     },
     "EarnedAchievement": {
@@ -294,7 +295,8 @@
         "badges": "One badge for each attended LAN.",
         "cosmetics": "Keys of all cosmetics this player may wear.",
         "achievements": "The earned achievements.",
-        "awards": "The prizes from the orga."
+        "awards": "The prizes from the orga.",
+        "coins": "Coins to spend in the shop, earned with every level-up. 0 outside an active LAN."
       }
     },
     "ProfileBody": {
@@ -415,6 +417,7 @@
       "description": "The values a client needs to show what the server will decide. The server still checks every action. Times are seconds.",
       "fields": {
         "xp_per_level": "XP that one level takes, the same for every level. Fixed once a LAN has started.",
+        "coins_per_level": "Coins that every reached level pays. 0 pays nothing. Fixed once a LAN has started.",
         "poke_interval": "Minimum time between two XP pokes.",
         "poke_xp": "XP per interval.",
         "poke_max_ticks": "How many intervals one poke collects at most.",
@@ -514,29 +517,154 @@
         "y": "Percent of the stage height.",
         "t": "Milliseconds after `start_at` when the jelly reaches this point."
       }
+    },
+    "PurchaseAnswer": {
+      "description": "The result of a purchase in the shop.",
+      "fields": {
+        "cosmetic_key": "The key of the cosmetic that this player now owns.",
+        "coins_spent": "The price that left the balance.",
+        "me": "The state of the player after the purchase."
+      }
     }
   },
   "events": [
-    { "type": "player.active", "meaning": "A jelly came to the stage.", "player": "the player", "payload": "`{}`" },
-    { "type": "player.updated", "meaning": "A jelly changed.", "player": "the player", "payload": "`{}`, or `{\"edited\":true}` if the player changed it" },
-    { "type": "player.hidden", "meaning": "The orga hid a jelly.", "player": "the player", "payload": "`{}`" },
-    { "type": "player.removed", "meaning": "An account was deleted.", "player": "null", "payload": "`{\"player_id\"}`" },
-    { "type": "xp.gained", "meaning": "A player earned XP. `source` is `poke`, `food`, `drink`, `event` or `partner`.", "player": "the player", "payload": "`{\"amount\",\"source\"}`" },
-    { "type": "level.up", "meaning": "A player reached a new level.", "player": "the player", "payload": "`{\"level\"}`" },
-    { "type": "achievement.earned", "meaning": "A player earned an achievement.", "player": "the player", "payload": "`{\"key\"}`" },
-    { "type": "award.given", "meaning": "The orga gave a prize. `title` is free text.", "player": "the player", "payload": "`{\"title\"}`" },
-    { "type": "emote", "meaning": "A jelly plays an emote.", "player": "the player", "payload": "`{\"key\"}`" },
-    { "type": "partner.emote", "meaning": "Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden.", "player": "who accepted", "payload": "`{\"key\",\"partner_id\"}`, `partner_id` is who asked" },
-    { "type": "partner_emote.updated", "meaning": "A partner emote was created or changed. The app of an invited jelly finds itself in `partner_id` and shows its popup.", "player": "who acted", "payload": "`{\"id\",\"key\",\"from_id\",\"partner_id\",\"state\",\"expires_at\"}`" },
-    { "type": "sign.changed", "meaning": "A jelly raised or lowered a sign.", "player": "the player", "payload": "`{\"key\"}`, null when lowered" },
-    { "type": "follow.changed", "meaning": "A jelly started following, or following ended, also when its time ran out.", "player": "the player", "payload": "`{\"target_id\"}`, null when it ended" },
-    { "type": "trip.changed", "meaning": "A jelly started a trip, or its trip ended, also when its time ran out.", "player": "the player", "payload": "`{\"x\",\"y\",\"ends_at\"}`, null when it ended" },
-    { "type": "stack.changed", "meaning": "A stack was started, changed or ended, also when its time ran out.", "player": "the player, null when its time ran out", "payload": "The stack, only `{\"id\"}` after climbing down or when it ended" },
-    { "type": "highlight", "meaning": "A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`.", "player": "who asked", "payload": "`{\"target_id\",\"ends_at\",\"cosmetic_key\"}`" },
-    { "type": "stage.changed", "meaning": "The room changed, so read `GET /v1/stage` again.", "player": "null", "payload": "`{}`" },
-    { "type": "rules.changed", "meaning": "The orga changed the rules of a LAN, so read `GET /lans/current` again.", "player": "null", "payload": "`{}`" },
-    { "type": "gathering.changed", "meaning": "A gathering started or ended, also when its time ran out.", "player": "null", "payload": "The `Gathering`, null when it ended" },
-    { "type": "move", "meaning": "A jelly starts a walk. This message has no ID and is not part of the event log.", "player": "`player_id` of the move", "payload": "The data is a whole `Move`, not an `Event`" },
-    { "type": "reset", "meaning": "The stream dropped events for this client, so read the state again.", "player": "none", "payload": "None" }
+    {
+      "type": "player.active",
+      "meaning": "A jelly came to the stage.",
+      "player": "the player",
+      "payload": "`{}`"
+    },
+    {
+      "type": "player.updated",
+      "meaning": "A jelly changed.",
+      "player": "the player",
+      "payload": "`{}`, or `{\"edited\":true}` if the player changed it"
+    },
+    {
+      "type": "player.hidden",
+      "meaning": "The orga hid a jelly.",
+      "player": "the player",
+      "payload": "`{}`"
+    },
+    {
+      "type": "player.removed",
+      "meaning": "An account was deleted.",
+      "player": "null",
+      "payload": "`{\"player_id\"}`"
+    },
+    {
+      "type": "xp.gained",
+      "meaning": "A player earned XP. `source` is `poke`, `food`, `drink`, `event` or `partner`.",
+      "player": "the player",
+      "payload": "`{\"amount\",\"source\"}`"
+    },
+    {
+      "type": "level.up",
+      "meaning": "A player reached a new level.",
+      "player": "the player",
+      "payload": "`{\"level\"}`"
+    },
+    {
+      "type": "coins.gained",
+      "meaning": "A player received coins, from a level-up, the orga or a refund.",
+      "player": "the player",
+      "payload": "`{\"amount\",\"source\"}` with `source` `level`, `admin` or `refund`"
+    },
+    {
+      "type": "cosmetic.purchased",
+      "meaning": "A player bought a cosmetic in the shop.",
+      "player": "the player",
+      "payload": "`{\"key\",\"price\"}`"
+    },
+    {
+      "type": "achievement.earned",
+      "meaning": "A player earned an achievement.",
+      "player": "the player",
+      "payload": "`{\"key\"}`"
+    },
+    {
+      "type": "award.given",
+      "meaning": "The orga gave a prize. `title` is free text.",
+      "player": "the player",
+      "payload": "`{\"title\"}`"
+    },
+    {
+      "type": "emote",
+      "meaning": "A jelly plays an emote.",
+      "player": "the player",
+      "payload": "`{\"key\"}`"
+    },
+    {
+      "type": "partner.emote",
+      "meaning": "Two jellies play a partner emote. The event names who accepted and who asked. Without an event, one of them is hidden.",
+      "player": "who accepted",
+      "payload": "`{\"key\",\"partner_id\"}`, `partner_id` is who asked"
+    },
+    {
+      "type": "partner_emote.updated",
+      "meaning": "A partner emote was created or changed. The app of an invited jelly finds itself in `partner_id` and shows its popup.",
+      "player": "who acted",
+      "payload": "`{\"id\",\"key\",\"from_id\",\"partner_id\",\"state\",\"expires_at\"}`"
+    },
+    {
+      "type": "sign.changed",
+      "meaning": "A jelly raised or lowered a sign.",
+      "player": "the player",
+      "payload": "`{\"key\"}`, null when lowered"
+    },
+    {
+      "type": "follow.changed",
+      "meaning": "A jelly started following, or following ended, also when its time ran out.",
+      "player": "the player",
+      "payload": "`{\"target_id\"}`, null when it ended"
+    },
+    {
+      "type": "trip.changed",
+      "meaning": "A jelly started a trip, or its trip ended, also when its time ran out.",
+      "player": "the player",
+      "payload": "`{\"x\",\"y\",\"ends_at\"}`, null when it ended"
+    },
+    {
+      "type": "stack.changed",
+      "meaning": "A stack was started, changed or ended, also when its time ran out.",
+      "player": "the player, null when its time ran out",
+      "payload": "The stack, only `{\"id\"}` after climbing down or when it ended"
+    },
+    {
+      "type": "highlight",
+      "meaning": "A jelly lights up so it can be found. It shows the aura `cosmetic_key` instead of its own one until `ends_at`.",
+      "player": "who asked",
+      "payload": "`{\"target_id\",\"ends_at\",\"cosmetic_key\"}`"
+    },
+    {
+      "type": "stage.changed",
+      "meaning": "The room changed, so read `GET /v1/stage` again.",
+      "player": "null",
+      "payload": "`{}`"
+    },
+    {
+      "type": "rules.changed",
+      "meaning": "The orga changed the rules of a LAN, so read `GET /lans/current` again.",
+      "player": "null",
+      "payload": "`{}`"
+    },
+    {
+      "type": "gathering.changed",
+      "meaning": "A gathering started or ended, also when its time ran out.",
+      "player": "null",
+      "payload": "The `Gathering`, null when it ended"
+    },
+    {
+      "type": "move",
+      "meaning": "A jelly starts a walk. This message has no ID and is not part of the event log.",
+      "player": "`player_id` of the move",
+      "payload": "The data is a whole `Move`, not an `Event`"
+    },
+    {
+      "type": "reset",
+      "meaning": "The stream dropped events for this client, so read the state again.",
+      "player": "none",
+      "payload": "None"
+    }
   ]
 }

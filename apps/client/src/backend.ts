@@ -116,6 +116,9 @@ export const getMapState = () => invoke<MapState>("get_map_state");
 /** Öffnet die Karte im eigenen Fenster oder holt sie nach vorn (`open_map`). */
 export const openMap = () => invoke<void>("open_map");
 
+/** Öffnet den Shop im eigenen Fenster oder holt ihn nach vorn (`open_shop`). */
+export const openShop = () => invoke<void>("open_shop");
+
 /** Löst einen Event-Code ein (`redeem_code`). */
 export const redeemCode = (code: string) => invoke<RedeemResult>("redeem_code", { code });
 
@@ -140,6 +143,9 @@ export const updateProfile = (patch: ProfilePatch) => invoke<Game>("update_profi
 export const equipCosmetic = (slot: CosmeticSlot, key: string | null, color?: string) =>
   invoke<Game>("equip_cosmetic", { slot, key, color });
 
+/** Kauft ein Cosmetic aus dem Shop, ohne es anzulegen (`purchase_cosmetic`). */
+export const purchaseCosmetic = (key: string) => invoke<Game>("purchase_cosmetic", { key });
+
 /** Übernimmt Größe und Bewegung, nur auf diesem Gerät (`update_settings`). */
 export const updateSettings = (settings: Settings) => invoke<Game>("update_settings", { settings });
 
@@ -161,10 +167,10 @@ export const onStageMove = (handler: (move: StageMove) => void) =>
 /** Hört darauf, dass der Server Ereignisse verworfen hat. Dann gilt es, den Stand neu zu lesen. */
 export const onStreamReset = (handler: () => void) => listen("stream-reset", () => handler());
 
-/** Was die Fensterknöpfe tun. Freigegeben in `src-tauri/capabilities/main.json`. */
+/** Was die Fensterknöpfe tun. Freigegeben in `src-tauri/capabilities/` je Fenster. */
 export type WindowAction = "drag" | "minimize" | "close";
 
-/** Verschiebt, minimiert oder schließt das Pet-Fenster. */
+/** Verschiebt, minimiert oder schließt das aktuelle Fenster. */
 export async function windowAction(action: WindowAction) {
   const current = getCurrentWindow();
   if (action === "drag") return current.startDragging();

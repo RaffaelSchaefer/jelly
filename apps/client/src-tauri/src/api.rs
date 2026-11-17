@@ -336,6 +336,17 @@ impl Api {
             .await
     }
 
+    /// `POST /v1/purchases`: kauft ein Cosmetic mit den Münzen der laufenden LAN. Der Kauf legt
+    /// es nicht an.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa `not_for_sale`,
+    /// `already_owned`, `not_enough_coins`, `no_active_lan` oder `not_joined`.
+    pub async fn purchase(&self, key: &str) -> Result<Purchased> {
+        self.post("/v1/purchases", &json!({ "key": key })).await
+    }
+
     /// `POST /v1/partner-emotes`: fordert ein Jelly in der Nähe zu einem Partner-Emote auf.
     ///
     /// # Fehler

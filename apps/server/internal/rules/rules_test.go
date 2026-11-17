@@ -27,6 +27,19 @@ type contractCases struct {
 		Output string `json:"output"`
 		Valid  *bool  `json:"valid"`
 	} `json:"name"`
+	Coins []struct {
+		Name   string       `json:"name"`
+		Rules  *rules.Rules `json:"rules"`
+		Levels int          `json:"levels"`
+		Coins  int          `json:"coins"`
+	} `json:"coins"`
+	Purchases []struct {
+		Name  string  `json:"name"`
+		Key   string  `json:"key"`
+		Coins int     `json:"coins"`
+		Owned bool    `json:"owned"`
+		Error *string `json:"error"`
+	} `json:"purchases"`
 }
 
 func loadContractCases(t *testing.T) contractCases {
@@ -84,6 +97,58 @@ func TestCalculateLevel(t *testing.T) {
 		if got := rules.CalculateLevel(rules.DefaultRules(), testCase.XP); got != testCase.Level {
 			t.Errorf("CalculateLevel(%d) = %d, want %d", testCase.XP, got, testCase.Level)
 		}
+	}
+}
+
+func TestCalculateCoinsForLevelsContract(t *testing.T) {
+	cases := loadContractCases(t)
+	for _, testCase := range cases.Coins {
+		t.Run(testCase.Name, func(t *testing.T) {
+			gameRules := cases.Rules
+			if testCase.Rules != nil {
+				gameRules = *testCase.Rules
+			}
+			got := rules.CalculateCoinsForLevels(gameRules, testCase.Levels)
+			if got != testCase.Coins {
+				t.Fatalf("CalculateCoinsForLevels(%d) = %d, want %d",
+					testCase.Levels, got, testCase.Coins)
+			}
+		})
+	}
+}
+
+// purchaseError turns the code of the contract case into its error, none for null.
+func purchaseError(code *string) error {
+	if code == nil {
+		return nil
+	}
+	switch *code {
+	case "unknown_cosmetic":
+		return rules.ErrUnknownCosmetic
+	case "not_for_sale":
+		return rules.ErrNotForSale
+	case "already_owned":
+		return rules.ErrAlreadyOwned
+	case "not_enough_coins":
+		return rules.ErrNotEnoughCoins
+	default:
+		return nil
+	}
+}
+
+func TestCheckPurchaseContract(t *testing.T) {
+	for _, testCase := range loadContractCases(t).Purchases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			cosmetic, found := rules.FindCosmetic(testCase.Key)
+			got := rules.ErrUnknownCosmetic
+			if found {
+				got = rules.CheckPurchase(cosmetic, testCase.Coins, testCase.Owned)
+			}
+			want := purchaseError(testCase.Error)
+			if !errors.Is(got, want) {
+				t.Fatalf("CheckPurchase(%q) = %v, want %v", testCase.Key, got, want)
+			}
+		})
 	}
 }
 

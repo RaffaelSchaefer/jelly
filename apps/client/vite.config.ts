@@ -12,7 +12,7 @@ export default defineConfig({
   },
   build: {
     target: ["es2022", "chrome105", "safari15"],
-    // Das Pet und die Karte im eigenen Fenster sind zwei Seiten.
-    rolldownOptions: { input: { main: "index.html", map: "map.html" } },
+    // Pet, Karte und Shop sind je eine Seite, Karte und Shop in eigenen Fenstern.
+    rolldownOptions: { input: { main: "index.html", map: "map.html", shop: "shop.html" } },
   },
 });

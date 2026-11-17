@@ -32,13 +32,27 @@ export function PreviewFooter() {
   );
 }
 
-/** Verschiebe-Griff links, Minimieren und Schließen rechts. In der Vorschau gesperrt. */
-export function WindowTools({ onAction }: { onAction: (action: WindowAction) => void }) {
+/**
+ * Verschiebe-Griff links, Minimieren und Schließen rechts. In der Vorschau gesperrt.
+ *
+ * @param name - Wessen Fenster es ist, für den Griff („Shop verschieben“).
+ * @param quietClose - Schließt ohne Ton: Den spielt das Pet, wenn es für Karte oder Shop
+ *   zurückkommt.
+ */
+export function WindowTools({
+  onAction,
+  name = "Pet-Fenster",
+  quietClose = false,
+}: {
+  onAction: (action: WindowAction) => void;
+  name?: string;
+  quietClose?: boolean;
+}) {
   return (
     <div className="window-tools">
       <IconButton
         icon="drag"
-        label="Pet-Fenster verschieben"
+        label={`${name} verschieben`}
         className="drag-handle"
         data-sound="none"
         title={desktop ? "Fenster verschieben" : "Im Desktop-Modus verschiebbar"}
@@ -60,7 +74,9 @@ export function WindowTools({ onAction }: { onAction: (action: WindowAction) => 
           // Erst klingen, dann schließen: Mit dem Fenster ginge sonst auch der Ton.
           data-sound="none"
           disabled={!desktop}
-          onClick={() => playThen("windowClose", () => onAction("close"))}
+          onClick={() =>
+            quietClose ? onAction("close") : playThen("windowClose", () => onAction("close"))
+          }
         />
       </div>
     </div>

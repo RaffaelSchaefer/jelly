@@ -1,6 +1,7 @@
 {
   "rules": {
     "xp_per_level": 100,
+    "coins_per_level": 1,
     "poke_interval": 900,
     "poke_xp": 3,
     "poke_max_ticks": 4,
@@ -59,5 +60,34 @@
     { "input": "1234567890123456789012345", "valid": false },
     { "input": "   ", "valid": false },
     { "input": "with\nbreak", "valid": false }
+  ],
+  "coins": [
+    { "name": "one level pays once", "levels": 1, "coins": 1 },
+    { "name": "a jump over three levels pays three times", "levels": 3, "coins": 3 },
+    {
+      "name": "without coins per level a level-up pays nothing",
+      "rules": { "coins_per_level": 0 },
+      "levels": 2,
+      "coins": 0
+    }
+  ],
+  "purchases": [
+    { "name": "exact price buys", "key": "headset", "coins": 1, "owned": false, "error": null },
+    { "name": "too few coins", "key": "crown", "coins": 5, "owned": false, "error": "not_enough_coins" },
+    { "name": "second buy", "key": "beanie", "coins": 100, "owned": true, "error": "already_owned" },
+    {
+      "name": "event cosmetic is not for sale",
+      "key": "party-hat",
+      "coins": 100,
+      "owned": false,
+      "error": "not_for_sale"
+    },
+    {
+      "name": "unknown key",
+      "key": "top-hat",
+      "coins": 100,
+      "owned": false,
+      "error": "unknown_cosmetic"
+    }
   ]
 }

@@ -41,6 +41,7 @@ export interface Cosmetic {
   name: string;
   slot: string;
   unlock: string;
+  price?: number;
 }
 
 /** Lists the event codes of a LAN. */

@@ -17,6 +17,17 @@ type metricQuery struct {
 	query  string
 }
 
+// listPermanentShopKeySQL quotes the keys of the permanent shop cosmetics, so a query can keep
+// only what the shop sells permanently. Awards may name any cosmetic of the catalog.
+func listPermanentShopKeySQL() string {
+	keys := rules.ListPermanentShopCosmetics()
+	quoted := make([]string, len(keys))
+	for index, key := range keys {
+		quoted[index] = "'" + key + "'"
+	}
+	return strings.Join(quoted, ", ")
+}
+
 // listMetricQueries returns everything that can be counted in one SQL statement.
 func listMetricQueries() []metricQuery {
 	return []metricQuery{
@@ -38,6 +49,13 @@ func listMetricQueries() []metricQuery {
 			AND type = '` + EventFollowChanged + `'
 			AND json_extract(payload, '$.target_id') IS NOT NULL`},
 		{rules.MetricAwards, `SELECT COUNT(*) FROM awards WHERE player_id = ?1`},
+		{rules.MetricPurchases, `SELECT COUNT(*) FROM purchases WHERE player_id = ?1`},
+		{rules.MetricPermanentPurchases, `SELECT COUNT(DISTINCT owned.key) FROM (
+			SELECT cosmetic_key AS key FROM purchases
+				WHERE player_id = ?1 AND lan_id IS NULL
+			UNION ALL
+			SELECT cosmetic_key AS key FROM awards WHERE player_id = ?1
+		) AS owned WHERE owned.key IN (` + listPermanentShopKeySQL() + `)`},
 		{rules.MetricPartners, `SELECT COUNT(DISTINCT partner_id) FROM partner_emotes
 			WHERE player_id = ?1 AND lan_id = ?2`},
 		{rules.MetricPartnerAreas, `SELECT COUNT(DISTINCT other.area_id) FROM partner_emotes pe

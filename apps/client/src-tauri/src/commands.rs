@@ -284,6 +284,25 @@ pub async fn equip_cosmetic(
     Ok(session.game())
 }
 
+/// Kauft ein Cosmetic aus dem Shop. Anlegen geht danach mit [`equip_cosmetic`].
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa wenn Münzen fehlen oder es schon gekauft ist.
+#[tauri::command]
+pub async fn purchase_cosmetic(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    key: String,
+) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let answer = session.api.purchase(&key).await?;
+    session.set_me(answer.me);
+    Ok(session.game())
+}
+
 /// Übernimmt Größe und Bewegung. Bleibt auf dem Gerät.
 #[tauri::command]
 pub async fn update_settings(

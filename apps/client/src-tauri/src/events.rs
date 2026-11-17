@@ -15,7 +15,7 @@ use tauri::{async_runtime::JoinHandle, AppHandle, Emitter};
 
 use crate::{
     api::{Api, Me, Move, ServerEvent},
-    map,
+    popout,
 };
 
 /// Name des Tauri-Ereignisses, auf das `src/backend.ts` hört.
@@ -49,9 +49,12 @@ const RESET_MESSAGE: &str = "reset";
 /// `trip.changed` kommt durch: Die Karte startet den Ausflug, das Pet sagt etwas dazu. Beide melden
 /// auch das Ende, wenn die Zeit abläuft, die App braucht dafür keine Uhr.
 /// `stack.changed` bleibt draußen, das Pet zeigt Stapel noch nicht.
-const OWN_EVENTS: [&str; 8] = [
+/// `coins.gained` und `cosmetic.purchased` kommen durch: Pet und Shop lesen danach ihre Münzen neu.
+const OWN_EVENTS: [&str; 10] = [
     "xp.gained",
     "level.up",
+    "coins.gained",
+    "cosmetic.purchased",
     "achievement.earned",
     "award.given",
     "player.updated",
@@ -108,9 +111,9 @@ fn concerns_invite(payload: &Value, player_id: i64) -> bool {
         || is_invited(payload, player_id)
 }
 
-/// Ob die Karte wegen `event` zugeht, denn beides zeigt nur das Pet: eine neue Aufforderung an
-/// `player_id` und das Duett, wenn jemand die eigene Aufforderung angenommen hat.
-fn closes_map(event: &ServerEvent, player_id: i64) -> bool {
+/// Ob Karte und Shop wegen `event` zugehen, denn beides zeigt nur das Pet: eine neue Aufforderung
+/// an `player_id` und das Duett, wenn jemand die eigene Aufforderung angenommen hat.
+fn closes_popouts(event: &ServerEvent, player_id: i64) -> bool {
     match event.kind.as_str() {
         PARTNER_EMOTE => event.payload.get("partner_id").and_then(Value::as_i64) == Some(player_id),
         PARTNER_INVITE => {
@@ -195,15 +198,15 @@ fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64) {
             if is_own_event(&event, player_id) {
                 emit_to_ui(app, EVENT_NAME, &event);
             }
-            if map::is_open(app) {
+            if popout::is_open(app, popout::MAP) {
                 emit_to_ui(app, STAGE_EVENT_NAME, &event);
             }
-            if closes_map(&event, player_id) {
-                map::close(app);
+            if closes_popouts(&event, player_id) {
+                popout::close_all(app);
             }
         }
         StreamMessage::Move(walk) => {
-            if map::is_open(app) {
+            if popout::is_open(app, popout::MAP) {
                 emit_to_ui(app, STAGE_MOVE_NAME, &walk);
             }
         }

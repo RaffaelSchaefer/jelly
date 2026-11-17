@@ -53,6 +53,40 @@ func (server *apiServer) handleGiveXP(writer http.ResponseWriter, request *http.
 	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
 }
 
+// handleGiveCoins grants coins to a player or bot in its current LAN. Coins are never taken away.
+func (server *apiServer) handleGiveCoins(writer http.ResponseWriter, request *http.Request) {
+	playerID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	var body struct {
+		Coins int `json:"coins"`
+	}
+	if !server.readJSON(writer, request, &body) {
+		return
+	}
+	err := server.Store.GiveCoins(request.Context(), playerID, body.Coins, server.currentMillis())
+	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
+}
+
+// handleRefundPurchase takes one exact purchase back and refunds its price.
+func (server *apiServer) handleRefundPurchase(
+	writer http.ResponseWriter, request *http.Request,
+) {
+	playerID, valid := server.readPathID(writer, request)
+	if !valid {
+		return
+	}
+	purchaseID, valid := server.readPathValue(writer, request, "purchase")
+	if !valid {
+		return
+	}
+	err := server.Store.RefundPurchase(
+		request.Context(), playerID, purchaseID, server.currentMillis(),
+	)
+	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
+}
+
 // handleGrantAchievement gives a player or bot an achievement from the catalog.
 func (server *apiServer) handleGrantAchievement(
 	writer http.ResponseWriter, request *http.Request,

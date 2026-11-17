@@ -226,7 +226,7 @@ type xpGainedPayload struct {
 	Source string `json:"source"`
 }
 
-// announceXP emits the XP gain and, if reached, the new level.
+// announceXP emits the XP gain and, if reached, the new level with its coins.
 func announceXP(ctx context.Context, action actionContext, previousXP int, entry xpEntry) error {
 	payload := xpGainedPayload{Amount: entry.amount, Source: entry.action}
 	err := appendVisibleEvent(ctx, action, EventXPGained, payload)
@@ -234,11 +234,21 @@ func announceXP(ctx context.Context, action actionContext, previousXP int, entry
 		return err
 	}
 	gameRules := action.lan.gameRules
+	previousLevel := rules.CalculateLevel(gameRules, previousXP)
 	level := rules.CalculateLevel(gameRules, previousXP+entry.amount)
-	if level == rules.CalculateLevel(gameRules, previousXP) {
+	if level == previousLevel {
 		return nil
 	}
-	return appendVisibleEvent(ctx, action, EventLevelUp, map[string]int{"level": level})
+	err = appendVisibleEvent(ctx, action, EventLevelUp, map[string]int{"level": level})
+	if err != nil {
+		return err
+	}
+	coins := rules.CalculateCoinsForLevels(gameRules, level-previousLevel)
+	if coins == 0 {
+		// A LAN without coins per level keeps its players at a silent balance.
+		return nil
+	}
+	return grantCoins(ctx, action, coinSourceLevel, coins)
 }
 
 // loadLastPokeTime returns the last XP poke of this LAN or [rules.NoPokeYet].

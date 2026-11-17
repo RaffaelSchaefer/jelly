@@ -44,7 +44,7 @@ fn player_state_from_the_docs_parses_and_ignores_new_fields() {
       "color": "mint", "equipped": { "head": { "key": "beanie", "color": "#4cc9f0" } },
       "hidden": false,
       "lan": { "slug": "ucb-2026", "name": "UCB LAN 2026", "active": true },
-      "xp": 3, "level": 1, "total_xp": 3, "next_poke_at": 1795000900000,
+      "xp": 3, "level": 1, "coins": 3, "total_xp": 3, "next_poke_at": 1795000900000,
       "reports": { "food_ready_at": 0, "drink_ready_at": 0, "reports_left": 8 },
       "sign": null, "follow": { "player_id": 2, "ends_at": 1795000900000 },
       "trip": { "x": 12.5, "y": 40, "ends_at": 1795000300000 }, "lans_attended": 1,
@@ -61,6 +61,23 @@ fn player_state_from_the_docs_parses_and_ignores_new_fields() {
     assert_eq!(me.equipped["head"].color.as_deref(), Some("#4cc9f0"));
     assert_eq!(me.follow.unwrap().ends_at, 1_795_000_900_000);
     assert_eq!(me.trip.unwrap().ends_at, 1_795_000_300_000);
+    assert_eq!(me.coins, 3);
+}
+
+#[test]
+fn a_purchase_answer_parses_and_coins_default_to_zero() {
+    let me = json!({
+      "server_time": 0, "last_event_id": 0, "id": 1, "name": "Glibber", "color": "mint",
+      "equipped": {}, "hidden": false, "lan": null, "xp": 0, "level": 1, "total_xp": 0,
+      "next_poke_at": null, "reports": null, "sign": null, "lans_attended": 0, "badges": [],
+      "cosmetics": ["beanie"], "achievements": [], "awards": []
+    });
+    let body = json!({ "cosmetic_key": "beanie", "coins_spent": 2, "me": me });
+    let bought: Purchased = serde_json::from_value(body).unwrap();
+    assert_eq!(bought.cosmetic_key, "beanie");
+    assert_eq!(bought.coins_spent, 2);
+    // Ein Server vor API 1.20 kennt keine Münzen.
+    assert_eq!(bought.me.coins, 0);
 }
 
 #[test]

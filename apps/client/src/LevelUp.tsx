@@ -1,28 +1,17 @@
 /**
  * Der Levelaufstieg als Moment auf der Bühne statt als Panel: Das Jelly bleibt zu sehen und jubelt,
- * hinter seinem Kopf schlägt die neue Zahl ein, und es trägt das neue Teil schon zur Probe.
+ * hinter seinem Kopf schlägt die neue Zahl ein, und die Kapsel zeigt die Münzen für den Shop.
  *
  * Bewegung und Licht stehen in `levelup.css`. Den Takt gibt der letzte Ton der Fanfare vor.
  *
  * @module
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
 import type { ActiveEmote } from "./useEmotes";
 
-import {
-  LEVEL_UP,
-  levelProgress,
-  levelReward,
-  nextLevelCosmetic,
-  slotLabel,
-  unlockLabel,
-  type Catalog,
-  type Cosmetic,
-  type Me,
-  type Rules,
-} from "./pet";
+import { coinLabel, LEVEL_UP, levelProgress, type Me, type Rules } from "./pet";
 import { Icon, PrimaryButton } from "./ui";
 import "./levelup.css";
 
@@ -82,22 +71,15 @@ const TWINKLES = [
 ];
 
 /**
- * Was das Jelly während des Aufstiegs tut: Es jubelt und trägt ab dem Einschlag das neue Teil. Das
- * läuft am Spielstand vorbei, so kommt der Fanfare kein Laut der Geste dazwischen.
+ * Was das Jelly während des Aufstiegs tut: Es jubelt zum Einschlag. Das läuft am Spielstand vorbei,
+ * so kommt der Fanfare kein Laut der Geste dazwischen.
  */
 export function useCelebration(open: boolean) {
   const [cheer, setCheer] = useState<ActiveEmote | null>(null);
-  const [revealed, setRevealed] = useState(false);
   if (open !== (cheer !== null)) {
     setCheer(open ? { ...CHEER, startedAt: performance.now() + CHEER_DELAY_MS } : null);
-    setRevealed(false);
   }
-  useEffect(() => {
-    if (!open) return;
-    const timer = window.setTimeout(() => setRevealed(true), BOOM_SECONDS * 1000);
-    return () => window.clearTimeout(timer);
-  }, [open]);
-  return { cheer, revealed };
+  return cheer;
 }
 
 /** Viele kleine Teile mit ihren Werten aus den Listen oben. */
@@ -175,62 +157,61 @@ function XpDrop({ xp, xpPerLevel }: { xp: number; xpPerLevel: number }) {
   );
 }
 
-/** Die nächste Belohnung, noch verschlossen. */
-function NextDrop({ item, catalog }: { item: Cosmetic; catalog: Catalog }) {
+/** Die Münzen, die jetzt im Shop bereitliegen, gegenüber dem Fortschritt. */
+function CoinDrop({ coins }: { coins: number }) {
   return (
     <div className="levelup-side left">
       <span className="levelup-drop" data-liquid="calm">
-        <Icon name={item.icon} />
-        <span className="levelup-lock">
-          <Icon name="lock" />
+        <b>{coins}</b>
+        <span className="levelup-badge">
+          <Icon name="coin" />
         </span>
       </span>
       <small>
-        Bei {unlockLabel(item.id, catalog)}
+        {coins === 1 ? "Münze" : "Münzen"}
         <br />
-        {item.name}
+        für den Shop
       </small>
     </div>
   );
 }
 
-/** Die Glas-Kapsel an der Stelle des Docks: das neue Teil, sonst nur ein Lob, und der Weg zurück. */
+/** Die Glas-Kapsel an der Stelle des Docks: die neuen Münzen, sonst nur ein Lob, und der Weg weiter. */
 function Capsule({
   name,
-  reward,
-  slot,
+  gained,
   disabled,
-  onEquip,
+  onShop,
   onClose,
 }: {
   name: string;
-  reward: Cosmetic | undefined;
-  slot: string;
+  /** Münzen für diesen Aufstieg, 0 wenn die LAN keine zahlt. */
+  gained: number;
   disabled: boolean;
-  onEquip: (item: Cosmetic) => void;
+  onShop: () => void;
   onClose: () => void;
 }) {
   return (
     <div className="levelup-capsule" data-liquid="calm">
       <span className="levelup-seal">
-        <Icon name={reward?.icon ?? "spark"} />
+        <Icon name={gained > 0 ? "coin" : "spark"} />
       </span>
       <span className="levelup-reward">
-        <strong>{reward ? reward.name : `Stark, ${name}!`}</strong>
-        <small>{reward ? `Neu für ${name} · ${slot}` : "Eine Stufe weiter."}</small>
+        <strong>{gained > 0 ? `+${coinLabel(gained)}` : `Stark, ${name}!`}</strong>
+        <small>{gained > 0 ? "Im Shop einlösen" : "Eine Stufe weiter."}</small>
       </span>
-      {reward ? (
+      {gained > 0 ? (
         <>
           <button className="levelup-later" data-sound="close" onClick={onClose}>
             Später
           </button>
           <PrimaryButton
             className="levelup-go"
-            data-sound="success"
+            data-sound="window"
             disabled={disabled}
-            onClick={() => onEquip(reward)}
+            onClick={onShop}
           >
-            Anlegen
+            Zum Shop
           </PrimaryButton>
         </>
       ) : (
@@ -245,21 +226,18 @@ function Capsule({
 /** Der ganze Aufstieg. Läuft neu an, wenn ihn `key` wechselt, etwa beim nächsten Level. */
 export default function LevelUp({
   me,
-  catalog,
   rules,
   disabled,
-  onEquip,
+  onShop,
   onClose,
 }: {
   me: Me;
-  catalog: Catalog;
   rules: Rules;
   disabled: boolean;
-  onEquip: (item: Cosmetic) => void;
+  onShop: () => void;
   onClose: () => void;
 }) {
-  const reward = levelReward(me, catalog);
-  const next = nextLevelCosmetic(me.level, catalog);
+  const gained = rules.coins_per_level;
   return (
     <section className="levelup" style={BOOM_STYLE} aria-labelledby="levelup-title">
       <div className="levelup-back">
@@ -268,13 +246,9 @@ export default function LevelUp({
         <LevelNumber level={me.level} />
       </div>
       <div className="levelup-front">
-        <Capsule
-          {...{ reward, disabled, onEquip, onClose }}
-          name={me.name}
-          slot={reward ? slotLabel(reward.slot, catalog) : ""}
-        />
+        <Capsule {...{ gained, disabled, onShop, onClose }} name={me.name} />
         <XpDrop xp={me.xp} xpPerLevel={rules.xp_per_level} />
-        {next ? <NextDrop item={next} catalog={catalog} /> : null}
+        {gained > 0 ? <CoinDrop coins={me.coins} /> : null}
         <BoomFront />
       </div>
     </section>

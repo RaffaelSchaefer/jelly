@@ -48,10 +48,7 @@ export default function XpPanel({
     <>
       <Tabs label="Bereiche" tabs={XP_TABS} value={tab} onChange={onTab} />
       {tab === "overview" ? (
-        <OverviewTab
-          {...{ me, catalog, rules, offset, onReport }}
-          disabled={!desktop || disabled}
-        />
+        <OverviewTab {...{ me, rules, offset, onReport }} disabled={!desktop || disabled} />
       ) : null}
       {tab === "achievements" ? <AchievementsTab me={me} catalog={catalog} /> : null}
       {tab === "redeem" ? <RedeemTab me={me} disabled={disabled} onRedeem={onRedeem} /> : null}

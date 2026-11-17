@@ -25,6 +25,11 @@ const (
 	MetricGhostHours    Metric = "ghost_hours"
 	MetricEmoteKinds    Metric = "emote_kinds"
 	MetricSameColor     Metric = "same_color_visits"
+	// MetricPurchases counts the purchases of a player, over every LAN.
+	MetricPurchases Metric = "purchases"
+	// MetricPermanentPurchases counts the permanent shop cosmetics a player owns, bought or
+	// given as an award.
+	MetricPermanentPurchases Metric = "permanent_purchases"
 	// MetricGrantedDirectly marks achievements that their action grants, not an evaluation.
 	MetricGrantedDirectly Metric = "granted_directly"
 )
@@ -36,6 +41,12 @@ const (
 	AchievementConga           = "conga"
 	AchievementLighthouse      = "lighthouse"
 	AchievementLighthouseLight = "lighthouse-light"
+)
+
+// Keys of the shop achievements, which the purchase metrics decide.
+const (
+	AchievementFirstPurchase = "first-purchase"
+	AchievementShopaholic    = "shopaholic"
 )
 
 const (
