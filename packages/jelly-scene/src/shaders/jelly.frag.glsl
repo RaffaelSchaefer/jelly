@@ -7,6 +7,8 @@
 // HEAD_R (Halbachsen des Kopf-Ellipsoids) und MARCH_STEPS kommen als #define aus body.ts, HEAD_R
 // abgeleitet von HEAD in jellyGeometry.ts.
 //
+// Mit SCENE_LIGHT kommt das Licht einer Szene dazu, siehe den Block <scene-light>.
+//
 // Mit JELLY_OPTIMIZED entfällt der Weg durchs Innere, das Studio wird zu festen Glanzlichtern. Form,
 // Normalen, Kontur und Tiefe bleiben genau gleich.
 
@@ -27,6 +29,41 @@ uniform float uClarity;
 varying vec3 vObj;
 
 const float OUTLINE = 0.035;
+
+// <scene-light>
+// Licht der Szene (sceneLight.ts), in jelly.frag.glsl und toon.frag.glsl Zeichen für Zeichen gleich.
+// Nur mit SCENE_LIGHT (Zahl der Lichter), sonst bleibt der Shader wie ohne diesen Block.
+#ifdef SCENE_LIGHT
+uniform float uSceneShade;
+uniform vec4 uSceneLights[SCENE_LIGHT];
+uniform vec3 uSceneColors[SCENE_LIGHT];
+uniform vec3 uSceneRimDir;
+uniform vec3 uSceneRimColor;
+
+// Punktlichter auf einer Fläche mit Grundfarbe albedo, Lage pW und Normale nW in Weltkoordinaten.
+// Das Licht greift um die Kante herum (wrap), bei der Reichweite w wirkt es halb so stark. Es hellt
+// die Grundfarbe auf und legt nichts Festes darüber: Ein dunkler Hut bleibt dunkel. Zu 35 % zählt
+// nur ihre Helligkeit, so zeigt sich warmes Kerzenlicht auch auf einem blauen Jelly.
+vec3 sceneDiffuse(vec3 albedo, vec3 pW, vec3 nW) {
+  vec3 sum = vec3(0.0);
+  for (int i = 0; i < SCENE_LIGHT; i++) {
+    vec3 toLight = uSceneLights[i].xyz - pW;
+    float d2 = max(dot(toLight, toLight), 1e-4);
+    float r2 = uSceneLights[i].w * uSceneLights[i].w;
+    float wrap = clamp((dot(nW, toLight * inversesqrt(d2)) + 0.6) / 1.6, 0.0, 1.0);
+    sum += uSceneColors[i] * wrap * wrap * r2 / (r2 + d2);
+  }
+  return sum * mix(albedo, vec3(dot(albedo, vec3(0.2126, 0.7152, 0.0722))), 0.35);
+}
+
+// Randlicht wie vom Mond: nur an Kanten, die sich vom Blick (vW, zur Kamera hin) abwenden, und nur
+// auf der Seite, von der es kommt.
+vec3 sceneRim(vec3 nW, vec3 vW) {
+  float edge = 1.0 - clamp(dot(nW, vW), 0.0, 1.0);
+  return uSceneRimColor * edge * edge * edge * clamp(0.5 + 0.5 * dot(nW, uSceneRimDir), 0.0, 1.0);
+}
+#endif
+// </scene-light>
 
 float smin(float a, float b, float k) {
   float h = max(k - abs(a - b), 0.0) / k;
@@ -224,7 +261,14 @@ void main() {
     jelly *= 0.62 + 0.38 * ndv;
     float ao = 1.0 - 0.5 * crease(p);
     color = jelly * ao + env(reflect(vW, nW)) * fresnel * ao;
+#ifdef SCENE_LIGHT
+    // Das Studio tritt zurück, Kerzen, Kugel und Runen leuchten auf das Jelly.
+    color = color * uSceneShade + sceneDiffuse(jelly, (uModel * vec4(p, 1.0)).xyz, nW) * ao;
+#endif
     color = mix(color, uColor * 0.22, pow(1.0 - ndv, 2.5) * 0.7);
+#ifdef SCENE_LIGHT
+    color += sceneRim(nW, -vW);
+#endif
     // Tinte, wo sich die Oberfläche abwendet: der Toon-Rand und Kantenglättung zur Outline.
     float ink = 1.0 - smoothstep(0.0, 0.14, ndv);
     color = mix(color, uInk, ink);

@@ -1,108 +1,116 @@
 /**
- * Der Zauberer im Shop: ein Jelly in eigenen Farben mit Spitzhut, Bart und schwebender
- * Kristallkugel. Seine Lider hängen ein wenig, beim Dösen sinkt der Kopf.
+ * Funkelbart, der Zauberer im Shop: ein Jelly in eigenen Farben mit Spitzhut, Haar und Bart, Robe
+ * und Kristallkugel, und solange er zeigt, mit einem Zauberstab. Seine Lider hängen schwer, er
+ * folgt mit den Augen, was die Kundschaft ansieht, und lebt mit eigenen Gesten.
  *
- * Gesten, Stimme und Sätze kommen von außen (`shop/useWizard.ts`). Die Modelle trägt nur er, sie
- * kommen aus `@jelly/scene/wizard` und nicht aus dem Katalog.
+ * Gesten, Stimme und Sätze kommen von außen (`shop/useWizard.ts`) als Haltung (`WizardPose`), die
+ * `WizardRig.tsx` Bild für Bild umsetzt. Die Teile trägt nur er, sie kommen aus
+ * `@jelly/scene/wizard` und nicht aus dem Katalog (`WizardParts.tsx`).
  *
  * @module
  */
 
 import type { Jelly, JellyQuality } from "@jelly/scene";
-import type { Object3D } from "three";
 
-import { loadWizardPart, WIZARD_PALETTE } from "@jelly/scene/wizard";
-import { createPortal, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef, useState, type RefObject } from "react";
-import { MathUtils } from "three";
+import { WIZARD_PALETTE } from "@jelly/scene/wizard";
+import { useThree } from "@react-three/fiber";
+import { createRef, useEffect, useRef, useState, type RefObject } from "react";
 
 import type { ActiveEmote } from "../useEmotes";
 import type { ActiveVoice } from "../useJellyVoice";
 
+import { RESTING_POSE, type WizardPose } from "../pet/wizardScripts";
 import Character from "./Character";
-import { Sticker } from "./Cosmetic";
+import { WizardHead, WizardOrb, WizardRobe, WizardWand, type WizardHolders } from "./WizardParts";
+import WizardRig from "./WizardRig";
 
-/** Wie weit seine Augen offen stehen, als Anteil der normalen Höhe: alt und ein wenig müde. */
-const HALF_LID = 0.62;
-
-/** Wie tief der Kopf beim Dösen sinkt und wie weit er sich zur Seite neigt. */
-const DOZE_DROP = 0.12;
-const DOZE_TILT = 0.16;
-
-/** Wie schnell er einnickt und aufwacht, pro Sekunde. */
-const DOZE_SPEED = 3;
-
-/** Wo die Kugel neben ihm schwebt, in seinen Koordinaten, und wie weit sie auf und ab steigt. */
-const ORB_AT = { x: -1.42, y: -0.02, z: 0.5 } as const;
-const ORB_FLOAT = 0.06;
-
-// Einmal je Modul: Alle Zauberer teilen dieselben Promises, so wartet React nicht erneut.
-const HAT = loadWizardPart("hat");
-const FACE = loadWizardPart("face");
-const ORB = loadWizardPart("orb");
-
-/**
- * Macht das Gesicht alt: halb geschlossene Lider, beim Dösen geschlossene Augen und ein gesunkener
- * Kopf. Läuft nach `animateJelly`, das Augen und Kopf jedes Bild neu setzt.
- *
- * @param doze - 0 wach, 1 eingenickt.
- */
-function ageFace(jelly: Jelly, doze: number) {
-  const { eyes, eyeShapes } = jelly.face;
-  for (const eye of eyes) {
-    if (doze > 0.5) {
-      eye.geometry = eyeShapes.closed;
-      eye.scale.y = 1;
-    } else if (eye.geometry === eyeShapes.open) {
-      eye.scale.y *= HALF_LID;
-    }
-  }
-  jelly.head.position.y -= DOZE_DROP * doze;
-  jelly.head.rotation.z += DOZE_TILT * doze;
+/** Neue, leere Halter für Hut, Kugel, Brauen und Schnurrbart. */
+function createHolders(): WizardHolders {
+  return {
+    hat: createRef(),
+    orb: createRef(),
+    ball: createRef(),
+    crystal: createRef(),
+    brows: [createRef(), createRef()],
+    mustache: [createRef(), createRef()],
+  };
 }
 
-/** Die Kristallkugel. Sie schwebt für sich: Das Jelly hüpft und staucht, sie bleibt ruhig. */
-function Orb({ reducedMotion }: { reducedMotion: boolean }) {
-  const orb = useRef<Object3D>(null);
-  useFrame(({ clock }) => {
-    const lift = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 1.4) * ORB_FLOAT;
-    orb.current?.position.set(ORB_AT.x, ORB_AT.y + lift, ORB_AT.z);
-  });
-  return (
-    <object3D ref={orb} position={[ORB_AT.x, ORB_AT.y, ORB_AT.z]}>
-      <Sticker model={ORB} ink={WIZARD_PALETTE.outline} />
-    </object3D>
-  );
+/** Ohne Haltung von außen ruht er und schläft, solange `dozing` gilt. */
+function useOwnPose(pose: RefObject<WizardPose> | undefined, dozing: boolean) {
+  const own = useRef<WizardPose>({ ...RESTING_POSE });
+  useEffect(() => {
+    if (pose) return;
+    const asleepSince = dozing ? performance.now() : null;
+    own.current = { ...RESTING_POSE, mood: dozing ? "asleep" : "neutral", asleepSince };
+  }, [pose, dozing]);
+  return pose ?? own;
+}
+
+/**
+ * Zeichnet, wenn sich die Haltung ändert. Bei reduzierter Bewegung steht die Uhr: Dann braucht auch
+ * das Lösen eines Zaubers und das Ende einer Geste eigene Bilder.
+ */
+function usePoseFrames(
+  pose: RefObject<WizardPose>,
+  version: number,
+  dozing: boolean,
+  reducedMotion: boolean,
+) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    const redraw = () => invalidate();
+    redraw();
+    const gesture = pose.current.gesture;
+    if (!reducedMotion || !gesture) return;
+    const moments = [gesture.releaseAt, gesture.seconds].filter(
+      (seconds): seconds is number => seconds !== undefined && Number.isFinite(seconds),
+    );
+    const timers = moments.map((seconds) => {
+      const left = gesture.startedAt + seconds * 1000 - performance.now();
+      return window.setTimeout(redraw, Math.max(0, left) + 20);
+    });
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [pose, version, dozing, reducedMotion, invalidate]);
 }
 
 /** Eigenschaften von {@link Wizard}. */
 export interface WizardProps {
-  /** Die laufende Geste, etwa Winken zur Begrüßung. */
+  /** Eine geteilte Geste, etwa das Zeigen. Dabei hält er den Zauberstab. */
   emote: ActiveEmote | null;
   /** Was er gerade sagt. Sein Mund folgt den Vokalen. */
   voiced: RefObject<ActiveVoice | null>;
-  /** Ob er eingenickt ist. */
+  /** Ob er eingenickt ist. Ohne `pose` schläft er dann. */
   dozing: boolean;
   reducedMotion: boolean;
   quality: JellyQuality;
+  /** Steigt mit jedem Kauf: Der Kern der Kristallkugel flammt auf. */
+  pulse?: number;
+  /** Seine Haltung: eigene Geste, Stimmung, Blick und Schlaf, Bild für Bild gelesen. */
+  pose?: RefObject<WizardPose>;
+  /** Steigt, wenn sich die Haltung ändert. */
+  poseVersion?: number;
+  /** Bekommt jedes Bild, wie weit die Kugel über ihrer Ruhelage steht, für Licht und Schein. */
+  orbLift?: RefObject<number>;
 }
 
-/** Der Zauberer mit Hut, Bart und Kugel. Muss innerhalb von `<Canvas>` stehen. */
-export default function Wizard({ emote, voiced, dozing, reducedMotion, quality }: WizardProps) {
+/** Der Zauberer mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
+export default function Wizard({
+  emote,
+  voiced,
+  dozing,
+  reducedMotion,
+  quality,
+  pulse = 0,
+  pose,
+  poseVersion = 0,
+  orbLift,
+}: WizardProps) {
   const [jelly, setJelly] = useState<Jelly | null>(null);
-  const doze = useRef(dozing ? 1 : 0);
-  const invalidate = useThree((state) => state.invalidate);
-
-  // Bei reduzierter Bewegung steht die Uhr: Einnicken und Aufwachen brauchen dann ein eigenes Bild.
-  useEffect(() => invalidate(), [dozing, invalidate]);
-
-  // Priorität 0: nach dem Jelly (-1), dessen Animation Augen und Kopf jedes Bild zurücksetzt.
-  useFrame((_, delta) => {
-    if (!jelly) return;
-    const goal = dozing ? 1 : 0;
-    doze.current = reducedMotion ? goal : MathUtils.damp(doze.current, goal, DOZE_SPEED, delta);
-    ageFace(jelly, doze.current);
-  });
+  // Einmal je Zauberer und über alle Bilder dieselben, damit Gesten sie bewegen können.
+  const [holders] = useState(createHolders);
+  const posed = useOwnPose(pose, dozing);
+  usePoseFrames(posed, poseVersion, dozing, reducedMotion);
 
   return (
     <>
@@ -113,16 +121,15 @@ export default function Wizard({ emote, voiced, dozing, reducedMotion, quality }
         {...{ emote, voiced, reducedMotion, quality }}
         onJelly={setJelly}
       />
-      {jelly
-        ? createPortal(
-            <>
-              <Sticker model={HAT} ink={WIZARD_PALETTE.outline} />
-              <Sticker model={FACE} ink={WIZARD_PALETTE.outline} />
-            </>,
-            jelly.faceAnchor,
-          )
-        : null}
-      <Orb reducedMotion={reducedMotion} />
+      {jelly ? (
+        <>
+          <WizardHead jelly={jelly} holders={holders} />
+          <WizardRobe jelly={jelly} />
+          {emote?.key === "point" ? <WizardWand jelly={jelly} /> : null}
+          <WizardRig {...{ jelly, holders, reducedMotion, pulse, orbLift }} pose={posed} />
+        </>
+      ) : null}
+      <WizardOrb holders={holders} />
     </>
   );
 }

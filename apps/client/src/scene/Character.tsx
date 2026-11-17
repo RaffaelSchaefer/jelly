@@ -206,7 +206,11 @@ export default function Character({
       holding,
       emote:
         emote && isEmoteKey(emote.key)
-          ? { key: emote.key, elapsed: (performance.now() - emote.startedAt) / 1000 }
+          ? {
+              key: emote.key,
+              elapsed: (performance.now() - emote.startedAt) / 1000,
+              seconds: emote.seconds,
+            }
           : undefined,
       mouth: currentMouth(voiced, role, reducedMotion),
     });

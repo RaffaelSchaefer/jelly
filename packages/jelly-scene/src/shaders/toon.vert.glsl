@@ -10,6 +10,10 @@ varying vec3 vViewPosition;
 varying vec3 vColor;
 varying vec3 vGlow;
 varying vec3 vGlowRange;
+#ifdef SCENE_LIGHT
+varying vec3 vWorldPos;
+varying vec3 vWorldNormal;
+#endif
 void main() {
   vNormal = normalize(normalMatrix * normal);
   vPosition = position;
@@ -17,6 +21,12 @@ void main() {
   // Die Leuchtfarbe ist die Grundfarbe, 45 % in Richtung Weiß.
   vGlow = mix(aColor, vec3(1.0), 0.45);
   vGlowRange = aGlowRange;
+#ifdef SCENE_LIGHT
+  // Lage und Normale in der Welt fürs Licht der Szene. Die Normale kommt aus der Blick-Normale zurück:
+  // Die Ansicht dreht nur, und so stimmt sie auch am gestauchten Jelly.
+  vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+  vWorldNormal = (vec4(vNormal, 0.0) * viewMatrix).xyz;
+#endif
   vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
   vViewPosition = -viewPosition.xyz;
   gl_Position = projectionMatrix * viewPosition;

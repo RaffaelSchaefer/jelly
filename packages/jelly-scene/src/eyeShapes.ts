@@ -1,6 +1,7 @@
 /**
  * Die Formen von Augen und Brauen: offen mit Glanzpunkten, fröhlich als Bogen (`^`), zugekniffen
- * als Winkel (`>`), geschlossen als flacher Bogen nach unten, dazu die Braue als flacher Bogen.
+ * als Winkel (`>`), geschlossen als flacher Bogen nach unten, unter schwerem Lid mit einem Funkeln
+ * (`lidded`, nur für den Zauberer), dazu die Braue als flacher Bogen.
  *
  * Wie die Mundformen liegen sie je Tintenfarbe einmal im Speicher. Die Augen tauschen nur ihre
  * Geometrie, ihre Lage auf dem Kopf bleibt.
@@ -8,13 +9,21 @@
  * @module
  */
 
-import { BufferGeometry, CapsuleGeometry, SphereGeometry, TorusGeometry } from "three";
+import {
+  BufferGeometry,
+  CapsuleGeometry,
+  CircleGeometry,
+  Shape,
+  ShapeGeometry,
+  SphereGeometry,
+  TorusGeometry,
+} from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import { tintGeometry } from "./jellyGeometry.ts";
 
 /** Die Namen der Augenformen. */
-export const EYE_SHAPE_NAMES = ["open", "happy", "squint", "closed"] as const;
+export const EYE_SHAPE_NAMES = ["open", "happy", "squint", "closed", "lidded"] as const;
 
 /** Eine Augenform. */
 export type EyeShape = (typeof EYE_SHAPE_NAMES)[number];
@@ -82,11 +91,37 @@ function bow(radius: number, sweep: number, thickness = LINE) {
     .scale(1, 1, FLAT);
 }
 
+/** Halbachsen der Pupille unter dem Lid und wie hoch über ihrer Mitte die Kante des Lids liegt. */
+const LIDDED = { x: 0.06, y: 0.074, lid: 0.012 } as const;
+
+/**
+ * Das Auge unter schwerem Lid: die untere Pupille, oben gerade abgeschnitten, ein Funkeln darin und
+ * der Strich des Lids, dessen äußeres Ende freundlich-müde hängt. +x zeigt beim linken Auge zur
+ * Mitte, das rechte zeigt die Form gespiegelt.
+ */
+function buildLiddedEye(ink: string) {
+  const cut = Math.asin(LIDDED.lid / LIDDED.y);
+  const pupil = new Shape().absellipse(0, 0, LIDDED.x, LIDDED.y, Math.PI - cut, 2 * Math.PI + cut);
+  const parts = [
+    tintGeometry(new ShapeGeometry(pupil, 12).translate(0, 0, LINE_LIFT), ink),
+    tintGeometry(
+      new CircleGeometry(0.017, 12).translate(-0.02, -0.026, LINE_LIFT + 0.002),
+      HIGHLIGHT,
+    ),
+    tintGeometry(
+      new CircleGeometry(0.0075, 8).translate(0.02, -0.05, LINE_LIFT + 0.002),
+      REFLECTION,
+    ),
+    tintGeometry(stroke([-0.078, -0.004], [0.072, 0.016]), ink),
+  ];
+  return mergeGeometries(parts) ?? parts[0] ?? new BufferGeometry();
+}
+
 /**
  * Die gezeichneten Augen, alle um die Augenmitte. Der Winkel zeigt nach +x, also für das linke Auge
  * zur Mitte. Das rechte spiegelt ihn beim Zeigen.
  */
-function buildLineEye(shape: Exclude<EyeShape, "open">) {
+function buildLineEye(shape: Exclude<EyeShape, "open" | "lidded">) {
   switch (shape) {
     case "happy":
       return bow(0.048, 2.4).scale(1, 1.2, 1).translate(0, -0.03, LINE_LIFT);
@@ -112,6 +147,7 @@ export function findEyeShapes(ink: string): Record<EyeShape, BufferGeometry> {
     happy: tintGeometry(buildLineEye("happy"), ink),
     squint: tintGeometry(buildLineEye("squint"), ink),
     closed: tintGeometry(buildLineEye("closed"), ink),
+    lidded: buildLiddedEye(ink),
   };
   EYES_BY_INK.set(ink, shapes);
   return shapes;
