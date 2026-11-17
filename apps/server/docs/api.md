@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.21.0**
+Aktuelle Version: **1.22.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.21.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.22.0  | Stream: Ein Cursor vor dem neuesten Ereignis, wie nach einem Neustart des Servers, bekommt `reset`, statt still zu warten. Die Bühne liest ihren Zustand bei jedem (Wieder-)Öffnen des Streams neu |
 | 1.21.0  | Brechend: Bewegung in Metern — `walk_speed` zählt in m/s (Standard 0,4), `near_distance` in m (Standard 1,8). Der Planer rechnet in der echten Halle, Abstände wachsen mit `jelly_width`. Gespeicherte Regeln werden umgerechnet. Gründe und Umrechnung stehen unter [Brechende Änderungen](#brechende-änderungen) |
 | 1.20.0  | Punkteshop: Regel `coins_per_level`, `coins` im Stand, `unlock: shop` mit `price` im Katalog statt Freischaltung per Level, `POST /purchases`, Ereignisse `coins.gained` und `cosmetic.purchased`, Achievements `first-purchase` und `shopaholic`. Admin: Münzen schenken und Käufe zurücknehmen, Bots-Aktion `purchase` |
 | 1.19.0  | Neue Emotes `angry`, `sad` und `shy` im Katalog |
@@ -414,7 +415,8 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 - **Start:** erst `GET /players/me` oder `GET /stage` lesen, dann den Stream mit `?since=<last_event_id>` öffnen.
   So geht nichts verloren. Ohne Angabe beginnt er beim neuesten Ereignis.
 - **Wiederverbinden:** `Last-Event-ID` hat Vorrang vor `since`. Spieler können höchstens 1000 Ereignisse
-  zurückgehen. Liegt die ID weiter zurück, kommt zuerst `reset`, und die App liest ihren Stand neu.
+  zurückgehen. Liegt die ID weiter zurück oder vor dem neuesten Ereignis, etwa nach einem Neustart des
+  Servers, kommt zuerst `reset`, und die App liest ihren Stand neu.
 - **Grenzen:** Eine App hält einen Stream offen. Je LAN gelten `max_player_streams` je Spieler und
   `max_streams` für alle Spieler zusammen, darüber folgt `429 rate_limited`. Jeder Versuch zählt zudem
   zum Limit von 300 Anfragen pro Minute. Die Bühne zählt nicht mit.

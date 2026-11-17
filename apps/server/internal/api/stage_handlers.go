@@ -45,7 +45,8 @@ func (server *apiServer) addStageRoutes(contract huma.API) {
 		Summary: "Receive events as server-sent events",
 		Description: "Starts after `Last-Event-ID`, then `since`, otherwise at the newest event. " +
 			"Players can only go back " + strconv.Itoa(maxPlayerReplayEvents) + " events, " +
-			"further back they get `reset` and read their state again. " +
+			"further back they get `reset` and read their state again. So does a cursor ahead of " +
+			"the newest event, as after a restart. " +
 			"`topics` is a comma-separated list of `events` and `moves`, without it both arrive. " +
 			"Messages of type `move` have no ID and carry a `Move`. " +
 			"Every new connection first gets the current move of each jelly. " +
@@ -235,7 +236,9 @@ func writeStreamTick(
 
 // findStreamStart uses `Last-Event-ID` from a reconnect, then `?since=`, then the newest event.
 // Players only get recent events, so the log does not tell them who was active when. Further back,
-// they start at the newest event and are told to read their state again.
+// they start at the newest event and are told to read their state again. So does a cursor ahead of
+// the newest event, which a restart leaves behind: the log starts empty and would stay silent
+// until new events overtake the cursor.
 func (server *apiServer) findStreamStart(
 	request *http.Request, viewerID int64,
 ) (int64, bool, error) {
@@ -253,6 +256,9 @@ func (server *apiServer) findStreamStart(
 	afterID, err := strconv.ParseInt(start, 10, 64)
 	if err != nil || afterID < 0 {
 		return 0, false, store.ErrInvalidInput
+	}
+	if afterID > latestID {
+		return latestID, true, nil
 	}
 	oldestID := latestID - maxPlayerReplayEvents
 	if viewerID != noViewerPlayer && afterID < oldestID {

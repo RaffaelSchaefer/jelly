@@ -7,11 +7,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/api"
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
@@ -199,5 +202,185 @@ func TestStreamDeliversReplaysAndStops(t *testing.T) {
 	}
 	if err := ctx.Err(); err != nil {
 		t.Fatalf("stream did not end when the server stopped: %v", err)
+	}
+}
+
+// pumpStageChanged writes `count` `stage.changed` events, so the replay window of a player starts
+// past the first event of the log.
+func (testFixture *fixture) pumpStageChanged(count int) {
+	testFixture.t.Helper()
+	area := store.AdminArea{Width: 50, Height: 50, Kind: rules.AreaKindSeats}
+	stored, err := testFixture.database.CreateArea(
+		testFixture.t.Context(), 1, area, testFixture.clock.Load(),
+	)
+	if err != nil {
+		testFixture.t.Fatal(err)
+	}
+	for range count {
+		_, err = testFixture.database.UpdateArea(
+			testFixture.t.Context(), 1, stored, testFixture.clock.Load(),
+		)
+		if err != nil {
+			testFixture.t.Fatal(err)
+		}
+	}
+}
+
+// newStreamRequest builds a stream request with `query`, as a player or as the stage page.
+func newStreamRequest(
+	ctx context.Context, server *httptest.Server, token string, query url.Values,
+) (*http.Request, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		server.URL+"/v1/stage/events?"+query.Encode(), http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		request.Header.Set("Authorization", "Bearer "+token)
+	}
+	return request, nil
+}
+
+// readOpenedStream sends the request and returns a scanner over its messages.
+func readOpenedStream(t *testing.T, server *httptest.Server, request *http.Request) *bufio.Scanner {
+	t.Helper()
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = response.Body.Close() })
+	if response.StatusCode != http.StatusOK {
+		body, readErr := io.ReadAll(response.Body)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		t.Fatalf("open stream: %d %s", response.StatusCode, body)
+	}
+	return bufio.NewScanner(response.Body)
+}
+
+// openStreamWithQuery opens the event stream at a cursor over `?since=`. The body stays open
+// until the test ends.
+func openStreamWithQuery(
+	ctx context.Context, t *testing.T, server *httptest.Server, token, cursor string,
+) *bufio.Scanner {
+	t.Helper()
+	query := url.Values{"topics": {"events"}, "since": {cursor}}
+	if token == "" {
+		query.Set("key", stageKey)
+	}
+	request, err := newStreamRequest(ctx, server, token, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return readOpenedStream(t, server, request)
+}
+
+// openStreamWithHeader opens the event stream of a player that reconnected with `Last-Event-ID`.
+func openStreamWithHeader(
+	ctx context.Context, t *testing.T, server *httptest.Server, token, cursor string,
+) *bufio.Scanner {
+	t.Helper()
+	request, err := newStreamRequest(ctx, server, token, url.Values{"topics": {"events"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Last-Event-ID", cursor)
+	return readOpenedStream(t, server, request)
+}
+
+func TestStreamResetsCursorsAheadOfTheNewestEvent(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	server := httptest.NewServer(testFixture.handler)
+	defer server.Close()
+	defer server.CloseClientConnections()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	response := testFixture.callAPI("GET", "/v1/stage?key="+stageKey, "", "")
+	latestID := decodeBody[api.StageAnswer](t, response).LastEventID
+	if latestID < 1 {
+		t.Fatalf("latest event ID = %d", latestID)
+	}
+	ahead := strconv.FormatInt(latestID+1, 10)
+	fromHeader := openStreamWithHeader(ctx, t, server, token, ahead)
+	if got := readStreamEvents(t, fromHeader, 1)[0]; got != "reset" {
+		t.Fatalf("player ahead over the header: %q", got)
+	}
+	fromQuery := openStreamWithQuery(ctx, t, server, "", ahead)
+	if got := readStreamEvents(t, fromQuery, 1)[0]; got != "reset" {
+		t.Fatalf("stage ahead over the query: %q", got)
+	}
+	// The largest cursor still parses and counts as ahead, instead of failing the request.
+	const largestCursor = "9223372036854775806"
+	fromLargest := openStreamWithQuery(ctx, t, server, "", largestCursor)
+	if got := readStreamEvents(t, fromLargest, 1)[0]; got != "reset" {
+		t.Fatalf("stage with the largest cursor: %q", got)
+	}
+	// A cursor equal to the newest event is not ahead of it, so no reset precedes the next event.
+	current := openStreamWithQuery(ctx, t, server, token, strconv.FormatInt(latestID, 10))
+	testFixture.callAPI("POST", "/v1/emotes", token, `{"key":"wave"}`)
+	if got := readStreamEvents(t, current, 1)[0]; got != store.EventEmote {
+		t.Fatalf("player at the newest event: %q", got)
+	}
+	replayed := openStreamWithQuery(ctx, t, server, "", strconv.FormatInt(latestID-1, 10))
+	// The replay carries the event before the cursor and the emote from the case above.
+	messages := readStreamEvents(t, replayed, 2)
+	if messages[0] == "reset" || messages[1] != store.EventEmote {
+		t.Fatalf("stage within the window: %q", messages)
+	}
+}
+
+func TestStreamResetsPlayersTooFarBehind(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("A")
+	// One more event than the replay window of 1000 pushes its start past the beginning.
+	testFixture.pumpStageChanged(1001)
+	server := httptest.NewServer(testFixture.handler)
+	defer server.Close()
+	defer server.CloseClientConnections()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	fromStart := openStreamWithQuery(ctx, t, server, token, "0")
+	if got := readStreamEvents(t, fromStart, 1)[0]; got != "reset" {
+		t.Fatalf("player too far behind: %q", got)
+	}
+	anonymous := openStreamWithQuery(ctx, t, server, "", "0")
+	if got := readStreamEvents(t, anonymous, 1)[0]; got == "reset" {
+		t.Fatalf("stage too far behind: %q", got)
+	}
+}
+
+func TestStreamKeepsRejectingCursorsBeyondInt64(t *testing.T) {
+	testFixture := newFixture(t)
+	server := httptest.NewServer(testFixture.handler)
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	// One above the largest int64 is not a cursor anymore, so it stays an invalid input.
+	request, err := newStreamRequest(ctx, server, "", url.Values{
+		"topics": {"events"}, "key": {stageKey}, "since": {"9223372036854775808"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer api.ErrorResponse
+	if err := json.Unmarshal(body, &answer); err != nil || answer.Error.Code != "invalid_request" {
+		t.Fatalf("answer = %s, %v", body, err)
+	}
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d: %s", response.StatusCode, body)
 	}
 }

@@ -22,9 +22,9 @@
     "limit": "How many entries a page holds at most.",
     "id": "The number of the player.",
     "key": "The stage key, for the stage page. Players send their secret as a bearer token instead.",
-    "since": "The last event ID the client knows, usually `last_event_id` from a state it just read.",
+    "since": "The last event ID the client knows, usually `last_event_id` from a state it just read. A cursor ahead of the newest event, as after a restart of the server, gets `reset` and the client reads its state again.",
     "topics": "Comma-separated list of `events` and `moves`. Without it, both arrive. Unknown topics answer `400 invalid_request`.",
-    "Last-Event-ID": "Sent by the browser or the client when it reconnects, and takes priority over `since`."
+    "Last-Event-ID": "Sent by the browser or the client when it reconnects, and takes priority over `since`. When the cursor is ahead of the newest event, for example after a restart of the server, the stream starts at the newest event and first sends `reset`, so the client reads its state again."
   },
   "schemas": {
     "Achievement": {
@@ -662,7 +662,7 @@
     },
     {
       "type": "reset",
-      "meaning": "The stream dropped events for this client, so read the state again.",
+      "meaning": "The stream dropped events for this client, or its cursor lies ahead of the newest event, so read the state again.",
       "player": "none",
       "payload": "None"
     }
