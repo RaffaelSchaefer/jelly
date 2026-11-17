@@ -662,7 +662,7 @@
     },
     {
       "type": "reset",
-      "meaning": "The stream dropped events for this client, so read the state again.",
+      "meaning": "The stream dropped events for this client, or its cursor lies ahead of the newest event, so read the state again.",
       "player": "none",
       "payload": "None"
     }
