@@ -44,7 +44,9 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/backend.ts`: einziger Ort mit `invoke()`. Ein Wrapper je Befehl aus `src-tauri/src/commands.rs`.
 - `src/usePet.ts`, `src/useGame.ts`: Spielstand, Aktionen, Server-Ereignisse, Tastatur-Stupser,
   Größen-Regler.
-- `src/pet/`: reine Logik ohne React/Three. Spiegelt den Server-Vertrag und `src-tauri/src/pet.rs`.
+- `src/pet/`: reine Logik ohne React/Three. Spiegelt den Server-Vertrag und `src-tauri/src/pet.rs`. Ein Modul dort tut
+  beim Import nichts: `vite.config.ts` erklärt sie für nebenwirkungsfrei, so landet aus `./pet` nur im Chunk eines
+  Fensters, was es nutzt (der Verstand des Zauberers nur im Shop).
 - `src/Studio.tsx`, `src/studio/`, `src/studio.css`: Anpassen direkt am Jelly. Die Tropfen zeichnet
   `src/scene/LiquidGlass.tsx` per Shader in die Canvas, das DOM liefert Knöpfe und mit `data-liquid`
   die Vorlagen für ihre Form.
@@ -102,16 +104,43 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
   `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/PopoutDrops.tsx`: die Glas-Tropfen am Jelly,
   die Karte und Shop öffnen.
-- `shop.html`, `src/shop/`: der Shop als Zauberladen im eigenen Fenster, mit React. `Shop.tsx` (Rahmen),
-  `ShopStage.tsx` (Ladentheke: Wand, Tresen und Sprechblase als DOM um `src/scene/ShopScene.tsx`), `ShopLedger.tsx`
-  (Pergament-Rolle), `ShopSeal.tsx` (Wachssiegel: Kaufen, Anlegen, Ablegen), `useShop.ts` (Stand, Ereignisse, Vorschau
-  ohne Server), `useWizard.ts` (Sätze, Gesten, tiefere Stimme, Dösen), `shop.css`. Was im Shop steht, rechnet
-  `src/pet/shop.ts`, was der Zauberer sagt, `src/pet/wizard.ts`. Den Zauberer zeichnet `src/scene/Wizard.tsx`: eigene
-  Palette, halb geschlossene Augen, Hut, Bart und Kristallkugel aus `@jelly/scene/wizard` (Modelle aus
-  `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS`, nicht im Katalog). Die Lage von Tresen, Teppich und
-  Blase in `shop.css` folgt aus der Kamera (`SHOP_VIEW` in `ShopScene.tsx`), beide Seiten ändern sich zusammen. Münzen
-  gibt es je Level-Aufstieg (`coins_per_level`), gekauft wird mit `POST /v1/purchases`. Der Aufstieg
-  (`src/LevelUp.tsx`) zeigt die Münzen und führt zum Shop. Wie die Karte vertritt der Shop das Pet, solange er offen ist.
+- `shop.html`, `src/shop/`: der Shop als Zauberladen im eigenen Fenster, mit React. `Shop.tsx` (Rahmen, Wahl, Klang),
+  `ShopHeader.tsx` und `ShopPurse.tsx` (Messingschild, Lederbörse), `ShopStage.tsx` (Bühne: DOM-Ebenen `StageBackdrop`,
+  `RuneCircle`, `StageCounter`, `StageAir`, `StageSigns` und `StageBubble` um `src/scene/ShopScene.tsx`), `ShopLedger.tsx`,
+  `WareCard.tsx` und `useLedgerKeys.ts` (Rolle mit den Waren), `ShopSeal.tsx`, `BriefParts.tsx` und
+  `useSealCeremony.ts` (Kaufbrief, Siegel zum Halten), `useShop.ts` (Stand, Ereignisse, Vorschau ohne Server), `css/`
+  (eine Datei je Bereich, Größen S, M und L). Was im Shop steht, rechnet `src/pet/shop.ts`, die Rolle `shopLedger.ts`,
+  die Börse `purse.ts`, das Siegel `sealCeremony.ts`, der Brief `shopLore.ts`. In der Browser-Vorschau neben `/#join`:
+  `/shop.html` mit `?optimized`, `?ruhig`, `?fps=30` und `#shop-pleite`, `#shop-reich`, `#shop-alles`, `#shop-zu`,
+  `#shop-leer`, `#shop-laden`, `#shop-fehler`, `#shop-langsam`, `#shop-muenzen`, `#shop-nacht`, `#shop-doesen`,
+  `#shop-runen`, `#shop-anprobe` und `#shop-zauber` (`PREVIEW_SHOP_HASHES` in `src/pet/preview.ts`). Münzen gibt es je
+  Level-Aufstieg (`coins_per_level`), gekauft wird mit `POST /v1/purchases`. Der Aufstieg (`src/LevelUp.tsx`) zeigt die
+  Münzen und führt zum Shop. Wie die Karte vertritt der Shop das Pet, solange er offen ist.
+- Bühne und Takt des Ladens: Kamera, Plätze und benannte Punkte stehen in `src/pet/shopStage.ts`, DOM und WebGL rechnen
+  beide daraus (Seitenverhältnis 2,4, `SHOP_VIEW`). `src/pet/shopTimeline.ts` ist der eine Takt: der Kauf ab C
+  (`purchaseTimeline`), Anprobe, Anlegen, Ablegen. `src/shop/useSealRitual.ts` (Phasen des Siegels) und
+  `useShopMoments.ts` (Wahl) spielen ihn ab, `useStageCues.ts` hält Runenkreis, Abdunkeln und Licht, was ein Moment
+  auslöst, rechnet `src/pet/shopRitual.ts`. Es gibt keinen Event-Bus: zwei Objekte je Fenster (`shopSound`, `shopFx`),
+  Rückrufe und `data-`-Attribute (`data-item-id`, `data-gaze`, `data-hover-sound`, `data-coin-source`, `.stage-tray`).
+- `src/shop/sound/`: der Klang des Ladens mit einem AudioContext je Fenster (`shopSound.ts`, eingebunden mit
+  `useShopSound.ts`): Holz, Pergament, Messing und Wachs statt der MP3s, Kaufritual, Ambiente und die Stimme des
+  Zauberers über `voiceRoute`. Rein rechnen `src/pet/shopMix.ts`, `shopScore.ts` und `shopAmbience.ts`. Hörprobe:
+  `scripts/shop-sound-check.html`.
+- `src/shop/fx/`: alle kurzen Effekte auf einer Canvas2D über dem Fenster (`shopFx` in `sparksEngine.ts`, `ShopFx.tsx`,
+  gemalt mit `fxAtlas.ts`), geplant in `src/pet/sparks.ts`. Der Takt läuft nur, solange etwas lebt. Die Vorschau spielt
+  Anprobe und Kauf mit `useFxReplay.ts`.
+- Licht der Szene: `packages/jelly-scene/src/sceneLight.ts`, der Block `<scene-light>` in `jelly.frag.glsl` und
+  `toon.frag.glsl` (Zeichen für Zeichen gleich, nur mit dem Define `SCENE_LIGHT`) und `userData.lightable` an Körper und
+  Sticker. Nur der Shop schaltet es ein (`src/scene/useSceneLight.ts`, `ShopLights.tsx`, `ShopGlows.tsx`, Werte in
+  `src/pet/shopLight.ts`), Pet, Karte und Bühne des Servers bleiben ohne.
+- Der Zauberer Funkelbart: `src/scene/Wizard.tsx`, `WizardParts.tsx` (Teile aus `wizard.glb`) und `WizardRig.tsx`
+  (Gesten, Blick, Brauen, Schnurrbart, Kugel). Im Paket `wizard.ts` (`@jelly/scene/wizard`), `wizardGestures.ts`,
+  `wizardFace.ts`, `crystal.ts` und `wizardTiming.ts` (`@jelly/scene/wizard-timing`, ohne three). Ein `wizard.glb` mit
+  14 Teilen aus `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS` und nicht im Katalog. Sein Verstand
+  steht rein in `src/pet/`: `wizardBrain.ts` (wann), `wizard.ts` und `wizardIdle.ts` (Skripte), `wizardScripts.ts`
+  (Typen, Takt), `wizardPick.ts`, `wizardLines.ts` (Sätze), `wizardVoice.ts`, `wizardClips.ts`, `voiceTimbre.ts`,
+  `wizardFaceRig.ts`. Abgespielt in `src/shop/useWizard.ts`, `useWizardPlayer.ts`, `useWizardSenses.ts` und
+  `wizardEffects.ts`. `src/pet/contracts.test.ts` hält Paket, Verstand, Bühne und Klang beieinander.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
   `events.rs` (Server-Stream), `popout.rs` (Fenster von Karte und Shop), `error.rs`, `pet.rs` (lokaler Stand,
@@ -143,6 +172,11 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   auf der Bühne mit echter Tiefe. Die Modelle liegen im Bundle: Die CSP der App verbietet `fetch`, und `tauri dev`
   zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary. Ein Material kann sein
   Leuchten von unten mit der Blender-Eigenschaft `glow` (0 bis 1) dämpfen, sonst wirken dunkle Farben unten grau.
+- **Zauberladen ändern:** Vor einem Jelly steht nur DOM oder die Canvas2D der Effekte, denn Sticker übermalen alles
+  in 3D davor. DOM und Szene passen nur bei Seitenverhältnis 2,4 und derselben Kamera (`src/pet/shopStage.ts`)
+  zusammen. Zeiten kommen aus `src/pet/shopTimeline.ts`, nicht aus eigenen Konstanten. Jede Schleife (CSS, Licht,
+  Funken) braucht eine ruhige und eine optimierte Fassung. Ansehen bei 520×460, 720×600, 1200×900 und 1920×1080,
+  jeweils auch mit `?optimized` und `?ruhig`, ohne Scrollen.
 - **Schriften** liegen als Datei bei (`src/fonts/`, mit Lizenz) und nie als `data:`: Die CSP lädt Schriften nur von
   `'self'`, `vite.config.ts` legt `.woff2` deshalb nie inline.
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.

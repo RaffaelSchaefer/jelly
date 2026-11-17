@@ -48,7 +48,26 @@ das Aussehen mit Beispieldaten ausprobieren. **Konto, XP-Aktionen und Speicherun
 ausschließlich über das native Rust-Backend.** Im Browser sind XP-Aktionen deaktiviert und nichts
 wird gespeichert. Den Einstieg spielt die Vorschau ohne Server durch: `/#join`, `/#join-again`,
 `/#join-lost` und `/#join-nolan`. Der Code `falsch` zeigt den Fehler, der Code `offen` lässt die
-laufende LAN offen.
+laufende LAN offen. Den Zauberladen zeigt `/shop.html`, mit `?optimized`, `?ruhig` und `?fps=30` und diesen Hashes:
+
+| Hash            | Zustand                                    |
+| --------------- | ------------------------------------------ |
+| `#shop-pleite`  | 0 Münzen                                   |
+| `#shop-reich`   | 12 Münzen, nichts gekauft                  |
+| `#shop-alles`   | alles gekauft                              |
+| `#shop-zu`      | keine LAN, der Laden ist zu                |
+| `#shop-leer`    | kein Jelly                                 |
+| `#shop-laden`   | bleibt beim Laden                          |
+| `#shop-fehler`  | der Kauf scheitert nach 400 ms             |
+| `#shop-langsam` | der Kauf wird erst nach 2 s bestätigt      |
+| `#shop-muenzen` | nach 5 s eine Münze und ein Level mehr     |
+| `#shop-nacht`   | 23 Uhr                                     |
+| `#shop-doesen`  | schläfrig nach 4 s, eingeschlafen nach 8 s |
+| `#shop-runen`   | die Zustände des Runenkreises              |
+| `#shop-anprobe` | die Anprobe in Schleife                    |
+| `#shop-zauber`  | der Kaufzauber in Schleife                 |
+
+Ohne Hash bestätigt die Vorschau einen Kauf nach 250 ms.
 
 ## Server
 
@@ -78,11 +97,15 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Animiertes Jelly-Pet mit Raymarching-Shader; drei Farben und ein eigener Name.
 - Cosmetics aus dem Shop, von Events und von der Orga. Jeder Level-Aufstieg bringt Münzen
   (`coins_per_level`), der Shop im eigenen Fenster verkauft dafür Cosmetics (`POST /v1/purchases`).
-  Er ist ein Zauberladen aus Holz, Pergament und Messing: Hinter dem Tresen steht ein alter
-  Zauberer-Jelly mit Spitzhut, Bart und Kristallkugel, begrüßt, kommentiert die Auswahl mit eigener
-  tieferer Stimme, jubelt beim Kauf und döst ein, wenn niemand etwas tut. Daneben probiert das
-  eigene Jelly an. Die 3D-Modelle kommen aus der Blender-Pipeline in `blender/`, bisher gibt es zwei
-  Headsets, Mütze und Pixel-Brille. Karte und Beamer zeigen sie mit, die Teile des Zauberers nicht.
+  Er ist ein Zauberladen bei Kerzenlicht: Hinter der Theke sitzt Funkelbart, ein uralter Zauberer-Jelly mit
+  geknicktem Spitzhut, Bart, Robe und Kristallkugel, gegenüber probiert das eigene Jelly auf einem Runenkreis im
+  Mondlicht an. Wählen probiert an, gekauft wird, indem man das Wachssiegel des Kaufbriefs 650 ms hält. Dann wird der
+  Kauf zum Zauber: Die Kugel lädt sich, der Stempel fällt, Münzen fliegen aus der Börse in die Schale, ein Komet
+  fliegt zum Kunden, und die Runen flammen auf. Erst die Zusage des Servers löst das aus. Kerzen, Kugel, Mond und
+  Runen beleuchten beide Jellies, alle Effekte laufen auf einer Canvas, und jeder Ton wird live erzeugt. Funkelbart
+  lebt zwischen den Klicks: Er schaut, worauf man zeigt, feilscht, streicht den Bart, liest in der Kugel, döst ein
+  und schnarcht. Die 3D-Modelle kommen aus der Blender-Pipeline in `blender/`, bisher gibt es zwei Headsets, Mütze
+  und Pixel-Brille. Karte und Beamer zeigen sie mit, die Teile des Zauberers nicht.
 - Kleine Glas-Leiste mit LAN-Aktionen, Studio und Einstellungen.
 - Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Händen, Körper, Aura und Farbe öffnen flüssige Popovers für
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
@@ -232,8 +255,11 @@ src/
   Hatch.tsx           Einstieg auf der Bühne: Ei aus Glas, Name, Farbe, Code und das Schlüpfen
   PopoutDrops.tsx     Tropfen für Karte und Shop
   map/                Karte im eigenen Fenster (map.html), ohne React: Seite, Daten, Partner-Emotes, Vorschau
-  shop/               Zauberladen im eigenen Fenster (shop.html): Theke, Rolle, Siegel, Zauberer
-  fonts/              mitgelieferte Schriften (Cinzel für den Zauberladen, OFL)
+  shop/               Zauberladen im eigenen Fenster (shop.html): Bühne, Rolle, Kaufbrief und Siegel, Zauberer
+    css/              Aussehen je Bereich: Rahmen, Raum, Bühne, Rolle, Brief, Siegel, Zustände
+    sound/            Klang des Ladens: ein AudioContext, Geräusche, Kaufritual, Ambiente
+    fx/               kurze Effekte auf einer Canvas2D: Wirbel, Münzen, Komet, Einschlag
+  fonts/              mitgelieferte Schriften (Cinzel und Alegreya für den Zauberladen, OFL)
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
   panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
