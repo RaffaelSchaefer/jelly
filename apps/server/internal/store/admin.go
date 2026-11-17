@@ -16,8 +16,10 @@ const updatePlayerNameSQL = `UPDATE players SET name = ?, name_key = ? WHERE id 
 // maxPlayerListRows keeps one page small enough for one query of its purchases.
 const maxPlayerListRows = 200
 
-// PlayerPurchase is a purchase as the admin page shows it.
+// PlayerPurchase is a purchase as the admin page shows it. Its ID picks the exact row, because
+// a player can own the same LAN cosmetic once per LAN.
 type PlayerPurchase struct {
+	ID          int64  `json:"id"`
 	CosmeticKey string `json:"cosmetic_key"`
 	Price       int    `json:"price"`
 	// LANID is the LAN of a purchase of a LAN cosmetic, and null for a permanent one.
@@ -103,7 +105,7 @@ func loadPurchasesOfPlayers(
 	}
 	// selectPlayerPurchasesSQL frames the places of the IN list, which is as long as the page of
 	// players.
-	selectPlayerPurchasesSQL := `SELECT player_id, cosmetic_key, price, lan_id, created_at
+	selectPlayerPurchasesSQL := `SELECT id, player_id, cosmetic_key, price, lan_id, created_at
 		FROM purchases WHERE player_id IN (` + places + `) ORDER BY created_at`
 	rows, err := database.QueryContext(ctx, selectPlayerPurchasesSQL, ids...)
 	if err != nil {
@@ -114,7 +116,7 @@ func loadPurchasesOfPlayers(
 		var purchase PlayerPurchase
 		var playerID int64
 		var lanID sql.NullInt64
-		err = rows.Scan(&playerID, &purchase.CosmeticKey, &purchase.Price, &lanID,
+		err = rows.Scan(&purchase.ID, &playerID, &purchase.CosmeticKey, &purchase.Price, &lanID,
 			&purchase.CreatedAt)
 		if err != nil {
 			return fmt.Errorf("read purchase: %w", err)

@@ -4,7 +4,7 @@
  * @module
  */
 
-import { giveCoins, refundPurchase } from "./apiPeople.ts";
+import { giveCoins, refundPurchase, type PlayerPurchase } from "./apiPeople.ts";
 import { createButton, createElement } from "./dom.ts";
 import { createToolGroup, type PlayerTools } from "./playerTools.ts";
 
@@ -39,17 +39,18 @@ function createCoinsLine(tools: PlayerTools): HTMLElement {
 }
 
 /** Creates the row of one purchase with its refund. */
-function createPurchaseLine(tools: PlayerTools, key: string, price: number): HTMLElement {
+function createPurchaseLine(tools: PlayerTools, purchase: PlayerPurchase): HTMLElement {
+  const key = purchase.cosmetic_key;
   const refund = createButton("Zurückzahlen", "quiet", () =>
     tools.run(
-      refundPurchase(tools.player.id, key),
-      `${tools.player.name} hat ${cosmeticName(tools, key)} zurückgegeben und ${price} Münzen zurück.`,
+      refundPurchase(tools.player.id, purchase.id),
+      `${tools.player.name} hat ${cosmeticName(tools, key)} zurückgegeben und ${purchase.price} Münzen zurück.`,
     ),
   );
   return createElement(
     "div",
     "tool-line",
-    createElement("span", "", `${cosmeticName(tools, key)} für ${price} Münzen`),
+    createElement("span", "", `${cosmeticName(tools, key)} für ${purchase.price} Münzen`),
     refund,
   );
 }
@@ -64,7 +65,7 @@ export function createShopGroup(tools: PlayerTools): HTMLElement {
     ),
   ];
   for (const purchase of tools.player.purchases) {
-    parts.push(createPurchaseLine(tools, purchase.cosmetic_key, purchase.price));
+    parts.push(createPurchaseLine(tools, purchase));
   }
   if (tools.player.purchases.length === 0) {
     parts.push(createElement("p", "hint", "Noch nichts gekauft."));

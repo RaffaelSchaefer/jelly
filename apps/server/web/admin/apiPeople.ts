@@ -64,17 +64,18 @@ export function giveCoins(playerID: number, coins: number): Promise<unknown> {
   return sendRequest("POST", `/players/${playerID}/coins`, { coins });
 }
 
-/** A purchase an account has made. */
+/** A purchase an account has made. Its `id` picks the exact row to take back. */
 export interface PlayerPurchase {
+  id: number;
   cosmetic_key: string;
   price: number;
   lan_id: number | null;
   created_at: number;
 }
 
-/** Takes a bought cosmetic back and refunds its price. */
-export function refundPurchase(playerID: number, key: string): Promise<unknown> {
-  return sendRequest("DELETE", `/players/${playerID}/purchases/${encodeURIComponent(key)}`);
+/** Takes one exact purchase back and refunds its price. */
+export function refundPurchase(playerID: number, purchaseID: number): Promise<unknown> {
+  return sendRequest("DELETE", `/players/${playerID}/purchases/${purchaseID}`);
 }
 
 /** An achievement of the catalog. */

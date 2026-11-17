@@ -194,12 +194,30 @@ func TestCoinsVanishWithTheLANButPurchasesStay(t *testing.T) {
 	}
 }
 
+// loadAdminPurchases lists the purchases of one player as the admin page shows them.
+func (testFixture *fixture) loadAdminPurchases(playerID int64) []store.PlayerPurchase {
+	testFixture.t.Helper()
+	response := testFixture.callAdmin("GET", "/admin/api/players?search=", "")
+	if response.status != http.StatusOK {
+		testFixture.t.Fatalf("list players: %d %s", response.status, response.body)
+	}
+	players := decodeBody[[]store.PlayerSummary](testFixture.t, response)
+	for _, player := range players {
+		if player.ID == playerID {
+			return player.Purchases
+		}
+	}
+	testFixture.t.Fatalf("player %d is missing in the list", playerID)
+	return nil
+}
+
 func TestTheOrgaTakesAPurchaseBackAndRefundsIt(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("Zurück")
 	playerID := testFixture.loadMe(token).ID
+	playerPath := strconv.FormatInt(playerID, 10)
 	admin := testFixture.callAdmin(
-		"POST", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/coins", `{"coins":10}`,
+		"POST", "/admin/api/players/"+playerPath+"/coins", `{"coins":10}`,
 	)
 	if admin.status != 200 {
 		t.Fatalf("give coins: %d %s", admin.status, admin.body)
@@ -208,6 +226,11 @@ func TestTheOrgaTakesAPurchaseBackAndRefundsIt(t *testing.T) {
 	if response.status != 200 {
 		t.Fatalf("purchase: %d %s", response.status, response.body)
 	}
+	purchases := testFixture.loadAdminPurchases(playerID)
+	if len(purchases) != 1 {
+		t.Fatalf("purchases: %+v", purchases)
+	}
+	purchaseID := purchases[0].ID
 
 	// A worn cosmetic comes off with the refund.
 	equip := testFixture.callAPI(
@@ -217,7 +240,8 @@ func TestTheOrgaTakesAPurchaseBackAndRefundsIt(t *testing.T) {
 		t.Fatalf("equip: %d %s", equip.status, equip.body)
 	}
 	refund := testFixture.callAdmin(
-		"DELETE", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/purchases/hood", "",
+		"DELETE", "/admin/api/players/"+playerPath+"/purchases/"+
+			strconv.FormatInt(purchaseID, 10), "",
 	)
 	if refund.status != 200 {
 		t.Fatalf("refund: %d %s", refund.status, refund.body)
@@ -231,9 +255,82 @@ func TestTheOrgaTakesAPurchaseBackAndRefundsIt(t *testing.T) {
 	}
 
 	refund = testFixture.callAdmin(
-		"DELETE", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/purchases/hood", "",
+		"DELETE", "/admin/api/players/"+playerPath+"/purchases/"+
+			strconv.FormatInt(purchaseID, 10), "",
 	)
 	requireProblem(t, refund, 404, "purchase_not_found")
+}
+
+// TestARefundHitsOneExactPurchase refunds the newest of two purchases of the same key in
+// different LANs, and the older purchase stays untouched.
+func TestARefundHitsOneExactPurchase(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Zwei Kronen")
+	playerID := testFixture.loadMe(token).ID
+	playerPath := strconv.FormatInt(playerID, 10)
+	giftCoins := 20
+	giveCoinsAndBuyCrown := func() {
+		if admin := testFixture.callAdmin(
+			"POST", "/admin/api/players/"+playerPath+"/coins", `{"coins":`+
+				strconv.Itoa(giftCoins)+`}`,
+		); admin.status != http.StatusOK {
+			t.Fatalf("give coins: %d %s", admin.status, admin.body)
+		}
+		if bought := testFixture.callAPI(
+			"POST", "/v1/purchases", token, `{"key":"crown"}`,
+		); bought.status != http.StatusOK {
+			t.Fatalf("purchase crown: %d %s", bought.status, bought.body)
+		}
+	}
+	giveCoinsAndBuyCrown()
+
+	// The same crown again in the next LAN, where the coins have vanished.
+	testFixture.createFutureLAN()
+	testFixture.advanceClock(30 * 24 * time.Hour)
+	if joined := testFixture.callAPI(
+		"POST", "/v1/auth/redeem", token, `{"code":"next-code"}`,
+	); joined.status != http.StatusOK {
+		t.Fatalf("join: %d %s", joined.status, joined.body)
+	}
+	giveCoinsAndBuyCrown()
+
+	purchases := testFixture.loadAdminPurchases(playerID)
+	if len(purchases) != 2 {
+		t.Fatalf("purchases: %+v", purchases)
+	}
+
+	// Refund the purchase of the running LAN, and the older one stays.
+	newest := purchases[len(purchases)-1]
+	if refund := testFixture.callAdmin(
+		"DELETE", "/admin/api/players/"+playerPath+"/purchases/"+
+			strconv.FormatInt(newest.ID, 10), "",
+	); refund.status != http.StatusOK {
+		t.Fatalf("refund: %d %s", refund.status, refund.body)
+	}
+	if state := testFixture.loadMe(token); state.Coins != giftCoins {
+		t.Fatalf("coins after the refund: %d, want %d", state.Coins, giftCoins)
+	}
+	remaining := testFixture.loadAdminPurchases(playerID)
+	if len(remaining) != 1 || remaining[0].ID != purchases[0].ID {
+		t.Fatalf("remaining purchases: %+v", remaining)
+	}
+
+	// The refunded purchase is gone.
+	requireProblem(t, testFixture.callAdmin(
+		"DELETE", "/admin/api/players/"+playerPath+"/purchases/"+
+			strconv.FormatInt(newest.ID, 10), "",
+	), http.StatusNotFound, "purchase_not_found")
+
+	// And the older purchase goes back on its own.
+	if refund := testFixture.callAdmin(
+		"DELETE", "/admin/api/players/"+playerPath+"/purchases/"+
+			strconv.FormatInt(purchases[0].ID, 10), "",
+	); refund.status != http.StatusOK {
+		t.Fatalf("refund the older purchase: %d %s", refund.status, refund.body)
+	}
+	if remaining := testFixture.loadAdminPurchases(playerID); len(remaining) != 0 {
+		t.Fatalf("remaining purchases: %+v", remaining)
+	}
 }
 
 func TestBuyingEarnsTheShopAchievements(t *testing.T) {

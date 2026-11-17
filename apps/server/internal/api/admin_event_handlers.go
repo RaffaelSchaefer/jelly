@@ -53,9 +53,6 @@ func (server *apiServer) handleGiveXP(writer http.ResponseWriter, request *http.
 	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
 }
 
-// maxKeyPathLength keeps a nonsense path from the database. No catalog key is longer.
-const maxKeyPathLength = 64
-
 // handleGiveCoins grants coins to a player or bot in its current LAN. Coins are never taken away.
 func (server *apiServer) handleGiveCoins(writer http.ResponseWriter, request *http.Request) {
 	playerID, valid := server.readPathID(writer, request)
@@ -72,7 +69,7 @@ func (server *apiServer) handleGiveCoins(writer http.ResponseWriter, request *ht
 	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
 }
 
-// handleRefundPurchase takes a bought cosmetic back and refunds its price.
+// handleRefundPurchase takes one exact purchase back and refunds its price.
 func (server *apiServer) handleRefundPurchase(
 	writer http.ResponseWriter, request *http.Request,
 ) {
@@ -80,13 +77,12 @@ func (server *apiServer) handleRefundPurchase(
 	if !valid {
 		return
 	}
-	key := request.PathValue("key")
-	if key == "" || len(key) > maxKeyPathLength {
-		server.writeError(writer, request, store.ErrInvalidInput)
+	purchaseID, valid := server.readPathValue(writer, request, "purchase")
+	if !valid {
 		return
 	}
 	err := server.Store.RefundPurchase(
-		request.Context(), playerID, key, server.currentMillis(),
+		request.Context(), playerID, purchaseID, server.currentMillis(),
 	)
 	server.writeOutcome(writer, request, map[string]bool{fieldUpdated: true}, err)
 }

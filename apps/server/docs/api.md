@@ -478,7 +478,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/recovery-code`     | `{"valid_seconds"}`, ohne Angabe 24 Stunden, höchstens 30 Tage. Antwort: `{"code","expires_at"}`, nur dieses eine Mal |
 | `POST /admin/api/players/{id}/xp`                | `{"xp"}` von 1 bis 10000 in der laufenden LAN, wie verdient, mit Ereignis `xp.gained`. XP werden nie abgezogen. Ohne Teilnahme `409 not_joined` |
 | `POST /admin/api/players/{id}/coins`             | `{"coins"}` von 1 bis 1000 in der laufenden LAN, mit Ereignis `coins.gained` und `source: admin`. Ohne Teilnahme `409 not_joined` |
-| `DELETE /admin/api/players/{id}/purchases/{key}` | Nimmt den Kauf zurück, erstattet den Preis per `coins.gained` mit `source: refund` und legt das Cosmetic ab, falls getragen. Nicht gekauft: `404 purchase_not_found` |
+| `DELETE /admin/api/players/{id}/purchases/{purchase}` | Nimmt genau diesen Kauf zurück (die `id` aus der Spielerliste), erstattet seinen Preis per `coins.gained` mit `source: refund` und legt das Cosmetic ab, falls getragen. Nicht gekauft: `404 purchase_not_found` |
 | `POST /admin/api/players/{id}/achievements`      | `{"key"}` aus dem Katalog, auch geheime, für die laufende LAN wie verdient. Ein vorhandenes bleibt, wie es ist |
 | `GET /admin/api/achievements`                    | Alle Achievements mit `key`, `title`, `description`, auch die geheimen |
 | `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |

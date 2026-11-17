@@ -115,25 +115,6 @@ func recordPurchase(ctx context.Context, action actionContext, cosmetic rules.Co
 	return nil
 }
 
-// findPurchase returns the purchase of one cosmetic that counts now, newest first.
-func findPurchase(
-	ctx context.Context, database querier, lanID, playerID int64, cosmetic rules.Cosmetic,
-) (int64, int, error) {
-	var purchaseID int64
-	var price int
-	const selectPurchaseSQL = `SELECT id, price FROM purchases
-		WHERE player_id = ? AND cosmetic_key = ? AND lan_id IS ?`
-	err := database.QueryRowContext(ctx, selectPurchaseSQL,
-		playerID, cosmetic.Key, purchaseLAN(cosmetic.Scope, lanID)).Scan(&purchaseID, &price)
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, 0, ErrPurchaseNotFound
-	}
-	if err != nil {
-		return 0, 0, fmt.Errorf("load purchase: %w", err)
-	}
-	return purchaseID, price, nil
-}
-
 // purchaseRecord is one purchase as stored, without the catalog.
 type purchaseRecord struct {
 	key   string
