@@ -61,6 +61,7 @@ describe("shopItems", () => {
       "pixel-glasses": "edel",
       hood: "edel",
       crown: "sagenhaft",
+      "schnoerbi-mask": "sagenhaft",
     });
   });
 
@@ -74,7 +75,7 @@ describe("shopItems", () => {
 
   it("sortiert nach Preis und kennt Besitz, Kaufbares und Fehlendes", () => {
     const items = shopItems(PREVIEW_CATALOG, PREVIEW_ME);
-    expect(items.map((item) => item.price)).toEqual([1, 1, 2, 2, 3, 4, 6]);
+    expect(items.map((item) => item.price)).toEqual([1, 1, 2, 2, 3, 4, 6, 6]);
     const states = Object.fromEntries(
       items.map((item) => [item.cosmetic.id, [item.state, item.missing]]),
     );

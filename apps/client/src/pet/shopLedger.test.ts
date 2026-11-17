@@ -44,36 +44,32 @@ function ware(id: string, me: Me = PREVIEW_ME) {
   return found;
 }
 
+/** Alle Waren der Vorschau, nach Preis und dann nach Namen. */
+const EVERY_WARE = [
+  "headset",
+  "headset-neutral",
+  "beanie",
+  "sprout",
+  "pixel-glasses",
+  "hood",
+  "crown",
+  "schnoerbi-mask",
+];
+
 describe("ledgerView", () => {
   it("stellt Kaufbares vor zu Teures und beides vor die Truhe", () => {
     expect(view(PREVIEW_ME)).toEqual({
-      wares: ["sprout", "pixel-glasses", "hood", "crown"],
+      wares: ["sprout", "pixel-glasses", "hood", "crown", "schnoerbi-mask"],
       chest: ["headset", "headset-neutral", "beanie"],
     });
   });
 
   it("sortiert Kaufbares nach Preis, dann nach Namen", () => {
-    expect(view(jelly({ coins: 12, cosmetics: [] })).wares).toEqual([
-      "headset",
-      "headset-neutral",
-      "beanie",
-      "sprout",
-      "pixel-glasses",
-      "hood",
-      "crown",
-    ]);
+    expect(view(jelly({ coins: 12, cosmetics: [] })).wares).toEqual(EVERY_WARE);
   });
 
   it("sortiert zu Teures nach den fehlenden Münzen", () => {
-    expect(view(jelly({ coins: 2, cosmetics: [] })).wares).toEqual([
-      "headset",
-      "headset-neutral",
-      "beanie",
-      "sprout",
-      "pixel-glasses",
-      "hood",
-      "crown",
-    ]);
+    expect(view(jelly({ coins: 2, cosmetics: [] })).wares).toEqual(EVERY_WARE);
   });
 
   it("legt in der Truhe das Angelegte nach vorn", () => {
@@ -88,8 +84,9 @@ describe("ledgerView", () => {
       "pixel-glasses",
       "hood",
       "crown",
+      "schnoerbi-mask",
     ]);
-    expect(view(bought).wares).toEqual(["sprout", "hood", "crown"]);
+    expect(view(bought).wares).toEqual(["sprout", "hood", "crown", "schnoerbi-mask"]);
     expect(view(bought).chest).toContain("pixel-glasses");
   });
 
@@ -106,6 +103,7 @@ describe("ledgerView", () => {
       "pixel-glasses",
       "hood",
       "crown",
+      "schnoerbi-mask",
       "headset",
       "headset-neutral",
       "beanie",

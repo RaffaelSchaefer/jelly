@@ -134,6 +134,15 @@ export const PREVIEW_CATALOG: Catalog = {
       price: 6,
     },
     {
+      key: "schnoerbi-mask",
+      name: "Schnörbi-Maske",
+      scope: "permanent",
+      slot: "face",
+      colorable: false,
+      unlock: "shop",
+      price: 6,
+    },
+    {
       key: "golden-cup",
       name: "Goldener Pokal",
       scope: "permanent",
