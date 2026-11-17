@@ -35,6 +35,10 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Zeigt die Welt in 8 Bit. Nebenwirkung: unverschämt cool.",
     article: "die",
   },
+  "schnoerbi-mask": {
+    lore: "Aus Sonnengold geschmiedet, die Büschel vom Plapperkauz. Wer sie trägt, schnattert bis zum Morgen.",
+    article: "die",
+  },
   hood: {
     lore: "Für geheime Wege durch die Halle. Niemand erkennt dich. Fast niemand.",
     article: "die",

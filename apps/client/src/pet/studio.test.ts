@@ -28,7 +28,7 @@ describe("studio regions", () => {
     );
     expect(offered.sort()).toEqual(COSMETICS.map((item) => item.id).sort());
     expect(items("kopf")).toHaveLength(8);
-    expect(items("gesicht")).toHaveLength(2);
+    expect(items("gesicht")).toHaveLength(3);
     expect(items("haende")).toHaveLength(2);
   });
   it("marks what is free, locked and worn", () => {

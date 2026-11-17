@@ -81,6 +81,20 @@
       "owned": false,
       "error": "not_enough_coins"
     },
+    {
+      "name": "the schnoerbi mask costs three coins",
+      "key": "schnoerbi-mask",
+      "coins": 3,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "two coins are too few for the schnoerbi mask",
+      "key": "schnoerbi-mask",
+      "coins": 2,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
     { "name": "too few coins", "key": "crown", "coins": 5, "owned": false, "error": "not_enough_coins" },
     { "name": "second buy", "key": "beanie", "coins": 100, "owned": true, "error": "already_owned" },
     {

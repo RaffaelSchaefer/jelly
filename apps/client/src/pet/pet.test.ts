@@ -33,12 +33,13 @@ describe("shop", () => {
       ["beanie", "owned", 0],
       ["sprout", "affordable", 0],
       ["pixel-glasses", "affordable", 0],
+      ["schnoerbi-mask", "affordable", 0],
       ["hood", "short", 1],
       ["crown", "short", 3],
     ]);
   });
   it("counts an awarded part as owned, the server would not sell it", () => {
-    expect(states(0, ["crown"]).at(-1)).toEqual(["crown", "owned", 0]);
+    expect(states(0, ["crown"]).find(([id]) => id === "crown")).toEqual(["crown", "owned", 0]);
   });
   it("marks the crown as bought again each LAN", () => {
     const items = shopItems(PREVIEW_CATALOG, PREVIEW_ME);

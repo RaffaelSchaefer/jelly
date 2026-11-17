@@ -19,5 +19,6 @@ export const COSMETIC_MODEL_KEYS: readonly string[] = [
   "hood",
   "party-hat",
   "pixel-glasses",
+  "schnoerbi-mask",
   "sprout",
 ];

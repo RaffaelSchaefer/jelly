@@ -344,7 +344,8 @@ func TestBuyingEarnsTheShopAchievements(t *testing.T) {
 		t.Fatalf("give coins: %d %s", admin.status, admin.body)
 	}
 	for _, key := range []string{
-		"headset", "headset-neutral", "beanie", "sprout", "pixel-glasses", "hood", "crown",
+		"headset", "headset-neutral", "beanie", "sprout", "pixel-glasses", "schnoerbi-mask", "hood",
+		"crown",
 	} {
 		response := testFixture.callAPI("POST", "/v1/purchases", token, `{"key":"`+key+`"}`)
 		if response.status != 200 {
@@ -388,7 +389,9 @@ func TestAnAwardedCosmeticCountsForTheShopAchievement(t *testing.T) {
 	); admin.status != http.StatusOK {
 		t.Fatalf("give coins: %d %s", admin.status, admin.body)
 	}
-	for _, key := range []string{"headset-neutral", "beanie", "sprout", "pixel-glasses", "hood"} {
+	for _, key := range []string{
+		"headset-neutral", "beanie", "sprout", "pixel-glasses", "schnoerbi-mask", "hood",
+	} {
 		if bought := testFixture.callAPI(
 			"POST", "/v1/purchases", token, `{"key":"`+key+`"}`,
 		); bought.status != http.StatusOK {
