@@ -6,6 +6,7 @@
 
 export { createMotion, type Motion } from "./animation.ts";
 export {
+  cosmeticLook,
   createCosmetic,
   disposeCosmetic,
   hasCosmeticModel,

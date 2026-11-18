@@ -83,6 +83,19 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
 /** Breite der Outline in Szenen-Einheiten. */
 export const COSMETIC_OUTLINE = 0.035;
 
+/**
+ * Abweichende Looks je Schlüssel. Die Piercings sind kaum dicker als die Outline, mit ihr läge um
+ * jedes Teil ein dunkler Fleck wie ein Schatten.
+ */
+const COSMETIC_LOOKS: Readonly<Record<string, CosmeticLook>> = {
+  piercings: { outline: 0.014 },
+};
+
+/** Wie das Cosmetic `key` gezeichnet wird, für {@link createCosmetic}. */
+export function cosmeticLook(key: string): CosmeticLook {
+  return COSMETIC_LOOKS[key] ?? {};
+}
+
 /** Zeichenebene der untersten Malschicht: über dem Gesicht (6–7), die Outline vor der Füllung. */
 const OUTLINE_ORDER = 8;
 const FILL_ORDER = 9;
