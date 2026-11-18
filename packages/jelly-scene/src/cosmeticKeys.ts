@@ -11,16 +11,26 @@
 
 /** Die Schlüssel aller Cosmetics mit Modell, wie in `COSMETIC_MODELS`. */
 export const COSMETIC_MODEL_KEYS: readonly string[] = [
+  "bandana",
+  "bat-wings",
   "beanie",
+  "bell-collar",
+  "chicken",
   "crown",
+  "fairy-wings",
   "golden-cup",
   "goose",
   "headset",
   "headset-neutral",
   "hood",
+  "knit-scarf",
   "long-schnoerbi",
+  "mini-backpack",
+  "ogre-ears",
   "party-hat",
+  "piercings",
   "pixel-glasses",
   "schnoerbi-mask",
+  "snail-shell",
   "sprout",
 ];

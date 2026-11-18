@@ -21,17 +21,27 @@ import {
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
+import bandana from "./cosmetics/bandana.glb?url&inline";
+import batWings from "./cosmetics/bat-wings.glb?url&inline";
 import beanie from "./cosmetics/beanie.glb?url&inline";
+import bellCollar from "./cosmetics/bell-collar.glb?url&inline";
+import chicken from "./cosmetics/chicken.glb?url&inline";
 import crown from "./cosmetics/crown.glb?url&inline";
+import fairyWings from "./cosmetics/fairy-wings.glb?url&inline";
 import goldenCup from "./cosmetics/golden-cup.glb?url&inline";
 import goose from "./cosmetics/goose.glb?url&inline";
 import headsetNeutral from "./cosmetics/headset-neutral.glb?url&inline";
 import headset from "./cosmetics/headset.glb?url&inline";
 import hood from "./cosmetics/hood.glb?url&inline";
+import knitScarf from "./cosmetics/knit-scarf.glb?url&inline";
 import longSchnoerbi from "./cosmetics/long-schnoerbi.glb?url&inline";
+import miniBackpack from "./cosmetics/mini-backpack.glb?url&inline";
+import ogreEars from "./cosmetics/ogre-ears.glb?url&inline";
 import partyHat from "./cosmetics/party-hat.glb?url&inline";
+import piercings from "./cosmetics/piercings.glb?url&inline";
 import pixelGlasses from "./cosmetics/pixel-glasses.glb?url&inline";
 import schnoerbiMask from "./cosmetics/schnoerbi-mask.glb?url&inline";
+import snailShell from "./cosmetics/snail-shell.glb?url&inline";
 import sprout from "./cosmetics/sprout.glb?url&inline";
 import outlineFragmentShader from "./shaders/outline.frag.glsl?raw";
 import outlineVertexShader from "./shaders/outline.vert.glsl?raw";
@@ -46,17 +56,27 @@ import vertexShader from "./shaders/toon.vert.glsl?raw";
 // ponytail: Alle Modelle liegen im Chunk der Szene. Dynamische Importe trennten sie, falls sie groß
 // werden. `?inline` allein geht nicht, Vite kennt `.glb` nicht als Asset.
 export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
+  bandana,
+  "bat-wings": batWings,
   beanie,
+  "bell-collar": bellCollar,
+  chicken,
   crown,
+  "fairy-wings": fairyWings,
   "golden-cup": goldenCup,
   goose,
   headset,
   "headset-neutral": headsetNeutral,
   hood,
+  "knit-scarf": knitScarf,
   "long-schnoerbi": longSchnoerbi,
+  "mini-backpack": miniBackpack,
+  "ogre-ears": ogreEars,
   "party-hat": partyHat,
+  piercings,
   "pixel-glasses": pixelGlasses,
   "schnoerbi-mask": schnoerbiMask,
+  "snail-shell": snailShell,
   sprout,
 };
 

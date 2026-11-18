@@ -29,6 +29,16 @@ COSMETICS = [
     ("schnoerbi-mask", "Gesicht"),
     ("long-schnoerbi", "Hände"),
     ("goose", "Hände"),
+    ("bandana", "Körper"),
+    ("bell-collar", "Körper"),
+    ("knit-scarf", "Körper"),
+    ("snail-shell", "Körper"),
+    ("mini-backpack", "Körper"),
+    ("fairy-wings", "Körper"),
+    ("bat-wings", "Körper"),
+    ("chicken", "Hände"),
+    ("piercings", "Gesicht"),
+    ("ogre-ears", "Kopf"),
 ]
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"
