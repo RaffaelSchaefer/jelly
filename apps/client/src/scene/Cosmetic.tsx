@@ -8,6 +8,7 @@
 import type { BufferGeometry, Object3D } from "three";
 
 import {
+  cosmeticLook,
   createCosmetic,
   disposeCosmetic,
   hasCosmeticModel,
@@ -113,5 +114,5 @@ export function Sticker({ model, ink, layer = 0, outline }: StickerProps) {
 /** Das Cosmetic `id` mit Outline in `ink` in der Malschicht `layer`, falls ein Modell existiert. */
 export default function Cosmetic({ id, ink, layer }: { id: string; ink: string; layer?: number }) {
   if (!hasCosmeticModel(id)) return null;
-  return <Sticker model={loadCosmetic(id)} ink={ink} layer={layer} />;
+  return <Sticker model={loadCosmetic(id)} ink={ink} layer={layer} {...cosmeticLook(id)} />;
 }
