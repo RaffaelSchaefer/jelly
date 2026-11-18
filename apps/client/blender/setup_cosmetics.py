@@ -28,6 +28,7 @@ COSMETICS = [
     ("sprout", "Kopf"),
     ("schnoerbi-mask", "Gesicht"),
     ("long-schnoerbi", "Hände"),
+    ("goose", "Hände"),
 ]
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"

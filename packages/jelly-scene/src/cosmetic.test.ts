@@ -42,6 +42,7 @@ describe("Cosmetic-Modelle", () => {
     expect(hasCosmeticModel("sprout")).toBe(true);
     expect(hasCosmeticModel("schnoerbi-mask")).toBe(true);
     expect(hasCosmeticModel("long-schnoerbi")).toBe(true);
+    expect(hasCosmeticModel("goose")).toBe(true);
     expect(hasCosmeticModel("glow-aura")).toBe(false);
     expect(hasCosmeticModel("unbekannt")).toBe(false);
     expect(hasCosmeticModel("constructor")).toBe(false);

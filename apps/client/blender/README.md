@@ -16,8 +16,8 @@ This writes `blender/cosmetics.blend` with:
   frame **Sichtbereich**, which shows what the app's camera sees. None of it can be selected or is
   exported.
 - **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `headset-neutral`, `beanie`, `party-hat`,
-  `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`). The collection name is
-  the id.
+  `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`, `goose`). The
+  collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -41,6 +41,10 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    moves them with the hands. The slot comes from `src/pet.ts`; the `slot` property on the collection
    is only a reminder.
 7. Modifiers are fine (Mirror, Subdivision, Solidify): the export applies them.
+8. Plush parts that flow into each other without a crease can be one implicit surface in a generator:
+   signed distances from `shapes.py`, joined by `smooth_union` and meshed by `surface_nets`, with a
+   Decimate modifier to stay in budget. `sdf_decal` lays eyes, cheeks or patches onto it. See
+   `build_goose.py`.
 
 ## Export
 
