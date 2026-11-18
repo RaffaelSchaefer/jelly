@@ -14,6 +14,7 @@ export const COSMETIC_MODEL_KEYS: readonly string[] = [
   "beanie",
   "crown",
   "golden-cup",
+  "goose",
   "headset",
   "headset-neutral",
   "hood",

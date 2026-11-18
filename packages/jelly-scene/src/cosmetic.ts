@@ -24,6 +24,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import beanie from "./cosmetics/beanie.glb?url&inline";
 import crown from "./cosmetics/crown.glb?url&inline";
 import goldenCup from "./cosmetics/golden-cup.glb?url&inline";
+import goose from "./cosmetics/goose.glb?url&inline";
 import headsetNeutral from "./cosmetics/headset-neutral.glb?url&inline";
 import headset from "./cosmetics/headset.glb?url&inline";
 import hood from "./cosmetics/hood.glb?url&inline";
@@ -48,6 +49,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   beanie,
   crown,
   "golden-cup": goldenCup,
+  goose,
   headset,
   "headset-neutral": headsetNeutral,
   hood,

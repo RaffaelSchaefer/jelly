@@ -6,9 +6,14 @@ is made. A helper returns `(verts, faces)` for `bpy.types.Mesh.from_pydata`, wit
 
 The pet's front surface (`head_z`, `body_z`, `surface_z`, `on_pet`) mirrors
 `packages/jelly-scene/src/jellyGeometry.ts`.
+
+Plush parts that flow into each other are implicit surfaces: signed distances on numpy arrays,
+joined with `smooth_union` and meshed by `surface_nets`; `sdf_decal` lays flat parts onto them.
 """
+import itertools
 import math
 
+import numpy as np
 from mathutils import Vector
 
 HEAD_Y, HEAD_Z, HEAD_R, HEAD_DEPTH = 0.66, 0.2, 0.62, 0.9
@@ -137,6 +142,43 @@ def closed_sweep(points, h, w, ring_size=12, up=Vector((0, 1, 0))):
             k = (j + 1) % ring_size
             faces.append((i * ring_size + j, i * ring_size + k, nxt * ring_size + k, nxt * ring_size + j))
     return verts, faces
+
+
+def spow(value, exponent):
+    return math.copysign(abs(value) ** exponent, value)
+
+
+def outward(mesh_data):
+    """Flips the faces if they point inwards: the outline pushes the mesh out along its normals."""
+    verts, faces = mesh_data
+    volume = sum(Vector(verts[f[0]]).dot(Vector(verts[f[i]]).cross(Vector(verts[f[i + 1]]))) for f in faces for i in range(1, len(f) - 1))
+    return (verts, faces) if volume > 0 else (verts, [tuple(reversed(f)) for f in faces])
+
+
+def merge(meshes):
+    """Several meshes as one, for parts that share a material."""
+    verts, faces = [], []
+    for mesh_verts, mesh_faces in meshes:
+        offset = len(verts)
+        verts.extend(mesh_verts)
+        faces.extend(tuple(i + offset for i in face) for face in mesh_faces)
+    return verts, faces
+
+
+def blob(centre, forward, up, size, power=2.0, ring=24, stacks=10):
+    """An ellipsoid, or a pillow for `power` above 2, with half sizes (across, up, deep): deep along
+    `forward`, up towards `up`."""
+    centre, f = Vector(centre), Vector(forward).normalized()
+    u = (Vector(up) - f * Vector(up).dot(f)).normalized()
+    a = u.cross(f)
+    (rx, ry, rz), e = size, 2 / power
+    rings = []
+    for i in range(1, stacks):
+        t = -math.pi / 2 + math.pi * i / stacks
+        scale, depth = abs(math.cos(t)) ** e, rz * spow(math.sin(t), e)
+        angles = (2 * math.pi * j / ring for j in range(ring))
+        rings.append([centre + a * (rx * scale * spow(math.cos(p), e)) + u * (ry * scale * spow(math.sin(p), e)) + f * depth for p in angles])
+    return outward(skin(rings, ring, centre - f * rz, centre + f * rz))
 
 
 def puff(center, axis, radius, half, power=2.0, ring_size=32, stacks=16, radius2=None):
@@ -381,3 +423,165 @@ def decal_badge(outline, center, lift, half, ring_size=48, stacks=5, passes=6):
     back = Vector((cx, cy, surface_z(cx, cy) + lift - half))
     front = Vector((cx, cy, surface_z(cx, cy) + lift + half))
     return skin(rings, ring_size, back, front)
+
+
+def circles_outline(circles, centre, samples=256):
+    """The outline of a union of circles (x, y, r) round `centre`, which must see all of it: per
+    direction the farthest point where the ray leaves a circle. Scallops, toes, teardrops."""
+    cx, cy = centre
+    out = []
+    for k in range(samples):
+        angle = 2 * math.pi * k / samples
+        ux, uy = math.cos(angle), math.sin(angle)
+        reach = 0.0
+        for x, y, r in circles:
+            along = (x - cx) * ux + (y - cy) * uy
+            across2 = (x - cx) ** 2 + (y - cy) ** 2 - along * along
+            if across2 < r * r:
+                reach = max(reach, along + math.sqrt(r * r - across2))
+        out.append((cx + reach * ux, cy + reach * uy))
+    return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Implicit shapes: signed distances (negative inside) of points in numpy arrays (..., 3).
+
+
+def sd_ellipsoid(points, centre, radii):
+    """Close to the distance to an ellipsoid with half sizes `radii` along x, y and z."""
+    q, radii = np.asarray(points) - centre, np.asarray(radii, float)
+    k0 = np.linalg.norm(q / radii, axis=-1)
+    k1 = np.linalg.norm(q / (radii * radii), axis=-1)
+    return k0 * (k0 - 1) / np.maximum(k1, 1e-9)
+
+
+def sd_round_cone(points, a, b, ra, rb):
+    """The distance to a cone from a ball of radius `ra` at `a` to one of `rb` at `b`."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    ba = b - a
+    l2, rr = ba @ ba, ra - rb
+    a2 = l2 - rr * rr
+    pa = np.asarray(points) - a
+    y = pa @ ba
+    z = y - l2
+    x2 = np.square(pa * l2 - y[..., None] * ba).sum(-1)
+    y2, z2 = y * y * l2, z * z * l2
+    k = np.sign(rr) * rr * rr * x2
+    tip = np.sqrt(x2 + z2) / l2 - rb
+    base = np.sqrt(x2 + y2) / l2 - ra
+    side = (np.sqrt(x2 * a2 / l2) + y * rr) / l2 - ra
+    return np.where(np.sign(z) * a2 * z2 > k, tip, np.where(np.sign(y) * a2 * y2 < k, base, side))
+
+
+def sd_chain(points, balls):
+    """The distance to round cones between consecutive balls (x, y, z, radius): a tapering tube."""
+    return np.minimum.reduce([sd_round_cone(points, a[:3], b[:3], a[3], b[3]) for a, b in zip(balls, balls[1:])])
+
+
+def smooth_union(a, b, k):
+    """The union of two distances with a soft seam where they are within `k` of each other."""
+    h = np.clip(0.5 + 0.5 * (b - a) / k, 0, 1)
+    return b + (a - b) * h - k * h * (1 - h)
+
+
+def unit_rows(vectors):
+    return vectors / np.linalg.norm(vectors, axis=-1, keepdims=True)
+
+
+def sdf_gradient(sdf, points, eps=1e-4):
+    offsets = np.eye(3) * eps
+    return np.stack([sdf(points + o) - sdf(points - o) for o in offsets], -1) / (2 * eps)
+
+
+def onto_surface(sdf, points, steps=5):
+    """Moves points that lie close to the surface onto it, in Newton steps along the gradient."""
+    for _ in range(steps):
+        g = sdf_gradient(sdf, points)
+        points = points - (sdf(points) / np.maximum((g * g).sum(-1), 1e-12))[..., None] * g
+    return points
+
+
+def ray_onto(sdf, starts, direction, reach, steps=30):
+    """Where rays from `starts`, outside, along `direction` cross into the surface within `reach`."""
+    starts, direction = np.asarray(starts, float), np.asarray(direction, float)
+    near, far = np.zeros(len(starts)), np.full(len(starts), float(reach))
+    for _ in range(steps):
+        mid = (near + far) / 2
+        inside = sdf(starts + mid[:, None] * direction) < 0
+        far, near = np.where(inside, mid, far), np.where(inside, near, mid)
+    return starts + far[:, None] * direction
+
+
+def surface_nets(sdf, low, high, step):
+    """The surface where `sdf` is zero inside the box `low`–`high` as quads: one vertex per grid cell
+    the surface passes, moved onto it, and one quad per grid edge it crosses. Faces point out."""
+    low = np.asarray(low, float)
+    counts = np.ceil((np.asarray(high, float) - low) / step).astype(int) + 1
+    grid = np.stack(np.meshgrid(*[low[i] + step * np.arange(counts[i]) for i in range(3)], indexing="ij"), -1)
+    values = sdf(grid.reshape(-1, 3)).reshape(counts)
+    inside = values < 0
+    corners = list(itertools.product((0, 1), repeat=3))
+    cells = np.stack([values[i : counts[0] - 1 + i, j : counts[1] - 1 + j, k : counts[2] - 1 + k] for i, j, k in corners], -1)
+    signs = cells < 0
+    active = signs.any(-1) & ~signs.all(-1)
+    found, cell, sign = np.argwhere(active), cells[active], signs[active]
+    total, hits = np.zeros((len(found), 3)), np.zeros(len(found))
+    for a, b in itertools.combinations(range(8), 2):
+        offset_a, offset_b = np.array(corners[a], float), np.array(corners[b], float)
+        if np.abs(offset_a - offset_b).sum() != 1:
+            continue
+        crossing = sign[:, a] != sign[:, b]
+        t = cell[crossing, a] / (cell[crossing, a] - cell[crossing, b])
+        total[crossing] += offset_a + t[:, None] * (offset_b - offset_a)
+        hits[crossing] += 1
+    verts = onto_surface(sdf, low + step * (found + total / hits[:, None]))
+    number = np.full(counts - 1, -1)
+    number[tuple(found.T)] = np.arange(len(found))
+    faces = []
+    for axis in range(3):
+        u, w = (axis + 1) % 3, (axis + 2) % 3
+        lower, upper = [slice(None)] * 3, [slice(None)] * 3
+        lower[axis], upper[axis] = slice(0, -1), slice(1, None)
+        edges = np.argwhere(inside[tuple(lower)] != inside[tuple(upper)])
+        edges = edges[(edges[:, u] >= 1) & (edges[:, u] <= counts[u] - 2) & (edges[:, w] >= 1) & (edges[:, w] <= counts[w] - 2)]
+        quad = []
+        for du, dw in ((-1, -1), (0, -1), (0, 0), (-1, 0)):
+            around = edges.copy()
+            around[:, u] += du
+            around[:, w] += dw
+            quad.append(number[tuple(around.T)])
+        quad = np.stack(quad, 1)
+        # (u, w, axis) is right-handed: the quad faces along the axis, from inside to outside.
+        backwards = ~inside[tuple(edges.T)]
+        quad[backwards] = quad[backwards, ::-1]
+        faces.append(quad)
+    return verts.tolist(), np.concatenate(faces).tolist()
+
+
+def dome(stacks):
+    """A cushion's profile for `sdf_decal`: (scale of the outline, height in halves), back to front."""
+    return [(math.cos(i / stacks * math.pi / 2), math.sin(i / stacks * math.pi / 2)) for i in range(-stacks + 1, stacks)]
+
+
+# A felt patch: a narrow rounded edge, then flat. A dome's rings would crease at every notch.
+PATCH = [(1.0, -1.0), (1.0, 0.0), (0.985, 0.55), (0.96, 0.85), (0.93, 1.0), (0.82, 1.0), (0.68, 1.0), (0.52, 1.0), (0.36, 1.0), (0.2, 1.0)]
+
+
+def sdf_decal(sdf, centre, normal, outline, lift, half, profile=None, up=(0, 1, 0), reach=0.2):
+    """A cushion from a closed 2D `outline` round (0, 0), laid onto the implicit surface at `centre`
+    facing `normal`: every point goes onto the surface along -`normal`, then `lift` plus the
+    cushion's height out along the surface's own normal. `profile` defaults to `dome(4)`."""
+    n = np.asarray(normal, float) / np.linalg.norm(normal)
+    across = np.cross(up, n)
+    across /= np.linalg.norm(across)
+    rise = np.cross(n, across)
+    flat, centre = np.asarray(outline, float), np.asarray(centre, float)
+    rings = []
+    for scale, height in profile or dome(4):
+        points = centre + scale * (flat[:, :1] * across + flat[:, 1:] * rise)
+        on = ray_onto(sdf, points + n * reach, -n, 2 * reach)
+        rings.append([Vector(p) for p in on + unit_rows(sdf_gradient(sdf, on)) * (lift + half * height)])
+    middle = ray_onto(sdf, centre[None] + n * reach, -n, 2 * reach)
+    out = unit_rows(sdf_gradient(sdf, middle))[0]
+    back, front = middle[0] + out * (lift - half), middle[0] + out * (lift + half)
+    return outward(skin(rings, len(flat), Vector(back), Vector(front)))

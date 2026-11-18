@@ -44,24 +44,28 @@ function ware(id: string, me: Me = PREVIEW_ME) {
   return found;
 }
 
-/** Alle Waren der Vorschau, nach Preis und dann nach Namen. */
-const EVERY_WARE = [
-  "headset",
-  "headset-neutral",
-  "beanie",
+/** Was der Spieler der Vorschau noch nicht hat, nach Preis und dann nach Namen. */
+const NOT_OWNED = [
   "sprout",
   "pixel-glasses",
   "schnoerbi-mask",
   "hood",
+  "goose",
   "long-schnoerbi",
   "crown",
 ];
 
+/** Was er schon hat, in der Truhe. */
+const OWNED = ["headset", "headset-neutral", "beanie"];
+
+/** Alle Waren der Vorschau, nach Preis und dann nach Namen. */
+const EVERY_WARE = [...OWNED, ...NOT_OWNED];
+
 describe("ledgerView", () => {
   it("stellt Kaufbares vor zu Teures und beides vor die Truhe", () => {
     expect(view(PREVIEW_ME)).toEqual({
-      wares: ["sprout", "pixel-glasses", "schnoerbi-mask", "hood", "long-schnoerbi", "crown"],
-      chest: ["headset", "headset-neutral", "beanie"],
+      wares: NOT_OWNED,
+      chest: OWNED,
     });
   });
 
@@ -80,21 +84,8 @@ describe("ledgerView", () => {
 
   it("lässt die eben gekaufte Ware oben stehen, bis eine andere gewählt wird", () => {
     const bought = jelly({ coins: 0, cosmetics: [...PREVIEW_ME.cosmetics, "pixel-glasses"] });
-    expect(view(bought, "pixel-glasses").wares).toEqual([
-      "sprout",
-      "pixel-glasses",
-      "schnoerbi-mask",
-      "hood",
-      "long-schnoerbi",
-      "crown",
-    ]);
-    expect(view(bought).wares).toEqual([
-      "sprout",
-      "schnoerbi-mask",
-      "hood",
-      "long-schnoerbi",
-      "crown",
-    ]);
+    expect(view(bought, "pixel-glasses").wares).toEqual(NOT_OWNED);
+    expect(view(bought).wares).toEqual(NOT_OWNED.filter((id) => id !== "pixel-glasses"));
     expect(view(bought).chest).toContain("pixel-glasses");
   });
 
@@ -106,17 +97,7 @@ describe("ledgerView", () => {
 
   it("geht die Rolle von oben nach unten durch", () => {
     const items = shopItems(PREVIEW_CATALOG, PREVIEW_ME);
-    expect(ids(ledgerOrder(ledgerView(items, PREVIEW_ME)))).toEqual([
-      "sprout",
-      "pixel-glasses",
-      "schnoerbi-mask",
-      "hood",
-      "long-schnoerbi",
-      "crown",
-      "headset",
-      "headset-neutral",
-      "beanie",
-    ]);
+    expect(ids(ledgerOrder(ledgerView(items, PREVIEW_ME)))).toEqual([...NOT_OWNED, ...OWNED]);
   });
 });
 

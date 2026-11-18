@@ -43,6 +43,10 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Gestrickt aus einem endlosen Wollknäuel. Wo er aufhört, weiß keiner so genau.",
     article: "den",
   },
+  goose: {
+    lore: "Aus Wolkenflaum genäht. Drückt man sie fest, schnattert sie ganz leise.",
+    article: "die",
+  },
   hood: {
     lore: "Für geheime Wege durch die Halle. Niemand erkennt dich. Fast niemand.",
     article: "die",
