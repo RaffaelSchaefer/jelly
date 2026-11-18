@@ -26,7 +26,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import generator  # noqa: E402
-from shapes import badge, catmull, loop_skin, skin, smooth, sweep  # noqa: E402
+from shapes import badge, blob, catmull, loop_skin, merge, outward, smooth, spow, sweep  # noqa: E402
 
 # The centre line (x, y) at depth DEPTH_Z, from the head's centre to the tail on the floor. With
 # tufts and outline it stays within |x| 1.85, the pet window shows little more. The body passes
@@ -103,10 +103,6 @@ def mat(name):
     return generator.material(name, *SWATCH[name])
 
 
-def spow(value, exponent):
-    return math.copysign(abs(value) ** exponent, value)
-
-
 def smoothstep(t):
     t = min(max(t, 0.0), 1.0)
     return t * t * (3 - 2 * t)
@@ -116,38 +112,6 @@ def smooth_max(a, b, k):
     """The larger of `a` and `b`, rounded off where they are within `k` of each other."""
     h = max(k - abs(a - b), 0.0) / k
     return max(a, b) + h * h * k / 4
-
-
-def outward(mesh_data):
-    """Flips the faces if they point inwards: the outline pushes the mesh out along its normals."""
-    verts, faces = mesh_data
-    volume = sum(Vector(verts[f[0]]).dot(Vector(verts[f[i]]).cross(Vector(verts[f[i + 1]]))) for f in faces for i in range(1, len(f) - 1))
-    return (verts, faces) if volume > 0 else (verts, [tuple(reversed(f)) for f in faces])
-
-
-def merge(meshes):
-    verts, faces = [], []
-    for mesh_verts, mesh_faces in meshes:
-        offset = len(verts)
-        verts.extend(mesh_verts)
-        faces.extend(tuple(i + offset for i in face) for face in mesh_faces)
-    return verts, faces
-
-
-def blob(centre, forward, up, size, power=2.0, ring=24, stacks=10):
-    """An ellipsoid, or a pillow for `power` above 2, with half sizes (across, up, deep): deep along
-    `forward`, up towards `up`."""
-    centre, f = Vector(centre), Vector(forward).normalized()
-    u = (Vector(up) - f * Vector(up).dot(f)).normalized()
-    a = u.cross(f)
-    (rx, ry, rz), e = size, 2 / power
-    rings = []
-    for i in range(1, stacks):
-        t = -math.pi / 2 + math.pi * i / stacks
-        scale, depth = abs(math.cos(t)) ** e, rz * spow(math.sin(t), e)
-        angles = (2 * math.pi * j / ring for j in range(ring))
-        rings.append([centre + a * (rx * scale * spow(math.cos(p), e)) + u * (ry * scale * spow(math.sin(p), e)) + f * depth for p in angles])
-    return outward(skin(rings, ring, centre - f * rz, centre + f * rz))
 
 
 # ---------------------------------------------------------------------------------------------

@@ -139,6 +139,43 @@ def closed_sweep(points, h, w, ring_size=12, up=Vector((0, 1, 0))):
     return verts, faces
 
 
+def spow(value, exponent):
+    return math.copysign(abs(value) ** exponent, value)
+
+
+def outward(mesh_data):
+    """Flips the faces if they point inwards: the outline pushes the mesh out along its normals."""
+    verts, faces = mesh_data
+    volume = sum(Vector(verts[f[0]]).dot(Vector(verts[f[i]]).cross(Vector(verts[f[i + 1]]))) for f in faces for i in range(1, len(f) - 1))
+    return (verts, faces) if volume > 0 else (verts, [tuple(reversed(f)) for f in faces])
+
+
+def merge(meshes):
+    """Several meshes as one, for parts that share a material."""
+    verts, faces = [], []
+    for mesh_verts, mesh_faces in meshes:
+        offset = len(verts)
+        verts.extend(mesh_verts)
+        faces.extend(tuple(i + offset for i in face) for face in mesh_faces)
+    return verts, faces
+
+
+def blob(centre, forward, up, size, power=2.0, ring=24, stacks=10):
+    """An ellipsoid, or a pillow for `power` above 2, with half sizes (across, up, deep): deep along
+    `forward`, up towards `up`."""
+    centre, f = Vector(centre), Vector(forward).normalized()
+    u = (Vector(up) - f * Vector(up).dot(f)).normalized()
+    a = u.cross(f)
+    (rx, ry, rz), e = size, 2 / power
+    rings = []
+    for i in range(1, stacks):
+        t = -math.pi / 2 + math.pi * i / stacks
+        scale, depth = abs(math.cos(t)) ** e, rz * spow(math.sin(t), e)
+        angles = (2 * math.pi * j / ring for j in range(ring))
+        rings.append([centre + a * (rx * scale * spow(math.cos(p), e)) + u * (ry * scale * spow(math.sin(p), e)) + f * depth for p in angles])
+    return outward(skin(rings, ring, centre - f * rz, centre + f * rz))
+
+
 def puff(center, axis, radius, half, power=2.0, ring_size=32, stacks=16, radius2=None):
     """A rounded disc around `axis`. power 2 is an ellipsoid, higher gets pillowy."""
     center, axis = Vector(center), Vector(axis).normalized()
