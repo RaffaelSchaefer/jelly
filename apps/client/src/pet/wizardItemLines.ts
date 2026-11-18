@@ -82,6 +82,90 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Kuschel sie gut, {name}! Sie schnattert."],
     hover: ["Psst! Nachts mopst sie Kekse aus dem Lager."],
   },
+  chicken: {
+    offer: [
+      "Das Kuschelhuhn! Flauschig wie ein Frühstücksei.",
+      "Klein, braun und gackert nur ganz leise.",
+    ],
+    short: ["Fürs Huhn fehlt noch etwas Gold."],
+    worn: ["Halt es fest, sonst pickt es die Kekse."],
+    bought: ["Gack gack, {name}! Gut gewählt."],
+    hover: ["Psst! Es hat heute schon ein Ei gelegt."],
+  },
+  piercings: {
+    offer: [
+      "Piercings aus Sternensilber! Ganz schön frech.",
+      "Glänzen mehr als jede RGB-Tastatur.",
+    ],
+    short: ["Für die Piercings fehlt noch etwas Silber."],
+    worn: ["Frech und funkelnd, genau richtig."],
+    bought: ["Rock die Halle, {name}!"],
+    hover: ["Psst! Tut kein bisschen weh, Ehrenwort."],
+  },
+  "ogre-ears": {
+    offer: ["Oger-Ohren! Frisch aus dem Sumpf.", "Damit hörst du jeden Schritt in der Halle."],
+    short: ["Für die Ohren fehlt noch etwas Gold."],
+    worn: ["Ein Oger hat Schichten. Du jetzt auch."],
+    bought: ["Willkommen im Sumpf, {name}!"],
+    hover: ["Psst! Nicht an den Ohren ziehen."],
+  },
+  "knit-scarf": {
+    offer: [
+      "Ein Strickschal! Kuschelig bis zur letzten Runde.",
+      "Handgestrickt, jede Masche ein kleiner Zauber.",
+    ],
+    short: ["Für den Schal fehlt noch ein Wollknäuel Gold."],
+    worn: ["Warm um den Hals, kühl im Kopf."],
+    bought: ["Bleib warm, {name}! Auch beim Lag."],
+    hover: ["Psst! Der Schal kratzt kein bisschen."],
+  },
+  bandana: {
+    offer: [
+      "Ein Halstuch! Wie für echte Abenteurer.",
+      "Gepunktet und gebunden, bereit fürs Turnier.",
+    ],
+    short: ["Fürs Halstuch fehlt noch etwas Gold."],
+    worn: ["Steht dir! Fertig fürs nächste Abenteuer."],
+    bought: ["Auf ins Abenteuer, {name}!"],
+    hover: ["Psst! Die Punkte zählen nicht als Pixel."],
+  },
+  "bell-collar": {
+    offer: [
+      "Ein Glöckchen! Dann hört man dich kommen.",
+      "Rosa Rüschen und ein Glöckchen aus Sonnengold.",
+    ],
+    short: ["Fürs Glöckchen fehlt noch ein Münzlein."],
+    worn: ["Klingeling! Alle wissen, dass du da bist."],
+    bought: ["Klingeling, {name}! Wie hübsch."],
+    hover: ["Psst! Im Glöckchen wohnt ein Brief."],
+  },
+  "mini-backpack": {
+    offer: [
+      "Ein Frosch-Rucksack! Platz für Snacks und Kabel.",
+      "Klein, grün und quakt nur selten.",
+    ],
+    short: ["Für den Rucksack fehlt noch etwas Gold."],
+    worn: ["Der Frosch passt gut auf deine Snacks auf."],
+    bought: ["Gut gepackt, {name}! Quak."],
+    hover: ["Psst! Der Frosch schaut dir über die Schulter."],
+  },
+  "snail-shell": {
+    offer: [
+      "Das Lag-Schneckenhaus! Für alle mit hohem Ping.",
+      "Langsam, aber gemütlich. Wie dein WLAN.",
+    ],
+    short: ["Fürs Schneckenhaus fehlt noch etwas Gold."],
+    worn: ["Nimm dir Zeit. Die Pakete kommen schon."],
+    bought: ["Willkommen im Schneckentempo, {name}!"],
+    hover: ["Psst! Drinnen lädt noch etwas."],
+  },
+  "fairy-wings": {
+    offer: ["Feenflügel! Aus Mondlicht gesponnen.", "Glitzern im Dunkeln, ganz ohne RGB."],
+    short: ["Für Feenflügel braucht es mehr Glitzer im Beutel."],
+    worn: ["Jetzt fehlt nur noch ein Zauberstab."],
+    bought: ["Flieg hoch, {name}! Im Herzen jedenfalls."],
+    hover: ["Psst! Sie flattern, wenn du lachst."],
+  },
   hood: {
     offer: [
       "Die Kapuze! Geheimnisvoll wie ein Zauberer.",

@@ -32,12 +32,21 @@ describe("shop", () => {
       ["headset-neutral", "owned", 0],
       ["beanie", "owned", 0],
       ["sprout", "affordable", 0],
+      ["bandana", "affordable", 0],
+      ["bell-collar", "affordable", 0],
       ["pixel-glasses", "affordable", 0],
       ["schnoerbi-mask", "affordable", 0],
+      ["knit-scarf", "affordable", 0],
+      ["snail-shell", "affordable", 0],
+      ["piercings", "affordable", 0],
+      ["ogre-ears", "affordable", 0],
       ["hood", "short", 1],
       ["long-schnoerbi", "short", 1],
       ["goose", "short", 1],
+      ["mini-backpack", "short", 1],
+      ["chicken", "short", 1],
       ["crown", "short", 3],
+      ["fairy-wings", "short", 3],
     ]);
   });
   it("counts an awarded part as owned, the server would not sell it", () => {
