@@ -47,6 +47,15 @@ const (
 	priceLongSchnoerbi = 4
 	priceGoose         = 4
 	priceCrown         = 6
+	priceBandana       = 2
+	priceBellCollar    = 2
+	priceKnitScarf     = 3
+	priceSnailShell    = 3
+	priceMiniBackpack  = 4
+	priceFairyWings    = 6
+	priceChicken       = 4
+	pricePiercings     = 3
+	priceOgreEars      = 3
 )
 
 // Cosmetic is one item. It unlocks through a purchase, an event, or only through an award.
@@ -136,8 +145,48 @@ func ListCosmetics() []Cosmetic {
 			Unlock: UnlockShop, Price: priceGoose,
 		},
 		{
+			Key: "chicken", Name: "Kuschelhuhn", Scope: ScopePermanent, Slot: SlotHands,
+			Unlock: UnlockShop, Price: priceChicken,
+		},
+		{
+			Key: "piercings", Name: "Piercings", Scope: ScopePermanent, Slot: SlotFace,
+			Unlock: UnlockShop, Price: pricePiercings,
+		},
+		{
+			Key: "ogre-ears", Name: "Oger-Ohren", Scope: ScopePermanent, Slot: SlotHead,
+			Unlock: UnlockShop, Price: priceOgreEars,
+		},
+		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
 			Unlock: UnlockAward,
+		},
+		{
+			Key: "bandana", Name: "Halstuch", Scope: ScopePermanent, Slot: SlotBody,
+			Unlock: UnlockShop, Price: priceBandana,
+		},
+		{
+			Key: "bell-collar", Name: "Glöckchen-Halsband", Scope: ScopePermanent, Slot: SlotBody,
+			Unlock: UnlockShop, Price: priceBellCollar,
+		},
+		{
+			Key: "knit-scarf", Name: "Strickschal", Scope: ScopePermanent, Slot: SlotBody,
+			Unlock: UnlockShop, Price: priceKnitScarf,
+		},
+		{
+			Key: "snail-shell", Name: "Lag-Schneckenhaus", Scope: ScopePermanent, Slot: SlotBody,
+			Unlock: UnlockShop, Price: priceSnailShell,
+		},
+		{
+			Key: "mini-backpack", Name: "Mini-Rucksack", Scope: ScopePermanent, Slot: SlotBody,
+			Unlock: UnlockShop, Price: priceMiniBackpack,
+		},
+		{
+			Key: "fairy-wings", Name: "Feenflügel", Scope: ScopePermanent, Slot: SlotBody,
+			Unlock: UnlockShop, Price: priceFairyWings,
+		},
+		{
+			Key: "bat-wings", Name: "Fledermausflügel", Scope: ScopePermanent, Slot: SlotBody,
+			Unlock: UnlockEvent,
 		},
 		{
 			Key: "glow-aura", Name: "Glüh-Aura", Scope: ScopePermanent, Slot: SlotAura,
