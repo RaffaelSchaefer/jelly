@@ -38,6 +38,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: "hood", name: "Kapuze", slot: "head", icon: "hood" },
   { id: "crown", name: "Krone", slot: "head", icon: "crown" },
   { id: "long-schnoerbi", name: "Long Schnörbi", slot: "hands", icon: "plush" },
+  { id: "goose", name: "Kuschelgans", slot: "hands", icon: "goose" },
   { id: "golden-cup", name: "Goldener Pokal", slot: "hands", icon: "trophy" },
 ];
 

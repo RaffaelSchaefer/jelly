@@ -295,6 +295,13 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Knuddel ihn gut, {name}! Alle drei Meter."],
     hover: ["Psst! Sein Schwanz liegt noch im Lager."],
   },
+  goose: {
+    offer: ["Die Kuschelgans! Weich wie eine Wolke.", "Sie schnattert nur, wenn keiner hinsieht."],
+    short: ["Für die Gans fehlt noch etwas Gold."],
+    worn: ["Drück sie fest, sie mag das!"],
+    bought: ["Kuschel sie gut, {name}! Sie schnattert."],
+    hover: ["Psst! Nachts mopst sie Kekse aus dem Lager."],
+  },
   hood: {
     offer: [
       "Die Kapuze! Geheimnisvoll wie ein Zauberer.",

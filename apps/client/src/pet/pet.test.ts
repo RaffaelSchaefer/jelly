@@ -36,6 +36,7 @@ describe("shop", () => {
       ["schnoerbi-mask", "affordable", 0],
       ["hood", "short", 1],
       ["long-schnoerbi", "short", 1],
+      ["goose", "short", 1],
       ["crown", "short", 3],
     ]);
   });

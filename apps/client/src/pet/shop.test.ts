@@ -61,6 +61,7 @@ describe("shopItems", () => {
       "pixel-glasses": "edel",
       hood: "edel",
       "long-schnoerbi": "edel",
+      goose: "edel",
       crown: "sagenhaft",
       "schnoerbi-mask": "edel",
     });
@@ -76,7 +77,7 @@ describe("shopItems", () => {
 
   it("sortiert nach Preis und kennt Besitz, Kaufbares und Fehlendes", () => {
     const items = shopItems(PREVIEW_CATALOG, PREVIEW_ME);
-    expect(items.map((item) => item.price)).toEqual([1, 1, 2, 2, 3, 3, 4, 4, 6]);
+    expect(items.map((item) => item.price)).toEqual([1, 1, 2, 2, 3, 3, 4, 4, 4, 6]);
     const states = Object.fromEntries(
       items.map((item) => [item.cosmetic.id, [item.state, item.missing]]),
     );

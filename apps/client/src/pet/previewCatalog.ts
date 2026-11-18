@@ -135,6 +135,15 @@ export const PREVIEW_CATALOG: Catalog = {
       price: 4,
     },
     {
+      key: "goose",
+      name: "Kuschelgans",
+      scope: "permanent",
+      slot: "hands",
+      colorable: false,
+      unlock: "shop",
+      price: 4,
+    },
+    {
       key: "golden-cup",
       name: "Goldener Pokal",
       scope: "permanent",
