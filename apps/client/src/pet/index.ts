@@ -46,6 +46,7 @@ export * from "./wizardBrain";
 export * from "./wizardClips";
 export * from "./wizardFaceRig";
 export * from "./wizardIdle";
+export * from "./wizardItemLines";
 export * from "./wizardLines";
 export * from "./wizardPick";
 export * from "./wizardScripts";
