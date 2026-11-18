@@ -8,6 +8,7 @@
 import {
   animateJelly,
   BODY_BOTTOM,
+  cosmeticLook,
   createCosmetic,
   createJelly,
   createMotion,
@@ -175,9 +176,14 @@ function dressJelly({ jelly, player, worn }: StageJelly): void {
   }
   syncWorn(worn, wanted, {
     load: loadCosmetic,
-    put: (model) => {
+    put: (model, key) => {
       // Real depth here: with the sticker of the app a jelly would stand in front of the couch.
-      const cosmetic = createCosmetic(model, findPalette(player.color).outline, "depth");
+      const cosmetic = createCosmetic(
+        model,
+        findPalette(player.color).outline,
+        "depth",
+        cosmeticLook(key),
+      );
       jelly.faceAnchor.add(cosmetic);
       return cosmetic;
     },

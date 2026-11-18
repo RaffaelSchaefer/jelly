@@ -18,7 +18,7 @@ export type Worn<Item> = Map<string, WornSlot<Item>>;
 export interface WornActions<Model, Item> {
   /** Resolves to `null` for a key without a model. */
   load: (key: string) => Promise<Model | null>;
-  put: (model: Model) => Item;
+  put: (model: Model, key: string) => Item;
   remove: (item: Item) => void;
 }
 
@@ -40,7 +40,7 @@ export function syncWorn<Model, Item>(
     actions
       .load(key)
       .then((model) => {
-        if (model !== null && worn.get(slot) === entry) entry.shown = actions.put(model);
+        if (model !== null && worn.get(slot) === entry) entry.shown = actions.put(model, key);
       })
       .catch((error: unknown) => {
         // The jelly stays without it, which is better than losing the whole stage.
