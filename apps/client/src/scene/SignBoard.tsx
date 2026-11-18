@@ -43,8 +43,11 @@ const THICKNESS = 0.05;
 /** Abstand zur Vorderseite. In derselben Ebene würden sich beide beim Drehen flimmernd abwechseln. */
 const FACE_GAP = 0.004;
 
-/** Zeichenebene über den Cosmetics (`renderOrder` 8 und 9), siehe `cosmetic.ts` in `@jelly/scene`. */
-const SIGN_ORDER = 10;
+/**
+ * Zeichenebene über den Cosmetics, auch über gehaltenen in Malschicht 1 (`renderOrder` 8 bis 11),
+ * siehe `stickerOrder` in `@jelly/scene`.
+ */
+const SIGN_ORDER = 12;
 
 /** Ab dieser Größe wird die Tafel gezeichnet. */
 const VISIBLE_FROM = 0.02;

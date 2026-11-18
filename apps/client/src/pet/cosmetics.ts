@@ -19,14 +19,17 @@ export interface Cosmetic {
   name: string;
   /**
    * Der Platz beim Server. `head` und `face` wippen mit dem Kopf, `hands` folgt den Händen, `body`
-   * und `aura` bleiben beim Körper. Für diese beiden führt der Server noch kein Cosmetic.
+   * und `aura` bleiben beim Körper.
    */
   slot: CosmeticSlot;
   /** Symbol in der Auswahl. */
   icon: IconName;
 }
 
-/** Alle Cosmetics, die die App darstellen kann. `golden-cup` gibt es nur als Auszeichnung. */
+/**
+ * Alle Cosmetics, die die App darstellen kann. `golden-cup` gibt es nur als Auszeichnung,
+ * `party-hat` und `bat-wings` über Event-Codes.
+ */
 export const COSMETICS: Cosmetic[] = [
   { id: "headset", name: "Headset", slot: "head", icon: "teddyheadset" },
   { id: "headset-neutral", name: "Headset schlicht", slot: "head", icon: "headset" },
@@ -37,12 +40,25 @@ export const COSMETICS: Cosmetic[] = [
   { id: "schnoerbi-mask", name: "Schnörbi-Maske", slot: "face", icon: "mask" },
   { id: "hood", name: "Kapuze", slot: "head", icon: "hood" },
   { id: "crown", name: "Krone", slot: "head", icon: "crown" },
+  { id: "ogre-ears", name: "Oger-Ohren", slot: "head", icon: "ears" },
+  { id: "piercings", name: "Piercings", slot: "face", icon: "piercing" },
   { id: "long-schnoerbi", name: "Long Schnörbi", slot: "hands", icon: "plush" },
   { id: "goose", name: "Kuschelgans", slot: "hands", icon: "goose" },
+  { id: "chicken", name: "Kuschelhuhn", slot: "hands", icon: "chicken" },
   { id: "golden-cup", name: "Goldener Pokal", slot: "hands", icon: "trophy" },
+  { id: "bandana", name: "Halstuch", slot: "body", icon: "bandana" },
+  { id: "bell-collar", name: "Glöckchen-Halsband", slot: "body", icon: "bell" },
+  { id: "knit-scarf", name: "Strickschal", slot: "body", icon: "scarf" },
+  { id: "snail-shell", name: "Lag-Schneckenhaus", slot: "body", icon: "snail" },
+  { id: "mini-backpack", name: "Mini-Rucksack", slot: "body", icon: "backpack" },
+  { id: "fairy-wings", name: "Feenflügel", slot: "body", icon: "wings" },
+  { id: "bat-wings", name: "Fledermausflügel", slot: "body", icon: "batwings" },
 ];
 
-/** In dieser Reihenfolge entstehen die Teile: Jedes liegt als Sticker auf dem davor. */
+/**
+ * Reihenfolge der getragenen Teile. Gemalt wird nach Tiefe, Gehaltenes eine Malschicht höher
+ * (`src/scene/Character.tsx`).
+ */
 const WORN_ORDER: CosmeticSlot[] = ["head", "face", "hands", "body", "aura"];
 
 /** Was ein Jelly trägt, soweit die App es darstellen kann. */

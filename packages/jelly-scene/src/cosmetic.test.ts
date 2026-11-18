@@ -43,6 +43,20 @@ describe("Cosmetic-Modelle", () => {
     expect(hasCosmeticModel("schnoerbi-mask")).toBe(true);
     expect(hasCosmeticModel("long-schnoerbi")).toBe(true);
     expect(hasCosmeticModel("goose")).toBe(true);
+    for (const key of [
+      "bandana",
+      "bell-collar",
+      "knit-scarf",
+      "snail-shell",
+      "mini-backpack",
+      "fairy-wings",
+      "bat-wings",
+      "piercings",
+      "ogre-ears",
+      "chicken",
+    ]) {
+      expect(hasCosmeticModel(key)).toBe(true);
+    }
     expect(hasCosmeticModel("glow-aura")).toBe(false);
     expect(hasCosmeticModel("unbekannt")).toBe(false);
     expect(hasCosmeticModel("constructor")).toBe(false);

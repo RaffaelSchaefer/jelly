@@ -108,6 +108,12 @@ function poseStand(
 }
 
 /**
+ * Gehaltenes liegt vor dem Körper: eine Malschicht höher, so deckt es Schal oder Flügel ganz ab,
+ * mit eigenem Tintenrand.
+ */
+const HELD_LAYER = 1;
+
+/**
  * Was das Jelly trägt. Muss in seiner Wurzel liegen: Kopf- und Gesichts-Cosmetics wippen mit dem
  * Kopf, die für die Hände folgen ihnen, der Rest bleibt beim Körper.
  */
@@ -120,14 +126,14 @@ function WornCosmetics({
   worn: ReturnType<typeof wornCosmetics>;
   ink: string;
 }) {
-  const draw = (slots: CosmeticSlot[]) =>
+  const draw = (slots: CosmeticSlot[], layer?: number) =>
     worn
       .filter((item) => slots.includes(item.slot))
-      .map((item) => <Cosmetic key={item.id} id={item.id} ink={ink} />);
+      .map((item) => <Cosmetic key={item.id} id={item.id} ink={ink} layer={layer} />);
   return (
     <>
       {createPortal(draw(["head", "face"]), jelly.faceAnchor)}
-      <HandHeld jelly={jelly}>{draw(["hands"])}</HandHeld>
+      <HandHeld jelly={jelly}>{draw(["hands"], HELD_LAYER)}</HandHeld>
       {draw(["body", "aura"])}
     </>
   );

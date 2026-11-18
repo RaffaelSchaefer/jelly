@@ -47,6 +47,42 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Aus Wolkenflaum genäht. Drückt man sie fest, schnattert sie ganz leise.",
     article: "die",
   },
+  "knit-scarf": {
+    lore: "Von Großmutter Wolke gestrickt, Masche für Masche. Wärmt auch beim kältesten Lag.",
+    article: "den",
+  },
+  bandana: {
+    lore: "Gepunktet wie ein Fliegenpilz, gebunden wie bei echten Abenteurern.",
+    article: "das",
+  },
+  "bell-collar": {
+    lore: "Das Glöckchen klingelt nur für Freunde. Und manchmal für Kekse.",
+    article: "das",
+  },
+  "mini-backpack": {
+    lore: "Ein Frosch, der Snacks bewacht. Quakt, wenn jemand an die Chips will.",
+    article: "den",
+  },
+  "snail-shell": {
+    lore: "Gebaut für hohen Ping. Was langsam ist, kommt trotzdem an.",
+    article: "das",
+  },
+  "fairy-wings": {
+    lore: "Gesponnen aus Mondlicht und Glitzerstaub. Fliegen kann man damit nicht, aber träumen.",
+    article: "die",
+  },
+  chicken: {
+    lore: "Gackert leise im Schlaf und legt manchmal ein Ei aus Watte. Niemand weiß, wohin.",
+    article: "das",
+  },
+  piercings: {
+    lore: "Aus Sternensilber, gestochen mit einem Kitzelzauber. Tut kein bisschen weh.",
+    article: "die",
+  },
+  "ogre-ears": {
+    lore: "Aus einem Sumpf weit hinter der Halle. Hören jedes Flüstern, auch das ungefragte.",
+    article: "die",
+  },
   hood: {
     lore: "Für geheime Wege durch die Halle. Niemand erkennt dich. Fast niemand.",
     article: "die",

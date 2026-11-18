@@ -44,22 +44,42 @@ function ware(id: string, me: Me = PREVIEW_ME) {
   return found;
 }
 
-/** Was der Spieler der Vorschau noch nicht hat, nach Preis und dann nach Namen. */
-const NOT_OWNED = [
-  "sprout",
+/** Die Waren der Vorschau zu 2 Münzen, nach Namen. Die Mütze hat der Spieler schon. */
+const FOR_TWO = ["bell-collar", "bandana", "sprout"];
+
+/** Was der Spieler der Vorschau noch nicht hat ab 3 Münzen, nach Preis und dann nach Namen. */
+const FROM_THREE = [
+  "snail-shell",
+  "ogre-ears",
+  "piercings",
   "pixel-glasses",
   "schnoerbi-mask",
+  "knit-scarf",
   "hood",
   "goose",
+  "chicken",
   "long-schnoerbi",
+  "mini-backpack",
+  "fairy-wings",
   "crown",
 ];
+
+/** Was der Spieler der Vorschau noch nicht hat, nach Preis und dann nach Namen. */
+const NOT_OWNED = [...FOR_TWO, ...FROM_THREE];
 
 /** Was er schon hat, in der Truhe. */
 const OWNED = ["headset", "headset-neutral", "beanie"];
 
 /** Alle Waren der Vorschau, nach Preis und dann nach Namen. */
-const EVERY_WARE = [...OWNED, ...NOT_OWNED];
+const EVERY_WARE = [
+  "headset",
+  "headset-neutral",
+  "bell-collar",
+  "bandana",
+  "beanie",
+  "sprout",
+  ...FROM_THREE,
+];
 
 describe("ledgerView", () => {
   it("stellt Kaufbares vor zu Teures und beides vor die Truhe", () => {
@@ -170,8 +190,11 @@ describe("shopSummary", () => {
   });
 
   it("zählt, was sich das Jelly leisten kann", () => {
-    expect(summary(jelly({ coins: 2 }))).toBe("Mit 2 Münzen kannst du dir eine Ware leisten.");
-    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 3 Waren leisten.");
+    const twoOwned = [...PREVIEW_ME.cosmetics, "bandana", "bell-collar"];
+    expect(summary(jelly({ coins: 2, cosmetics: twoOwned }))).toBe(
+      "Mit 2 Münzen kannst du dir eine Ware leisten.",
+    );
+    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 9 Waren leisten.");
   });
 
   it("nennt, was zur günstigsten Ware fehlt", () => {

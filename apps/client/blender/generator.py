@@ -1,8 +1,11 @@
 """The frame every cosmetic generator shares: materials, meshes in Three.js coordinates and the flags.
 
 A generator (`build_party_hat.py`, `build_hood.py`, `build_crown.py`, `build_golden_cup.py`,
-`build_sprout.py`, `build_schnoerbi_mask.py`, `build_long_schnoerbi.py`, `build_goose.py`) holds only
-its numbers and a `build(collection)` and ends with `generator.run(...)`:
+`build_sprout.py`, `build_schnoerbi_mask.py`, `build_long_schnoerbi.py`, `build_goose.py`,
+`build_chicken.py`, `build_piercings.py`, `build_ogre_ears.py` and the body
+cosmetics `build_bandana.py`, `build_bell_collar.py`, `build_knit_scarf.py`, `build_snail_shell.py`,
+`build_mini_backpack.py`, `build_fairy_wings.py`, `build_bat_wings.py`) holds only its numbers and a
+`build(collection)` and ends with `generator.run(...)`:
 
     blender blender/cosmetics.blend --background --python blender/build_crown.py -- [--save] [--export]
 

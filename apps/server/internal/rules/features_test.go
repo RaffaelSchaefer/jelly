@@ -108,12 +108,12 @@ func TestListUnlockedCosmetics(t *testing.T) {
 		{
 			"an event from an earlier LAN keeps the party hat",
 			rules.UnlockFacts{TotalEvents: 1},
-			[]string{"party-hat"},
+			[]string{"party-hat", "bat-wings"},
 		},
 		{
 			"an event never buys a shop cosmetic",
 			rules.UnlockFacts{CurrentEvents: 1, TotalEvents: 1},
-			[]string{"party-hat"},
+			[]string{"party-hat", "bat-wings"},
 		},
 		{
 			"awards add cosmetics once",

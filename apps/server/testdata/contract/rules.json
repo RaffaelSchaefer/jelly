@@ -123,6 +123,41 @@
       "owned": false,
       "error": "not_enough_coins"
     },
+    {
+      "name": "the fairy wings cost six coins",
+      "key": "fairy-wings",
+      "coins": 6,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "five coins are too few for the fairy wings",
+      "key": "fairy-wings",
+      "coins": 5,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
+      "name": "the chicken costs four coins",
+      "key": "chicken",
+      "coins": 4,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "two coins are too few for the ogre ears",
+      "key": "ogre-ears",
+      "coins": 2,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
+      "name": "the bat wings are not for sale",
+      "key": "bat-wings",
+      "coins": 100,
+      "owned": false,
+      "error": "not_for_sale"
+    },
     { "name": "too few coins", "key": "crown", "coins": 5, "owned": false, "error": "not_enough_coins" },
     { "name": "second buy", "key": "beanie", "coins": 100, "owned": true, "error": "already_owned" },
     {

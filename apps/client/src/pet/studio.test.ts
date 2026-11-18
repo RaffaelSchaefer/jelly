@@ -23,13 +23,14 @@ const items = (id: string, me = PREVIEW_ME) => regionItems(region(id), me, PREVI
 
 describe("studio regions", () => {
   it("offers every cosmetic in exactly one region", () => {
-    const offered = ["kopf", "gesicht", "haende"].flatMap((id) =>
+    const offered = ["kopf", "gesicht", "haende", "koerper"].flatMap((id) =>
       items(id).flatMap((item) => (item.id ? [item.id] : [])),
     );
     expect(offered.sort()).toEqual(COSMETICS.map((item) => item.id).sort());
-    expect(items("kopf")).toHaveLength(8);
-    expect(items("gesicht")).toHaveLength(3);
-    expect(items("haende")).toHaveLength(4);
+    expect(items("kopf")).toHaveLength(9);
+    expect(items("gesicht")).toHaveLength(4);
+    expect(items("haende")).toHaveLength(5);
+    expect(items("koerper")).toHaveLength(8);
   });
   it("marks what is free, locked and worn", () => {
     const head = items("kopf");
@@ -81,11 +82,9 @@ describe("studio slots", () => {
   it("shows every slot of the server, also those without a cosmetic", () => {
     const slots = REGIONS.flatMap((item) => item.slot ?? []);
     expect(slots.sort()).toEqual(PREVIEW_CATALOG.cosmetic_slots.map((slot) => slot.key).sort());
-    for (const id of ["koerper", "aura"]) {
-      expect(items(id)).toEqual([
-        { id: null, name: "Noch nichts da", icon: "close", state: "equipped", note: "" },
-      ]);
-    }
+    expect(items("aura")).toEqual([
+      { id: null, name: "Noch nichts da", icon: "close", state: "equipped", note: "" },
+    ]);
   });
   it("offers the cup in the hands, only the orga hands it out", () => {
     expect(items("haende").find((item) => item.id === "golden-cup")).toMatchObject({

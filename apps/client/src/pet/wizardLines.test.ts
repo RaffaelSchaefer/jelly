@@ -8,11 +8,11 @@
 import { describe, expect, it } from "vitest";
 
 import { PREVIEW_CATALOG } from "./preview";
+import { ITEM_LINES } from "./wizardItemLines";
 import {
   FALLBACK_CHARS,
   fallbackLine,
   fillLine,
-  ITEM_LINES,
   lineVariants,
   MAX_LINE_CHARS,
   WIZARD_LINES,
