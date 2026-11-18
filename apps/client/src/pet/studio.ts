@@ -8,10 +8,10 @@
 import type { JellyPalette } from "@jelly/scene/colors";
 
 import type { IconName } from "../ui/Icon";
-import type { Catalog, Me } from "./types";
+import type { Me } from "./types";
 
 import { PET_COLORS } from "./colors";
-import { COSMETICS, isUnlocked, unlockLabel, wornCosmetics, type Cosmetic } from "./cosmetics";
+import { COSMETICS, isUnlocked, wornCosmetics, type Cosmetic } from "./cosmetics";
 
 /** Eine anklickbare Region. */
 export type StudioRegionId = "kopf" | "gesicht" | "haende" | "koerper" | "aura" | "farbe";
@@ -62,29 +62,25 @@ export interface StudioItem {
   /** Symbol des Eintrags. Farben zeigen stattdessen ein kleines Jelly in `swatch`. */
   icon: IconName | null;
   swatch?: JellyPalette;
-  state: "equipped" | "unlocked" | "locked";
-  /** Wie man den Eintrag freischaltet, leer wenn er schon frei ist. */
-  note: string;
+  state: "equipped" | "unlocked";
 }
 
-/** Zustand eines Cosmetics für `me`. */
-function cosmeticState(item: Cosmetic, me: Me): StudioItem["state"] {
-  if (me.equipped[item.slot]?.key === item.id) return "equipped";
-  return isUnlocked(item.id, me) ? "unlocked" : "locked";
-}
-
-/** „Nichts“ und die Cosmetics des Platzes. „Nichts“ gilt, solange hier nichts angelegt ist. */
-function cosmeticRows(slot: Cosmetic["slot"], me: Me, catalog: Catalog): StudioItem[] {
-  const parts = COSMETICS.filter((item) => item.slot === slot);
+/**
+ * „Nichts“ und die Cosmetics des Platzes, die `me` schon hat. Was noch fehlt, zeigt der Shop.
+ * „Nichts“ gilt, solange hier nichts angelegt ist.
+ */
+function cosmeticRows(slot: Cosmetic["slot"], me: Me): StudioItem[] {
+  const parts = COSMETICS.filter((item) => item.slot === slot && isUnlocked(item.id, me));
   const worn = parts.some((item) => item.id === me.equipped[slot]?.key);
   const name = parts.length > 0 ? "Nichts" : "Noch nichts da";
   return [
-    { id: null, name, icon: "close", state: worn ? "unlocked" : "equipped", note: "" },
-    ...parts.map((item) => {
-      const state = cosmeticState(item, me);
-      const note = state === "locked" ? unlockLabel(item.id, catalog) : "";
-      return { id: item.id, name: item.name, icon: item.icon, state, note };
-    }),
+    { id: null, name, icon: "close", state: worn ? "unlocked" : "equipped" },
+    ...parts.map((item) => ({
+      id: item.id,
+      name: item.name,
+      icon: item.icon,
+      state: me.equipped[slot]?.key === item.id ? ("equipped" as const) : ("unlocked" as const),
+    })),
   ];
 }
 
@@ -96,13 +92,12 @@ function colorRows(me: Me): StudioItem[] {
     icon: null,
     swatch: color,
     state: me.color === key ? "equipped" : "unlocked",
-    note: "",
   }));
 }
 
 /** Was im Popover der Region zur Wahl steht. */
-export function regionItems(region: StudioRegion, me: Me, catalog: Catalog): StudioItem[] {
-  return region.slot ? cosmeticRows(region.slot, me, catalog) : colorRows(me);
+export function regionItems(region: StudioRegion, me: Me): StudioItem[] {
+  return region.slot ? cosmeticRows(region.slot, me) : colorRows(me);
 }
 
 /** Die Regionen, in denen gerade etwas angelegt ist. */

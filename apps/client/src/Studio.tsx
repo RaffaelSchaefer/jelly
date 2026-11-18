@@ -16,7 +16,6 @@ import {
   REGIONS,
   regionItems,
   wornRegions,
-  type Catalog,
   type CosmeticSlot,
   type Me,
   type PetColor,
@@ -29,7 +28,6 @@ import RegionPopover, { PopoverShape } from "./studio/RegionPopover";
 /** Eigenschaften von {@link Studio}. */
 export interface StudioProps {
   me: Me;
-  catalog: Catalog;
   /** Es läuft gerade ein Aufruf, eine Wahl hätte keine Wirkung. */
   busy: boolean;
   /** Die offene Region. Sie liegt außerhalb, weil auch die Kamera ihr folgt. */
@@ -67,11 +65,11 @@ function DoneButton({ onClose }: { onClose: () => void }) {
 
 /** Das Overlay über dem Jelly. */
 export default function Studio(props: StudioProps) {
-  const { me, catalog, busy, region, onRegion, onEquip, onColor, onName, onClose } = props;
+  const { me, busy, region, onRegion, onEquip, onColor, onName, onClose } = props;
   const firstBlob = useFocusWhileOpen();
 
   const open = REGIONS.find((item) => item.id === region);
-  const items = open ? regionItems(open, me, catalog) : [];
+  const items = open ? regionItems(open, me) : [];
   const worn = wornRegions(me);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {

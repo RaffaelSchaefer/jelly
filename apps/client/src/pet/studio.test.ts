@@ -19,31 +19,29 @@ import {
 const region = (id: string) => REGIONS.find((item) => item.id === id)!;
 
 /** Die Einträge einer Region für `me`. */
-const items = (id: string, me = PREVIEW_ME) => regionItems(region(id), me, PREVIEW_CATALOG);
+const items = (id: string, me = PREVIEW_ME) => regionItems(region(id), me);
+
+/** `PREVIEW_ME` mit allen Cosmetics. */
+const RICH = { ...PREVIEW_ME, cosmetics: COSMETICS.map((item) => item.id) };
 
 describe("studio regions", () => {
-  it("offers every cosmetic in exactly one region", () => {
+  it("offers every owned cosmetic in exactly one region", () => {
     const offered = ["kopf", "gesicht", "haende", "koerper"].flatMap((id) =>
-      items(id).flatMap((item) => (item.id ? [item.id] : [])),
+      items(id, RICH).flatMap((item) => (item.id ? [item.id] : [])),
     );
     expect(offered.sort()).toEqual(COSMETICS.map((item) => item.id).sort());
-    expect(items("kopf")).toHaveLength(9);
-    expect(items("gesicht")).toHaveLength(4);
-    expect(items("haende")).toHaveLength(5);
-    expect(items("koerper")).toHaveLength(8);
   });
-  it("marks what is free, locked and worn", () => {
-    const head = items("kopf");
-    expect(head[0]).toMatchObject({ id: null, state: "equipped" });
-    expect(head.find((item) => item.id === "beanie")?.state).toBe("unlocked");
-    expect(head.find((item) => item.id === "party-hat")).toMatchObject({
-      state: "locked",
-      note: "Bei einem Event",
-    });
-    expect(head.find((item) => item.id === "crown")).toMatchObject({
-      state: "locked",
-      note: "6 Münzen",
-    });
+  it("hides what is not owned yet", () => {
+    expect(items("kopf").map((item) => item.id)).toEqual([
+      null,
+      "headset",
+      "headset-neutral",
+      "beanie",
+    ]);
+    expect(items("kopf")[0]).toMatchObject({ name: "Nichts", state: "equipped" });
+    expect(items("gesicht")).toEqual([
+      { id: null, name: "Noch nichts da", icon: "close", state: "equipped" },
+    ]);
   });
   it("wearing something only changes its own region", () => {
     const me = { ...PREVIEW_ME, equipped: { head: { key: "beanie", color: null } } };
@@ -61,7 +59,7 @@ describe("studio regions", () => {
       face: { key: "pixel-glasses", color: null },
       hands: { key: "golden-cup", color: null },
     };
-    const me = { ...PREVIEW_ME, equipped };
+    const me = { ...RICH, equipped };
     expect(wornRegions(me)).toEqual(["kopf", "gesicht", "haende"]);
     expect(items("gesicht", me).find((item) => item.id === "pixel-glasses")?.state).toBe(
       "equipped",
@@ -83,14 +81,11 @@ describe("studio slots", () => {
     const slots = REGIONS.flatMap((item) => item.slot ?? []);
     expect(slots.sort()).toEqual(PREVIEW_CATALOG.cosmetic_slots.map((slot) => slot.key).sort());
     expect(items("aura")).toEqual([
-      { id: null, name: "Noch nichts da", icon: "close", state: "equipped", note: "" },
+      { id: null, name: "Noch nichts da", icon: "close", state: "equipped" },
     ]);
   });
-  it("offers the cup in the hands, only the orga hands it out", () => {
-    expect(items("haende").find((item) => item.id === "golden-cup")).toMatchObject({
-      state: "locked",
-      note: "Von der Orga",
-    });
+  it("offers the cup in the hands once the orga hands it out", () => {
+    expect(items("haende").find((item) => item.id === "golden-cup")).toBeUndefined();
     const me = { ...PREVIEW_ME, cosmetics: ["golden-cup"] };
     expect(items("haende", me).find((item) => item.id === "golden-cup")?.state).toBe("unlocked");
   });
