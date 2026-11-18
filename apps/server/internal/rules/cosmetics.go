@@ -45,6 +45,7 @@ const (
 	priceSchnoerbiMask = 3
 	priceHood          = 4
 	priceLongSchnoerbi = 4
+	priceGoose         = 4
 	priceCrown         = 6
 )
 
@@ -129,6 +130,10 @@ func ListCosmetics() []Cosmetic {
 		{
 			Key: "long-schnoerbi", Name: "Long Schnörbi", Scope: ScopePermanent, Slot: SlotHands,
 			Unlock: UnlockShop, Price: priceLongSchnoerbi,
+		},
+		{
+			Key: "goose", Name: "Kuschelgans", Scope: ScopePermanent, Slot: SlotHands,
+			Unlock: UnlockShop, Price: priceGoose,
 		},
 		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
