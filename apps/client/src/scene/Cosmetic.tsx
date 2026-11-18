@@ -110,8 +110,8 @@ export function Sticker({ model, ink, layer = 0, outline }: StickerProps) {
   );
 }
 
-/** Das Cosmetic `id` mit Outline in `ink`, falls ein Modell dafür existiert. */
-export default function Cosmetic({ id, ink }: { id: string; ink: string }) {
+/** Das Cosmetic `id` mit Outline in `ink` in der Malschicht `layer`, falls ein Modell existiert. */
+export default function Cosmetic({ id, ink, layer }: { id: string; ink: string; layer?: number }) {
   if (!hasCosmeticModel(id)) return null;
-  return <Sticker model={loadCosmetic(id)} ink={ink} />;
+  return <Sticker model={loadCosmetic(id)} ink={ink} layer={layer} />;
 }
