@@ -93,6 +93,12 @@
   left: auto;
 }
 
+/* Der Shop steht über der Karte, wieder mit eigenem Takt. Mit Abstand, sonst flösse ihr Glas zusammen. */
+.shop-trigger {
+  top: calc(var(--sign-bottom) - 58px);
+  animation-delay: -1.2s;
+}
+
 /* Wie der Punkt auf den Studio-Blobs: Hier ist etwas angelegt. */
 .sign-trigger.raised::after {
   content: "";

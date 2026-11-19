@@ -21,6 +21,7 @@ use crate::{
 pub mod partner;
 mod session;
 pub mod stage;
+pub mod update;
 
 use session::session;
 pub use session::{Game, GameState};
@@ -281,6 +282,25 @@ pub async fn equip_cosmetic(
     session.registered()?;
     let me = session.api.equip(&EquipBody { slot, key, color }).await?;
     session.set_me(me);
+    Ok(session.game())
+}
+
+/// Kauft ein Cosmetic aus dem Shop. Anlegen geht danach mit [`equip_cosmetic`].
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa wenn Münzen fehlen oder es schon gekauft ist.
+#[tauri::command]
+pub async fn purchase_cosmetic(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    key: String,
+) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let answer = session.api.purchase(&key).await?;
+    session.set_me(answer.me);
     Ok(session.game())
 }
 

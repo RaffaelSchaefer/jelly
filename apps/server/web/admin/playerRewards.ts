@@ -13,7 +13,8 @@ import { createToolGroup, makeToolID, type PlayerTools } from "./playerTools.ts"
 const DEFAULT_GIFT_XP = 100;
 const MAX_GIFT_XP = 10000;
 const NO_COSMETIC = "";
-// Only these cosmetics are meant to come from the organizers. The others unlock by level or event.
+// Only these cosmetics are meant to come from the organizers. The others are bought or come from
+// an event.
 const AWARD_UNLOCK = "award";
 const TEXT_AWARD_EMPTY = "Bitte gib einen Titel an oder wähle ein Cosmetic.";
 

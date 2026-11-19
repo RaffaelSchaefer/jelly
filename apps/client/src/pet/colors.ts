@@ -21,4 +21,5 @@ export const PET_COLORS = {
   mint: { label: "Aqua", ...JELLY_COLORS.mint },
   lilac: { label: "Flieder", ...JELLY_COLORS.lilac },
   peach: { label: "Pfirsich", ...JELLY_COLORS.peach },
+  lime: { label: "Hellgrün", ...JELLY_COLORS.lime },
 } as const;

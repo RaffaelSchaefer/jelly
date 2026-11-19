@@ -48,7 +48,26 @@ das Aussehen mit Beispieldaten ausprobieren. **Konto, XP-Aktionen und Speicherun
 ausschließlich über das native Rust-Backend.** Im Browser sind XP-Aktionen deaktiviert und nichts
 wird gespeichert. Den Einstieg spielt die Vorschau ohne Server durch: `/#join`, `/#join-again`,
 `/#join-lost` und `/#join-nolan`. Der Code `falsch` zeigt den Fehler, der Code `offen` lässt die
-laufende LAN offen.
+laufende LAN offen. Den Zauberladen zeigt `/shop.html`, mit `?optimized`, `?ruhig` und `?fps=30` und diesen Hashes:
+
+| Hash            | Zustand                                    |
+| --------------- | ------------------------------------------ |
+| `#shop-pleite`  | 0 Münzen                                   |
+| `#shop-reich`   | 12 Münzen, nichts gekauft                  |
+| `#shop-alles`   | alles gekauft                              |
+| `#shop-zu`      | keine LAN, der Laden ist zu                |
+| `#shop-leer`    | kein Jelly                                 |
+| `#shop-laden`   | bleibt beim Laden                          |
+| `#shop-fehler`  | der Kauf scheitert nach 400 ms             |
+| `#shop-langsam` | der Kauf wird erst nach 2 s bestätigt      |
+| `#shop-muenzen` | nach 5 s eine Münze und ein Level mehr     |
+| `#shop-nacht`   | 23 Uhr                                     |
+| `#shop-doesen`  | schläfrig nach 4 s, eingeschlafen nach 8 s |
+| `#shop-runen`   | die Zustände des Runenkreises              |
+| `#shop-anprobe` | die Anprobe in Schleife                    |
+| `#shop-zauber`  | der Kaufzauber in Schleife                 |
+
+Ohne Hash bestätigt die Vorschau einen Kauf nach 250 ms.
 
 ## Server
 
@@ -76,8 +95,17 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 
 - Transparentes, rahmenloses, verschiebbares Fenster, stets im Vordergrund.
 - Animiertes Jelly-Pet mit Raymarching-Shader; drei Farben und ein eigener Name.
-- Cosmetics zum Freischalten über Level, Erfolge und Events. Die 3D-Modelle kommen aus der
-  Blender-Pipeline in `blender/`, bisher gibt es zwei Headsets. Karte und Beamer zeigen sie mit.
+- Cosmetics aus dem Shop, von Events und von der Orga. Jeder Level-Aufstieg bringt Münzen
+  (`coins_per_level`), der Shop im eigenen Fenster verkauft dafür Cosmetics (`POST /v1/purchases`).
+  Er ist ein Zauberladen bei Kerzenlicht: Hinter der Theke sitzt Funkelbart, ein uralter Zauberer-Jelly mit
+  geknicktem Spitzhut, Bart, Robe und Kristallkugel, gegenüber probiert das eigene Jelly auf einem Runenkreis im
+  Mondlicht an. Wählen probiert an, gekauft wird, indem man das Wachssiegel des Kaufbriefs 650 ms hält. Dann wird der
+  Kauf zum Zauber: Die Kugel lädt sich, der Stempel fällt, Münzen fliegen aus der Börse in die Schale, ein Komet
+  fliegt zum Kunden, und die Runen flammen auf. Erst die Zusage des Servers löst das aus. Kerzen, Kugel, Mond und
+  Runen beleuchten beide Jellies, alle Effekte laufen auf einer Canvas, und jeder Ton wird live erzeugt. Funkelbart
+  lebt zwischen den Klicks: Er schaut, worauf man zeigt, feilscht, streicht den Bart, liest in der Kugel, döst ein
+  und schnarcht. Die 3D-Modelle kommen aus der Blender-Pipeline in `blender/`, bisher gibt es zwei Headsets, Mütze
+  und Pixel-Brille. Karte und Beamer zeigen sie mit, die Teile des Zauberers nicht.
 - Kleine Glas-Leiste mit LAN-Aktionen, Studio und Einstellungen.
 - Studio direkt am Pet: Tropfen auf Kopf, Gesicht, Händen, Körper, Aura und Farbe öffnen flüssige Popovers für
   Cosmetics und Farbe. Sie brechen das Bild dahinter und schillern am Rand wie eine Seifenblase. Die
@@ -92,7 +120,8 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Cosmetics liegen auf Plätzen, je Platz eines (`PUT /v1/cosmetics/equipped`). Die App zeigt die Plätze
   Kopf, Gesicht und Aura. Einfärbbare Cosmetics bekommen vorerst die erste Farbe der Palette.
 - XP, Level, Cosmetics und Erfolge kommen vom Server. Mit seinen Standardregeln: Stupser +3 XP alle
-  15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level.
+  15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level
+  und eine Münze für den Shop.
   Die App fragt nur beim Server, wenn ein Stupser wieder etwas bringt.
 - Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen,
   Herz, Schulterzucken, Zeigen, Grübeln, Wütend, Traurig und Schüchtern auswählen. Die Hände haben
@@ -101,7 +130,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   eine eigene Stimmlage und ein eigenes Tempo: Wut klingt tief und schnell, Trauer tief und langsam,
   Freude hoch und flott. Bewegung und Laut laufen dabei im selben Takt.
 - Die Oberfläche hat leise Geräusche: Tippen, Auf- und Zuklappen, Wählen, Sperren, Schalter,
-  Öffnen und Schließen von Karte und Pet-Fenster, Erfolg und Fehler. Dazu klingen XP (Münze), neue
+  Öffnen und Schließen von Karte, Shop und Pet-Fenster, Erfolg und Fehler. Dazu klingen XP (Münze), neue
   Erfolge, Einladungen zu Partner-Emotes und das Schlüpfen. Die Töne stammen aus der Bibliothek von
   [reactsounds.com](https://www.reactsounds.com) (MIT, `src/sounds/LICENSE`), liegen im Bundle,
   sind aufeinander abgestimmt laut und folgen dem Schalter und dem Regler der Geräusche. Ein neuer
@@ -225,8 +254,13 @@ src/
   studio/             Bausteine des Studios (Blob, Popover, Namensschild)
   SignPicker.tsx      Schild-Tropfen und Kapsel-Säule
   Hatch.tsx           Einstieg auf der Bühne: Ei aus Glas, Name, Farbe, Code und das Schlüpfen
-  MapDrop.tsx         Karten-Tropfen
+  PopoutDrops.tsx     Tropfen für Karte und Shop
   map/                Karte im eigenen Fenster (map.html), ohne React: Seite, Daten, Partner-Emotes, Vorschau
+  shop/               Zauberladen im eigenen Fenster (shop.html): Bühne, Rolle, Kaufbrief und Siegel, Zauberer
+    css/              Aussehen je Bereich: Rahmen, Raum, Bühne, Rolle, Brief, Siegel, Zustände
+    sound/            Klang des Ladens: ein AudioContext, Geräusche, Kaufritual, Ambiente
+    fx/               kurze Effekte auf einer Canvas2D: Wirbel, Münzen, Komet, Einschlag
+  fonts/              mitgelieferte Schriften (Cinzel und Alegreya für den Zauberladen, OFL)
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
   panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Zeitplan, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
@@ -246,7 +280,7 @@ src-tauri/
   src/api.rs          HTTP-Client und Weitergabe der Server-Typen
   src/api/types.rs    Typen aus dem Server-Vertrag
   src/events.rs       Ereignis-Stream des Servers an die Oberfläche weiterleiten
-  src/map.rs          Fenster der Karte öffnen und schließen
+  src/popout.rs       Fenster von Karte und Shop öffnen und schließen, das Pet solange verstecken
   src/error.rs        alle Fehler mit deutscher Meldung für die Oberfläche
   src/pet.rs          lokaler Stand und reine Regeln, ohne Dateizugriff und Netz
   src/store.rs        lokalen Stand atomar laden und speichern
@@ -310,11 +344,47 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-Der Lauf bricht ab, wenn der Tag nicht zur Version passt oder `JELLY_SERVER_URL` fehlt. Ein Bindestrich
-im Tag (`v0.2.0-alpha.1`) macht daraus eine Vorabversion. Die macOS-Bundles sind nur ad-hoc signiert:
-Beim ersten Start blockiert macOS Jelly, freigeben geht unter Systemeinstellungen, Datenschutz &
-Sicherheit, „Trotzdem öffnen“. Echte Signierung und automatische Updates sind noch nicht
-konfiguriert.
+Der Lauf bricht ab, wenn der Tag nicht zur Version passt, `JELLY_SERVER_URL` fehlt oder der Schlüssel für
+Updates fehlt. Ein Bindestrich im Tag (`v0.2.0-alpha.1`) macht daraus eine Vorabversion. Die macOS-Bundles
+sind nur ad-hoc signiert: Beim ersten Start blockiert macOS Jelly, freigeben geht unter Systemeinstellungen,
+Datenschutz & Sicherheit, „Trotzdem öffnen“.
+
+### Updates
+
+Die App sieht beim Start nach einer neuen Version und spielt sie auf Knopfdruck an Ort und Stelle ein,
+danach startet sie neu. Verlangt der Server eine neuere App, steht der Knopf in der Fehlermeldung. Das
+übernimmt `tauri-plugin-updater` in Rust (`src-tauri/src/commands/update.rs`), die Oberfläche fragt nur
+(`src/useUpdate.ts`, `src/UpdateNotice.tsx`, in der Browser-Vorschau `/#update`). Geladen wird immer das
+ganze Paket, kein Unterschied zur alten Version.
+
+Die Liste der Versionen ist `latest.json` am neuesten Release auf GitHub
+(`plugins.updater.endpoints` in `tauri.conf.json`). Der Release-Lauf schreibt sie mit
+`scripts/updater-manifest.mjs` aus den signierten Paketen: NSIS und MSI unter Windows, AppImage, `.deb` und
+`.rpm` unter Linux, `.app.tar.gz` unter macOS. Jede App nimmt das Paket ihrer Installer-Art.
+`releases/latest` überspringt Vorabversionen, sie kommen also nie als Update an. Releases für die LAN
+bekommen deshalb einen Tag ohne Bindestrich. Eine Vorabversion `v0.3.0-alpha.1` heißt in der App schon
+`0.3.0`, ein späteres `v0.3.0` wäre für sie nicht neuer.
+
+Die Karte zeigt, was seit der installierten Version dazukam. Das steht in `CHANGELOG.md`, von Hand auf
+Deutsch gepflegt: je Version `## X.Y.Z`, darunter kurze Zeilen mit `Neu:`, `Besser:` oder `Weg:`. Der
+Release-Lauf legt die Datei als `notes` in `latest.json`, die App liest sie mit `src/pet/changelog.ts`. Ein
+Tag ohne Abschnitt für seine Version bricht früh ab.
+
+Signiert wird mit einem eigenen Schlüsselpaar, einmalig erzeugt mit:
+
+```sh
+pnpm tauri signer generate -w ~/.tauri/jelly.key
+```
+
+Der öffentliche Schlüssel (`jelly.key.pub`, der Inhalt, kein Pfad) gehört nach `plugins.updater.pubkey` in
+`tauri.conf.json`. Der private Schlüssel und sein Passwort gehören in die Repository-Secrets
+`TAURI_SIGNING_PRIVATE_KEY` und `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. **Den privaten Schlüssel sicher
+aufheben: Geht er verloren, kann keine installierte App mehr aktualisiert werden.** Die Update-Pakete schaltet
+erst `--config src-tauri/tauri.updater.conf.json` ein, ein lokales `pnpm run tauri build` braucht den
+Schlüssel deshalb nicht.
+
+Testen lässt sich das nur mit zwei echten Releases: eins installieren, das nächste veröffentlichen, die
+installierte App starten. `tauri dev` spielt nichts ein. Die App braucht dafür Zugang zu `github.com`.
 
 `pnpm run check` kombiniert die Frontend-Tests, den Frontend-Build und die Rust-Tests.
 

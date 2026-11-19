@@ -21,6 +21,7 @@ import {
   restPose,
   type DuetRole,
   type Jelly,
+  type JellyPalette,
   type JellyQuality,
 } from "@jelly/scene";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
@@ -107,26 +108,39 @@ function poseStand(
 }
 
 /**
+ * Gehaltenes liegt vor dem Körper: eine Malschicht höher, so deckt es Schal oder Flügel ganz ab,
+ * mit eigenem Tintenrand.
+ */
+const HELD_LAYER = 1;
+
+/**
  * Was das Jelly trägt. Muss in seiner Wurzel liegen: Kopf- und Gesichts-Cosmetics wippen mit dem
- * Kopf, die für die Hände folgen ihnen, der Rest bleibt beim Körper.
+ * Kopf, die für die Hände folgen ihnen, der Rest bleibt beim Körper. Hält es eine Tafel, legt es
+ * das Gehaltene so lange beiseite.
  */
 function WornCosmetics({
   jelly,
   worn,
-  color,
+  ink,
+  handsFree,
 }: {
   jelly: Jelly;
   worn: ReturnType<typeof wornCosmetics>;
-  color: PetColor;
+  ink: string;
+  handsFree: boolean;
 }) {
-  const draw = (slots: CosmeticSlot[]) =>
+  const draw = (slots: CosmeticSlot[], layer?: number) =>
     worn
       .filter((item) => slots.includes(item.slot))
-      .map((item) => <Cosmetic key={item.id} id={item.id} color={color} />);
+      .map((item) => (
+        <Cosmetic key={item.id} id={item.id} ink={ink} layer={layer} tint={item.color} />
+      ));
   return (
     <>
       {createPortal(draw(["head", "face"]), jelly.faceAnchor)}
-      <HandHeld jelly={jelly}>{draw(["hands"])}</HandHeld>
+      <HandHeld jelly={jelly} visible={handsFree}>
+        {draw(["hands"], HELD_LAYER)}
+      </HandHeld>
       {draw(["body", "aura"])}
     </>
   );
@@ -136,6 +150,8 @@ function WornCosmetics({
 export interface CharacterProps {
   /** Farbvariante. */
   color: PetColor;
+  /** Eigene Farben statt `color`, etwa für den Zauberer im Shop. Sollte stabil sein. */
+  palette?: JellyPalette;
   /** Zähler, der bei jeder belohnten Aktion steigt. Jede Änderung löst einen Hüpfer aus. */
   pulse: number;
   /** Bewegung auf das Nötigste reduzieren. */
@@ -159,6 +175,7 @@ export interface CharacterProps {
 /** Das Pet mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
 export default function Character({
   color,
+  palette: custom,
   pulse,
   reducedMotion,
   sign = null,
@@ -173,7 +190,8 @@ export default function Character({
   // Ohne Modell zeigt ein Cosmetic nichts, dann hielte das Jelly leere Hände hin.
   const holdsModel = worn.some((item) => item.slot === "hands" && hasCosmeticModel(item.id));
   const holding = Boolean(sign) || holdsModel;
-  const jelly = useMemo(() => createJelly(PET_COLORS[color], quality), [color, quality]);
+  const palette = custom ?? PET_COLORS[color];
+  const jelly = useMemo(() => createJelly(palette, quality), [palette, quality]);
   const motion = useRef(createMotion(pulse));
   const stand = useRef<Group>(null);
   const invalidate = useThree((state) => state.invalidate);
@@ -201,7 +219,11 @@ export default function Character({
       holding,
       emote:
         emote && isEmoteKey(emote.key)
-          ? { key: emote.key, elapsed: (performance.now() - emote.startedAt) / 1000 }
+          ? {
+              key: emote.key,
+              elapsed: (performance.now() - emote.startedAt) / 1000,
+              seconds: emote.seconds,
+            }
           : undefined,
       mouth: currentMouth(voiced, role, reducedMotion),
     });
@@ -211,7 +233,7 @@ export default function Character({
   return (
     <group ref={stand}>
       <primitive object={jelly.root}>
-        <WornCosmetics jelly={jelly} worn={worn} color={color} />
+        <WornCosmetics jelly={jelly} worn={worn} ink={palette.outline} handsFree={!sign} />
         <SignBoard jelly={jelly} label={sign} color={color} reducedMotion={reducedMotion} />
       </primitive>
     </group>

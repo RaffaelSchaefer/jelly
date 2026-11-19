@@ -65,6 +65,7 @@ func ListColors() []CatalogEntry {
 		{Key: "mint", Label: "Aqua"},
 		{Key: "lilac", Label: "Flieder"},
 		{Key: "peach", Label: "Pfirsich"},
+		{Key: "lime", Label: "Hellgrün"},
 	}
 }
 

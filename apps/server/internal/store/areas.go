@@ -44,9 +44,9 @@ type AreaAssignment struct {
 func (store *Store) CreateArea(
 	ctx context.Context, lanID int64, area AdminArea, now int64,
 ) (AdminArea, error) {
-	err := validateAdminArea(area)
+	err := store.validateAdminArea(ctx, lanID, area)
 	if err != nil {
-		return AdminArea{}, fmt.Errorf("validate area: %w", err)
+		return AdminArea{}, err
 	}
 	stored := area
 	err = store.runInTransaction(ctx, func(transaction *sql.Tx) error {
@@ -68,9 +68,9 @@ func (store *Store) CreateArea(
 func (store *Store) UpdateArea(
 	ctx context.Context, lanID int64, area AdminArea, now int64,
 ) (AdminArea, error) {
-	invalid := validateAdminArea(area)
+	invalid := store.validateAdminArea(ctx, lanID, area)
 	if invalid != nil {
-		return AdminArea{}, fmt.Errorf("validate area: %w", invalid)
+		return AdminArea{}, invalid
 	}
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		const updateAreaSQL = `UPDATE lan_areas
@@ -106,14 +106,19 @@ func (store *Store) UpdateArea(
 	return area, err
 }
 
-// validateAdminArea checks what the stage needs and what only the admin page shows.
-func validateAdminArea(area AdminArea) error {
+// validateAdminArea checks what the stage needs and what only the admin page shows, in the room of
+// the LAN.
+func (store *Store) validateAdminArea(ctx context.Context, lanID int64, area AdminArea) error {
 	if !rules.IsZoneNameValid(area.Name) {
-		return rules.ErrInvalidArea
+		return fmt.Errorf("validate area: %w", rules.ErrInvalidArea)
 	}
-	err := rules.ValidateArea(area.Area)
+	gameRules, err := store.LoadLANRules(ctx, lanID)
 	if err != nil {
-		return fmt.Errorf("check zone: %w", err)
+		return err
+	}
+	err = rules.ValidateArea(area.Area, rules.MeasureRoom(gameRules.PublicRules))
+	if err != nil {
+		return fmt.Errorf("validate area: %w", err)
 	}
 	return nil
 }

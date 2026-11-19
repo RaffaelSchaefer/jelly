@@ -44,7 +44,9 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/backend.ts`: einziger Ort mit `invoke()`. Ein Wrapper je Befehl aus `src-tauri/src/commands.rs`.
 - `src/usePet.ts`, `src/useGame.ts`: Spielstand, Aktionen, Server-Ereignisse, Tastatur-Stupser,
   Größen-Regler.
-- `src/pet/`: reine Logik ohne React/Three. Spiegelt den Server-Vertrag und `src-tauri/src/pet.rs`.
+- `src/pet/`: reine Logik ohne React/Three. Spiegelt den Server-Vertrag und `src-tauri/src/pet.rs`. Ein Modul dort tut
+  beim Import nichts: `vite.config.ts` erklärt sie für nebenwirkungsfrei, so landet aus `./pet` nur im Chunk eines
+  Fensters, was es nutzt (der Verstand des Zauberers nur im Shop).
 - `src/Studio.tsx`, `src/studio/`, `src/studio.css`: Anpassen direkt am Jelly. Die Tropfen zeichnet
   `src/scene/LiquidGlass.tsx` per Shader in die Canvas, das DOM liefert Knöpfe und mit `data-liquid`
   die Vorlagen für ihre Form.
@@ -61,7 +63,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (`POST` und `PATCH /v1/partner-emotes`): Auffordern geht in `src/map/partner.ts`, Antworten und Duett im Pet
   (`src/usePartnerEmote.ts`, `src/panels/PartnerInvitePopup.tsx`). Das andere Jelly erfährt davon per
   `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`. Beide Ereignisse schließen
-  die Karte (`closes_map` in `src-tauri/src/events.rs`).
+  Karte und Shop (`closes_popouts` in `src-tauri/src/events.rs`).
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
   (Noten, reine Logik): die Stimme des Jellys. Tonhöhe und Tempo je Geste stehen in `EMOTE_MOODS`
   (`packages/jelly-scene/src/emotes.ts`), Bewegung und Laut teilen sich das Tempo. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
@@ -104,11 +106,54 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `page.ts` (Stand der Seite), `commands.ts` (Aktionen mit Bestätigung und Kameraflug), `dock.ts` (Leiste
   unten), `zoom.ts` (Mausrad, Ziehen, Tasten), `notice.ts` (Statuszeile),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
-  `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/MapDrop.tsx`: der Glas-Tropfen am Jelly, der
-  sie öffnet.
+  `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/PopoutDrops.tsx`: die Glas-Tropfen am Jelly,
+  die Karte und Shop öffnen.
+- `shop.html`, `src/shop/`: der Shop als Zauberladen im eigenen Fenster, mit React. `Shop.tsx` (Rahmen, Wahl, Klang),
+  `ShopHeader.tsx` und `ShopPurse.tsx` (Messingschild, Lederbörse), `ShopStage.tsx` (Bühne: DOM-Ebenen `StageBackdrop`,
+  `RuneCircle`, `StageCounter`, `StageAir`, `StageSigns` und `StageBubble` um `src/scene/ShopScene.tsx`), `ShopLedger.tsx`,
+  `WareCard.tsx` und `useLedgerKeys.ts` (Rolle mit den Waren), `ShopSeal.tsx`, `BriefParts.tsx` und
+  `useSealCeremony.ts` (Kaufbrief, Siegel zum Halten), `useShop.ts` (Stand, Ereignisse, Vorschau ohne Server), `css/`
+  (eine Datei je Bereich, Größen S, M und L). Was im Shop steht, rechnet `src/pet/shop.ts`, die Rolle `shopLedger.ts`,
+  die Börse `purse.ts`, das Siegel `sealCeremony.ts`, der Brief `shopLore.ts`. In der Browser-Vorschau neben `/#join`:
+  `/shop.html` mit `?optimized`, `?ruhig`, `?fps=30` und `#shop-pleite`, `#shop-reich`, `#shop-alles`, `#shop-zu`,
+  `#shop-leer`, `#shop-laden`, `#shop-fehler`, `#shop-langsam`, `#shop-muenzen`, `#shop-nacht`, `#shop-doesen`,
+  `#shop-runen`, `#shop-anprobe` und `#shop-zauber` (`PREVIEW_SHOP_HASHES` in `src/pet/preview.ts`). Münzen gibt es je
+  Level-Aufstieg (`coins_per_level`), gekauft wird mit `POST /v1/purchases`. Der Aufstieg (`src/LevelUp.tsx`) zeigt die
+  Münzen und führt zum Shop. Wie die Karte vertritt der Shop das Pet, solange er offen ist.
+- Bühne und Takt des Ladens: Kamera, Plätze und benannte Punkte stehen in `src/pet/shopStage.ts`, DOM und WebGL rechnen
+  beide daraus (Seitenverhältnis 2,4, `SHOP_VIEW`). `src/pet/shopTimeline.ts` ist der eine Takt: der Kauf ab C
+  (`purchaseTimeline`), Anprobe, Anlegen, Ablegen. `src/shop/useSealRitual.ts` (Phasen des Siegels) und
+  `useShopMoments.ts` (Wahl) spielen ihn ab, `useStageCues.ts` hält Runenkreis, Abdunkeln und Licht, was ein Moment
+  auslöst, rechnet `src/pet/shopRitual.ts`. Es gibt keinen Event-Bus: zwei Objekte je Fenster (`shopSound`, `shopFx`),
+  Rückrufe und `data-`-Attribute (`data-item-id`, `data-gaze`, `data-hover-sound`, `data-coin-source`, `.stage-tray`).
+- `src/shop/sound/`: der Klang des Ladens mit einem AudioContext je Fenster (`shopSound.ts`, eingebunden mit
+  `useShopSound.ts`): Holz, Pergament, Messing und Wachs statt der MP3s, Kaufritual, Ambiente und die Stimme des
+  Zauberers über `voiceRoute`. Rein rechnen `src/pet/shopMix.ts`, `shopScore.ts` und `shopAmbience.ts`. Hörprobe:
+  `scripts/shop-sound-check.html`.
+- `src/shop/fx/`: alle kurzen Effekte auf einer Canvas2D über dem Fenster (`shopFx` in `sparksEngine.ts`, `ShopFx.tsx`,
+  gemalt mit `fxAtlas.ts`), geplant in `src/pet/sparks.ts`. Der Takt läuft nur, solange etwas lebt. Die Vorschau spielt
+  Anprobe und Kauf mit `useFxReplay.ts`.
+- Licht der Szene: `packages/jelly-scene/src/sceneLight.ts`, der Block `<scene-light>` in `jelly.frag.glsl` und
+  `toon.frag.glsl` (Zeichen für Zeichen gleich, nur mit dem Define `SCENE_LIGHT`) und `userData.lightable` an Körper und
+  Sticker. Nur der Shop schaltet es ein (`src/scene/useSceneLight.ts`, `ShopLights.tsx`, `ShopGlows.tsx`, Werte in
+  `src/pet/shopLight.ts`), Pet, Karte und Bühne des Servers bleiben ohne.
+- Der Zauberer Funkelbart: `src/scene/Wizard.tsx`, `WizardParts.tsx` (Teile aus `wizard.glb`) und `WizardRig.tsx`
+  (Gesten, Blick, Brauen, Schnurrbart, Kugel). Im Paket `wizard.ts` (`@jelly/scene/wizard`), `wizardGestures.ts`,
+  `wizardFace.ts`, `crystal.ts` und `wizardTiming.ts` (`@jelly/scene/wizard-timing`, ohne three). Ein `wizard.glb` mit
+  14 Teilen aus `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS` und nicht im Katalog. Sein Verstand
+  steht rein in `src/pet/`: `wizardBrain.ts` (wann), `wizard.ts` und `wizardIdle.ts` (Skripte), `wizardScripts.ts`
+  (Typen, Takt), `wizardPick.ts`, `wizardLines.ts` (Sätze), `wizardVoice.ts`, `wizardClips.ts`, `voiceTimbre.ts`,
+  `wizardFaceRig.ts`. Abgespielt in `src/shop/useWizard.ts`, `useWizardPlayer.ts`, `useWizardSenses.ts` und
+  `wizardEffects.ts`. `src/pet/contracts.test.ts` hält Paket, Verstand, Bühne und Klang beieinander.
+- Updates der App: `src-tauri/src/commands/update.rs` (`tauri-plugin-updater`, Liste `latest.json` am Release auf
+  GitHub, Fortschritt per `Channel`), `src/useUpdate.ts`, `src/UpdateNotice.tsx`, `src/UpdateBanner.tsx` (Rakete als
+  SVG in der Jelly-Farbe) und `src/update.css` (Karte über dem Dock, für die Bühne Panel `update`, in der
+  Browser-Vorschau `/#update`). Der Changelog steht in `apps/client/CHANGELOG.md`, geht als `notes` in `latest.json`
+  und wird in `src/pet/changelog.ts` gelesen.
+  `scripts/updater-manifest.mjs` (schreibt `latest.json` im Release-Lauf). Ablauf und Schlüssel: README des Clients.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
-  `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
-  `events.rs` (Server-Stream), `map.rs` (Fenster der Karte), `error.rs`, `pet.rs` (lokaler Stand,
+  `commands/partner.rs`, `commands/stage.rs`, `commands/update.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
+  `events.rs` (Server-Stream), `popout.rs` (Fenster von Karte und Shop), `error.rs`, `pet.rs` (lokaler Stand,
   reine Regeln), `store.rs` (atomares Speichern von `jelly.json`).
 
 ## Regeln, die man leicht übersieht
@@ -135,7 +180,24 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - **Neues Cosmetic:** Export aus `apps/client/blender/` nach `packages/jelly-scene/src/cosmetics/`, dazu eine
   Import-Zeile in `COSMETIC_MODELS` (`cosmetic.ts`). App, Karte und Beamer zeigen es dann, in der App als Sticker,
   auf der Bühne mit echter Tiefe. Die Modelle liegen im Bundle: Die CSP der App verbietet `fetch`, und `tauri dev`
-  zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary.
+  zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary. Ein Material kann sein
+  Leuchten von unten mit der Blender-Eigenschaft `glow` (0 bis 1) dämpfen, sonst wirken dunkle Farben unten grau. Mit
+  `fluff` (0 bis 1) wird es zu Plüsch: ohne Glanz, mit Fellkörnung und hellem Rand (`plush` in `toon.frag.glsl`).
+  Mit `glass` (0 bis 1) wird es durchsichtig, zum Rand hin deckt es mehr. Ein Cosmetic mit Glas zeichnet zuletzt in
+  seiner Malschicht, erst die Füllung, dann die Outline (`glassOrder` in `cosmetic.ts`), sonst schiene ihre Tinte
+  durch. Teile davor brauchen dann eine Fläche ohne Rückseite und Kante, sonst bekommen sie eine Innenlinie.
+- **Einfärbbares Cosmetic:** Materialien mit der Blender-Eigenschaft `tint` nehmen die Farbe des Trägers (1 genau,
+  darunter dunkler, darüber zu Weiß hin), der Rest bleibt. Dazu `Colorable` im Server (`rules/cosmetics.go`, neue
+  API-Version), `COLORABLE` in `packages/jelly-scene/src/cosmetic.test.ts` und `colorable` in
+  `src/pet/previewCatalog.ts`. Gewählt wird im Studio: Ein Klick auf das angelegte Teil öffnet das Farbrad
+  (`src/studio/PaintWheel.tsx`).
+- **Zauberladen ändern:** Vor einem Jelly steht nur DOM oder die Canvas2D der Effekte, denn Sticker übermalen alles
+  in 3D davor. DOM und Szene passen nur bei Seitenverhältnis 2,4 und derselben Kamera (`src/pet/shopStage.ts`)
+  zusammen. Zeiten kommen aus `src/pet/shopTimeline.ts`, nicht aus eigenen Konstanten. Jede Schleife (CSS, Licht,
+  Funken) braucht eine ruhige und eine optimierte Fassung. Ansehen bei 520×460, 720×600, 1200×900 und 1920×1080,
+  jeweils auch mit `?optimized` und `?ruhig`, ohne Scrollen.
+- **Schriften** liegen als Datei bei (`src/fonts/`, mit Lizenz) und nie als `data:`: Die CSP lädt Schriften nur von
+  `'self'`, `vite.config.ts` legt `.woff2` deshalb nie inline.
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.
   Das Paket spricht nicht mit dem Netz: Jeder Nutzer bringt seine `StageSource` mit, die App holt
   alles über Rust. Was nur die Karte braucht (Markierungen, Treffer), bleibt auf dem Beamer aus.
@@ -143,7 +205,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `data-liquid`-Element bekommt in `src/optimized.css` einen eigenen Hintergrund, reine Vorlagen werden dort
   ausgeblendet. Jede Schwebe-Animation wird dort abgeschaltet. Die Karte lässt ihr Glas (`src/map/glass.ts`) im
   optimierten Modus ebenfalls weg, ihre `.glass-pill`-Knöpfe bleiben dann einfarbig (`src/map/map.css`).
-- **Takt des Jellys:** `AnimationClock` in `src/scene/PetScene.tsx` zeichnet mit `advance`. Ein `invalidate` aus einem
+- **Takt des Jellys:** `src/scene/AnimationClock.tsx` zeichnet mit `advance`, für Pet und Shop. Ein `invalidate` aus einem
   `requestAnimationFrame` käme erst im nächsten Bild an und halbierte die Bildrate am Bildschirmtakt.
 - **Identifier** `de.ucb.jelly` nicht ändern, sonst findet die App vorhandene Spielstände nicht mehr.
 - **Kein TypeDoc**, solange es TypeScript 7 nicht unterstützt (Begründung in der README).

@@ -83,7 +83,7 @@ describe("hatchLine", () => {
 
   it("freut sich über den Namen und jede Farbe anders", () => {
     expect(line({ step: "color", name: "Glibber" })).toContain("Glibber!");
-    for (const picked of ["mint", "lilac", "peach"] as const) {
+    for (const picked of ["mint", "lilac", "peach", "lime"] as const) {
       expect(line({ step: "color", picked })).toContain(PET_COLORS[picked].label);
     }
   });

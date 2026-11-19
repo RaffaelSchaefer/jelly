@@ -12,7 +12,14 @@ export default defineConfig({
   },
   build: {
     target: ["es2022", "chrome105", "safari15"],
-    // Das Pet und die Karte im eigenen Fenster sind zwei Seiten.
-    rolldownOptions: { input: { main: "index.html", map: "map.html" } },
+    // Schriften nie als `data:`: Die CSP der App lädt Schriften nur als Datei (`default-src 'self'`).
+    assetsInlineLimit: (file) => (file.endsWith(".woff2") ? false : undefined),
+    // Pet, Karte und Shop sind je eine Seite, Karte und Shop in eigenen Fenstern.
+    rolldownOptions: {
+      input: { main: "index.html", map: "map.html", shop: "shop.html" },
+      // `src/pet/` ist reine Logik ohne Nebenwirkungen: Was ein Fenster aus `./pet` nicht nutzt, etwa
+      // der Verstand des Zauberers im Pet-Fenster, bleibt aus seinen Chunks.
+      treeshake: { moduleSideEffects: (id: string) => !/\/src\/pet\/[^/]+\.ts$/.test(id) },
+    },
   },
 });

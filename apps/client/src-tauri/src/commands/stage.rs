@@ -7,7 +7,7 @@ use super::{session::session, Game, GameState};
 use crate::{
     api::{Stage, Trip},
     error::{Error, Result},
-    map,
+    popout,
 };
 
 /// Was die Karte bei jedem Lesen bekommt.
@@ -126,5 +126,15 @@ pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Resul
 /// [`Error::Window`], wenn sich das Fenster nicht öffnen lässt.
 #[tauri::command]
 pub async fn open_map(app: AppHandle) -> Result<()> {
-    map::open(&app)
+    popout::open(&app, popout::MAP)
+}
+
+/// Öffnet den Shop oder holt ihn nach vorn. Asynchron aus demselben Grund wie [`open_map`].
+///
+/// # Fehler
+///
+/// [`Error::Window`], wenn sich das Fenster nicht öffnen lässt.
+#[tauri::command]
+pub async fn open_shop(app: AppHandle) -> Result<()> {
+    popout::open(&app, popout::SHOP)
 }

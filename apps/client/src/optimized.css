@@ -178,3 +178,11 @@ html[data-optimized-rendering] .hatch-next {
 html[data-optimized-rendering] .hatch-color::after {
   animation: none;
 }
+
+/* Die Update-Karte: Fläche kommt von `.panel`. Rakete, Rauch, Sterne, Glanz und Streifen bleiben stehen. */
+html[data-optimized-rendering] .update-card *,
+html[data-optimized-rendering] :is(.update-install, .update-progress) *,
+html[data-optimized-rendering] :is(.update-card, .update-progress)::before,
+html[data-optimized-rendering] .update-install::after {
+  animation: none;
+}

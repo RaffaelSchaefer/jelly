@@ -127,10 +127,6 @@ func listAdminErrors() []knownError {
 			http.StatusBadRequest, "invalid_area",
 			"Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art.",
 		}},
-		{store.ErrLevelsLocked, problem{
-			http.StatusBadRequest, codeInvalidRules,
-			"xp_per_level lässt sich nach dem Start der LAN nicht mehr ändern.",
-		}},
 		{rules.ErrInvalidRules, problem{
 			http.StatusBadRequest, codeInvalidRules, "Diese Regeln sind ungültig.",
 		}},
@@ -193,6 +189,19 @@ func listCosmeticErrors() []knownError {
 		{store.ErrCosmeticLocked, problem{
 			http.StatusConflict, "cosmetic_locked",
 			"Dieses Cosmetic ist noch nicht freigeschaltet.",
+		}},
+		{rules.ErrNotForSale, problem{
+			http.StatusConflict, "not_for_sale", "Dieses Cosmetic steht nicht im Shop.",
+		}},
+		{rules.ErrAlreadyOwned, problem{
+			http.StatusConflict, "already_owned", "Dieses Cosmetic hast du schon.",
+		}},
+		{rules.ErrNotEnoughCoins, problem{
+			http.StatusConflict, "not_enough_coins",
+			"Dir fehlen Münzen für dieses Cosmetic.",
+		}},
+		{store.ErrPurchaseNotFound, problem{
+			http.StatusNotFound, "purchase_not_found", "Dieses Cosmetic hast du nicht gekauft.",
 		}},
 	}
 }
@@ -334,6 +343,14 @@ func problemInvalidRule(limit rules.RuleLimit) problem {
 	}
 }
 
+// problemLockedRule names the rule that the orga can no longer change after the LAN has started.
+func problemLockedRule(rule string) problem {
+	return problem{
+		http.StatusBadRequest, codeInvalidRules,
+		fmt.Sprintf("%s lässt sich nach dem Start der LAN nicht mehr ändern.", rule),
+	}
+}
+
 // formatRuleValue writes a value as German text, without an exponent for large numbers.
 func formatRuleValue(value float64) string {
 	return strings.ReplaceAll(strconv.FormatFloat(value, 'f', -1, 64), ".", ",")
@@ -397,6 +414,9 @@ func (server *apiServer) writeError(
 func (server *apiServer) translateError(ctx context.Context, route string, err error) problem {
 	if invalidRule, ok := errors.AsType[rules.InvalidRuleError](err); ok {
 		return problemInvalidRule(invalidRule.Limit)
+	}
+	if lockedRule, ok := errors.AsType[store.LockedRuleError](err); ok {
+		return problemLockedRule(lockedRule.Rule)
 	}
 	for _, known := range listKnownErrors() {
 		if errors.Is(err, known.target) {

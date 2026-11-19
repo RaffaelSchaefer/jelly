@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.19.0**
+Aktuelle Version: **1.30.0**
 
 ## Versionen
 
@@ -27,6 +27,17 @@ Aktuelle Version: **1.19.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.30.0  | Neues Cosmetic `kamina-glasses` (Kamina-Brille) im Shop, dauerhaft für 3 Münzen im Platz `face` und einfärbbar (`colorable`). „Ausverkauft“ verlangt damit 19 Shop-Cosmetics |
+| 1.29.0  | Mehr einfärbbare Cosmetics (`colorable`): `headset`, `pixel-glasses`, `party-hat`, `crown`, `ogre-ears`, `goose`, `long-schnoerbi`, `bandana`, `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings` und `bat-wings` nehmen wie `beanie` und `hood` eine Farbe aus `cosmetic_colors`. Ohne `color` sieht ein Cosmetic aus wie modelliert |
+| 1.28.0  | Erste Cosmetics im Platz `body`: `bandana` (Halstuch) und `bell-collar` (Glöckchen-Halsband) für 2 Münzen, `knit-scarf` (Strickschal) und `snail-shell` (Lag-Schneckenhaus) für 3, `mini-backpack` (Mini-Rucksack) für 4 und `fairy-wings` (Feenflügel) für 6, alle dauerhaft im Shop. `bat-wings` (Fledermausflügel) gibt es wie den Party-Hut über Event-Codes. Dazu `chicken` (Kuschelhuhn, `hands`) für 4 Münzen, `piercings` (Piercings, `face`) und `ogre-ears` (Oger-Ohren, `head`) für je 3. „Ausverkauft“ verlangt damit 18 Shop-Cosmetics |
+| 1.27.0  | Neues Cosmetic `goose` (Kuschelgans) im Shop, dauerhaft für 4 Münzen im Platz `hands`. „Ausverkauft“ verlangt damit 9 Shop-Cosmetics |
+| 1.26.0  | Neues Cosmetic `long-schnoerbi` (Long Schnörbi) im Shop, dauerhaft für 4 Münzen im Platz `hands`. „Ausverkauft“ verlangt damit 8 Shop-Cosmetics |
+| 1.25.0  | Neues Cosmetic `schnoerbi-mask` (Schnörbi-Maske) im Shop, dauerhaft für 3 Münzen im Platz `face`. „Ausverkauft“ verlangt damit 7 Shop-Cosmetics |
+| 1.24.0  | Neue Farbe `lime` (Hellgrün) in `colors` des Katalogs, für alle frei wählbar |
+| 1.23.0  | Neues Cosmetic `sprout` (Spross) im Shop, dauerhaft für 2 Münzen. „Ausverkauft“ verlangt damit 6 Shop-Cosmetics |
+| 1.22.0  | Stream: Ein Cursor vor dem neuesten Ereignis, wie nach einem Neustart des Servers, bekommt `reset`, statt still zu warten. Die Bühne liest ihren Zustand bei jedem (Wieder-)Öffnen des Streams neu |
+| 1.21.0  | Brechend: Bewegung in Metern — `walk_speed` zählt in m/s (Standard 0,4), `near_distance` in m (Standard 1,8). Der Planer rechnet in der echten Halle, Abstände wachsen mit `jelly_width`. Gespeicherte Regeln werden umgerechnet. Gründe und Umrechnung stehen unter [Brechende Änderungen](#brechende-änderungen) |
+| 1.20.0  | Punkteshop: Regel `coins_per_level`, `coins` im Stand, `unlock: shop` mit `price` im Katalog statt Freischaltung per Level, `POST /purchases`, Ereignisse `coins.gained` und `cosmetic.purchased`, Achievements `first-purchase` und `shopaholic`. Admin: Münzen schenken und Käufe zurücknehmen, Bots-Aktion `purchase` |
 | 1.19.0  | Neue Emotes `angry`, `sad` und `shy` im Katalog |
 | 1.18.0  | Neue Emotes `shrug`, `point` und `think` im Katalog |
 | 1.17.0  | Meter: Regeln `room_width`, `room_depth` und `jelly_width`, `room` und `areas` in `GET /stage` nennen dazu `width_m`, `depth_m`, `jelly_m` und `x_m`, `y_m`, `width_m`, `height_m`. Kartendatei Version 2 mit Zonen in Metern. Positionen bleiben Prozent |
@@ -55,6 +66,7 @@ dem Client abgestimmt. Ab der ersten LAN bekommt jede brechende Änderung einen 
 
 | Version | Änderung | Begründung |
 | ------- | -------- | ---------- |
+| 1.21.0  | `walk_speed` und `near_distance` zählen in Metern statt Jelly-Einheiten. Die Karte der App zeichnet die Reichweite bis zur Anpassung zu klein | Die Bewegung folgt der echten Halle, siehe #34. Da Positionen und die Halle schon seit 1.17.0 in Metern zählen, ziehen die Bewegungsregeln nach; gespeicherte Werte wandert die Migration mit `jelly_width` um |
 | 1.14.0  | `trip.until` und `until` bei `highlight` heißen `ends_at`, `follow_player_id` und `follow_until` werden `follow {player_id, ends_at}`, `moves[].level` heißt `stack_level` | Ein Name je Sache, das Level eines Wegs war leicht mit dem XP-Level zu verwechseln |
 | 1.14.0  | `trip` und `last_seen_at` fehlen in `players` von `GET /stage` | Ziel und Art stehen im Weg, die letzte Aktivität war nur Zustand des Servers |
 | 1.14.0  | `invalid_body` und `invalid_input` werden `invalid_request`, `unknown_action` wird `unknown_report_kind`, `partner_self` wird `invalid_partner`, `invalid_event_code` antwortet 403 | Codes sollen sagen, was falsch ist, falsche Codes antworten einheitlich |
@@ -89,7 +101,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 415    | `invalid_request`                            | `Content-Type` ist nicht JSON             |
 | 422    | `invalid_request`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
 | 400    | `invalid_request`                         | Admin-Angaben, `since`, `cursor` oder `topics` sind ungültig |
-| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, oder `xp_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
+| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, oder `xp_per_level` oder `coins_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
 | 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
@@ -111,10 +123,12 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 404    | `gathering_not_found`                     | Gerade läuft kein Essens-Event und keine Siegerehrung |
 | 404    | `stack_not_found`, `partner_emote_not_found` | Stapel oder Aufforderung gibt es nicht mehr |
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
+| 404    | `purchase_not_found`                      | Dieses Cosmetic hat der Spieler nicht gekauft |
 | 409    | `name_taken`, `slug_taken`, `lan_overlap`, `lan_has_players` | Steht im Konflikt mit Vorhandenem |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
 | 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |
+| 409    | `not_for_sale`, `already_owned`, `not_enough_coins` | Nicht im Shop, schon vorhanden oder zu wenige Münzen |
 | 409    | `event_code_redeemed`, `event_code_exists` | Event-Code schon eingelöst oder vorhanden |
 | 409    | `emote_cooldown`, `report_cooldown`       | Zu früh wiederholt                        |
 | 409    | `report_limit`      | Limit erreicht, später erneut versuchen   |
@@ -128,11 +142,12 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 
 `GET /lans/current` liefert in `rules` die Regeln der laufenden LAN, sonst der nächsten, sonst die Standardwerte. Nur die
 Betriebsgrenzen `max_players`, `max_streams` und `max_player_streams` fehlen. Die App zeigt damit an, was der Server
-entscheiden wird, zum Beispiel die Reichweite `near_distance` in Jelly-Einheiten oder den Fortschritt zum nächsten Level mit
+entscheiden wird, zum Beispiel die Reichweite `near_distance` in Metern oder den Fortschritt zum nächsten Level mit
 `xp_per_level`. Geprüft wird trotzdem immer auf dem Server. Ändert die Orga etwas, kommt `rules.changed`.
 
 `xp_per_level` gilt linear für jedes Level, Standard 100, und lässt sich nur bis zum Start der LAN ändern. Sonst würden
-Level und Cosmetics für alle springen.
+Level und Cosmetics für alle springen. `coins_per_level` zahlt bei jedem Level-Aufstieg Münzen für den Shop, Standard 1,
+und ist ebenfalls nach dem Start der LAN fest. Ein Kauf senkt kein Level.
 
 ### Stand eines Spielers
 
@@ -150,6 +165,7 @@ Level und Cosmetics für alle springen.
   "lan": { "slug": "ucb-2026", "name": "UCB LAN 2026", "active": true },
   "xp": 3,
   "level": 1,
+  "coins": 3,
   "total_xp": 3,
   "next_poke_at": 1795000900000,
   "reports": { "food_ready_at": 0, "drink_ready_at": 0, "reports_left": 8 },
@@ -166,11 +182,13 @@ Level und Cosmetics für alle springen.
 
 - `lan` ist die jüngste LAN des Kontos, nicht unbedingt die laufende. Ob eine läuft, sagt
   `GET /lans/current`. `xp` und `level` gelten für diese LAN, `total_xp` über alle LANs.
+- `coins` sind die Münzen für den Shop. Jeder Level-Aufstieg zahlt `coins_per_level`, sie gelten
+  je LAN und sind außerhalb einer aktiven LAN `0`.
 - `next_poke_at`, `reports`, `sign`, `trip` und `follow` sind außerhalb einer aktiven LAN `null`.
 - `server_time` gilt für Countdowns statt der Uhr des Geräts. `food_ready_at` und `drink_ready_at`
   sind 0, wenn noch nichts gemeldet wurde.
 - `cosmetics` sind die Schlüssel, die der Spieler tragen darf. Wie man einen Eintrag bekommt, sagt `unlock` im Katalog:
-  `level`, `event` (Event-Code), `award` (Preis der Orga) oder `none`. Ein Admin kann jeden Eintrag vergeben.
+  `shop` (mit `price`, gekauft mit `POST /purchases`), `event` (Event-Code), `award` (Preis der Orga) oder `none`. Ein Admin kann jeden Eintrag vergeben.
 - Rekord-Achievements wie Marathon tragen zusätzlich `best` und `record_unit`.
 
 ## Anmeldung
@@ -218,6 +236,7 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `GET /players/me`         |                                            | Stand                          |
 | `PATCH /players/me`       | `{"name","color"}`, alle optional          | Stand                          |
 | `PUT /cosmetics/equipped` | `{"slot","key","color"}`, ohne `key` leert den Platz | Stand                |
+| `POST /purchases`         | `{"key"}` aus dem Katalog mit `unlock: shop` | `{"cosmetic_key","coins_spent","me"}` |
 | `GET /players`            | `?cursor=&limit=`                          | `{"items","next_cursor"}`      |
 | `GET /players/{id}`       |                                            | Profil: XP, Achievements, Cosmetics |
 | `POST /presence`          |                                            | Stand                          |
@@ -273,8 +292,7 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 - Nach dem Bestätigen folgt `partner.emote` mit B als `player_id` und A als `partner_id`. Ist einer von beiden
   ausgeblendet, gibt es kein Ereignis.
 - Nur wer nah genug steht, kann auffordern und annehmen: In beiden Momenten dürfen die Jellies höchstens
-  `near_distance` auseinander sein, sonst folgt `409 too_far`. Eine Aufforderung bleibt danach offen. Die Angabe zählt in Jelly-Einheiten. Ein Jelly ist etwa 1,7 breit, die Halle 21
-  breit und 40 tief. Ein Jelly, das gerade nicht auf der Bühne steht, ist immer zu weit weg.
+  `near_distance` auseinander sein, sonst folgt `409 too_far`. Eine Aufforderung bleibt danach offen. Die Angabe zählt in Metern der echten Halle. Ein Jelly, das gerade nicht auf der Bühne steht, ist immer zu weit weg.
 
 ### Ausflug und Folgen
 
@@ -382,13 +400,13 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
 - `kind` nennt den Grund: `wander` (bummelt um seinen Platz oder geht dorthin zurück), `follow`, `trip`, `snack`, `stack`,
   `food` und `ceremony`.
   Weitere Werte können dazukommen und sind wie `wander` zu behandeln.
-- Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Jelly-Einheiten pro Sekunde. Ein Jelly ist etwa
-  1,7 breit, die Halle 21 breit und 40 tief.
+- Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Metern pro Sekunde. Der Server plant in der echten
+  Halle (`room_width` × `room_depth`), Abstände zwischen Jellies wachsen mit `jelly_width`.
 - Nach Essen und Trinken läuft das Jelly für `snack_run_seconds` zur nächsten Zone der Art `queue` und danach zurück. War
   der Weg lang, wartet es ab seiner Ankunft noch kurz. Jellies füllen die ganze Fläche der Zone. Ist sie voll, geht das
   Jelly zur nächsten mit Platz. Sind alle voll, stellt es sich nah dazu. Ohne solche Zonen bleibt es, wo es ist.
-  Plätze liegen etwa 1,8 Jelly-Einheiten auseinander, eine Zone fasst also so viele Jellies, wie in diesem Raster
-  hineinpassen. Beispiel: 45 % × 5 % der Bühne sind etwa 9,5 × 2 Einheiten, das sind 5 Plätze in einer Reihe. Für ein
+  Plätze liegen etwa eine Jelly-Breite auseinander (bei `jelly_width` 0,5 etwa 0,53 m), eine Zone fasst also so viele
+  Jellies, wie in diesem Raster hineinpassen. Beispiel: Eine Theke von 4 × 1 m fasst etwa 7 × 1 Plätze. Für ein
   Essens-Event mit allen braucht die Theke deshalb tiefere oder mehrere Zonen.
 - Wo ein Jelly läuft, bestimmt nur der Server. Er merkt sich die Positionen alle 30 Sekunden. Nach einem Neustart macht
   jedes Jelly dort weiter, ein neuer `move` kann also um bis zu 30 Sekunden Weg springen. Ausflug, Folgen, Stapel und
@@ -405,7 +423,8 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 - **Start:** erst `GET /players/me` oder `GET /stage` lesen, dann den Stream mit `?since=<last_event_id>` öffnen.
   So geht nichts verloren. Ohne Angabe beginnt er beim neuesten Ereignis.
 - **Wiederverbinden:** `Last-Event-ID` hat Vorrang vor `since`. Spieler können höchstens 1000 Ereignisse
-  zurückgehen. Liegt die ID weiter zurück, kommt zuerst `reset`, und die App liest ihren Stand neu.
+  zurückgehen. Liegt die ID weiter zurück oder vor dem neuesten Ereignis, etwa nach einem Neustart des
+  Servers, kommt zuerst `reset`, und die App liest ihren Stand neu.
 - **Grenzen:** Eine App hält einen Stream offen. Je LAN gelten `max_player_streams` je Spieler und
   `max_streams` für alle Spieler zusammen, darüber folgt `429 rate_limited`. Jeder Versuch zählt zudem
   zum Limit von 300 Anfragen pro Minute. Die Bühne zählt nicht mit.
@@ -417,6 +436,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `player.active`, `player.updated`                 | Jelly kam dazu oder wurde geändert |
 | `player.hidden`, `player.removed`                 | Jelly ist weg                      |
 | `xp.gained`, `level.up`                           | Fortschritt, `xp.gained` mit `{"amount","source"}` |
+| `coins.gained`, `cosmetic.purchased`              | Shop: Münzen bekommen, etwas gekauft |
 | `achievement.earned`, `award.given`               | Auszeichnung                       |
 | `emote`, `partner.emote`                          | Emote, Partner-Emote mit `partner_id` |
 | `sign.changed`, `follow.changed`, `trip.changed`  | Schild oder Standort               |
@@ -434,6 +454,8 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `player.removed`                                  | `null`      | `{"player_id"}`                   |
 | `xp.gained`                                       | Spieler     | `{"amount","source"}`             |
 | `level.up`                                        | Spieler     | `{"level"}`                       |
+| `coins.gained`                                    | Spieler     | `{"amount","source"}` mit `source` `level`, `admin` oder `refund` |
+| `cosmetic.purchased`                              | Spieler     | `{"key","price"}`                 |
 | `achievement.earned`, `emote`                     | Spieler     | `{"key"}`                         |
 | `award.given`                                     | Spieler     | `{"title"}`, Freitext vom Admin   |
 | `partner.emote`                                   | B           | `{"key","partner_id"}`, `partner_id` ist A |
@@ -449,7 +471,8 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 Ausflug, Folgen, Stapel und Gathering melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
 Sekunde. Eine App braucht dafür keine eigenen Timer. Das Bild bleibt schon vorher überall gleich, weil alle Wege vom Server kommen.
 
-`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`.
+`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`. Ein Level-Aufstieg zahlt
+Münzen getrennt vom `level.up` per `coins.gained`, ein Kauf nimmt sie ohne Ereignis.
 
 ## Admin
 
@@ -465,6 +488,8 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/reset-name`        |                                           |
 | `POST /admin/api/players/{id}/recovery-code`     | `{"valid_seconds"}`, ohne Angabe 24 Stunden, höchstens 30 Tage. Antwort: `{"code","expires_at"}`, nur dieses eine Mal |
 | `POST /admin/api/players/{id}/xp`                | `{"xp"}` von 1 bis 10000 in der laufenden LAN, wie verdient, mit Ereignis `xp.gained`. XP werden nie abgezogen. Ohne Teilnahme `409 not_joined` |
+| `POST /admin/api/players/{id}/coins`             | `{"coins"}` von 1 bis 1000 in der laufenden LAN, mit Ereignis `coins.gained` und `source: admin`. Ohne Teilnahme `409 not_joined` |
+| `DELETE /admin/api/players/{id}/purchases/{purchase}` | Nimmt genau diesen Kauf zurück (die `id` aus der Spielerliste), erstattet seinen Preis per `coins.gained` mit `source: refund` und legt das Cosmetic ab, falls getragen. Nicht gekauft: `404 purchase_not_found` |
 | `POST /admin/api/players/{id}/achievements`      | `{"key"}` aus dem Katalog, auch geheime, für die laufende LAN wie verdient. Ein vorhandenes bleibt, wie es ist |
 | `GET /admin/api/achievements`                    | Alle Achievements mit `key`, `title`, `description`, auch die geheimen |
 | `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |
@@ -484,7 +509,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
 | `GET`, `POST /admin/api/lans/{id}/bots`          | Antwort: `{"bots","auto_count"}`. `POST` mit `{"count"}` legt bis zu 100 Bots an, siehe unten |
 | `PUT /admin/api/bots/auto`                       | `{"count"}`: so viele Bots der laufenden LAN spielen selbst, `0` stoppt sie |
-| `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp` oder `redeem` mit `"code"` |
+| `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp`, `redeem` mit `"code"` oder `purchase` |
 | `DELETE /admin/api/bots`                         | Löscht alle Bots mit allem, was sie getan haben, und stoppt die automatischen |
 | `GET /admin/api/lans/{id}/gathering`             | Antwort: `{"gathering"}`, das laufende Gathering oder `null` |
 | `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben |
@@ -507,7 +532,8 @@ lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Serv
 
 - **Von Hand:** `POST /admin/api/bots/{id}/actions` lässt einen Bot eine Aktion ausführen. Emote, Schild, Ziel eines
   Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf einen laufenden Stapel in der Nähe oder
-  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler.
+  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler,
+  und `purchase` kauft ein bezahlbares Cosmetic, das der Bot noch nicht hat.
 - **Automatisch:** Die ersten `auto_count` Bots der laufenden LAN handeln im Takt der Bewegung, jeder etwa alle 20
   Sekunden. Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
   loslaufen.
@@ -517,14 +543,15 @@ lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Serv
 - **`PATCH` für einzelne Regeln:** `{"trip_seconds":60}` ändert nur diesen Wert, alles andere bleibt. Das ist der Normalfall.
 - **`PUT` ersetzt alle Regeln:** Jedes Feld, das im Körper fehlt, fällt auf seinen Standardwert zurück, auch wenn es vorher
   anders eingestellt war. `PUT` mit `{"trip_seconds":60}` setzt also alle anderen Regeln zurück.
-- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. `xp_per_level` lässt sich nach dem Start der
-  LAN mit keinem von beiden ändern.
+- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. `xp_per_level` und `coins_per_level`
+  lassen sich nach dem Start der LAN mit keinem von beiden ändern.
 
 Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, höchstens 30 Tage:
 
 | Regel                    | Erlaubt          | Bedeutung                                                   |
 | ------------------------ | ---------------- | ----------------------------------------------------------- |
 | `xp_per_level`           | 1 bis 1000000    | XP pro Level, nach dem Start der LAN fest                   |
+| `coins_per_level`        | 0 bis 100        | Münzen pro Level-Aufstieg, nach dem Start der LAN fest, 0 schaltet den Shop-Werbelohn ab |
 | `poke_interval`          | 1 bis 2592000    | Mindestzeit zwischen zwei Stupsern, die XP geben            |
 | `poke_xp`                | 0 bis 10000      | XP pro Stupser                                              |
 | `poke_max_ticks`         | 1 bis 1000       | Abstände, die ein Stupser nachholt, 1 heißt kein Nachholen  |
@@ -541,8 +568,8 @@ Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, 
 | `snack_run_seconds`      | 1 bis 2592000    | So lange bleibt ein Jelly nach einer Meldung an der Theke   |
 | `trip_seconds`           | 1 bis 2592000    | So lange bleibt ein Jelly am Ziel eines Ausflugs            |
 | `follow_seconds`         | 1 bis 2592000    | So lange folgt ein Jelly einem anderen                      |
-| `near_distance`          | 0,01 bis 1000    | Abstand für „nebeneinander“ in Jelly-Einheiten              |
-| `walk_speed`             | 0,01 bis 100     | Jelly-Einheiten pro Sekunde                                 |
+| `near_distance`          | 0,01 bis 1000    | Abstand für „nebeneinander“ in Metern                       |
+| `walk_speed`             | 0,01 bis 100     | Meter pro Sekunde                                           |
 | `stack_seconds`          | 1 bis 2592000    | So lange steht ein Stapel                                   |
 | `stack_max_members`      | 0 bis 1000       | Jellies pro Stapel, 0 heißt ohne Grenze                     |
 | `highlight_seconds`      | 1 bis 2592000    | So lange leuchtet ein hervorgehobenes Jelly                 |

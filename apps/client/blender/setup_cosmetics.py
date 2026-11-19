@@ -25,6 +25,21 @@ COSMETICS = [
     ("hood", "Kopf"),
     ("crown", "Kopf"),
     ("golden-cup", "Hände"),
+    ("sprout", "Kopf"),
+    ("schnoerbi-mask", "Gesicht"),
+    ("long-schnoerbi", "Hände"),
+    ("goose", "Hände"),
+    ("bandana", "Körper"),
+    ("bell-collar", "Körper"),
+    ("knit-scarf", "Körper"),
+    ("snail-shell", "Körper"),
+    ("mini-backpack", "Körper"),
+    ("fairy-wings", "Körper"),
+    ("bat-wings", "Körper"),
+    ("chicken", "Hände"),
+    ("piercings", "Gesicht"),
+    ("ogre-ears", "Kopf"),
+    ("kamina-glasses", "Gesicht"),
 ]
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"
@@ -62,6 +77,7 @@ def export(collections):
             use_selection=True,
             export_apply=True,  # bakes modifiers (mirror, subdivision, ...)
             export_yup=True,  # back to the app's Y-up axes
+            export_extras=True,  # custom properties, e.g. a material's "glow" (see cosmetic.ts)
             export_animations=False,
             export_cameras=False,
             export_lights=False,

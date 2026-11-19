@@ -82,6 +82,29 @@ const CLOSE_LEAD_MS = 350;
 /** Nur so kurz nach dem Klick auf die Karte heißt ein verstecktes Pet: Die Karte ist offen. */
 const MAP_HIDE_MS = 3000;
 
+/**
+ * Ein Klangthema, das Geräusche selbst spielt, statt die MP3s. `true` heißt: erledigt. Nur der Shop
+ * setzt eins (`shop/sound/useShopSound.ts`), Pet und Karte bleiben bei `null`.
+ */
+let theme: ((name: UiSound) => boolean) | null = null;
+
+/**
+ * Setzt das Klangthema des Fensters oder nimmt es mit `null` zurück. Es greift erst, wenn die
+ * Geräusche an sind. Spielt es ein Geräusch nicht, klingt wie bisher das MP3.
+ */
+export function setUiSoundTheme(next: ((name: UiSound) => boolean) | null) {
+  theme = next;
+}
+
+/** Ob das Klangthema das Geräusch übernimmt. Fehler darin bleiben hier: Ton darf nie stören. */
+function themed(name: UiSound) {
+  try {
+    return theme?.(name) ?? false;
+  } catch {
+    return false;
+  }
+}
+
 /** Liest eine Data-URL ohne `fetch`, das die CSP verbietet. */
 function decodeDataUrl(url: string) {
   const base64 = url.slice(url.indexOf(",") + 1);
@@ -143,6 +166,7 @@ function createUiSounds() {
      */
     play(name: UiSound) {
       if (!enabled) return false;
+      if (themed(name)) return true;
       try {
         audio ??= openAudio();
         const { context, output } = audio;

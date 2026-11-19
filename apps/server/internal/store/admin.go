@@ -13,9 +13,19 @@ import (
 // updatePlayerNameSQL is shared by players renaming themselves and admins resetting a name.
 const updatePlayerNameSQL = `UPDATE players SET name = ?, name_key = ? WHERE id = ?`
 
-const (
-	maxPlayerListRows = 200
-)
+// maxPlayerListRows keeps one page small enough for one query of its purchases.
+const maxPlayerListRows = 200
+
+// PlayerPurchase is a purchase as the admin page shows it. Its ID picks the exact row, because
+// a player can own the same LAN cosmetic once per LAN.
+type PlayerPurchase struct {
+	ID          int64  `json:"id"`
+	CosmeticKey string `json:"cosmetic_key"`
+	Price       int    `json:"price"`
+	// LANID is the LAN of a purchase of a LAN cosmetic, and null for a permanent one.
+	LANID     *int64 `json:"lan_id"`
+	CreatedAt int64  `json:"created_at"`
+}
 
 // PlayerSummary is a player as the admin page shows it.
 type PlayerSummary struct {
@@ -27,6 +37,9 @@ type PlayerSummary struct {
 	TotalXP    int    `json:"total_xp"`
 	LANs       int    `json:"lans"`
 	LastSeenAt int64  `json:"last_seen_at"`
+	// Coins are the balance in the newest LAN of the account, 0 without one.
+	Coins     int              `json:"coins"`
+	Purchases []PlayerPurchase `json:"purchases"`
 }
 
 // NewAward describes a prize to give.
@@ -36,18 +49,43 @@ type NewAward struct {
 	CosmeticKey *string `json:"cosmetic_key"`
 }
 
-// ListPlayers returns players whose name contains `search`, newest first.
+// ListPlayers returns players whose name contains `search`, newest first. Balances and purchases
+// come from one read snapshot, so a purchase between the two queries cannot mix newer ownership
+// with an older balance.
 func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSummary, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
+	transaction, err := store.readDB.BeginTx(queryCtx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin player list: %w", err)
+	}
+	defer func() { _ = transaction.Rollback() }()
+	players, err := searchPlayers(queryCtx, transaction, search)
+	if err != nil {
+		return nil, err
+	}
+	err = loadPurchasesOfPlayers(queryCtx, transaction, players)
+	if err != nil {
+		return nil, err
+	}
+	err = transaction.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("commit player list: %w", err)
+	}
+	return players, nil
+}
+
+// searchPlayers reads the player rows whose name contains `search`, newest first.
+func searchPlayers(ctx context.Context, database querier, search string) ([]PlayerSummary, error) {
 	escaper := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	pattern := "%" + escaper.Replace(rules.BuildNameKey(strings.TrimSpace(search))) + "%"
 	const searchPlayersSQL = `SELECT p.id, p.name, p.color, p.is_bot, p.hidden_at,
-			COALESCE(SUM(e.xp), 0), COUNT(e.lan_id), COALESCE(MAX(e.last_seen_at), 0)
+			COALESCE(SUM(e.xp), 0), COUNT(e.lan_id), COALESCE(MAX(e.last_seen_at), 0),
+			COALESCE((SELECT e2.coins FROM lan_entries e2 JOIN lans l2 ON l2.id = e2.lan_id
+				WHERE e2.player_id = p.id ORDER BY l2.starts_at DESC LIMIT 1), 0)
 		FROM players p LEFT JOIN lan_entries e ON e.player_id = p.id
 		WHERE p.name_key LIKE ? ESCAPE '\' GROUP BY p.id ORDER BY p.id DESC LIMIT ?`
-	rows, err := store.readDB.QueryContext(queryCtx, searchPlayersSQL,
-		pattern, maxPlayerListRows)
+	rows, err := database.QueryContext(ctx, searchPlayersSQL, pattern, maxPlayerListRows)
 	if err != nil {
 		return nil, fmt.Errorf("list players: %w", err)
 	}
@@ -58,17 +96,67 @@ func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSum
 		var hiddenAt sql.NullInt64
 		err = rows.Scan(&player.ID, &player.Name, &player.Color, &player.IsBot, &hiddenAt,
 			&player.TotalXP,
-			&player.LANs, &player.LastSeenAt)
+			&player.LANs, &player.LastSeenAt, &player.Coins)
 		if err != nil {
 			return nil, fmt.Errorf("read player: %w", err)
 		}
 		player.Hidden = hiddenAt.Valid
 		players = append(players, player)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list players: %w", err)
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("list players: %w", rowsErr)
 	}
 	return players, nil
+}
+
+// loadPurchasesOfPlayers fills the purchases of every listed player with one query.
+func loadPurchasesOfPlayers(
+	ctx context.Context, database querier, players []PlayerSummary,
+) error {
+	if len(players) == 0 {
+		return nil
+	}
+	places := strings.Repeat("?, ", len(players)-1) + "?"
+	ids := make([]any, 0, len(players))
+	byPlayer := make(map[int64][]PlayerPurchase, len(players))
+	for _, player := range players {
+		ids = append(ids, player.ID)
+	}
+	// selectPlayerPurchasesSQL frames the places of the IN list, which is as long as the page of
+	// players.
+	selectPlayerPurchasesSQL := `SELECT id, player_id, cosmetic_key, price, lan_id, created_at
+		FROM purchases WHERE player_id IN (` + places + `) ORDER BY created_at`
+	rows, err := database.QueryContext(ctx, selectPlayerPurchasesSQL, ids...)
+	if err != nil {
+		return fmt.Errorf("load purchases: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var purchase PlayerPurchase
+		var playerID int64
+		var lanID sql.NullInt64
+		err = rows.Scan(&purchase.ID, &playerID, &purchase.CosmeticKey, &purchase.Price, &lanID,
+			&purchase.CreatedAt)
+		if err != nil {
+			return fmt.Errorf("read purchase: %w", err)
+		}
+		if lanID.Valid {
+			lan := lanID.Int64
+			purchase.LANID = &lan
+		}
+		byPlayer[playerID] = append(byPlayer[playerID], purchase)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("load purchases: %w", err)
+	}
+	for index, player := range players {
+		purchases := byPlayer[player.ID]
+		if purchases == nil {
+			purchases = []PlayerPurchase{}
+		}
+		players[index].Purchases = purchases
+	}
+	return nil
 }
 
 // HidePlayer takes a jelly off the stage. The player keeps the account and XP.

@@ -27,6 +27,7 @@ import {
   type Object3D,
   type WebGLRenderer,
 } from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import type { JellyPalette } from "./colors.ts";
 
@@ -48,14 +49,27 @@ const CLARITY = 0.3;
 
 /**
  * Alles, was das Jelly erreichen kann: weit ausgestreckte Hände, der wippende Kopf, die Outline.
- * Alle Jellies teilen sich diesen Kasten.
+ * Dahinter in derselben Geometrie derselbe Kasten ohne die Hände: Meist sind sie eingezogen, und
+ * jedes Pixel des Kastens kostet einen Raymarch, auch wo nur Hintergrund ist. Alle Jellies teilen
+ * sich diese Geometrie.
  */
-const BOUNDS = new BoxGeometry(3.3, 2.7, 1.9).translate(0, 0.16, 0.13);
+const BOUNDS = mergeGeometries([
+  new BoxGeometry(3.3, 2.7, 1.9).translate(0, 0.16, 0.13),
+  new BoxGeometry(2.0, 2.7, 1.7).translate(0, 0.16, 0.03),
+])!;
+
+/** Indizes eines Kastens: sechs Seiten aus je zwei Dreiecken. */
+const BOX_INDICES = 36;
+
 /**
- * Derselbe Kasten ohne die Hände. Meist sind sie eingezogen, und jedes Pixel des Kastens kostet
- * einen Raymarch, auch wo nur Hintergrund ist.
+ * Welcher Teil von {@link BOUNDS} gezeichnet wird, mit oder ohne Hände. Der Ausschnitt gilt beim
+ * Zeichnen selbst, so stimmt er schon im Bild, in dem die Hände herauskommen. Eine andere Geometrie
+ * in `onBeforeRender` sähe der Renderer erst im nächsten Bild.
  */
-const BOUNDS_WITHOUT_HANDS = new BoxGeometry(2.0, 2.7, 1.7).translate(0, 0.16, 0.03);
+export const BODY_DRAW_RANGES = {
+  withHands: { start: 0, count: BOX_INDICES },
+  withoutHands: { start: BOX_INDICES, count: BOX_INDICES },
+} as const;
 
 /** Die Teile, deren Lage der Shader pro Bild übernimmt. Sie liegen neben dem Körper im Jelly. */
 export interface BodyParts {
@@ -159,10 +173,16 @@ export function createJellyBody(
   uniforms.uGlow.value.set(palette.glow);
   uniforms.uInk.value.set(palette.outline);
   const material = createJellyMaterial(uniforms, quality);
+  // Eine Szene mit eigenem Licht darf den Körper beleuchten, siehe `lightMaterial` in sceneLight.ts.
+  material.userData.lightable = true;
   const mesh = new Mesh(BOUNDS, material);
   const drawingBuffer = new Vector2();
   mesh.onBeforeRender = (renderer, _scene, camera) => {
-    mesh.geometry = parts.hands.some((hand) => hand.visible) ? BOUNDS : BOUNDS_WITHOUT_HANDS;
+    const { start, count } = parts.hands.some((hand) => hand.visible)
+      ? BODY_DRAW_RANGES.withHands
+      : BODY_DRAW_RANGES.withoutHands;
+    // Gleich danach zeichnet der Renderer genau diesen Ausschnitt der geteilten Geometrie.
+    BOUNDS.setDrawRange(start, count);
     updateUniforms({ mesh, uniforms, renderer, camera, parts, drawingBuffer });
     material.uniformsNeedUpdate = true;
   };

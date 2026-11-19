@@ -7,13 +7,10 @@
 import { useEffect, useState } from "react";
 
 import {
-  levelProgress,
-  nextLevelCosmetic,
+  coinLabel,
   pokeWaitMinutes,
   REPORTS,
   reportStatus,
-  unlockLabel,
-  type Catalog,
   type Me,
   type Report,
   type Rules,
@@ -88,15 +85,13 @@ function ReportSection({
 /** Der Reiter „Übersicht“. */
 export default function OverviewTab({
   me,
-  catalog,
   rules,
   offset,
   disabled,
   onReport,
 }: {
   me: Me;
-  catalog: Catalog;
-  /** Die Regeln der LAN, für den Fortschritt zum nächsten Level. */
+  /** Die Regeln der LAN, für den Fortschritt zum nächsten Level und die Münzen. */
   rules: Rules;
   /** Abstand zur Uhr des Servers, siehe `useGameState`. */
   offset: number;
@@ -105,15 +100,15 @@ export default function OverviewTab({
   onReport: (action: Report) => void;
 }) {
   const now = useServerNow(offset, me);
-  const next = nextLevelCosmetic(levelProgress(me.xp, rules.xp_per_level).level, catalog);
   const locked = disabled || !me.lan?.active;
+  const perLevel = rules.coins_per_level;
   return (
     <div className="xp-sections">
       <XpProgress
         name={me.name}
         xp={me.xp}
         xpPerLevel={rules.xp_per_level}
-        next={next ? `Bei ${unlockLabel(next.id, catalog)}: ${next.name}` : undefined}
+        coins={perLevel > 0 ? `${coinLabel(me.coins)} · +${perLevel} je Level` : undefined}
       />
       <p className="panel-hint">
         {pokeHint(me, now)} Insgesamt {me.total_xp} XP auf {me.lans_attended}{" "}

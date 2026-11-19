@@ -31,20 +31,17 @@ import {
 } from "./pet";
 import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
+import UpdateNotice, { UpdateButton } from "./UpdateNotice";
+import { OS_REDUCED_MOTION, useDocumentTheme } from "./useDocumentTheme";
 import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
 import { useSchedule } from "./useSchedule";
 import { useUiSounds } from "./useUiSounds";
+import { useUpdate, type AppUpdate } from "./useUpdate";
 import { PreviewFooter, PreviewHeader, WindowTools } from "./WindowChrome";
 import "./optimized.css";
 
-/**
- * Ob das Betriebssystem reduzierte Bewegung wünscht. Gilt, solange die Einstellung im Pet nicht
- * gesetzt ist.
- */
-const OS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 /** Panels im Glas-Stil. „Aussehen“, Emotes, Schilder und der Aufstieg liegen direkt auf der Bühne. */
-type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs" | "levelup">;
+type GlassPanelId = Exclude<PanelId, "look" | "emotes" | "signs" | "levelup" | "update">;
 
 /** Überschrift des offenen Panels. Bei XP setzt sie der gewählte Reiter. */
 function panelTitle(panel: GlassPanelId, xpTab: XpTab) {
@@ -204,11 +201,11 @@ function PetDock({
 }
 
 /**
- * Fehlermeldung oder Ladehinweis unter dem Dock. Scheitert das Laden, gibt es einen Neuversuch.
- * Beim Einstieg sagt das Jelly die Fehlermeldung selbst. Für Screenreader bleibt sie hier stehen:
- * Kommt derselbe Fehler noch einmal, ändert sich die Sprechblase nicht und niemand liest sie vor.
+ * Fehlermeldung oder Ladehinweis. Scheitert das Laden, gibt es einen Neuversuch. Beim Einstieg sagt
+ * das Jelly die Fehlermeldung selbst. Für Screenreader bleibt sie hier stehen: Kommt derselbe
+ * Fehler noch einmal, ändert sich die Sprechblase nicht und niemand liest sie vor.
  */
-function Status({ game, joining }: { game: PetGame; joining: boolean }) {
+function Status({ game, joining, update }: { game: PetGame; joining: boolean; update: AppUpdate }) {
   if (joining) {
     return (
       <p className="sr-only" role="alert">
@@ -218,7 +215,12 @@ function Status({ game, joining }: { game: PetGame; joining: boolean }) {
   }
   if (game.error) {
     const retry = game.ready ? undefined : () => void game.load();
-    return <ErrorAlert message={game.error} onRetry={retry} />;
+    // Verlangt der Server eine neuere App, hilft nur das Update.
+    return (
+      <ErrorAlert message={game.error} onRetry={retry}>
+        {update.available ? <UpdateButton update={update} /> : null}
+      </ErrorAlert>
+    );
   }
   if (game.ready) return null;
   return (
@@ -228,37 +230,26 @@ function Status({ game, joining }: { game: PetGame; joining: boolean }) {
   );
 }
 
-/**
- * Legt Pet-Farbe, reduzierte Bewegung und den optimierten Modus als Attribute auf `<html>`. Das CSS
- * liest sie.
- */
-function useDocumentTheme(color: Me["color"], reducedMotion: boolean, optimized: boolean) {
-  // Das UI-Theme (Akzent, Panels, Sprechblase) folgt der Farbe des Pets.
-  useEffect(() => {
-    document.documentElement.dataset.petColor = color;
-  }, [color]);
-
-  // CSS-Animationen sehen die Einstellung und das Betriebssystem an einem Attribut.
-  useEffect(() => {
-    document.documentElement.toggleAttribute("data-reduced-motion", reducedMotion);
-  }, [reducedMotion]);
-
-  useEffect(() => {
-    document.documentElement.toggleAttribute("data-optimized-rendering", optimized);
-  }, [optimized]);
-}
-
 /** Ob das Panel seinen Inhalt über dem Dock zeigt. */
 function isGlassPanel(panel: PanelId | null): panel is GlassPanelId {
   return panel === "lan" || panel === "settings" || panel === "schedule";
 }
 
-/** Was über dem Dock steht: eine Aufforderung oder das offene Panel. Beim Einstieg nichts. */
+/**
+ * Was über dem Dock steht: eine Aufforderung, das offene Panel oder ohne Panel ein Update. Beim
+ * Einstieg nichts.
+ */
 function OverDock({
   panel,
   joining,
+  update,
   ...content
-}: Omit<PanelContentProps, "panel"> & { panel: PanelId | null; joining: boolean }) {
+}: Omit<PanelContentProps, "panel"> & {
+  panel: PanelId | null;
+  joining: boolean;
+  /** Nur, wenn die Update-Karte stehen soll ({@link showsUpdate}). */
+  update: AppUpdate | null;
+}) {
   const { game, xpTab, onClose } = content;
   if (joining || game.hatching) return null;
   // Vor dem Panel: Eine Aufforderung läuft ab, das Panel kann warten.
@@ -271,12 +262,33 @@ function OverDock({
       />
     );
   }
+  if (update) return <UpdateNotice update={update} />;
   if (!isGlassPanel(panel)) return null;
   return (
     <Panel title={panelTitle(panel, xpTab)} onClose={onClose}>
       <PanelContent panel={panel} {...content} />
     </Panel>
   );
+}
+
+/**
+ * Ob über dem Dock die Update-Karte steht: nur ohne Panel, Einstieg und Aufforderung. Bei einem
+ * Fehler steht der Knopf schon in der Meldung (`Status`).
+ */
+function showsUpdate(game: PetGame, panel: PanelId | null, joining: boolean, update: AppUpdate) {
+  const busy = joining || game.hatching || game.incoming !== null || game.error !== "";
+  return update.available !== null && panel === null && !busy;
+}
+
+/**
+ * Das Update und wo es steht. Als Karte über dem Dock bekommt die Bühne das Panel `update`, sonst
+ * das offene.
+ */
+function useUpdateCard(game: PetGame, panel: PanelId | null, joining: boolean) {
+  const update = useUpdate();
+  const card = showsUpdate(game, panel, joining, update);
+  const stagePanel: PanelId | null = card ? "update" : panel;
+  return { update, card: card ? update : null, stagePanel };
 }
 
 /** Panel und Aufstieg verdecken das Jelly: Sonst sähe man vom Partner-Emote nichts. */
@@ -310,9 +322,17 @@ function useSlowDeviceSwitch({ game, saveSettings }: PetGame, joining: boolean) 
  */
 const FIRST_PANEL: PanelId | null = !desktop && location.hash === "#levelup" ? "levelup" : null;
 
+/** Das offene Panel samt Schließen und Umschalten. */
+function usePanelState() {
+  const [panel, setPanel] = useState<PanelId | null>(FIRST_PANEL);
+  const close = useCallback(() => setPanel(null), []);
+  const toggle = (next: PanelId) => setPanel((current) => (current === next ? null : next));
+  return { panel, setPanel, close, toggle };
+}
+
 /** Die ganze App. */
 export default function App() {
-  const [panel, setPanel] = useState<PanelId | null>(FIRST_PANEL);
+  const { panel, setPanel, close, toggle } = usePanelState();
   const [xpTab, setXpTab] = useState<XpTab>("overview");
   const openLevelUp = useCallback(() => setPanel("levelup"), []);
   const game = usePet(openLevelUp);
@@ -325,15 +345,14 @@ export default function App() {
   useWindowFit(sliders.size);
   const joining = needsJoin(game);
   usePokeKeys(game.interact, panel === null && !joining && !game.hatching);
+  const { update, card, stagePanel } = useUpdateCard(game, panel, joining);
 
   useDocumentTheme(me.color, reducedMotion, settings.optimizedRendering);
   useUiSounds(game);
 
   const schedule = useSchedule(game, !joining && !game.hatching);
-  const close = useCallback(() => setPanel(null), []);
   useDuetClosesPanel(game, panel, close);
   const onSlowDevice = useSlowDeviceSwitch(game, joining);
-  const toggle = (next: PanelId) => setPanel((current) => (current === next ? null : next));
 
   return (
     <>
@@ -348,7 +367,8 @@ export default function App() {
       >
         <WindowTools onAction={(action) => void game.windowAction(action)} />
         <PetStage
-          {...{ game, me, panel, joining, joinColor, onSlowDevice }}
+          {...{ game, me, joining, joinColor, onSlowDevice }}
+          panel={stagePanel}
           onJoinColor={setJoinColor}
           reducedMotion={reducedMotion}
           rendering={settings.optimizedRendering ? OPTIMIZED_RENDERING : FULL_RENDERING}
@@ -360,6 +380,7 @@ export default function App() {
           <OverDock
             {...{ panel, joining, game, me, xpTab, sliders, reducedMotion, onClose: close }}
             days={schedule.days}
+            update={card}
             onXpTab={setXpTab}
           />
           {/* Beim Einstieg und beim Aufstieg steht eine Kapsel an der Stelle des Docks. */}
@@ -367,7 +388,7 @@ export default function App() {
             <PetDock me={me} panel={panel} due={schedule.due} onToggle={toggle} />
           )}
         </section>
-        <Status game={game} joining={joining} />
+        <Status game={game} joining={joining} update={update} />
       </main>
       {desktop ? null : <PreviewFooter />}
     </>

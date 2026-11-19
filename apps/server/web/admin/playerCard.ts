@@ -25,6 +25,7 @@ import {
 import type { FailureHandler } from "./failure.ts";
 import { formatDateTime } from "./format.ts";
 import { createRewardGroup } from "./playerRewards.ts";
+import { createShopGroup } from "./playerShop.ts";
 import { createToolGroup, makeToolID, type Catalogs, type PlayerTools } from "./playerTools.ts";
 import { isStandingKind, nameZone } from "./zoneKinds.ts";
 
@@ -55,6 +56,7 @@ function createHead(player: PlayerSummary, view: CardView): HTMLElement {
   const seat = findSeat(player, view.catalogs);
   const facts = [
     `${player.total_xp} XP`,
+    `${player.coins} Münzen`,
     player.last_seen_at > 0 ? `zuletzt ${formatDateTime(player.last_seen_at)}` : "nie aktiv",
     seat === null ? "nicht in dieser LAN" : `Platz: ${seat}`,
   ];
@@ -182,6 +184,7 @@ export function createPlayerCard(player: PlayerSummary, view: CardView): HTMLEle
       "player-tools",
       message.root,
       createRewardGroup(tools),
+      createShopGroup(tools),
       createSeatGroup(tools),
       createAccountGroup(tools),
       createDeleteGroup(tools),

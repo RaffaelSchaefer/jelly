@@ -43,6 +43,7 @@ import {
 } from "./overlay.ts";
 import { createPointer, updatePointer, type StagePointer } from "./pointer.ts";
 import { createStageScene, findViewer, projectToScreen, resizeStageScene } from "./scene.ts";
+import { createStreamOpenings } from "./streamOpens.ts";
 import { ANIMATION_EVENTS, STATE_EVENTS } from "./source.ts";
 import { updateVenue } from "./venue.ts";
 import { findSnackRunners, keepNewerMove } from "./walking.ts";
@@ -205,11 +206,17 @@ async function readEverything(memory: StageMemory): Promise<void> {
   onState?.(state);
   if (!memory.streamOpened) {
     memory.streamOpened = true;
+    const streamOpens = createStreamOpenings();
     source.subscribe(state.last_event_id, {
       onEvent: (event) => handleEvent(memory, event),
       onMove: (move) => keepNewerMove(memory.moves, move),
       onReset: () => void reload(memory),
-      onConnectionChange: (isOpen) => onConnectionChange?.(isOpen),
+      onConnectionChange: (isOpen) => {
+        if (isOpen && streamOpens.record()) {
+          void reload(memory);
+        }
+        onConnectionChange?.(isOpen);
+      },
     });
   }
 }

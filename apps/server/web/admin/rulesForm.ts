@@ -44,6 +44,7 @@ function nameUnit(rule: RuleText): string {
     percent: "%",
     xp: "XP",
     meters: "m",
+    speed: "m/s",
   };
   return names[rule.unit] ?? "";
 }

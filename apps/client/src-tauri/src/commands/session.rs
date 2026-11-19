@@ -9,8 +9,8 @@ use crate::{
     api::{Api, LanStatus, Me, SERVER_URL},
     error::{Error, Result},
     events::EventStream,
-    map,
     pet::{client_outdated, Settings, CLIENT_VERSION},
+    popout,
     store::Store,
 };
 
@@ -103,8 +103,8 @@ impl Session {
                 self.secret_rejected = true;
                 self.me = None;
                 self.stream.stop();
-                // Ohne Konto bekäme die Karte keine Daten mehr.
-                map::close(app);
+                // Ohne Konto bekämen Karte und Shop keine Daten mehr.
+                popout::close_all(app);
                 self.lan = self.api.anonymous().current_lan().await?;
             }
             Err(error) => return Err(error),

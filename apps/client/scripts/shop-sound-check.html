@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hörprobe Zauberladen</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+      }
+      body {
+        margin: 16px;
+        max-width: 980px;
+      }
+      table {
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+      }
+      th,
+      td {
+        padding: 2px 10px;
+        text-align: right;
+      }
+      th:first-child,
+      td:first-child {
+        text-align: left;
+      }
+      tr.fail td {
+        color: #d33;
+        font-weight: 600;
+      }
+      section {
+        margin-top: 18px;
+      }
+      section button {
+        margin: 2px;
+      }
+      .rows {
+        max-height: 120px;
+        overflow: auto;
+        border: 1px solid #8884;
+        padding: 0 6px;
+        width: 220px;
+        list-style: none;
+      }
+      .rows button {
+        width: 100%;
+        text-align: left;
+      }
+      #status {
+        font-family: ui-monospace, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hörprobe Zauberladen</h1>
+    <pre id="result">Die Klänge werden offline geprüft …</pre>
+    <table id="table"></table>
+
+    <section>
+      <h2>Brett zum Anhören</h2>
+      <p>Der erste Klick gibt den Ton frei. Kopfhörer helfen.</p>
+      <p id="status">Kein Kontext.</p>
+      <label>Lautstärke <input type="range" id="volume" min="0" max="100" value="100" /></label>
+      <div id="board"></div>
+    </section>
+
+    <section>
+      <h2>Unter dem Zeiger</h2>
+      <ul class="rows" data-rustle>
+        <li><button data-hover-sound="harp" data-hover-step="0" data-sound="none">Ware 1</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="1" data-sound="none">Ware 2</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="2" data-sound="none">Ware 3</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="3" data-sound="none">Ware 4</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="4" data-sound="none">Ware 5</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="5" data-sound="none">Ware 6</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="6" data-sound="none">Ware 7</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="7" data-sound="none">Ware 8</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="8" data-sound="none">Ware 9</button></li>
+        <li><button data-hover-sound="harp" data-hover-step="9" data-sound="none">Ware 10</button></li>
+      </ul>
+      <button data-hover-sound="wax" data-sound="none">Siegel (Wachs)</button>
+      <button data-hover-sound="coin" data-sound="none">Beutel (Münze)</button>
+    </section>
+
+    <section>
+      <h2>Klangthema der Oberfläche</h2>
+      <button type="button">Tippen</button>
+      <button type="button" aria-expanded="false" id="expander">Aufklappen</button>
+      <button type="button" role="tab">Reiter</button>
+      <button type="button" aria-disabled="true">Gesperrt</button>
+      <button type="button" data-sound="success">Gelungen</button>
+      <button type="button" data-sound="error">Fehler</button>
+      <button type="button" data-sound="coin">Münze</button>
+      <label><input type="checkbox" /> Riegel</label>
+    </section>
+
+    <div id="root"></div>
+    <script type="module" src="./shop-sound-check.mjs"></script>
+  </body>
+</html>

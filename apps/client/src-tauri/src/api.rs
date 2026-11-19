@@ -32,6 +32,11 @@ pub const SERVER_URL: &str = match option_env!("JELLY_SERVER_URL") {
 /// sie sonst an.
 const STAGE_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Solange dürfen Kauf und Anlegen dauern. Der Shop hält Rolle und Siegel fest, bis die Antwort da
+/// ist. Ein hängender Server soll ihn nicht bis zum Schließen festhalten, sondern das Siegel springen
+/// lassen.
+const SHOP_TIMEOUT: Duration = Duration::from_secs(15);
+
 /// Fehlerkörper des Servers: `{ "error": { "code", "message" } }`.
 #[derive(Deserialize)]
 struct Problem {
@@ -208,11 +213,12 @@ impl Api {
     ///
     /// # Fehler
     ///
-    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa `unknown_slot`,
-    /// `unknown_cosmetic`, `invalid_cosmetic_color` oder `cosmetic_locked`.
+    /// [`Error::Network`], auch nach 15 s ohne Antwort, [`Error::Unauthorized`] oder
+    /// [`Error::Server`], etwa `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color` oder
+    /// `cosmetic_locked`.
     pub async fn equip(&self, body: &EquipBody) -> Result<Me> {
         let request = self.request(reqwest::Method::PUT, "/v1/cosmetics/equipped");
-        Self::send(request.json(body)).await
+        Self::send(request.json(body).timeout(SHOP_TIMEOUT)).await
     }
 
     /// `POST /v1/presence`: hält das Jelly auf der Bühne, ohne XP.
@@ -334,6 +340,19 @@ impl Api {
     pub async fn redeem_event_code(&self, code: &str) -> Result<Redeemed> {
         self.post("/v1/event-codes/redemptions", &json!({ "code": code }))
             .await
+    }
+
+    /// `POST /v1/purchases`: kauft ein Cosmetic mit den Münzen der laufenden LAN. Der Kauf legt
+    /// es nicht an.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], auch nach 15 s ohne Antwort, [`Error::Unauthorized`] oder
+    /// [`Error::Server`], etwa `not_for_sale`, `already_owned`, `not_enough_coins`, `no_active_lan`
+    /// oder `not_joined`.
+    pub async fn purchase(&self, key: &str) -> Result<Purchased> {
+        let request = self.request(reqwest::Method::POST, "/v1/purchases");
+        Self::send(request.json(&json!({ "key": key })).timeout(SHOP_TIMEOUT)).await
     }
 
     /// `POST /v1/partner-emotes`: fordert ein Jelly in der Nähe zu einem Partner-Emote auf.

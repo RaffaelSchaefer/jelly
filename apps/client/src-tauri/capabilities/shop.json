@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "shop",
+  "description": "The shop window hears server events and moves, minimizes and closes itself, its data and purchases go through the app commands.",
+  "windows": [
+    "shop"
+  ],
+  "permissions": [
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-close",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

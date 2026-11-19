@@ -63,6 +63,5 @@ Server. Ohne Server startet die App weiter und zeigt den letzten Stand, vergibt 
       getrennt, Anti-Cheat-Verträglichkeit testen.
 - [ ] Linux und macOS auf echter Hardware testen.
 - [ ] Bundling: Signierung, Updates.
-- [ ] Cosmetic-Modelle (`.glb`) in Blender bauen und nach `apps/client/src/cosmetics/` exportieren. Die
-      Headsets stehen, es fehlen `beanie`, `party-hat`, `pixel-glasses`, `hood`, `crown` und `golden-cup`.
+- [x] Cosmetic-Modelle (`.glb`) in Blender bauen und nach `packages/jelly-scene/src/cosmetics/` exportieren.
 - [ ] TypeDoc nachrüsten, sobald es TypeScript 7 unterstützt.

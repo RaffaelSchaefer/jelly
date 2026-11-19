@@ -11,7 +11,7 @@ import type { IconName } from "../ui/Icon";
 import type { Catalog, Me } from "./types";
 
 import { PET_COLORS } from "./colors";
-import { COSMETICS, isUnlocked, unlockLabel, wornCosmetics, type Cosmetic } from "./cosmetics";
+import { COSMETICS, isColorable, isUnlocked, wornCosmetics, type Cosmetic } from "./cosmetics";
 
 /** Eine anklickbare Region. */
 export type StudioRegionId = "kopf" | "gesicht" | "haende" | "koerper" | "aura" | "farbe";
@@ -62,28 +62,32 @@ export interface StudioItem {
   /** Symbol des Eintrags. Farben zeigen stattdessen ein kleines Jelly in `swatch`. */
   icon: IconName | null;
   swatch?: JellyPalette;
-  state: "equipped" | "unlocked" | "locked";
-  /** Wie man den Eintrag freischaltet, leer wenn er schon frei ist. */
-  note: string;
+  /** Gibt es nur im Farbrad: die Farbe als Hex-Text, `null` heißt wie modelliert. */
+  paint?: string | null;
+  /** Das angelegte Cosmetic lässt sich färben: Ein Klick darauf öffnet das Farbrad. */
+  paintable?: boolean;
+  state: "equipped" | "unlocked";
 }
 
-/** Zustand eines Cosmetics für `me`. */
-function cosmeticState(item: Cosmetic, me: Me): StudioItem["state"] {
-  if (me.equipped[item.slot]?.key === item.id) return "equipped";
-  return isUnlocked(item.id, me) ? "unlocked" : "locked";
-}
-
-/** „Nichts“ und die Cosmetics des Platzes. „Nichts“ gilt, solange hier nichts angelegt ist. */
+/**
+ * „Nichts“ und die Cosmetics des Platzes, die `me` schon hat. Was noch fehlt, zeigt der Shop.
+ * „Nichts“ gilt, solange hier nichts angelegt ist.
+ */
 function cosmeticRows(slot: Cosmetic["slot"], me: Me, catalog: Catalog): StudioItem[] {
-  const parts = COSMETICS.filter((item) => item.slot === slot);
+  const parts = COSMETICS.filter((item) => item.slot === slot && isUnlocked(item.id, me));
   const worn = parts.some((item) => item.id === me.equipped[slot]?.key);
   const name = parts.length > 0 ? "Nichts" : "Noch nichts da";
   return [
-    { id: null, name, icon: "close", state: worn ? "unlocked" : "equipped", note: "" },
+    { id: null, name, icon: "close", state: worn ? "unlocked" : "equipped" },
     ...parts.map((item) => {
-      const state = cosmeticState(item, me);
-      const note = state === "locked" ? unlockLabel(item.id, catalog) : "";
-      return { id: item.id, name: item.name, icon: item.icon, state, note };
+      const equipped = me.equipped[slot]?.key === item.id;
+      return {
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        paintable: equipped && isColorable(item.id, catalog),
+        state: equipped ? ("equipped" as const) : ("unlocked" as const),
+      };
     }),
   ];
 }
@@ -96,7 +100,37 @@ function colorRows(me: Me): StudioItem[] {
     icon: null,
     swatch: color,
     state: me.color === key ? "equipped" : "unlocked",
-    note: "",
+  }));
+}
+
+/** Namen der Farben aus `cosmetic_colors`. Der Server nennt nur Hex-Text. */
+const PAINT_NAMES: Readonly<Record<string, string>> = {
+  "#ffffff": "Weiß",
+  "#2b2d42": "Schiefer",
+  "#e5534b": "Rot",
+  "#ff9f43": "Orange",
+  "#ffd45c": "Gelb",
+  "#4cd97b": "Grün",
+  "#4cc9f0": "Himmelblau",
+  "#7a5cff": "Lila",
+  "#f59ac9": "Rosa",
+};
+
+/**
+ * Das Farbrad für das Cosmetic auf `slot`: „Original“ und die Farben des Servers, leer, wenn dort
+ * nichts Einfärbbares liegt.
+ */
+export function paintItems(slot: Cosmetic["slot"], me: Me, catalog: Catalog): StudioItem[] {
+  const worn = me.equipped[slot];
+  const item = COSMETICS.find((entry) => entry.id === worn?.key);
+  if (!worn || !item || !isColorable(item.id, catalog)) return [];
+  const chosen = worn.color ?? null;
+  return [null, ...catalog.cosmetic_colors].map((paint) => ({
+    id: paint ?? "original",
+    name: paint ? (PAINT_NAMES[paint] ?? "Farbe") : "Original",
+    icon: paint ? null : item.icon,
+    paint,
+    state: paint === chosen ? "equipped" : "unlocked",
   }));
 }
 

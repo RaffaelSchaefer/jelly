@@ -2,12 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   achievementRows,
-  equipColor,
+  coinLabel,
   isUnlocked,
-  levelCosmetic,
   levelProgress,
-  levelReward,
-  nextLevelCosmetic,
   PET_SIZE,
   pokeWaitMinutes,
   PREVIEW_CATALOG,
@@ -15,25 +12,60 @@ import {
   reportStatus,
   slotLabel,
   stageLayout,
+  shopItems,
   unlockLabel,
-  wearingLevelReward,
+  isColorable,
   wornCosmetics,
 } from ".";
 
-describe("level reward", () => {
-  it("tries the new part on without taking off the rest", () => {
-    const me = { ...PREVIEW_ME, equipped: { face: { key: "pixel-glasses", color: null } } };
-    expect(wearingLevelReward(me, PREVIEW_CATALOG)).toEqual({
-      face: { key: "pixel-glasses", color: null },
-      head: { key: "beanie", color: PREVIEW_CATALOG.cosmetic_colors[0] },
-    });
-  });
+describe("shop", () => {
+  const states = (coins: number, cosmetics = PREVIEW_ME.cosmetics) =>
+    shopItems(PREVIEW_CATALOG, { ...PREVIEW_ME, coins, cosmetics }).map((item) => [
+      item.cosmetic.id,
+      item.state,
+      item.missing,
+    ]);
 
-  it("changes nothing on a level without a part, or one the server did not unlock", () => {
-    const quiet = { ...PREVIEW_ME, level: 4 };
-    const locked = { ...PREVIEW_ME, cosmetics: [] };
-    expect(levelReward(quiet, PREVIEW_CATALOG)).toBeUndefined();
-    expect(wearingLevelReward(locked, PREVIEW_CATALOG)).toBe(locked.equipped);
+  it("lists what it can draw, cheapest first, and leaves out events and awards", () => {
+    expect(states(3)).toEqual([
+      ["headset", "owned", 0],
+      ["headset-neutral", "owned", 0],
+      ["beanie", "owned", 0],
+      ["sprout", "affordable", 0],
+      ["bandana", "affordable", 0],
+      ["bell-collar", "affordable", 0],
+      ["pixel-glasses", "affordable", 0],
+      ["schnoerbi-mask", "affordable", 0],
+      ["knit-scarf", "affordable", 0],
+      ["snail-shell", "affordable", 0],
+      ["piercings", "affordable", 0],
+      ["ogre-ears", "affordable", 0],
+      ["kamina-glasses", "affordable", 0],
+      ["hood", "short", 1],
+      ["long-schnoerbi", "short", 1],
+      ["goose", "short", 1],
+      ["mini-backpack", "short", 1],
+      ["chicken", "short", 1],
+      ["crown", "short", 3],
+      ["fairy-wings", "short", 3],
+    ]);
+  });
+  it("counts an awarded part as owned, the server would not sell it", () => {
+    expect(states(0, ["crown"]).find(([id]) => id === "crown")).toEqual(["crown", "owned", 0]);
+  });
+  it("marks the crown as bought again each LAN", () => {
+    const items = shopItems(PREVIEW_CATALOG, PREVIEW_ME);
+    expect(items.filter((item) => item.perLan).map((item) => item.cosmetic.id)).toEqual(["crown"]);
+  });
+  it("skips shop entries without a price or a model", () => {
+    const catalog = {
+      ...PREVIEW_CATALOG,
+      cosmetics: [
+        { ...PREVIEW_CATALOG.cosmetics[0], price: undefined },
+        { ...PREVIEW_CATALOG.cosmetics[0], key: "top-hat" },
+      ],
+    };
+    expect(shopItems(catalog, PREVIEW_ME)).toEqual([]);
   });
 });
 
@@ -62,7 +94,8 @@ describe("unlocks", () => {
   it("follows the server's list and catalog", () => {
     expect(isUnlocked("beanie", PREVIEW_ME)).toBe(true);
     expect(isUnlocked("pixel-glasses", PREVIEW_ME)).toBe(false);
-    expect(unlockLabel("pixel-glasses", PREVIEW_CATALOG)).toBe("Level 5");
+    expect(unlockLabel("pixel-glasses", PREVIEW_CATALOG)).toBe("3 Münzen");
+    expect(unlockLabel("headset", PREVIEW_CATALOG)).toBe("1 Münze");
     expect(unlockLabel("party-hat", PREVIEW_CATALOG)).toBe("Bei einem Event");
     expect(unlockLabel("golden-cup", PREVIEW_CATALOG)).toBe("Von der Orga");
     const sealed = {
@@ -71,21 +104,18 @@ describe("unlocks", () => {
     };
     expect(unlockLabel("headset", sealed)).toBe("Nicht freischaltbar");
   });
-  it("finds level rewards in level order", () => {
-    // Level 2 schaltet beide Headsets frei, das Level-up zeigt das erste.
-    expect(levelCosmetic(2, PREVIEW_CATALOG)?.id).toBe("headset");
-    expect(levelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("beanie");
-    expect(levelCosmetic(4, PREVIEW_CATALOG)).toBeUndefined();
-    expect(nextLevelCosmetic(3, PREVIEW_CATALOG)?.id).toBe("pixel-glasses");
-    expect(nextLevelCosmetic(10, PREVIEW_CATALOG)).toBeUndefined();
+  it("names coins in the singular and plural", () => {
+    expect(coinLabel(0)).toBe("0 Münzen");
+    expect(coinLabel(1)).toBe("1 Münze");
+    expect(coinLabel(6)).toBe("6 Münzen");
   });
 });
 
 describe("slots", () => {
-  it("sends the first colour only for colourable cosmetics", () => {
-    expect(equipColor("beanie", PREVIEW_CATALOG)).toBe(PREVIEW_CATALOG.cosmetic_colors[0]);
-    expect(equipColor("headset", PREVIEW_CATALOG)).toBeUndefined();
-    expect(equipColor(null, PREVIEW_CATALOG)).toBeUndefined();
+  it("knows which cosmetics the server lets color", () => {
+    expect(isColorable("beanie", PREVIEW_CATALOG)).toBe(true);
+    expect(isColorable("headset-neutral", PREVIEW_CATALOG)).toBe(false);
+    expect(isColorable("unbekannt", PREVIEW_CATALOG)).toBe(false);
   });
   it("wears what it can draw, head before face before hands", () => {
     const worn = wornCosmetics({

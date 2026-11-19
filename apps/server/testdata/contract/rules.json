@@ -1,6 +1,7 @@
 {
   "rules": {
     "xp_per_level": 100,
+    "coins_per_level": 1,
     "poke_interval": 900,
     "poke_xp": 3,
     "poke_max_ticks": 4,
@@ -20,8 +21,8 @@
     "snack_run_seconds": 14,
     "trip_seconds": 300,
     "follow_seconds": 1800,
-    "near_distance": 6,
-    "walk_speed": 1.4,
+    "near_distance": 1.8,
+    "walk_speed": 0.4,
     "stack_seconds": 120,
     "stack_max_members": 0,
     "highlight_seconds": 10,
@@ -59,5 +60,126 @@
     { "input": "1234567890123456789012345", "valid": false },
     { "input": "   ", "valid": false },
     { "input": "with\nbreak", "valid": false }
+  ],
+  "coins": [
+    { "name": "one level pays once", "levels": 1, "coins": 1 },
+    { "name": "a jump over three levels pays three times", "levels": 3, "coins": 3 },
+    {
+      "name": "without coins per level a level-up pays nothing",
+      "rules": { "coins_per_level": 0 },
+      "levels": 2,
+      "coins": 0
+    }
+  ],
+  "purchases": [
+    { "name": "exact price buys", "key": "headset", "coins": 1, "owned": false, "error": null },
+    { "name": "the sprout costs two coins", "key": "sprout", "coins": 2, "owned": false, "error": null },
+    {
+      "name": "one coin is too few for the sprout",
+      "key": "sprout",
+      "coins": 1,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
+      "name": "the schnoerbi mask costs three coins",
+      "key": "schnoerbi-mask",
+      "coins": 3,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "two coins are too few for the schnoerbi mask",
+      "key": "schnoerbi-mask",
+      "coins": 2,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
+      "name": "the long schnoerbi costs four coins",
+      "key": "long-schnoerbi",
+      "coins": 4,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "three coins are too few for the long schnoerbi",
+      "key": "long-schnoerbi",
+      "coins": 3,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
+      "name": "the goose costs four coins",
+      "key": "goose",
+      "coins": 4,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "three coins are too few for the goose",
+      "key": "goose",
+      "coins": 3,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
+      "name": "the fairy wings cost six coins",
+      "key": "fairy-wings",
+      "coins": 6,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "five coins are too few for the fairy wings",
+      "key": "fairy-wings",
+      "coins": 5,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
+      "name": "the chicken costs four coins",
+      "key": "chicken",
+      "coins": 4,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "two coins are too few for the ogre ears",
+      "key": "ogre-ears",
+      "coins": 2,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
+      "name": "the Kamina glasses cost three coins",
+      "key": "kamina-glasses",
+      "coins": 3,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "the bat wings are not for sale",
+      "key": "bat-wings",
+      "coins": 100,
+      "owned": false,
+      "error": "not_for_sale"
+    },
+    { "name": "too few coins", "key": "crown", "coins": 5, "owned": false, "error": "not_enough_coins" },
+    { "name": "second buy", "key": "beanie", "coins": 100, "owned": true, "error": "already_owned" },
+    {
+      "name": "event cosmetic is not for sale",
+      "key": "party-hat",
+      "coins": 100,
+      "owned": false,
+      "error": "not_for_sale"
+    },
+    {
+      "name": "unknown key",
+      "key": "top-hat",
+      "coins": 100,
+      "owned": false,
+      "error": "unknown_cosmetic"
+    }
   ]
 }

@@ -27,6 +27,19 @@ type contractCases struct {
 		Output string `json:"output"`
 		Valid  *bool  `json:"valid"`
 	} `json:"name"`
+	Coins []struct {
+		Name   string       `json:"name"`
+		Rules  *rules.Rules `json:"rules"`
+		Levels int          `json:"levels"`
+		Coins  int          `json:"coins"`
+	} `json:"coins"`
+	Purchases []struct {
+		Name  string  `json:"name"`
+		Key   string  `json:"key"`
+		Coins int     `json:"coins"`
+		Owned bool    `json:"owned"`
+		Error *string `json:"error"`
+	} `json:"purchases"`
 }
 
 func loadContractCases(t *testing.T) contractCases {
@@ -87,6 +100,58 @@ func TestCalculateLevel(t *testing.T) {
 	}
 }
 
+func TestCalculateCoinsForLevelsContract(t *testing.T) {
+	cases := loadContractCases(t)
+	for _, testCase := range cases.Coins {
+		t.Run(testCase.Name, func(t *testing.T) {
+			gameRules := cases.Rules
+			if testCase.Rules != nil {
+				gameRules = *testCase.Rules
+			}
+			got := rules.CalculateCoinsForLevels(gameRules, testCase.Levels)
+			if got != testCase.Coins {
+				t.Fatalf("CalculateCoinsForLevels(%d) = %d, want %d",
+					testCase.Levels, got, testCase.Coins)
+			}
+		})
+	}
+}
+
+// purchaseError turns the code of the contract case into its error, none for null.
+func purchaseError(code *string) error {
+	if code == nil {
+		return nil
+	}
+	switch *code {
+	case "unknown_cosmetic":
+		return rules.ErrUnknownCosmetic
+	case "not_for_sale":
+		return rules.ErrNotForSale
+	case "already_owned":
+		return rules.ErrAlreadyOwned
+	case "not_enough_coins":
+		return rules.ErrNotEnoughCoins
+	default:
+		return nil
+	}
+}
+
+func TestCheckPurchaseContract(t *testing.T) {
+	for _, testCase := range loadContractCases(t).Purchases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			cosmetic, found := rules.FindCosmetic(testCase.Key)
+			got := rules.ErrUnknownCosmetic
+			if found {
+				got = rules.CheckPurchase(cosmetic, testCase.Coins, testCase.Owned)
+			}
+			want := purchaseError(testCase.Error)
+			if !errors.Is(got, want) {
+				t.Fatalf("CheckPurchase(%q) = %v, want %v", testCase.Key, got, want)
+			}
+		})
+	}
+}
+
 func TestNormalizeName(t *testing.T) {
 	for _, testCase := range loadContractCases(t).Name {
 		got, err := rules.NormalizeName(testCase.Input)
@@ -103,7 +168,7 @@ func TestNormalizeName(t *testing.T) {
 }
 
 func TestValidateColor(t *testing.T) {
-	for _, color := range []string{"mint", "lilac", "peach"} {
+	for _, color := range []string{"mint", "lilac", "peach", "lime"} {
 		if err := rules.ValidateColor(color); err != nil {
 			t.Errorf("ValidateColor(%q) = %v", color, err)
 		}
@@ -132,7 +197,7 @@ func TestValidateArea(t *testing.T) {
 		{"no size", rules.Area{X: 0, Y: 0, Width: 0, Height: 10, Kind: "seats"}, false},
 	}
 	for _, testCase := range testCases {
-		err := rules.ValidateArea(testCase.area)
+		err := rules.ValidateArea(testCase.area, testRoom())
 		if (err == nil) != testCase.valid {
 			t.Errorf("%s: ValidateArea = %v", testCase.name, err)
 		}
@@ -168,7 +233,7 @@ func TestFreeFloorEndsAtEveryBlockingZone(t *testing.T) {
 		{rules.StagePoint{X: 130, Y: 30}, false},
 	}
 	for _, testCase := range testCases {
-		if rules.IsOnFreeFloor(testCase.point, areas) != testCase.free {
+		if rules.IsOnFreeFloor(testCase.point, areas, testRoom()) != testCase.free {
 			t.Errorf("point %+v, want free = %v", testCase.point, testCase.free)
 		}
 	}
@@ -190,7 +255,7 @@ func TestMapChecksFindEveryBadZone(t *testing.T) {
 	outside.ID, outside.X = "c", 100
 	missing := good
 	missing.ID = ""
-	invalid := rules.ListInvalidMapZones([]rules.MapZone{good, again, outside, missing})
+	invalid := rules.ListInvalidMapZones([]rules.MapZone{good, again, outside, missing}, testRoom())
 	if len(invalid) != 3 || invalid[0] != "a" || invalid[1] != "c" || invalid[2] != "" {
 		t.Fatalf("invalid = %v", invalid)
 	}
@@ -226,7 +291,7 @@ func TestHomeSpotsFillTheirAreaEvenly(t *testing.T) {
 	const columns, rows, places = 3, 3, 18
 	var counts [columns * rows]int
 	for place := range places {
-		spot := rules.CalculateHomeSpot(area, place)
+		spot := rules.CalculateHomeSpot(area, place, testRoom())
 		column := int((spot.X - float64(area.X)) / float64(area.Width) * columns)
 		row := int((spot.Y - float64(area.Y)) / float64(area.Height) * rows)
 		counts[row*columns+column]++

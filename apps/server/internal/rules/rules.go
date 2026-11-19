@@ -17,8 +17,11 @@ const (
 	// NoStackLimit lets stacks grow as high as the players can build them.
 	NoStackLimit = 0
 
-	defaultXPPerLevel = 100
-	millisPerSecond   = 1000
+	defaultXPPerLevel    = 100
+	defaultCoinsPerLevel = 1
+	// maxCoinsPerLevel keeps one level-up from flooding one wallet.
+	maxCoinsPerLevel = 100
+	millisPerSecond  = 1000
 
 	defaultPokeIntervalSeconds   = 900
 	defaultPokeXP                = 3
@@ -39,8 +42,8 @@ const (
 	defaultSnackRunSeconds       = 14
 	defaultTripSeconds           = 300
 	defaultFollowSeconds         = 1800
-	defaultNearDistance          = 6.0
-	defaultWalkSpeed             = 1.4
+	defaultNearDistance          = 1.8
+	defaultWalkSpeed             = 0.4
 	defaultStackSeconds          = 120
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
@@ -81,6 +84,8 @@ type Rules struct {
 type PublicRules struct {
 	// XPPerLevel is how much XP a level takes, the same for every level.
 	XPPerLevel int `json:"xp_per_level"`
+	// CoinsPerLevel is how many coins every reached level gives to spend in the shop.
+	CoinsPerLevel int `json:"coins_per_level"`
 	// PokeIntervalSeconds is the minimum time between two XP pokes.
 	PokeIntervalSeconds int64 `json:"poke_interval"`
 	// PokeXP is the XP per interval.
@@ -113,11 +118,10 @@ type PublicRules struct {
 	TripSeconds int64 `json:"trip_seconds"`
 	// FollowSeconds is how long a jelly follows another one before it walks back.
 	FollowSeconds int64 `json:"follow_seconds"`
-	// NearDistance is how far apart two jellies count as next to each other, in jelly units. A
-	// jelly is about 1.7 wide, the hall 21 wide and 40 deep.
+	// NearDistance is how far apart two jellies count as next to each other, in meters of the hall.
 	NearDistance float64 `json:"near_distance"`
-	// WalkSpeed is how fast jellies walk in jelly units per second, so a walk takes its length
-	// divided by this.
+	// WalkSpeed is how fast jellies walk in meters per second, so a walk takes its length divided
+	// by this.
 	WalkSpeed float64 `json:"walk_speed"`
 	// StackSeconds is how long a stack stands before it falls apart.
 	StackSeconds int64 `json:"stack_seconds"`
@@ -139,6 +143,7 @@ type PublicRules struct {
 func DefaultRules() Rules {
 	return Rules{
 		XPPerLevel:               defaultXPPerLevel,
+		CoinsPerLevel:            defaultCoinsPerLevel,
 		PokeIntervalSeconds:      defaultPokeIntervalSeconds,
 		PokeXP:                   defaultPokeXP,
 		PokeMaxTicks:             defaultPokeMaxTicks,
@@ -185,6 +190,15 @@ func IsEventCodeValid(xp int, validFrom, validUntil int64) bool {
 // CalculateLevel returns the level for the XP of a LAN, starting at [FirstLevel].
 func CalculateLevel(gameRules Rules, xp int) int {
 	return xp/gameRules.XPPerLevel + FirstLevel
+}
+
+// CalculateCoinsForLevels returns the coins for reaching `levels` new levels at once. A jump over
+// several levels pays for every one of them.
+func CalculateCoinsForLevels(gameRules Rules, levels int) int {
+	if levels < 1 {
+		return 0
+	}
+	return levels * gameRules.CoinsPerLevel
 }
 
 // CalculatePokeXP returns the XP for a poke. A poke that comes too early earns 0.

@@ -38,14 +38,28 @@ const (
 )
 
 const (
-	levelHeadset      = 2
-	levelBeanie       = 3
-	levelPixelGlasses = 5
-	levelHood         = 6
-	levelCrown        = 10
+	priceHeadset       = 1
+	priceBeanie        = 2
+	priceSprout        = 2
+	pricePixelGlasses  = 3
+	priceSchnoerbiMask = 3
+	priceHood          = 4
+	priceLongSchnoerbi = 4
+	priceGoose         = 4
+	priceCrown         = 6
+	priceBandana       = 2
+	priceBellCollar    = 2
+	priceKnitScarf     = 3
+	priceSnailShell    = 3
+	priceMiniBackpack  = 4
+	priceFairyWings    = 6
+	priceChicken       = 4
+	pricePiercings     = 3
+	priceOgreEars      = 3
+	priceKaminaGlasses = 3
 )
 
-// Cosmetic is one item. It unlocks through a level or an event, or only through an award.
+// Cosmetic is one item. It unlocks through a purchase, an event, or only through an award.
 type Cosmetic struct {
 	Key   string `json:"key"`
 	Name  string `json:"name"`
@@ -53,70 +67,133 @@ type Cosmetic struct {
 	Slot  string `json:"slot"`
 	// Colorable cosmetics take a color from the palette, the others always look the same.
 	Colorable bool `json:"colorable"`
-	// Unlock says how a player gets it. Level is only set when that is by level.
+	// Unlock says how a player gets it. Price is only set when that is in the shop.
 	Unlock string `json:"unlock"`
-	Level  int    `json:"level,omitempty"`
+	Price  int    `json:"price,omitempty"`
 }
 
 // How a player gets a cosmetic. Awards come from an admin, who can give away any cosmetic.
 const (
-	UnlockLevel = "level"
+	UnlockShop  = "shop"
 	UnlockEvent = "event"
 	UnlockAward = "award"
 	UnlockNone  = "none"
 )
 
+var (
+	// ErrNotForSale reports a cosmetic that the shop does not sell.
+	ErrNotForSale = errors.New("cosmetic is not for sale")
+	// ErrAlreadyOwned reports a cosmetic that this player already bought.
+	ErrAlreadyOwned = errors.New("cosmetic is already owned")
+	// ErrNotEnoughCoins reports a purchase whose price is above the coin balance.
+	ErrNotEnoughCoins = errors.New("not enough coins")
+)
+
 // UnlockFacts are the facts about a player that decide their cosmetics.
 type UnlockFacts struct {
-	CurrentLevel   int
-	BestLevel      int
 	CurrentEvents  int
 	TotalEvents    int
 	AwardCosmetics []string
+	// PurchasedCosmetics holds the shop cosmetics the player owns, already filtered by scope.
+	PurchasedCosmetics []string
 }
 
 // ListCosmetics returns the catalog, matching `apps/client/src/pet/cosmetics.ts`.
+//
+//nolint:funlen // one flat table of data, splitting it would only scatter the catalog
 func ListCosmetics() []Cosmetic {
 	return []Cosmetic{
 		{
-			Key:    "headset",
-			Name:   "Headset",
-			Scope:  ScopePermanent,
-			Slot:   SlotHead,
-			Unlock: UnlockLevel,
-			Level:  levelHeadset,
+			Key: "headset", Name: "Headset", Scope: ScopePermanent, Slot: SlotHead,
+			Colorable: true, Unlock: UnlockShop, Price: priceHeadset,
 		},
 		{
-			Key:    "headset-neutral",
-			Name:   "Headset schlicht",
-			Scope:  ScopePermanent,
-			Slot:   SlotHead,
-			Unlock: UnlockLevel,
-			Level:  levelHeadset,
+			Key: "headset-neutral", Name: "Headset schlicht", Scope: ScopePermanent, Slot: SlotHead,
+			Unlock: UnlockShop, Price: priceHeadset,
 		},
 		{
 			Key: "beanie", Name: "Mütze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
-			Unlock: UnlockLevel, Level: levelBeanie,
+			Unlock: UnlockShop, Price: priceBeanie,
+		},
+		{
+			Key: "sprout", Name: "Spross", Scope: ScopePermanent, Slot: SlotHead,
+			Unlock: UnlockShop, Price: priceSprout,
 		},
 		{
 			Key: "party-hat", Name: "Party-Hut", Scope: ScopePermanent, Slot: SlotHead,
-			Unlock: UnlockEvent,
+			Colorable: true, Unlock: UnlockEvent,
 		},
 		{
 			Key: "pixel-glasses", Name: "Pixel-Brille", Scope: ScopePermanent, Slot: SlotFace,
-			Unlock: UnlockLevel, Level: levelPixelGlasses,
+			Colorable: true, Unlock: UnlockShop, Price: pricePixelGlasses,
+		},
+		{
+			Key: "schnoerbi-mask", Name: "Schnörbi-Maske", Scope: ScopePermanent, Slot: SlotFace,
+			Unlock: UnlockShop, Price: priceSchnoerbiMask,
 		},
 		{
 			Key: "hood", Name: "Kapuze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,
-			Unlock: UnlockLevel, Level: levelHood,
+			Unlock: UnlockShop, Price: priceHood,
 		},
 		{
 			Key: "crown", Name: "Krone", Scope: ScopeLAN, Slot: SlotHead,
-			Unlock: UnlockLevel, Level: levelCrown,
+			Colorable: true, Unlock: UnlockShop, Price: priceCrown,
+		},
+		{
+			Key: "long-schnoerbi", Name: "Long Schnörbi", Scope: ScopePermanent, Slot: SlotHands,
+			Colorable: true, Unlock: UnlockShop, Price: priceLongSchnoerbi,
+		},
+		{
+			Key: "goose", Name: "Kuschelgans", Scope: ScopePermanent, Slot: SlotHands,
+			Colorable: true, Unlock: UnlockShop, Price: priceGoose,
+		},
+		{
+			Key: "chicken", Name: "Kuschelhuhn", Scope: ScopePermanent, Slot: SlotHands,
+			Unlock: UnlockShop, Price: priceChicken,
+		},
+		{
+			Key: "piercings", Name: "Piercings", Scope: ScopePermanent, Slot: SlotFace,
+			Unlock: UnlockShop, Price: pricePiercings,
+		},
+		{
+			Key: "ogre-ears", Name: "Oger-Ohren", Scope: ScopePermanent, Slot: SlotHead,
+			Colorable: true, Unlock: UnlockShop, Price: priceOgreEars,
+		},
+		{
+			Key: "kamina-glasses", Name: "Kamina-Brille", Scope: ScopePermanent, Slot: SlotFace,
+			Colorable: true, Unlock: UnlockShop, Price: priceKaminaGlasses,
 		},
 		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
 			Unlock: UnlockAward,
+		},
+		{
+			Key: "bandana", Name: "Halstuch", Scope: ScopePermanent, Slot: SlotBody,
+			Colorable: true, Unlock: UnlockShop, Price: priceBandana,
+		},
+		{
+			Key: "bell-collar", Name: "Glöckchen-Halsband", Scope: ScopePermanent, Slot: SlotBody,
+			Colorable: true, Unlock: UnlockShop, Price: priceBellCollar,
+		},
+		{
+			Key: "knit-scarf", Name: "Strickschal", Scope: ScopePermanent, Slot: SlotBody,
+			Colorable: true, Unlock: UnlockShop, Price: priceKnitScarf,
+		},
+		{
+			Key: "snail-shell", Name: "Lag-Schneckenhaus", Scope: ScopePermanent, Slot: SlotBody,
+			Colorable: true, Unlock: UnlockShop, Price: priceSnailShell,
+		},
+		{
+			Key: "mini-backpack", Name: "Mini-Rucksack", Scope: ScopePermanent, Slot: SlotBody,
+			Colorable: true, Unlock: UnlockShop, Price: priceMiniBackpack,
+		},
+		{
+			Key: "fairy-wings", Name: "Feenflügel", Scope: ScopePermanent, Slot: SlotBody,
+			Colorable: true, Unlock: UnlockShop, Price: priceFairyWings,
+		},
+		{
+			Key: "bat-wings", Name: "Fledermausflügel", Scope: ScopePermanent, Slot: SlotBody,
+			Colorable: true, Unlock: UnlockEvent,
 		},
 		{
 			Key: "glow-aura", Name: "Glüh-Aura", Scope: ScopePermanent, Slot: SlotAura,
@@ -185,6 +262,44 @@ func ValidateEquip(slot, key string, color *string) error {
 	return nil
 }
 
+// FindCosmetic returns the catalog entry for a key.
+func FindCosmetic(key string) (Cosmetic, bool) {
+	index := slices.IndexFunc(ListCosmetics(), func(cosmetic Cosmetic) bool {
+		return cosmetic.Key == key
+	})
+	if index < 0 {
+		return Cosmetic{}, false
+	}
+	return ListCosmetics()[index], true
+}
+
+// CheckPurchase decides whether a player with `coins` may buy this cosmetic now. A player that
+// already owns it, whether bought or given as an award, buys it a second time never.
+func CheckPurchase(cosmetic Cosmetic, coins int, isOwned bool) error {
+	switch {
+	case cosmetic.Unlock != UnlockShop:
+		return ErrNotForSale
+	case isOwned:
+		return ErrAlreadyOwned
+	case coins < cosmetic.Price:
+		return ErrNotEnoughCoins
+	default:
+		return nil
+	}
+}
+
+// ListPermanentShopCosmetics returns the keys of the shop cosmetics that stay over LANs, in
+// catalog order. The shop achievement counts them.
+func ListPermanentShopCosmetics() []string {
+	keys := []string{}
+	for _, cosmetic := range ListCosmetics() {
+		if cosmetic.Unlock == UnlockShop && cosmetic.Scope == ScopePermanent {
+			keys = append(keys, cosmetic.Key)
+		}
+	}
+	return keys
+}
+
 // ListUnlockedCosmetics returns the keys a player may wear, in catalog order.
 func ListUnlockedCosmetics(facts UnlockFacts) []string {
 	unlocked := []string{}
@@ -201,17 +316,18 @@ func ListUnlockedCosmetics(facts UnlockFacts) []string {
 	return unlocked
 }
 
-// isCosmeticUnlocked compares a cosmetic against the facts of its scope.
+// isCosmeticUnlocked compares a cosmetic against the facts of its scope. Purchased cosmetics
+// arrive in `facts` already filtered by scope.
 func isCosmeticUnlocked(cosmetic Cosmetic, facts UnlockFacts) bool {
-	level, events := facts.BestLevel, facts.TotalEvents
+	events := facts.TotalEvents
 	if cosmetic.Scope == ScopeLAN {
-		level, events = facts.CurrentLevel, facts.CurrentEvents
+		events = facts.CurrentEvents
 	}
 	switch cosmetic.Unlock {
 	case UnlockEvent:
 		return events > 0
-	case UnlockLevel:
-		return level >= cosmetic.Level
+	case UnlockShop:
+		return slices.Contains(facts.PurchasedCosmetics, cosmetic.Key)
 	default:
 		return false
 	}

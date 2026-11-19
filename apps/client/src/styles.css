@@ -22,6 +22,7 @@
 }
 :root[data-pet-color='lilac'] { --accent: #dcc2fb; --accent-ink: #2a1546; --base: #231e2d; --backdrop: #3a3047; --backdrop-deep: #16131d; }
 :root[data-pet-color='peach'] { --accent: #ffcfa3; --accent-ink: #44210d; --base: #2a221e; --backdrop: #463830; --backdrop-deep: #1b1614; }
+:root[data-pet-color='lime'] { --accent: #c6f2a2; --accent-ink: #173a12; --base: #1e2a1d; --backdrop: #31452e; --backdrop-deep: #131b12; }
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; width: 100%; min-height: 100%; background: transparent; }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   COSMETICS,
   nameToSave,
+  paintItems,
   PET_COLORS,
   PREVIEW_CATALOG,
   PREVIEW_ME,
@@ -21,28 +22,27 @@ const region = (id: string) => REGIONS.find((item) => item.id === id)!;
 /** Die Einträge einer Region für `me`. */
 const items = (id: string, me = PREVIEW_ME) => regionItems(region(id), me, PREVIEW_CATALOG);
 
+/** `PREVIEW_ME` mit allen Cosmetics. */
+const RICH = { ...PREVIEW_ME, cosmetics: COSMETICS.map((item) => item.id) };
+
 describe("studio regions", () => {
-  it("offers every cosmetic in exactly one region", () => {
-    const offered = ["kopf", "gesicht", "haende"].flatMap((id) =>
-      items(id).flatMap((item) => (item.id ? [item.id] : [])),
+  it("offers every owned cosmetic in exactly one region", () => {
+    const offered = ["kopf", "gesicht", "haende", "koerper"].flatMap((id) =>
+      items(id, RICH).flatMap((item) => (item.id ? [item.id] : [])),
     );
     expect(offered.sort()).toEqual(COSMETICS.map((item) => item.id).sort());
-    expect(items("kopf")).toHaveLength(7);
-    expect(items("gesicht")).toHaveLength(2);
-    expect(items("haende")).toHaveLength(2);
   });
-  it("marks what is free, locked and worn", () => {
-    const head = items("kopf");
-    expect(head[0]).toMatchObject({ id: null, state: "equipped" });
-    expect(head.find((item) => item.id === "beanie")?.state).toBe("unlocked");
-    expect(head.find((item) => item.id === "party-hat")).toMatchObject({
-      state: "locked",
-      note: "Bei einem Event",
-    });
-    expect(head.find((item) => item.id === "crown")).toMatchObject({
-      state: "locked",
-      note: "Level 10",
-    });
+  it("hides what is not owned yet", () => {
+    expect(items("kopf").map((item) => item.id)).toEqual([
+      null,
+      "headset",
+      "headset-neutral",
+      "beanie",
+    ]);
+    expect(items("kopf")[0]).toMatchObject({ name: "Nichts", state: "equipped" });
+    expect(items("gesicht")).toEqual([
+      { id: null, name: "Noch nichts da", icon: "close", state: "equipped" },
+    ]);
   });
   it("wearing something only changes its own region", () => {
     const me = { ...PREVIEW_ME, equipped: { head: { key: "beanie", color: null } } };
@@ -60,7 +60,7 @@ describe("studio regions", () => {
       face: { key: "pixel-glasses", color: null },
       hands: { key: "golden-cup", color: null },
     };
-    const me = { ...PREVIEW_ME, equipped };
+    const me = { ...RICH, equipped };
     expect(wornRegions(me)).toEqual(["kopf", "gesicht", "haende"]);
     expect(items("gesicht", me).find((item) => item.id === "pixel-glasses")?.state).toBe(
       "equipped",
@@ -68,7 +68,7 @@ describe("studio regions", () => {
   });
   it("offers the body colours", () => {
     const colors = items("farbe");
-    expect(colors).toHaveLength(3);
+    expect(colors).toHaveLength(4);
     expect(colors[0]).toMatchObject({
       id: "mint",
       state: "equipped",
@@ -77,21 +77,48 @@ describe("studio regions", () => {
   });
 });
 
+describe("studio paints", () => {
+  /** `PREVIEW_ME` mit allen Cosmetics und `key` auf dem Kopf. */
+  const wearing = (key: string, color: string | null = null) => ({
+    ...RICH,
+    equipped: { head: { key, color } },
+  });
+  /** Das Farbrad für den Kopf. */
+  const wheel = (me = PREVIEW_ME) => paintItems("head", me, PREVIEW_CATALOG);
+
+  it("lets only the worn colorable cosmetic open the wheel", () => {
+    const paintable = (me: typeof RICH) =>
+      items("kopf", me).flatMap((item) => (item.paintable ? [item.id] : []));
+    expect(paintable(wearing("beanie"))).toEqual(["beanie"]);
+    expect(paintable(wearing("headset-neutral"))).toEqual([]);
+    expect(items("kopf").some((item) => item.paintable)).toBe(false);
+  });
+  it("offers Original and the server colors", () => {
+    const offered = wheel(wearing("beanie"));
+    expect(offered.map((item) => item.paint)).toEqual([null, ...PREVIEW_CATALOG.cosmetic_colors]);
+    expect(offered[0]).toMatchObject({ name: "Original", icon: "beanie", state: "equipped" });
+    expect(offered[1]).toMatchObject({ name: "Weiß", icon: null, state: "unlocked" });
+  });
+  it("marks the chosen color", () => {
+    const chosen = wheel(wearing("beanie", "#ffd45c")).filter((item) => item.state === "equipped");
+    expect(chosen.map((item) => item.paint)).toEqual(["#ffd45c"]);
+  });
+  it("has no wheel for fixed cosmetics or empty slots", () => {
+    expect(wheel(wearing("headset-neutral"))).toEqual([]);
+    expect(wheel()).toEqual([]);
+  });
+});
+
 describe("studio slots", () => {
   it("shows every slot of the server, also those without a cosmetic", () => {
     const slots = REGIONS.flatMap((item) => item.slot ?? []);
     expect(slots.sort()).toEqual(PREVIEW_CATALOG.cosmetic_slots.map((slot) => slot.key).sort());
-    for (const id of ["koerper", "aura"]) {
-      expect(items(id)).toEqual([
-        { id: null, name: "Noch nichts da", icon: "close", state: "equipped", note: "" },
-      ]);
-    }
+    expect(items("aura")).toEqual([
+      { id: null, name: "Noch nichts da", icon: "close", state: "equipped" },
+    ]);
   });
-  it("offers the cup in the hands, only the orga hands it out", () => {
-    expect(items("haende").find((item) => item.id === "golden-cup")).toMatchObject({
-      state: "locked",
-      note: "Von der Orga",
-    });
+  it("offers the cup in the hands once the orga hands it out", () => {
+    expect(items("haende").find((item) => item.id === "golden-cup")).toBeUndefined();
     const me = { ...PREVIEW_ME, cosmetics: ["golden-cup"] };
     expect(items("haende", me).find((item) => item.id === "golden-cup")?.state).toBe("unlocked");
   });

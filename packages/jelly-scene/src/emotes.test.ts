@@ -52,6 +52,18 @@ test.each(keys)("%s ist erkennbar, beginnt weich und endet in der Grundpose", (k
   expect(pose(jelly)).toEqual(baseline);
 });
 
+test.each(keys)("%s mit eigener Dauer von 1,5 s endet nach 1,5 s in der Grundpose", (key) => {
+  const jelly = createJelly(JELLY_COLORS.mint);
+  const motion = createMotion(0);
+  const baseline = resting();
+  animateJelly(jelly, motion, { ...frame, emote: { key, elapsed: 0.75, seconds: 1.5 } });
+  expect(pose(jelly)).not.toEqual(baseline);
+  animateJelly(jelly, motion, { ...frame, emote: { key, elapsed: 1.5, seconds: 1.5 } });
+  expect(pose(jelly)).toEqual(baseline);
+  animateJelly(jelly, motion, { ...frame, emote: { key, elapsed: 2, seconds: 1.5 } });
+  expect(pose(jelly)).toEqual(baseline);
+});
+
 test.each(keys)("%s sammelt keine Transformationen an und lässt sich erneut abspielen", (key) => {
   const jelly = createJelly(JELLY_COLORS.mint);
   const motion = createMotion(0);

@@ -13,39 +13,41 @@ import (
 // addAdminRoutes registers the JSON API of the admin page.
 func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 	routes := map[string]http.HandlerFunc{
-		"GET /admin/api/players":                         server.handleListPlayers,
-		"POST /admin/api/players/{id}/hide":              server.handleHidePlayer,
-		"POST /admin/api/players/{id}/show":              server.handleShowPlayer,
-		"POST /admin/api/players/{id}/reset-name":        server.handleResetName,
-		"POST /admin/api/players/{id}/recovery-code":     server.handleCreateRecoveryCode,
-		"DELETE /admin/api/players/{id}":                 server.handleDeletePlayer,
-		"GET /admin/api/lans":                            server.handleListLANs,
-		"PATCH /admin/api/lans/{id}":                     server.handleUpdateLAN,
-		"DELETE /admin/api/lans/{id}":                    server.handleDeleteLAN,
-		"POST /admin/api/lans":                           server.handleCreateLAN,
-		"PUT /admin/api/lans/{id}/rules":                 server.handleUpdateRules,
-		"PATCH /admin/api/lans/{id}/rules":               server.handlePatchRules,
-		"PUT /admin/api/lans/{id}/join-code":             server.handleUpdateJoinCode,
-		"GET /admin/api/lans/{id}/event-codes":           server.handleListEventCodes,
-		"POST /admin/api/event-codes":                    server.handleCreateEventCode,
-		"GET /admin/api/actions":                         server.handleListAdminActions,
-		"POST /admin/api/awards":                         server.handleGiveAward,
-		"GET /admin/api/lans/{id}/areas":                 server.handleListAreas,
-		"POST /admin/api/lans/{id}/areas":                server.handleCreateArea,
-		"PUT /admin/api/lans/{id}/areas/{area}":          server.handleUpdateArea,
-		"DELETE /admin/api/lans/{id}/areas/{area}":       server.handleDeleteArea,
-		"POST /admin/api/lans/{id}/areas/{area}/code":    server.handleIssueSeatCode,
-		"GET /admin/api/lans/{id}/seat-codes":            server.handleListSeatCodes,
-		"PUT /admin/api/lans/{id}/players/{player}/area": server.handleAssignArea,
-		"PUT /admin/api/lans/{id}/map":                   server.handleImportMap,
-		"POST /admin/api/lans/{id}/gathering":            server.handleStartGathering,
-		"DELETE /admin/api/lans/{id}/gathering":          server.handleEndGathering,
-		"GET /admin/api/lans/{id}/gathering":             server.handleLoadGathering,
-		"POST /admin/api/event-codes/{id}/end":           server.handleEndEventCode,
-		"POST /admin/api/players/{id}/xp":                server.handleGiveXP,
-		"POST /admin/api/players/{id}/achievements":      server.handleGrantAchievement,
-		"GET /admin/api/achievements":                    server.handleListAchievements,
-		"GET /admin/api/stage-link":                      server.handleStageLink,
+		"GET /admin/api/players":                              server.handleListPlayers,
+		"POST /admin/api/players/{id}/hide":                   server.handleHidePlayer,
+		"POST /admin/api/players/{id}/show":                   server.handleShowPlayer,
+		"POST /admin/api/players/{id}/reset-name":             server.handleResetName,
+		"POST /admin/api/players/{id}/recovery-code":          server.handleCreateRecoveryCode,
+		"DELETE /admin/api/players/{id}":                      server.handleDeletePlayer,
+		"GET /admin/api/lans":                                 server.handleListLANs,
+		"PATCH /admin/api/lans/{id}":                          server.handleUpdateLAN,
+		"DELETE /admin/api/lans/{id}":                         server.handleDeleteLAN,
+		"POST /admin/api/lans":                                server.handleCreateLAN,
+		"PUT /admin/api/lans/{id}/rules":                      server.handleUpdateRules,
+		"PATCH /admin/api/lans/{id}/rules":                    server.handlePatchRules,
+		"PUT /admin/api/lans/{id}/join-code":                  server.handleUpdateJoinCode,
+		"GET /admin/api/lans/{id}/event-codes":                server.handleListEventCodes,
+		"POST /admin/api/event-codes":                         server.handleCreateEventCode,
+		"GET /admin/api/actions":                              server.handleListAdminActions,
+		"POST /admin/api/awards":                              server.handleGiveAward,
+		"GET /admin/api/lans/{id}/areas":                      server.handleListAreas,
+		"POST /admin/api/lans/{id}/areas":                     server.handleCreateArea,
+		"PUT /admin/api/lans/{id}/areas/{area}":               server.handleUpdateArea,
+		"DELETE /admin/api/lans/{id}/areas/{area}":            server.handleDeleteArea,
+		"POST /admin/api/lans/{id}/areas/{area}/code":         server.handleIssueSeatCode,
+		"GET /admin/api/lans/{id}/seat-codes":                 server.handleListSeatCodes,
+		"PUT /admin/api/lans/{id}/players/{player}/area":      server.handleAssignArea,
+		"PUT /admin/api/lans/{id}/map":                        server.handleImportMap,
+		"POST /admin/api/lans/{id}/gathering":                 server.handleStartGathering,
+		"DELETE /admin/api/lans/{id}/gathering":               server.handleEndGathering,
+		"GET /admin/api/lans/{id}/gathering":                  server.handleLoadGathering,
+		"POST /admin/api/event-codes/{id}/end":                server.handleEndEventCode,
+		"POST /admin/api/players/{id}/xp":                     server.handleGiveXP,
+		"POST /admin/api/players/{id}/coins":                  server.handleGiveCoins,
+		"DELETE /admin/api/players/{id}/purchases/{purchase}": server.handleRefundPurchase,
+		"POST /admin/api/players/{id}/achievements":           server.handleGrantAchievement,
+		"GET /admin/api/achievements":                         server.handleListAchievements,
+		"GET /admin/api/stage-link":                           server.handleStageLink,
 	}
 	maps.Copy(routes, server.listBotRoutes())
 	for pattern, handler := range routes {
@@ -357,17 +359,16 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 		})
 		return
 	}
+	gameRules, err := server.Store.LoadLANRules(request.Context(), lanID)
+	if err != nil {
+		server.writeOutcome(writer, request, struct{}{}, err)
+		return
+	}
 	// Meters become percent here, with the room of this LAN, so the rest of the server stays in
 	// percent.
-	if roomMap.Version == rules.MapFormatMeters {
-		gameRules, err := server.Store.LoadLANRules(request.Context(), lanID)
-		if err != nil {
-			server.writeOutcome(writer, request, struct{}{}, err)
-			return
-		}
-		roomMap = roomMap.ToPercent(rules.MeasureRoom(gameRules.PublicRules))
-	}
-	invalid := rules.ListInvalidMapZones(roomMap.Zones)
+	room := rules.MeasureRoom(gameRules.PublicRules)
+	roomMap = roomMap.ToPercent(room)
+	invalid := rules.ListInvalidMapZones(roomMap.Zones, room)
 	if len(invalid) > 0 {
 		server.writeProblem(writer, problem{
 			http.StatusBadRequest, codeInvalidMap,
@@ -376,8 +377,8 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 		return
 	}
 	if request.URL.Query().Get(queryDryRun) == "true" {
-		report, err := server.Store.PreviewMap(request.Context(), lanID, roomMap)
-		server.writeOutcome(writer, request, report, err)
+		preview, previewErr := server.Store.PreviewMap(request.Context(), lanID, roomMap)
+		server.writeOutcome(writer, request, preview, previewErr)
 		return
 	}
 	report, err := server.Store.ImportMap(
