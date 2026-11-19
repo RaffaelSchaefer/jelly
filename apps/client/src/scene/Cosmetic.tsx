@@ -25,7 +25,7 @@ import { MaterializeContext, type MaterializeContextValue } from "./stageLook";
 /** Ein Modell, das noch lädt. Ohne Modell löst es zu `null` auf. */
 type ModelPromise = Promise<BufferGeometry | null>;
 
-/** Eigenschaften von {@link Sticker}: Modell und Tinte, dazu Malschicht und Strichstärke. */
+/** Eigenschaften von {@link Sticker}: Modell und Tinte, dazu Malschicht, Strichstärke und Farbe. */
 interface StickerProps extends CosmeticLook {
   model: ModelPromise;
   ink: string;
@@ -35,11 +35,11 @@ interface StickerProps extends CosmeticLook {
  * Ein Modell in den Koordinaten des Pets, wie es um `blender/pet_reference.obj` modelliert wurde.
  * Hier liegt es als Sticker obenauf, deshalb muss nur modelliert werden, was man von vorn sieht.
  */
-function StickerModel({ model, ink, layer, outline }: StickerProps) {
+function StickerModel({ model, ink, layer, outline, tint }: StickerProps) {
   const geometry = use(model);
   const cosmetic = useMemo(
-    () => geometry && createCosmetic(geometry, ink, "sticker", { layer, outline }),
-    [geometry, ink, layer, outline],
+    () => geometry && createCosmetic(geometry, ink, "sticker", { layer, outline, tint }),
+    [geometry, ink, layer, outline, tint],
   );
   useEffect(() => () => void (cosmetic && disposeCosmetic(cosmetic)), [cosmetic]);
   // Nur beim ersten Erscheinen: Ein späterer Wechsel des Contexts lässt nichts mehr aufspringen.
@@ -101,18 +101,32 @@ function Springing({
  * Renderfehler lassen es still weg, statt das ganze Pet zu verlieren. `model` sollte stabil sein,
  * wie die Promises aus `@jelly/scene`.
  */
-export function Sticker({ model, ink, layer = 0, outline }: StickerProps) {
+export function Sticker({ model, ink, layer = 0, outline, tint }: StickerProps) {
   return (
     <RenderBoundary fallback={null}>
       <Suspense fallback={null}>
-        <StickerModel model={model} ink={ink} layer={layer} outline={outline} />
+        <StickerModel model={model} ink={ink} layer={layer} outline={outline} tint={tint} />
       </Suspense>
     </RenderBoundary>
   );
 }
 
-/** Das Cosmetic `id` mit Outline in `ink` in der Malschicht `layer`, falls ein Modell existiert. */
-export default function Cosmetic({ id, ink, layer }: { id: string; ink: string; layer?: number }) {
+/** Eigenschaften von {@link Cosmetic}. */
+interface CosmeticProps {
+  id: string;
+  ink: string;
+  layer?: number;
+  /** Die gewählte Farbe, ohne sie sieht es aus wie modelliert. */
+  tint?: string | null;
+}
+
+/**
+ * Das Cosmetic `id` mit Outline in `ink` in der Malschicht `layer` und in der Farbe `tint`, falls
+ * ein Modell existiert.
+ */
+export default function Cosmetic({ id, ink, layer, tint }: CosmeticProps) {
   if (!hasCosmeticModel(id)) return null;
-  return <Sticker model={loadCosmetic(id)} ink={ink} layer={layer} {...cosmeticLook(id)} />;
+  return (
+    <Sticker model={loadCosmetic(id)} ink={ink} layer={layer} {...cosmeticLook(id)} tint={tint} />
+  );
 }

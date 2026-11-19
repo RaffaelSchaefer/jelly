@@ -98,11 +98,13 @@ type UnlockFacts struct {
 }
 
 // ListCosmetics returns the catalog, matching `apps/client/src/pet/cosmetics.ts`.
+//
+//nolint:funlen // one flat table of data, splitting it would only scatter the catalog
 func ListCosmetics() []Cosmetic {
 	return []Cosmetic{
 		{
 			Key: "headset", Name: "Headset", Scope: ScopePermanent, Slot: SlotHead,
-			Unlock: UnlockShop, Price: priceHeadset,
+			Colorable: true, Unlock: UnlockShop, Price: priceHeadset,
 		},
 		{
 			Key: "headset-neutral", Name: "Headset schlicht", Scope: ScopePermanent, Slot: SlotHead,
@@ -118,11 +120,11 @@ func ListCosmetics() []Cosmetic {
 		},
 		{
 			Key: "party-hat", Name: "Party-Hut", Scope: ScopePermanent, Slot: SlotHead,
-			Unlock: UnlockEvent,
+			Colorable: true, Unlock: UnlockEvent,
 		},
 		{
 			Key: "pixel-glasses", Name: "Pixel-Brille", Scope: ScopePermanent, Slot: SlotFace,
-			Unlock: UnlockShop, Price: pricePixelGlasses,
+			Colorable: true, Unlock: UnlockShop, Price: pricePixelGlasses,
 		},
 		{
 			Key: "schnoerbi-mask", Name: "Schnörbi-Maske", Scope: ScopePermanent, Slot: SlotFace,
@@ -134,15 +136,15 @@ func ListCosmetics() []Cosmetic {
 		},
 		{
 			Key: "crown", Name: "Krone", Scope: ScopeLAN, Slot: SlotHead,
-			Unlock: UnlockShop, Price: priceCrown,
+			Colorable: true, Unlock: UnlockShop, Price: priceCrown,
 		},
 		{
 			Key: "long-schnoerbi", Name: "Long Schnörbi", Scope: ScopePermanent, Slot: SlotHands,
-			Unlock: UnlockShop, Price: priceLongSchnoerbi,
+			Colorable: true, Unlock: UnlockShop, Price: priceLongSchnoerbi,
 		},
 		{
 			Key: "goose", Name: "Kuschelgans", Scope: ScopePermanent, Slot: SlotHands,
-			Unlock: UnlockShop, Price: priceGoose,
+			Colorable: true, Unlock: UnlockShop, Price: priceGoose,
 		},
 		{
 			Key: "chicken", Name: "Kuschelhuhn", Scope: ScopePermanent, Slot: SlotHands,
@@ -154,7 +156,7 @@ func ListCosmetics() []Cosmetic {
 		},
 		{
 			Key: "ogre-ears", Name: "Oger-Ohren", Scope: ScopePermanent, Slot: SlotHead,
-			Unlock: UnlockShop, Price: priceOgreEars,
+			Colorable: true, Unlock: UnlockShop, Price: priceOgreEars,
 		},
 		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
@@ -162,31 +164,31 @@ func ListCosmetics() []Cosmetic {
 		},
 		{
 			Key: "bandana", Name: "Halstuch", Scope: ScopePermanent, Slot: SlotBody,
-			Unlock: UnlockShop, Price: priceBandana,
+			Colorable: true, Unlock: UnlockShop, Price: priceBandana,
 		},
 		{
 			Key: "bell-collar", Name: "Glöckchen-Halsband", Scope: ScopePermanent, Slot: SlotBody,
-			Unlock: UnlockShop, Price: priceBellCollar,
+			Colorable: true, Unlock: UnlockShop, Price: priceBellCollar,
 		},
 		{
 			Key: "knit-scarf", Name: "Strickschal", Scope: ScopePermanent, Slot: SlotBody,
-			Unlock: UnlockShop, Price: priceKnitScarf,
+			Colorable: true, Unlock: UnlockShop, Price: priceKnitScarf,
 		},
 		{
 			Key: "snail-shell", Name: "Lag-Schneckenhaus", Scope: ScopePermanent, Slot: SlotBody,
-			Unlock: UnlockShop, Price: priceSnailShell,
+			Colorable: true, Unlock: UnlockShop, Price: priceSnailShell,
 		},
 		{
 			Key: "mini-backpack", Name: "Mini-Rucksack", Scope: ScopePermanent, Slot: SlotBody,
-			Unlock: UnlockShop, Price: priceMiniBackpack,
+			Colorable: true, Unlock: UnlockShop, Price: priceMiniBackpack,
 		},
 		{
 			Key: "fairy-wings", Name: "Feenflügel", Scope: ScopePermanent, Slot: SlotBody,
-			Unlock: UnlockShop, Price: priceFairyWings,
+			Colorable: true, Unlock: UnlockShop, Price: priceFairyWings,
 		},
 		{
 			Key: "bat-wings", Name: "Fledermausflügel", Scope: ScopePermanent, Slot: SlotBody,
-			Unlock: UnlockEvent,
+			Colorable: true, Unlock: UnlockEvent,
 		},
 		{
 			Key: "glow-aura", Name: "Glüh-Aura", Scope: ScopePermanent, Slot: SlotAura,

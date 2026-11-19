@@ -69,11 +69,11 @@ WING = {
 FEET = [(-0.12, -0.86, 1.18, -12), (0.22, -0.87, 1.14, 8)]
 FOOT = {"r": 0.12, "half": 0.03, "tilt": (0, 0.3, 1), "circles": [(0, 0.42, 0.32), (0, 0, 0.5), (-0.5, -0.36, 0.21), (0, -0.5, 0.22), (0.5, -0.36, 0.21)]}
 
-# name -> (hex, glow, fluff). Deeper than they show: the app lightens every colour towards pastel.
+# name -> (hex, glow, fluff, tint). Deeper than they show: the app lightens every colour towards pastel.
 # Body, wing and cheeks are plush; beak, feet and eyes keep a little gloss.
 SWATCH = {
-    "Gänseweiß": ("#fff7ea", 1.0, 0.6),
-    "Gänseflügel": ("#dfb071", 0.6, 0.6),
+    "Gänseweiß": ("#fff7ea", 1.0, 0.6, 1.0),
+    "Gänseflügel": ("#dfb071", 0.6, 0.6, 0.51),
     "Gänseorange": ("#ff6f00", 0.2, 0.2),
     "Gänseschnabel": ("#e04a0c", 0.2, 0.2),
     "Gänseauge": ("#1d1630", 0.1),

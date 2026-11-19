@@ -16,15 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { WindowAction } from "../backend";
 
 import { desktop } from "../backend";
-import {
-  equipColor,
-  shopItems,
-  withEquipped,
-  type Catalog,
-  type Equipped,
-  type Me,
-  type ShopItem,
-} from "../pet";
+import { shopItems, withEquipped, type Equipped, type Me, type ShopItem } from "../pet";
 import { OS_REDUCED_MOTION, useDocumentTheme } from "../useDocumentTheme";
 import { useClickSounds } from "../useUiSounds";
 import ShopHeader from "./ShopHeader";
@@ -41,11 +33,20 @@ import { useShopMoments } from "./useShopMoments";
 import { useStageCues } from "./useStageCues";
 import { useWizard, type WizardWorld } from "./useWizard";
 
-/** Was das Jelly zur Probe trägt: alles wie bisher und dazu die gewählte Ware. */
-function tryOn(me: Me, item: ShopItem | null, catalog: Catalog): Equipped {
+/**
+ * Was das Jelly zur Probe trägt: alles wie bisher und dazu die gewählte Ware. Was es schon trägt,
+ * behält seine Farbe.
+ */
+function tryOn(me: Me, item: ShopItem | null): Equipped {
   if (!item) return me.equipped;
   const { id, slot } = item.cosmetic;
-  return withEquipped(me.equipped, slot, id, equipColor(id, catalog));
+  const worn = me.equipped[slot];
+  return withEquipped(
+    me.equipped,
+    slot,
+    id,
+    worn?.key === id ? (worn.color ?? undefined) : undefined,
+  );
 }
 
 /** Was der Zauberer über den Laden weiß. */
@@ -73,7 +74,7 @@ function ShopBody({ shop, me, ritual }: { shop: ShopControls; me: Me; ritual: Ri
   const [chosen, setChosen] = useState<string | null>(null);
   const [keep, setKeep] = useState<string | null>(null);
   const selected = items.find((item) => item.cosmetic.id === chosen) ?? null;
-  const equipped = useMemo(() => tryOn(me, selected, catalog), [me, selected, catalog]);
+  const equipped = useMemo(() => tryOn(me, selected), [me, selected]);
   const wizard = useWizard(shop.game.settings, useWorld(shop, me, items));
   const { notice } = wizard;
   const { cues, director } = useStageCues();

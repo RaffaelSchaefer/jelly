@@ -15,6 +15,7 @@ import {
   Mesh,
   Object3D,
   ShaderMaterial,
+  Vector4,
   type MeshStandardMaterial,
   type WebGLRenderer,
 } from "three";
@@ -129,6 +130,11 @@ export interface CosmeticLook {
   layer?: number;
   /** Breite der Outline in Szenen-Einheiten. Ohne Angabe {@link COSMETIC_OUTLINE}. */
   outline?: number;
+  /**
+   * Die Farbe, die der Träger gewählt hat, als Hex-Text. Sie färbt nur Teile mit `tint` aus
+   * Blender, ohne Farbe bleibt das Cosmetic, wie es modelliert ist.
+   */
+  tint?: string | null;
 }
 
 /**
@@ -175,8 +181,27 @@ function fluffOf(material: MeshStandardMaterial) {
 }
 
 /**
+ * Wie ein Teil die Farbe des Trägers annimmt, 0 bis 2: die Eigenschaft `tint` des Materials aus
+ * Blender. 0 heißt eigene Farbe, 1 genau die gewählte, darunter dunkler, darüber zu Weiß hin.
+ */
+function tintOf(material: MeshStandardMaterial) {
+  const tint: unknown = material.userData.tint;
+  return typeof tint === "number" ? Math.min(2, Math.max(0, tint)) : 0;
+}
+
+/** Dieselben `values` für jeden der `count` Vertices, als ein Attribut. */
+function repeated(values: number[], count: number) {
+  const size = values.length;
+  const array = Float32Array.from(
+    { length: count * size },
+    (_, index) => values[index % size] ?? 0,
+  );
+  return new BufferAttribute(array, size);
+}
+
+/**
  * Ein Mesh aus der glTF-Datei in Koordinaten des Jellys, mit Farbe, y-Bereich und Stärke des
- * Leuchtens sowie Flausch je Vertex.
+ * Leuchtens sowie Flausch und Einfärbung je Vertex.
  */
 function createPart(mesh: Mesh) {
   const source = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
@@ -186,24 +211,15 @@ function createPart(mesh: Mesh) {
     Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
   ) as MeshStandardMaterial;
   const { color } = material;
-  const glow = glowOf(material);
   const count = source.getAttribute("position").count;
-  const colors = new Float32Array(count * 3);
-  const ranges = new Float32Array(count * 3);
-  for (let index = 0; index < count; index++) {
-    colors.set([color.r, color.g, color.b], index * 3);
-    ranges.set([min.y, max.y, glow], index * 3);
-  }
   // Nur was der Shader liest: Mit weiteren Attributen scheiterte das Zusammenfassen an Unterschieden.
   const part = new BufferGeometry();
   part.setAttribute("position", source.getAttribute("position"));
   part.setAttribute("normal", source.getAttribute("normal"));
-  part.setAttribute("aColor", new BufferAttribute(colors, 3));
-  part.setAttribute("aGlowRange", new BufferAttribute(ranges, 3));
-  part.setAttribute(
-    "aFluff",
-    new BufferAttribute(new Float32Array(count).fill(fluffOf(material)), 1),
-  );
+  part.setAttribute("aColor", repeated([color.r, color.g, color.b], count));
+  part.setAttribute("aGlowRange", repeated([min.y, max.y, glowOf(material)], count));
+  part.setAttribute("aFluff", repeated([fluffOf(material)], count));
+  part.setAttribute("aTint", repeated([tintOf(material)], count));
   part.setIndex(source.getIndex());
   return part;
 }
@@ -295,6 +311,13 @@ export function loadCosmetic(key: string): Promise<BufferGeometry | null> {
   return url ? loadModel(url) : NO_MODEL;
 }
 
+/** Die Farbe des Trägers für den Shader: linear, `w` = 1, wenn es eine gibt. */
+function tintUniform(tint: string | null | undefined) {
+  if (!tint) return new Vector4(0, 0, 0, 0);
+  const { r, g, b } = new Color(tint);
+  return new Vector4(r, g, b, 1);
+}
+
 /** Löscht die Tiefe: Was danach kommt, liegt auf allem, was schon gezeichnet ist. */
 function clearDepth(renderer: WebGLRenderer) {
   renderer.clearDepth();
@@ -343,7 +366,7 @@ export function createStickerOutline(model: BufferGeometry, ink: string, width: 
  * in `Jelly.faceAnchor`. `Object3D` statt `Group`, damit die Bühne das Jelly weiter als Ganzes
  * sortiert. Das Material gehört ihm, `disposeJelly` oder {@link disposeCosmetic} geben es frei.
  *
- * @param look - Malschicht und Strichstärke. Ohne Angabe zeichnet es wie jedes Cosmetic.
+ * @param look - Malschicht, Strichstärke und Farbe. Ohne Angabe zeichnet es wie modelliert.
  */
 export function createCosmetic(
   model: BufferGeometry,
@@ -358,7 +381,11 @@ export function createCosmetic(
   if (mode === "sticker") outline.onBeforeRender = clearDepth;
   const fill = new Mesh(
     model,
-    new ShaderMaterial({ uniforms: { uDepthBias }, vertexShader, fragmentShader }),
+    new ShaderMaterial({
+      uniforms: { uDepthBias, uTint: { value: tintUniform(look.tint) } },
+      vertexShader,
+      fragmentShader,
+    }),
   );
   // Eine Szene mit eigenem Licht, wie die des Shops, erkennt daran, was sie beleuchten darf.
   fill.material.userData.lightable = true;

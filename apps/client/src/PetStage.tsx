@@ -249,8 +249,9 @@ function StudioOverlay({
   return (
     <Studio
       {...{ me, region, onRegion, onClose }}
+      catalog={game.catalog}
       busy={game.busy || !game.ready}
-      onEquip={(slot, id) => void game.equip(slot, id)}
+      onEquip={(slot, id, color) => void game.equip(slot, id, color)}
       onColor={(color) => void game.customize({ color })}
       onName={(name) => game.customize({ name })}
     />

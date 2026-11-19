@@ -16,7 +16,6 @@ import { desktop } from "./backend";
 import {
   achievementTitle,
   coinLabel,
-  equipColor,
   needsCode,
   pokeWaitMinutes,
   previewAccess,
@@ -261,7 +260,7 @@ export function usePet(onLevelUp: () => void) {
     [run, setGame, hopAndSay],
   );
 
-  const look = useLook({ patchGame, setGame, run, inFlight, setMessage, catalog });
+  const look = useLook({ patchGame, setGame, run, inFlight, setMessage });
   const emotes = useEmotes(state, account, ready);
   const signs = useSigns(state, account, ready, hopAndSay);
   useFollow(state, ready, hopAndSay);
@@ -291,11 +290,10 @@ interface LookContext {
   run: ReturnType<typeof useBackendCall>["run"];
   inFlight: { current: boolean };
   setMessage: (message: string) => void;
-  catalog: Catalog;
 }
 
 /** Name, Farbe, Cosmetics und Geräte-Einstellungen. In der Vorschau nur lokal. */
-function useLook({ patchGame, setGame, run, inFlight, setMessage, catalog }: LookContext) {
+function useLook({ patchGame, setGame, run, inFlight, setMessage }: LookContext) {
   /** Übernimmt Name und/oder Farbe. `true`, wenn es geklappt hat. */
   const customize = useCallback(
     async (patch: backend.ProfilePatch) => {
@@ -312,10 +310,12 @@ function useLook({ patchGame, setGame, run, inFlight, setMessage, catalog }: Loo
     [patchGame, run, setGame, setMessage],
   );
 
-  /** Legt ein Cosmetic auf seinen Platz oder leert den Platz mit `null`. */
+  /**
+   * Legt ein Cosmetic auf seinen Platz oder leert den Platz mit `null`. Ohne `color` sieht ein
+   * einfärbbares aus wie modelliert, dasselbe Cosmetic mit Farbe färbt es um.
+   */
   const equip = useCallback(
-    async (slot: CosmeticSlot, key: string | null) => {
-      const color = equipColor(key, catalog);
+    async (slot: CosmeticSlot, key: string | null, color?: string) => {
       if (!desktop) {
         patchGame((current) => ({
           ...current,
@@ -330,7 +330,7 @@ function useLook({ patchGame, setGame, run, inFlight, setMessage, catalog }: Loo
       if (next) setGame(next);
       if (next) setMessage(key ? "Steht mir, oder?" : "Wieder ganz natürlich.");
     },
-    [patchGame, run, setGame, setMessage, catalog],
+    [patchGame, run, setGame, setMessage],
   );
 
   /** Übernimmt Größe und Bewegung. `false` heißt: gerade beschäftigt, später erneut versuchen. */

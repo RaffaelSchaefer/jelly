@@ -83,12 +83,12 @@ WEBBING = {"points": [(0.48, -0.21), (0.488, -0.29), (0.495, -0.36)], "sections"
 # The buckle: a rounded frame across the strap where the padding ends, (along, across) half sizes.
 BUCKLE = {"size": (0.026, 0.078), "bar": (0.011, 0.008), "loop": 20, "lift": 0.002}
 
-# name -> (hex, glow, fluff). Deeper than they show: the app lightens every colour towards pastel.
+# name -> (hex, glow, fluff, tint). Deeper than they show: the app lightens every colour towards pastel.
 SWATCH = {
-    "Rucksackgrün": ("#1f7a1d", 0.3, 0.8),
-    "Rucksackriemen": ("#1d5e22", 0.25, 0.6),
+    "Rucksackgrün": ("#1f7a1d", 0.3, 0.8, 1),
+    "Rucksackriemen": ("#1d5e22", 0.25, 0.6, 0.59),
     "Rucksackcreme": ("#f3dcb4", 0.8, 0.6),
-    "Rucksackschnalle": ("#155c22", 0.2, 0.1),
+    "Rucksackschnalle": ("#155c22", 0.2, 0.1, 0.55),
     "Rucksackauge": ("#1d1630", 0.1),
     "Rucksackglanz": ("#fffaf0", 1.0),
     "Rucksackbäckchen": ("#e0306a", 0.5, 0.5),

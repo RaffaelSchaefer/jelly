@@ -15,7 +15,6 @@ import type { RuneState, StageSpotName } from "../pet/shopStage";
 
 import { desktop } from "../backend";
 import {
-  equipColor,
   withEquipped,
   type Catalog,
   type CatalogCosmetic,
@@ -188,9 +187,7 @@ export function useFxReplay(base: StageShow, catalog: Catalog): StageShow {
   }, []);
   if (!shown) return base;
   const { ware } = shown;
-  const equipped = ware
-    ? withEquipped(base.equipped, ware.slot, ware.key, equipColor(ware.key, catalog))
-    : base.equipped;
+  const equipped = ware ? withEquipped(base.equipped, ware.slot, ware.key) : base.equipped;
   return {
     equipped,
     circle: shown.circle,

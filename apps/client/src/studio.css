@@ -58,6 +58,36 @@
 .pop button[aria-pressed='true']::after { content: ''; position: absolute; inset: -1px; border-radius: 50%; background: conic-gradient(#8dffbf, #ff9bd8, #9fd4ff, #ffe79a, #8dffbf); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); animation: film-spin 6s linear infinite; }
 .jelly-swatch { width: 24px; height: 32px; overflow: visible; }
 
+/* Färbbar: Das angelegte Cosmetic bleibt klickbar und trägt einen kleinen Regenbogen-Tupfer. */
+.pop button.paintable[aria-pressed='true'] { cursor: pointer; }
+.pop button.paintable:not([aria-disabled='true']):hover { scale: 1.14; }
+/* Über dem Ring des angelegten Knopfs, sonst schneidet er den Tupfer an. */
+.paint-hint { position: absolute; z-index: 1; right: -3px; bottom: -3px; width: 11px; height: 11px; border-radius: 50%; background: conic-gradient(#ff6b6b, #ffd45c, #4cd97b, #4cc9f0, #7a5cff, #f59ac9, #ff6b6b); box-shadow: 0 0 0 1.5px #fff, 0 1px 2px #0008; }
+
+/*
+ * Farbrad: nimmt den Platz des Popovers ein, Tropfen im Kreis mit der Spitze zur Mitte, darunter
+ * zurück. Über dem Kopf fehlt der Platz, dort öffnet es nach unten (`wheelPlacement`). Am Rand rückt
+ * es ab, statt aus der Canvas zu ragen.
+ */
+.pop.wheel { --wheel: calc(150px * clamp(0.8, var(--pet-scale, 1), 1.15)); display: block; width: var(--wheel); height: calc(var(--wheel) + 30px); min-height: 0; padding: 0; }
+.pop.wheel.opens-right { left: min(var(--at), calc(100% - var(--wheel) - 24px)); top: clamp(calc(var(--wheel) / 2 + 21px), var(--y), calc(100% - var(--wheel) / 2 - 21px)); }
+.pop.wheel.opens-down { top: min(var(--y), calc(100% - var(--wheel) - 54px)); }
+.wheel .petal { --a: calc(var(--i) * 360deg / var(--n, 9) - 90deg); --w: calc(var(--wheel) * 0.19); --h: calc(var(--wheel) * 0.26); position: absolute; left: calc(var(--wheel) / 2 - var(--w) / 2); top: calc(var(--wheel) / 2 - var(--h) / 2); width: var(--w); height: var(--h); border-radius: 0; translate: calc(cos(var(--a)) * var(--wheel) * 0.33) calc(sin(var(--a)) * var(--wheel) * 0.33); rotate: calc(var(--a) - 90deg); }
+.wheel .petal svg { width: 100%; height: 100%; overflow: visible; fill: currentColor; stroke: #ffffffa6; stroke-width: 1.5px; filter: drop-shadow(0 1px 2px #0007); }
+.pop.wheel button.petal[aria-pressed] { background: none; }
+/*
+ * Trefferfläche: ein Keil von 40° von nahe der Mitte bis zum Rand, gedreht mit dem Tropfen. Die neun
+ * Keile füllen den Ring ohne Lücke, jeder Klick dort trifft einen Tropfen.
+ * ponytail: Der Keil passt zu neun Farben. Bringt der Server mehr, überlappen die Keile etwas.
+ */
+.pop.wheel button.petal[aria-pressed]::after { content: ''; position: absolute; inset: calc(var(--wheel) * -0.053) calc(var(--wheel) * -0.087) calc(var(--wheel) * -0.04); border: 0; border-radius: 0; background: none; mask: none; animation: none; clip-path: polygon(35% 0, 65% 0, 100% 100%, 0 100%); }
+.wheel .petal[aria-pressed='true'] svg { stroke: #fff; stroke-width: 3px; }
+/* Ein Rahmen stünde schief um den gedrehten Tropfen, der Fokus leuchtet deshalb. */
+.pop.wheel .petal:focus-visible { outline: none; }
+.wheel .petal:focus-visible svg { filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #fff); }
+.wheel .wheel-original { position: absolute; left: calc(var(--wheel) / 2 - 17px); top: calc(var(--wheel) / 2 - 17px); }
+.wheel .wheel-back { position: absolute; left: calc(50% - 13px); bottom: 4px; width: 26px; height: 26px; }
+
 /* Beschriftung beim Darüberfahren. Reines CSS, damit nichts im React-Zustand mitläuft. */
 [data-tip]::before { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; translate: -50% 0; padding: 3px 8px; border-radius: 8px; background: var(--surface-solid); color: #eef3f5; font-size: 10px; font-weight: 500; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 120ms; }
 [data-tip]:is(:hover, :focus-visible)::before { opacity: 1; }

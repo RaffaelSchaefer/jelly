@@ -69,10 +69,10 @@ DOT = {"points": 10, "half": 0.007, "lift": 0.002}
 # A felt patch with few rings, like the panel's.
 STAR_PROFILE = [(1.0, -1.0), (1.0, 0.0), (0.92, 0.9), (0.5, 1.0)]
 
-# name -> (hex, glow). Deeper than they show: the app lightens every colour towards pastel.
+# name -> (hex, glow, fluff, tint). Deeper than they show: the app lightens every colour towards pastel.
 SWATCH = {
-    "Feenflügellila": ("#8a5ad6", 0.7),
-    "Feenflügelhell": ("#c2a2f0", 0.8),
+    "Feenflügellila": ("#8a5ad6", 0.7, None, 1),
+    "Feenflügelhell": ("#c2a2f0", 0.8, None, 1.32),
     "Feenflügelglitzer": ("#f59a0a", 0.4),
 }
 

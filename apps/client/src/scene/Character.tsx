@@ -129,7 +129,9 @@ function WornCosmetics({
   const draw = (slots: CosmeticSlot[], layer?: number) =>
     worn
       .filter((item) => slots.includes(item.slot))
-      .map((item) => <Cosmetic key={item.id} id={item.id} ink={ink} layer={layer} />);
+      .map((item) => (
+        <Cosmetic key={item.id} id={item.id} ink={ink} layer={layer} tint={item.color} />
+      ));
   return (
     <>
       {createPortal(draw(["head", "face"]), jelly.faceAnchor)}

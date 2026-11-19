@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   COSMETICS,
   nameToSave,
+  paintItems,
   PET_COLORS,
   PREVIEW_CATALOG,
   PREVIEW_ME,
@@ -19,7 +20,7 @@ import {
 const region = (id: string) => REGIONS.find((item) => item.id === id)!;
 
 /** Die Einträge einer Region für `me`. */
-const items = (id: string, me = PREVIEW_ME) => regionItems(region(id), me);
+const items = (id: string, me = PREVIEW_ME) => regionItems(region(id), me, PREVIEW_CATALOG);
 
 /** `PREVIEW_ME` mit allen Cosmetics. */
 const RICH = { ...PREVIEW_ME, cosmetics: COSMETICS.map((item) => item.id) };
@@ -73,6 +74,38 @@ describe("studio regions", () => {
       state: "equipped",
       swatch: PET_COLORS.mint,
     });
+  });
+});
+
+describe("studio paints", () => {
+  /** `PREVIEW_ME` mit allen Cosmetics und `key` auf dem Kopf. */
+  const wearing = (key: string, color: string | null = null) => ({
+    ...RICH,
+    equipped: { head: { key, color } },
+  });
+  /** Das Farbrad für den Kopf. */
+  const wheel = (me = PREVIEW_ME) => paintItems("head", me, PREVIEW_CATALOG);
+
+  it("lets only the worn colorable cosmetic open the wheel", () => {
+    const paintable = (me: typeof RICH) =>
+      items("kopf", me).flatMap((item) => (item.paintable ? [item.id] : []));
+    expect(paintable(wearing("beanie"))).toEqual(["beanie"]);
+    expect(paintable(wearing("headset-neutral"))).toEqual([]);
+    expect(items("kopf").some((item) => item.paintable)).toBe(false);
+  });
+  it("offers Original and the server colors", () => {
+    const offered = wheel(wearing("beanie"));
+    expect(offered.map((item) => item.paint)).toEqual([null, ...PREVIEW_CATALOG.cosmetic_colors]);
+    expect(offered[0]).toMatchObject({ name: "Original", icon: "beanie", state: "equipped" });
+    expect(offered[1]).toMatchObject({ name: "Weiß", icon: null, state: "unlocked" });
+  });
+  it("marks the chosen color", () => {
+    const chosen = wheel(wearing("beanie", "#ffd45c")).filter((item) => item.state === "equipped");
+    expect(chosen.map((item) => item.paint)).toEqual(["#ffd45c"]);
+  });
+  it("has no wheel for fixed cosmetics or empty slots", () => {
+    expect(wheel(wearing("headset-neutral"))).toEqual([]);
+    expect(wheel()).toEqual([]);
   });
 });
 

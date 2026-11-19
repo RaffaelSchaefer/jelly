@@ -61,11 +61,12 @@ export const COSMETICS: Cosmetic[] = [
  */
 const WORN_ORDER: CosmeticSlot[] = ["head", "face", "hands", "body", "aura"];
 
-/** Was ein Jelly trägt, soweit die App es darstellen kann. */
+/** Was ein Jelly trägt, soweit die App es darstellen kann, mit der gewählten Farbe. */
 export function wornCosmetics(equipped: Equipped) {
-  return WORN_ORDER.flatMap(
-    (slot) => COSMETICS.find((item) => item.slot === slot && item.id === equipped[slot]?.key) ?? [],
-  );
+  return WORN_ORDER.flatMap((slot) => {
+    const item = COSMETICS.find((entry) => entry.slot === slot && entry.id === equipped[slot]?.key);
+    return item ? [{ ...item, color: equipped[slot]?.color ?? null }] : [];
+  });
 }
 
 /**
@@ -82,13 +83,9 @@ export function withEquipped(
   return key ? { ...others, [slot]: { key, color: color ?? null } } : others;
 }
 
-/**
- * Die Farbe, die beim Anlegen mitgeht. Einfärbbare Cosmetics bekommen die erste der Palette, bis es
- * eine Auswahl dafür gibt.
- */
-export function equipColor(id: string | null, catalog: Catalog) {
-  const entry = catalog.cosmetics.find((item) => item.key === id);
-  return entry?.colorable ? catalog.cosmetic_colors[0] : undefined;
+/** Ob der Server das Cosmetic einfärben lässt. */
+export function isColorable(id: string, catalog: Catalog) {
+  return catalog.cosmetics.some((item) => item.key === id && item.colorable);
 }
 
 /** Anzeigename eines Platzes aus dem Katalog. */

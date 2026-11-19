@@ -190,8 +190,8 @@ def cord(points):
 
 def build(collection):
     """Shell, rim with collar, and both drawstrings with their tips."""
-    generator.add_mesh(collection, "hood_shell", shell(), generator.material("Kapuzengrün", GREEN, glow=GLOW))
-    roll, string = generator.material("Kapuzensaum", ROLL, glow=GLOW), generator.material("Kordel", CORD)
+    generator.add_mesh(collection, "hood_shell", shell(), generator.material("Kapuzengrün", GREEN, glow=GLOW, tint=1))
+    roll, string = generator.material("Kapuzensaum", ROLL, glow=GLOW, tint=0.58), generator.material("Kordel", CORD)
     generator.add_mesh(collection, "hood_rim", rim(), roll)
     for side, points in CORDS.items():
         mesh, aglet = cord(points)

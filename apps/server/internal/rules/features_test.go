@@ -334,7 +334,7 @@ func TestValidateEquip(t *testing.T) {
 		{
 			"color on a fixed cosmetic",
 			rules.SlotHead,
-			"crown",
+			"sprout",
 			&palette,
 			rules.ErrInvalidCosmeticColor,
 		},

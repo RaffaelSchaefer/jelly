@@ -36,7 +36,7 @@ import {
   type WalkPose,
   type Walker,
 } from "./walking.ts";
-import { syncWorn, type Worn } from "./worn.ts";
+import { syncWorn, type Worn, type WornWish } from "./worn.ts";
 import { findFloorHeight, type Placement } from "./zones.ts";
 
 /** From the feet to the top of the head, in jelly units. */
@@ -169,21 +169,19 @@ function removeJelly(cast: JellyCast, shown: StageJelly): void {
 
 /** Dresses a jelly in what its player wears, without building the jelly again. */
 function dressJelly({ jelly, player, worn }: StageJelly): void {
-  const wanted = new Map<string, string>();
+  const wanted = new Map<string, WornWish>();
   for (const slot of WORN_SLOTS) {
-    const key = player.equipped[slot]?.key;
-    if (key) wanted.set(slot, key);
+    const equipped = player.equipped[slot];
+    if (equipped?.key) wanted.set(slot, { key: equipped.key, color: equipped.color ?? null });
   }
   syncWorn(worn, wanted, {
     load: loadCosmetic,
-    put: (model, key) => {
+    put: (model, { key, color }) => {
       // Real depth here: with the sticker of the app a jelly would stand in front of the couch.
-      const cosmetic = createCosmetic(
-        model,
-        findPalette(player.color).outline,
-        "depth",
-        cosmeticLook(key),
-      );
+      const cosmetic = createCosmetic(model, findPalette(player.color).outline, "depth", {
+        ...cosmeticLook(key),
+        tint: color,
+      });
       jelly.faceAnchor.add(cosmetic);
       return cosmetic;
     },
