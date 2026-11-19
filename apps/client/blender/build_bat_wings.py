@@ -12,7 +12,6 @@ The app paints cosmetics on top of the pet like a sticker, so the wings exist on
 silhouette: the roots tuck a little under the body bell's edge, and they keep a clear gap to the
 head, which moves. Modelled for the right side in pet coordinates (Three.js), mirrored to the left.
 """
-import math
 import os
 import sys
 
@@ -22,7 +21,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import generator  # noqa: E402
-from shapes import HEAD_R, HEAD_Y, catmull, outward, resample, sdf_decal, smooth_union, surface_nets, sweep  # noqa: E402
+from shapes import HEAD_R, HEAD_Y, catmull, outward, polygon_sd, ray_outline, sdf_decal, smooth_union, surface_nets, sweep  # noqa: E402
 
 # The pet's body profile (radius, height) from jellyGeometry.ts. The app draws it as a centripetal
 # Catmull-Rom curve sampled at 96 points, so the silhouette here does the same.
@@ -133,21 +132,6 @@ def smax(a, b, k):
 # The membrane's outline in 2D.
 
 
-def polygon_sd(x, y, corners):
-    """Signed 2D distance to a closed polygon (negative inside)."""
-    v = np.asarray(corners, float)
-    dist = (x - v[0, 0]) ** 2 + (y - v[0, 1]) ** 2
-    sign = np.ones_like(x)
-    for i in range(len(v)):
-        a, e = v[i], v[i - 1] - v[i]
-        wx, wy = x - a[0], y - a[1]
-        t = np.clip((wx * e[0] + wy * e[1]) / (e @ e), 0, 1)
-        dist = np.minimum(dist, (wx - e[0] * t) ** 2 + (wy - e[1] * t) ** 2)
-        above, below, left = y >= a[1], y < v[i - 1, 1], e[0] * wy > e[1] * wx
-        sign = np.where((above & below & left) | (~above & ~below & ~left), -sign, sign)
-    return sign * np.sqrt(dist)
-
-
 def bite(a, b, depth):
     """The circle (x, y, r) through `a` and `b` that bites `depth` into the wing above the chord."""
     a, b = np.asarray(a, float), np.asarray(b, float)
@@ -210,28 +194,6 @@ def wing_sdf(points):
 def wing_front(points):
     """Below the membrane's front as a height field: the panel is laid onto it."""
     return points[:, 2] - WING_Z - front(np.maximum(-outline_sd(points), 0))
-
-
-def ray_outline(sd2, centre, count, reach=1.0, samples=300, rays=720):
-    """`count` evenly spaced points round `centre` where rays from it leave the region `sd2` < 0.
-    Every ray must leave it once: `centre` sees all of the outline."""
-    angles = np.linspace(0, 2 * math.pi, rays, endpoint=False)
-    ways = np.stack([np.cos(angles), np.sin(angles), np.zeros(rays)], 1)
-
-    def outside(t):
-        points = np.array([*centre, 0.0]) + t[..., None] * (ways if t.ndim == 1 else ways[:, None])
-        return sd2(points.reshape(-1, 3)).reshape(t.shape) >= 0
-
-    steps = np.linspace(0, reach, samples)
-    found = outside(np.tile(steps, (rays, 1)))
-    assert not found[:, 0].any() and (np.diff(found.astype(int), axis=1) != 0).sum(1).max() == 1, "centre must see the whole outline"
-    first = np.argmax(found, axis=1)
-    near, far = steps[first - 1], steps[first]
-    for _ in range(24):
-        mid = (near + far) / 2
-        out = outside(mid)
-        far, near = np.where(out, mid, far), np.where(out, near, mid)
-    return resample([(t * math.cos(a), t * math.sin(a)) for t, a in zip(far, angles)], count, 1)
 
 
 def panel_mesh():

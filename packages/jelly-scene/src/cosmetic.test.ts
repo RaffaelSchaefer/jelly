@@ -5,7 +5,16 @@
  * @module
  */
 
-import { Mesh, Object3D, type ShaderMaterial } from "three";
+import {
+  CustomBlending,
+  Mesh,
+  NormalBlending,
+  Object3D,
+  OneFactor,
+  OneMinusSrcAlphaFactor,
+  SrcAlphaFactor,
+  type ShaderMaterial,
+} from "three";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -54,6 +63,7 @@ describe("Cosmetic-Modelle", () => {
       "piercings",
       "ogre-ears",
       "chicken",
+      "kamina-glasses",
     ]) {
       expect(hasCosmeticModel(key)).toBe(true);
     }
@@ -71,6 +81,7 @@ describe("Cosmetic-Modelle", () => {
     expect(model.getAttribute("aGlowRange").count).toBe(count);
     expect(model.getAttribute("aFluff").count).toBe(count);
     expect(model.getAttribute("aTint").count).toBe(count);
+    expect(model.getAttribute("aGlass").count).toBe(count);
     model.computeBoundingBox();
     expect(model.boundingBox!.max.y + COSMETIC_OUTLINE).toBeLessThan(BUBBLE_Y);
   });
@@ -149,6 +160,7 @@ const COLORABLE = new Set([
   "fairy-wings",
   "bat-wings",
   "snail-shell",
+  "kamina-glasses",
 ]);
 
 describe("Farbe des Trägers", () => {
@@ -216,6 +228,54 @@ describe("Malschichten", () => {
     const { outline, fill } = await drawn("sticker");
     expect((fill.material as ShaderMaterial).userData.lightable).toBe(true);
     expect((outline.material as ShaderMaterial).userData.lightable).toBeUndefined();
+  });
+});
+
+describe("Glas", () => {
+  /** Outline und Füllung der Kamina-Brille, deren Glas durchscheint. */
+  async function glasses(mode: "depth" | "sticker", layer?: number) {
+    const model = await loadModel("kamina-glasses");
+    return createCosmetic(model, "#16248a", mode, { layer }).children as [Mesh, Mesh];
+  }
+
+  /** Wie oft Outline und Füllung vor dem Zeichnen die Tiefe löschen. */
+  function clears(meshes: Mesh[]) {
+    let cleared = 0;
+    const renderer = { clearDepth: () => cleared++ };
+    for (const mesh of meshes) {
+      (mesh.onBeforeRender as unknown as (target: typeof renderer) => void)(renderer);
+    }
+    return cleared;
+  }
+
+  it("zeichnet zuletzt in seiner Malschicht, erst die Füllung, dann die Outline", async () => {
+    const [outline, fill] = await glasses("sticker", 1);
+    expect(fill.renderOrder).toBeGreaterThan(stickerOrder(1).fill);
+    expect(outline.renderOrder).toBeGreaterThan(fill.renderOrder);
+    expect(outline.renderOrder).toBeLessThan(stickerOrder(2).outline);
+  });
+
+  it("löscht als Sticker die Tiefe vor der Füllung, auf der Bühne nie", async () => {
+    const [outline, fill] = await glasses("sticker");
+    expect(clears([fill])).toBe(1);
+    expect(clears([outline])).toBe(0);
+    expect(clears(await glasses("depth"))).toBe(0);
+  });
+
+  it("mischt nur Glas mit dem Hintergrund und bleibt dabei in der Reihenfolge", async () => {
+    const material = (await glasses("depth"))[1].material as ShaderMaterial;
+    expect(material).toMatchObject({
+      blending: CustomBlending,
+      transparent: false,
+      blendSrc: SrcAlphaFactor,
+      blendDst: OneMinusSrcAlphaFactor,
+      blendSrcAlpha: OneFactor,
+      blendDstAlpha: OneMinusSrcAlphaFactor,
+    });
+    const headset = createCosmetic(await loadModel("headset"), "#16248a", "depth");
+    expect(((headset.children[1] as Mesh).material as ShaderMaterial).blending).toBe(
+      NormalBlending,
+    );
   });
 });
 
@@ -305,7 +365,15 @@ describe("loadModelParts", () => {
     const parts = await loadModelParts(url);
     expect([...parts.keys()].sort()).toEqual(["beard", "hat"]);
     const hat = parts.get("hat")!;
-    for (const name of ["position", "normal", "aColor", "aGlowRange", "aFluff", "aTint"]) {
+    for (const name of [
+      "position",
+      "normal",
+      "aColor",
+      "aGlowRange",
+      "aFluff",
+      "aTint",
+      "aGlass",
+    ]) {
       expect(hat.getAttribute(name).count).toBe(6);
     }
     expect(hat.getAttribute("uv")).toBeUndefined();

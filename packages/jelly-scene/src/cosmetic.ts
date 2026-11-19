@@ -12,9 +12,13 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  CustomBlending,
   Mesh,
   Object3D,
+  OneFactor,
+  OneMinusSrcAlphaFactor,
   ShaderMaterial,
+  SrcAlphaFactor,
   Vector4,
   type MeshStandardMaterial,
   type WebGLRenderer,
@@ -34,6 +38,7 @@ import goose from "./cosmetics/goose.glb?url&inline";
 import headsetNeutral from "./cosmetics/headset-neutral.glb?url&inline";
 import headset from "./cosmetics/headset.glb?url&inline";
 import hood from "./cosmetics/hood.glb?url&inline";
+import kaminaGlasses from "./cosmetics/kamina-glasses.glb?url&inline";
 import knitScarf from "./cosmetics/knit-scarf.glb?url&inline";
 import longSchnoerbi from "./cosmetics/long-schnoerbi.glb?url&inline";
 import miniBackpack from "./cosmetics/mini-backpack.glb?url&inline";
@@ -69,6 +74,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   headset,
   "headset-neutral": headsetNeutral,
   hood,
+  "kamina-glasses": kaminaGlasses,
   "knit-scarf": knitScarf,
   "long-schnoerbi": longSchnoerbi,
   "mini-backpack": miniBackpack,
@@ -145,6 +151,33 @@ export function stickerOrder(layer = 0) {
   return { outline: OUTLINE_ORDER + 2 * layer, fill: FILL_ORDER + 2 * layer };
 }
 
+/**
+ * Die Reihenfolge eines Cosmetics mit Glas: zuletzt in seiner Malschicht, erst die Füllung, dann
+ * die Outline. Die Füllung lässt durchscheinen, was schon gezeichnet ist, und schreibt Tiefe, so
+ * bleibt die Outline hinter dem Glas verborgen und zeigt sich nur außen. Zuerst gezeichnet, schiene
+ * ihre Tinte durch das Glas.
+ */
+// ponytail: Glas mischt nur mit dem, was vor ihm gezeichnet ist. Auf der Bühne scheint ein Jelly
+// dahinter, das erst danach drankommt, nicht durch. Abhilfe wäre ein eigener Durchgang für Glas
+// nach allem anderen.
+function glassOrder(layer = 0) {
+  const { fill } = stickerOrder(layer);
+  return { fill: fill + 1 / 3, outline: fill + 2 / 3 };
+}
+
+/**
+ * Wie Glas sich mischt: die Farbe nach ihrem Alpha, und Alpha für den durchsichtigen Hintergrund
+ * des Fensters. `transparent` bleibt aus, sonst zeichnete three.js das Glas erst nach allen
+ * Malschichten.
+ */
+const GLASS_BLENDING = {
+  blending: CustomBlending,
+  blendSrc: SrcAlphaFactor,
+  blendDst: OneMinusSrcAlphaFactor,
+  blendSrcAlpha: OneFactor,
+  blendDstAlpha: OneMinusSrcAlphaFactor,
+} as const;
+
 /** Die Data-URL des Modells `key`, falls es eins gibt. Schlüssel kommen vom Server. */
 function findModelUrl(key: string) {
   return Object.hasOwn(COSMETIC_MODELS, key) ? COSMETIC_MODELS[key] : undefined;
@@ -189,6 +222,15 @@ function tintOf(material: MeshStandardMaterial) {
   return typeof tint === "number" ? Math.min(2, Math.max(0, tint)) : 0;
 }
 
+/**
+ * Wie durchsichtig ein Teil ist, 0 bis 1: die Eigenschaft `glass` des Materials aus Blender. 0 ist
+ * deckend, mit mehr scheint von vorn durch, was dahinter liegt. Zum Rand hin deckt Glas mehr.
+ */
+function glassOf(material: MeshStandardMaterial) {
+  const glass: unknown = material.userData.glass;
+  return typeof glass === "number" ? Math.min(1, Math.max(0, glass)) : 0;
+}
+
 /** Dieselben `values` für jeden der `count` Vertices, als ein Attribut. */
 function repeated(values: number[], count: number) {
   const size = values.length;
@@ -201,7 +243,7 @@ function repeated(values: number[], count: number) {
 
 /**
  * Ein Mesh aus der glTF-Datei in Koordinaten des Jellys, mit Farbe, y-Bereich und Stärke des
- * Leuchtens sowie Flausch und Einfärbung je Vertex.
+ * Leuchtens sowie Flausch, Einfärbung und Glas je Vertex.
  */
 function createPart(mesh: Mesh) {
   const source = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
@@ -220,6 +262,7 @@ function createPart(mesh: Mesh) {
   part.setAttribute("aGlowRange", repeated([min.y, max.y, glowOf(material)], count));
   part.setAttribute("aFluff", repeated([fluffOf(material)], count));
   part.setAttribute("aTint", repeated([tintOf(material)], count));
+  part.setAttribute("aGlass", repeated([glassOf(material)], count));
   part.setIndex(source.getIndex());
   return part;
 }
@@ -318,6 +361,12 @@ function tintUniform(tint: string | null | undefined) {
   return new Vector4(r, g, b, 1);
 }
 
+/** Ob ein Teil des Modells aus Glas ist. */
+function hasGlass(model: BufferGeometry) {
+  const glass = model.getAttribute("aGlass") as BufferAttribute | undefined;
+  return glass !== undefined && (glass.array as Float32Array).some((value) => value > 0);
+}
+
 /** Löscht die Tiefe: Was danach kommt, liegt auf allem, was schon gezeichnet ist. */
 function clearDepth(renderer: WebGLRenderer) {
   renderer.clearDepth();
@@ -364,7 +413,8 @@ export function createStickerOutline(model: BufferGeometry, ink: string, width: 
 /**
  * Ein Cosmetic in der Tintenfarbe `ink`, in Koordinaten des Jellys. Für Kopf und Gesicht gehört es
  * in `Jelly.faceAnchor`. `Object3D` statt `Group`, damit die Bühne das Jelly weiter als Ganzes
- * sortiert. Das Material gehört ihm, `disposeJelly` oder {@link disposeCosmetic} geben es frei.
+ * sortiert. Das Material gehört ihm, `disposeJelly` oder {@link disposeCosmetic} geben es frei. Mit
+ * Glas zeichnet es zuletzt in seiner Malschicht (siehe {@link glassOrder}).
  *
  * @param look - Malschicht, Strichstärke und Farbe. Ohne Angabe zeichnet es wie modelliert.
  */
@@ -374,22 +424,25 @@ export function createCosmetic(
   mode: CosmeticMode,
   look: CosmeticLook = {},
 ) {
-  const order = stickerOrder(look.layer);
+  const glass = hasGlass(model);
+  const order = glass ? glassOrder(look.layer) : stickerOrder(look.layer);
   const uDepthBias = { value: mode === "depth" ? DEPTH_BIAS : 0 };
   const outline = createOutline(model, ink, look.outline ?? COSMETIC_OUTLINE, uDepthBias);
   outline.renderOrder = order.outline;
-  if (mode === "sticker") outline.onBeforeRender = clearDepth;
   const fill = new Mesh(
     model,
     new ShaderMaterial({
       uniforms: { uDepthBias, uTint: { value: tintUniform(look.tint) } },
       vertexShader,
       fragmentShader,
+      ...(glass ? GLASS_BLENDING : {}),
     }),
   );
   // Eine Szene mit eigenem Licht, wie die des Shops, erkennt daran, was sie beleuchten darf.
   fill.material.userData.lightable = true;
   fill.renderOrder = order.fill;
+  // Als Sticker löscht, was zuerst zeichnet, die Tiefe: sonst die Outline, mit Glas die Füllung.
+  if (mode === "sticker") (glass ? fill : outline).onBeforeRender = clearDepth;
   const cosmetic = new Object3D();
   cosmetic.add(outline, fill);
   return cosmetic;

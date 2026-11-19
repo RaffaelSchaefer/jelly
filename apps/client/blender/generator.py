@@ -2,7 +2,7 @@
 
 A generator (`build_party_hat.py`, `build_hood.py`, `build_crown.py`, `build_golden_cup.py`,
 `build_sprout.py`, `build_schnoerbi_mask.py`, `build_long_schnoerbi.py`, `build_goose.py`,
-`build_chicken.py`, `build_piercings.py`, `build_ogre_ears.py` and the body
+`build_chicken.py`, `build_piercings.py`, `build_ogre_ears.py`, `build_kamina_glasses.py` and the body
 cosmetics `build_bandana.py`, `build_bell_collar.py`, `build_knit_scarf.py`, `build_snail_shell.py`,
 `build_mini_backpack.py`, `build_fairy_wings.py`, `build_bat_wings.py`) holds only its numbers and a
 `build(collection)` and ends with `generator.run(...)`:
@@ -34,13 +34,14 @@ def linear(channel):
     return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
 
 
-def material(name, hex_color, glow=None, fluff=None, tint=None):
+def material(name, hex_color, glow=None, fluff=None, tint=None, glass=None):
     """The material `name` in `hex_color`, created or updated. `glow` (0–1) dampens the light lower
     edge the app adds; without it the material lights up fully. `fluff` (0–1) turns it into plush:
     no jelly gloss, fur grain and a light, fuzzy rim instead. `tint` makes it take the wearer's
     chosen colour instead of `hex_color`: 1 is that colour, below 1 a darker shade (colour × tint),
     above 1 a lighter one (towards white by tint − 1). Without it the material keeps its own
-    colour."""
+    colour. `glass` (0–1) makes it see-through from the front, more so the higher it is; towards
+    its rim it covers more."""
     mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     if mat.node_tree is None:
         mat.use_nodes = True
@@ -49,7 +50,7 @@ def material(name, hex_color, glow=None, fluff=None, tint=None):
     bsdf.inputs["Base Color"].default_value = (*rgb, 1)
     bsdf.inputs["Roughness"].default_value = 0.35
     mat.diffuse_color = (*rgb, 1)
-    for key, value in (("glow", glow), ("fluff", fluff), ("tint", tint)):
+    for key, value in (("glow", glow), ("fluff", fluff), ("tint", tint), ("glass", glass)):
         if value is None:
             mat.pop(key, None)
         else:

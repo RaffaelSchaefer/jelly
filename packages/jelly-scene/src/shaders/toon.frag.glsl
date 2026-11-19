@@ -1,12 +1,14 @@
 // Toon-Shader, Fragment-Teil: glänzendes Fruchtgummi-Material für Cosmetics.
 // vGlowRange ist der y-Bereich des Teils, von unten (volles Leuchten) nach oben (Grundfarbe), und
 // in z, wie stark es leuchtet. vFluff macht ein Teil zu Plüsch: ohne Glanz, mit Fell und hellem Rand.
+// vGlass lässt von vorn durchscheinen, was dahinter liegt (Mischen in cosmetic.ts).
 // Mit SCENE_LIGHT kommt das Licht einer Szene dazu (Block <scene-light>).
 
 varying vec3 vColor;
 varying vec3 vGlow;
 varying vec3 vGlowRange;
 varying float vFluff;
+varying float vGlass;
 varying vec3 vNormal;
 varying vec3 vPosition;
 varying vec3 vViewPosition;
@@ -109,7 +111,8 @@ void main() {
 #ifdef SCENE_LIGHT
   color += sceneRim(worldNormal, normalize(cameraPosition - vWorldPos));
 #endif
-  gl_FragColor = vec4(color, 1.0);
+  // Glas deckt zum Rand hin mehr, dort blickt man schräg durch mehr davon.
+  gl_FragColor = vec4(color, 1.0 - vGlass * facing);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }
