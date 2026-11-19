@@ -346,7 +346,7 @@ func TestBuyingEarnsTheShopAchievements(t *testing.T) {
 	for _, key := range []string{
 		"headset", "headset-neutral", "beanie", "sprout", "pixel-glasses", "schnoerbi-mask", "hood",
 		"long-schnoerbi", "goose", "crown", "bandana", "bell-collar", "knit-scarf", "snail-shell",
-		"mini-backpack", "fairy-wings", "chicken", "piercings", "ogre-ears",
+		"mini-backpack", "fairy-wings", "chicken", "piercings", "ogre-ears", "kamina-glasses",
 	} {
 		response := testFixture.callAPI("POST", "/v1/purchases", token, `{"key":"`+key+`"}`)
 		if response.status != 200 {
@@ -393,7 +393,7 @@ func TestAnAwardedCosmeticCountsForTheShopAchievement(t *testing.T) {
 	for _, key := range []string{
 		"headset-neutral", "beanie", "sprout", "pixel-glasses", "schnoerbi-mask", "hood",
 		"long-schnoerbi", "goose", "bandana", "bell-collar", "knit-scarf", "snail-shell",
-		"mini-backpack", "fairy-wings", "chicken", "piercings", "ogre-ears",
+		"mini-backpack", "fairy-wings", "chicken", "piercings", "ogre-ears", "kamina-glasses",
 	} {
 		if bought := testFixture.callAPI(
 			"POST", "/v1/purchases", token, `{"key":"`+key+`"}`,

@@ -56,6 +56,7 @@ const (
 	priceChicken       = 4
 	pricePiercings     = 3
 	priceOgreEars      = 3
+	priceKaminaGlasses = 3
 )
 
 // Cosmetic is one item. It unlocks through a purchase, an event, or only through an award.
@@ -157,6 +158,10 @@ func ListCosmetics() []Cosmetic {
 		{
 			Key: "ogre-ears", Name: "Oger-Ohren", Scope: ScopePermanent, Slot: SlotHead,
 			Colorable: true, Unlock: UnlockShop, Price: priceOgreEars,
+		},
+		{
+			Key: "kamina-glasses", Name: "Kamina-Brille", Scope: ScopePermanent, Slot: SlotFace,
+			Colorable: true, Unlock: UnlockShop, Price: priceKaminaGlasses,
 		},
 		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
