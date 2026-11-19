@@ -240,6 +240,15 @@ export const PREVIEW_CATALOG: Catalog = {
       unlock: "shop",
       price: 3,
     },
+    {
+      key: "kamina-glasses",
+      name: "Kamina-Brille",
+      scope: "permanent",
+      slot: "face",
+      colorable: true,
+      unlock: "shop",
+      price: 3,
+    },
   ],
   cosmetic_slots: [
     { key: "head", label: "Kopf" },

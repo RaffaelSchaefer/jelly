@@ -17,8 +17,8 @@ This writes `blender/cosmetics.blend` with:
   exported.
 - **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `headset-neutral`, `beanie`, `party-hat`,
   `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`, `goose`, `bandana`,
-  `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings`, `bat-wings`, `chicken`, `piercings`, `ogre-ears`). The
-  collection name is the id.
+  `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings`, `bat-wings`, `chicken`, `piercings`, `ogre-ears`,
+  `kamina-glasses`). The collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -36,7 +36,11 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    (the long Schnörbi's fur uses 1). A custom property `tint` makes it take the colour the wearer picks
    instead of its own: 1 is that colour, below 1 a darker shade (colour × tint), above 1 a lighter
    one (towards white by tint − 1). Without it the material keeps its Base Color (the hood's green
-   uses 1, its hem 0.58).
+   uses 1, its hem 0.58). A custom property `glass` (0–1) makes it see-through from the front, more
+   the higher it is, while its rim covers more (the Kamina glasses' lens uses 0.35). The app then
+   draws the whole cosmetic last in its paint layer and its outline after the fill, so ink only
+   shows outside: a part in front of glass must be an open sheet facing the front, without back or
+   edge, or its outline inks a line round it (the glasses' glints).
 4. Use **Shade Smooth**. The outline is the mesh pushed out along its normals, so hard edges crack open.
 5. Cosmetics are drawn on top of the head like a sticker. Parts that would be hidden behind the head
    (the back of a hood, the far ear cup) still show, so model only what is seen from the front.

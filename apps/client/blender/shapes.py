@@ -558,6 +558,43 @@ def surface_nets(sdf, low, high, step):
     return verts.tolist(), np.concatenate(faces).tolist()
 
 
+def polygon_sd(x, y, corners):
+    """Signed 2D distance to a closed polygon (negative inside)."""
+    v = np.asarray(corners, float)
+    dist = (x - v[0, 0]) ** 2 + (y - v[0, 1]) ** 2
+    sign = np.ones_like(x)
+    for i in range(len(v)):
+        a, e = v[i], v[i - 1] - v[i]
+        wx, wy = x - a[0], y - a[1]
+        t = np.clip((wx * e[0] + wy * e[1]) / (e @ e), 0, 1)
+        dist = np.minimum(dist, (wx - e[0] * t) ** 2 + (wy - e[1] * t) ** 2)
+        above, below, left = y >= a[1], y < v[i - 1, 1], e[0] * wy > e[1] * wx
+        sign = np.where((above & below & left) | (~above & ~below & ~left), -sign, sign)
+    return sign * np.sqrt(dist)
+
+
+def ray_outline(sd2, centre, count, reach=1.0, samples=300, rays=720):
+    """`count` evenly spaced points round `centre` where rays from it leave the region `sd2` < 0.
+    Every ray must leave it once: `centre` sees all of the outline."""
+    angles = np.linspace(0, 2 * math.pi, rays, endpoint=False)
+    ways = np.stack([np.cos(angles), np.sin(angles), np.zeros(rays)], 1)
+
+    def outside(t):
+        points = np.array([*centre, 0.0]) + t[..., None] * (ways if t.ndim == 1 else ways[:, None])
+        return sd2(points.reshape(-1, 3)).reshape(t.shape) >= 0
+
+    steps = np.linspace(0, reach, samples)
+    found = outside(np.tile(steps, (rays, 1)))
+    assert not found[:, 0].any() and (np.diff(found.astype(int), axis=1) != 0).sum(1).max() == 1, "centre must see the whole outline"
+    first = np.argmax(found, axis=1)
+    near, far = steps[first - 1], steps[first]
+    for _ in range(24):
+        mid = (near + far) / 2
+        out = outside(mid)
+        far, near = np.where(out, mid, far), np.where(out, near, mid)
+    return resample([(t * math.cos(a), t * math.sin(a)) for t, a in zip(far, angles)], count, 1)
+
+
 def dome(stacks):
     """A cushion's profile for `sdf_decal`: (scale of the outline, height in halves), back to front."""
     return [(math.cos(i / stacks * math.pi / 2), math.sin(i / stacks * math.pi / 2)) for i in range(-stacks + 1, stacks)]

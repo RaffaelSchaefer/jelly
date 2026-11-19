@@ -79,6 +79,10 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Aus Sternensilber, gestochen mit einem Kitzelzauber. Tut kein bisschen weh.",
     article: "die",
   },
+  "kamina-glasses": {
+    lore: "Geschliffen aus rotem Sternenglas. Wer sie trägt, durchbohrt mit Kampfgeist jeden Himmel.",
+    article: "die",
+  },
   "ogre-ears": {
     lore: "Aus einem Sumpf weit hinter der Halle. Hören jedes Flüstern, auch das ungefragte.",
     article: "die",

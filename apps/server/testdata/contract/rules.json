@@ -152,6 +152,13 @@
       "error": "not_enough_coins"
     },
     {
+      "name": "the Kamina glasses cost three coins",
+      "key": "kamina-glasses",
+      "coins": 3,
+      "owned": false,
+      "error": null
+    },
+    {
       "name": "the bat wings are not for sale",
       "key": "bat-wings",
       "coins": 100,

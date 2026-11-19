@@ -49,6 +49,7 @@ const FOR_TWO = ["bell-collar", "bandana", "sprout"];
 
 /** Was der Spieler der Vorschau noch nicht hat ab 3 Münzen, nach Preis und dann nach Namen. */
 const FROM_THREE = [
+  "kamina-glasses",
   "snail-shell",
   "ogre-ears",
   "piercings",
@@ -194,7 +195,7 @@ describe("shopSummary", () => {
     expect(summary(jelly({ coins: 2, cosmetics: twoOwned }))).toBe(
       "Mit 2 Münzen kannst du dir eine Ware leisten.",
     );
-    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 9 Waren leisten.");
+    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 10 Waren leisten.");
   });
 
   it("nennt, was zur günstigsten Ware fehlt", () => {
