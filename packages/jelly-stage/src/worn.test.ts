@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { syncWorn, type Worn, type WornActions } from "./worn.ts";
+import { syncWorn, type Worn, type WornActions, type WornWish } from "./worn.ts";
 
 /** Records what happens and lets the test decide when a model arrives. */
 function createWorld() {
@@ -9,9 +9,10 @@ function createWorld() {
   const shown: string[] = [];
   const actions: WornActions<string, string> = {
     load: (key) => new Promise((resolve) => answers.set(key, resolve)),
-    put: (model) => {
-      shown.push(model);
-      return model;
+    put: (model, wish) => {
+      const item = wish.color ? `${model} ${wish.color}` : model;
+      shown.push(item);
+      return item;
     },
     remove: (item) => {
       shown.splice(shown.indexOf(item), 1);
@@ -25,7 +26,14 @@ function createWorld() {
   return { actions, answer, shown };
 }
 
-const wanted = (entries: Record<string, string> = {}) => new Map(Object.entries(entries));
+/** Wishes per slot: a key alone, or `key color` for a colored one. */
+const wanted = (entries: Record<string, string> = {}) =>
+  new Map(
+    Object.entries(entries).map(([slot, wish]): [string, WornWish] => {
+      const [key = "", color = null] = wish.split(" ");
+      return [slot, { key, color }];
+    }),
+  );
 
 test("puts a cosmetic on once it has loaded", async () => {
   const { actions, answer, shown } = createWorld();
@@ -123,4 +131,19 @@ test("a failed load leaves the jelly without the cosmetic", async () => {
   }
   assert.deepEqual(shown, []);
   assert.equal(warnings.length, 1);
+});
+
+test("recolors when only the color changes", async () => {
+  const { actions, answer, shown } = createWorld();
+  const worn: Worn<string> = new Map();
+  syncWorn(worn, wanted({ head: "beanie #ffd45c" }), actions);
+  await answer("beanie");
+  syncWorn(worn, wanted({ head: "beanie #ffd45c" }), actions);
+  assert.deepEqual(shown, ["beanie #ffd45c"]);
+  syncWorn(worn, wanted({ head: "beanie #4cc9f0" }), actions);
+  await answer("beanie");
+  assert.deepEqual(shown, ["beanie #4cc9f0"]);
+  syncWorn(worn, wanted({ head: "beanie" }), actions);
+  await answer("beanie");
+  assert.deepEqual(shown, ["beanie"]);
 });
