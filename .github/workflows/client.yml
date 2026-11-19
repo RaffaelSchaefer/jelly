@@ -66,6 +66,15 @@ jobs:
             echo "::error::Repository-Variable JELLY_SERVER_URL fehlt, das Release zeigte auf localhost."
             exit 1
           fi
+          if ! grep -q "^## $version\$" apps/client/CHANGELOG.md; then
+            echo "::error::apps/client/CHANGELOG.md hat keinen Abschnitt ## $version für den Update-Hinweis."
+            exit 1
+          fi
+          pubkey=$(node -p "require('./apps/client/src-tauri/tauri.conf.json').plugins.updater.pubkey")
+          if [[ "$pubkey" == FEHLT* ]]; then
+            echo "::error::plugins.updater.pubkey in tauri.conf.json fehlt, die App könnte keine Updates prüfen."
+            exit 1
+          fi
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
@@ -125,8 +134,11 @@ jobs:
             artifact_paths: |
               apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/jelly
               apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+              apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb.sig
               apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
+              apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm.sig
               apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+              apps/client/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.sig
           - label: windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -134,7 +146,9 @@ jobs:
             artifact_paths: |
               apps/client/src-tauri/target/x86_64-pc-windows-msvc/release/jelly.exe
               apps/client/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+              apps/client/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.sig
               apps/client/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+              apps/client/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe.sig
           - label: macos-aarch64
             os: macos-latest
             target: aarch64-apple-darwin
@@ -142,6 +156,7 @@ jobs:
             artifact_paths: |
               apps/client/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
               apps/client/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
+              apps/client/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
           - label: macos-x86_64
             os: macos-latest
             target: x86_64-apple-darwin
@@ -149,6 +164,7 @@ jobs:
             artifact_paths: |
               apps/client/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
               apps/client/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz
+              apps/client/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -195,12 +211,24 @@ jobs:
           # Für das AppImage. Ohne Doppelstrich: pnpm reicht "--" weiter, dann bekäme nur cargo das
           # Ziel und die Tauri-CLI suchte die Binärdatei im falschen Ordner.
           NO_STRIP: ${{ runner.os == 'Linux' }}
-        run: pnpm --filter @jelly/client run tauri build --target ${{ matrix.target }}
+          # Signiert die Update-Pakete. Ohne Schlüssel bricht der Build ab, deshalb schaltet sie erst
+          # tauri.updater.conf.json ein, nicht tauri.conf.json: Lokale Builds brauchen keinen Schlüssel.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: >-
+          pnpm --filter @jelly/client run tauri build --target ${{ matrix.target }}
+          --config src-tauri/tauri.updater.conf.json
 
-      - name: Archive macOS .app bundle
+      # Beide Macs bauen Jelly.app.tar.gz, im Release dürfen die Namen nicht kollidieren. Die Signatur
+      # gilt dem Inhalt, Umbenennen schadet ihr nicht.
+      - name: Name macOS update bundle by architecture
         if: runner.os == 'macOS'
         working-directory: apps/client/src-tauri/target/${{ matrix.target }}/release/bundle/macos
-        run: tar -czf Jelly.app.tar.gz Jelly.app
+        run: |
+          arch="${{ matrix.target }}"
+          arch="${arch%%-*}"
+          mv Jelly.app.tar.gz "Jelly_${arch}.app.tar.gz"
+          mv Jelly.app.tar.gz.sig "Jelly_${arch}.app.tar.gz.sig"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -217,10 +245,25 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      # Die Liste für den Updater. Die App liest sie unter releases/latest, Vorabversionen erreichen
+      # sie also nie.
+      - name: Write updater manifest
+        run: >-
+          node apps/client/scripts/updater-manifest.mjs artifacts "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY"
+          apps/client/CHANGELOG.md > latest.json
 
       - name: Create GitHub release
         env:
@@ -228,8 +271,10 @@ jobs:
         run: |
           flags=()
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi
-          # Nur Installer: Die rohen Binärdateien und .app.tar.gz bleiben Artefakte des Laufs.
-          find artifacts -type f \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
-            -o -name '*.msi' -o -name '*-setup.exe' -o -name '*.dmg' \) -print0 |
+          # Installer, Update-Pakete und ihre Liste. Die Signaturen stehen in latest.json, die rohen
+          # Binärdateien bleiben Artefakte des Laufs.
+          { find artifacts -type f \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
+            -o -name '*.msi' -o -name '*-setup.exe' -o -name '*.dmg' -o -name '*.app.tar.gz' \) -print0
+            printf 'latest.json\0'; } |
             xargs -0 gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
               --verify-tag --generate-notes "${flags[@]}"
