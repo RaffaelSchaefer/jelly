@@ -69,7 +69,7 @@ TURN = 0.02  # ring spacing counts each radian the profile turns like this much 
 
 # Deeper than they show: the app lightens every colour towards pastel. Skin, a little soft. The
 # inside glows less, so the opening stays a dark hole down to its lower edge.
-SWATCH = {"Ogergrün": ("#3a6e10", 0.3, 0.2), "Ogerinnen": ("#1e3e08", 0.15, 0.2)}
+SWATCH = {"Ogergrün": ("#3a6e10", 0.3, 0.2, 1.0), "Ogerinnen": ("#1e3e08", 0.15, 0.2, 0.31)}
 
 
 def smoothstep(a, b, x):

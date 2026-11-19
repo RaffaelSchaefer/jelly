@@ -82,10 +82,10 @@ HEARTS = {
     "roll": (-18, 14, -8, 22), "colours": ("Herzlila", "Herzmint", "Herzgelb"), "half": 0.009, "lift": 0.01, "ring": 16,
 }
 
-# name -> (hex, glow, fluff). Deeper than they show: the app lightens every colour towards pastel.
+# name -> (hex, glow, fluff, tint). Deeper than they show: the app lightens every colour towards pastel.
 # Fur, paws, feet, hearts, cheeks and the tuft are plush (`fluff`), eyes, rims and beak keep their gloss.
 SWATCH = {
-    "Schnörbipink": ("#ec4f97", 0.5, 1.0),
+    "Schnörbipink": ("#ec4f97", 0.5, 1.0, 1.0),
     "Bäckchen": ("#ff2f7a", 0.6, 0.5),
     "Maskengold": ("#f5a300", 0.25),
     "Augenweiß": ("#fffaf0", 1.0),
