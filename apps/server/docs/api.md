@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.28.0**
+Aktuelle Version: **1.29.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.28.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.29.0  | Mehr einfärbbare Cosmetics (`colorable`): `headset`, `pixel-glasses`, `party-hat`, `crown`, `bandana`, `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings` und `bat-wings` nehmen wie `beanie` und `hood` eine Farbe aus `cosmetic_colors`. Ohne `color` sieht ein Cosmetic aus wie modelliert |
 | 1.28.0  | Erste Cosmetics im Platz `body`: `bandana` (Halstuch) und `bell-collar` (Glöckchen-Halsband) für 2 Münzen, `knit-scarf` (Strickschal) und `snail-shell` (Lag-Schneckenhaus) für 3, `mini-backpack` (Mini-Rucksack) für 4 und `fairy-wings` (Feenflügel) für 6, alle dauerhaft im Shop. `bat-wings` (Fledermausflügel) gibt es wie den Party-Hut über Event-Codes. Dazu `chicken` (Kuschelhuhn, `hands`) für 4 Münzen, `piercings` (Piercings, `face`) und `ogre-ears` (Oger-Ohren, `head`) für je 3. „Ausverkauft“ verlangt damit 18 Shop-Cosmetics |
 | 1.27.0  | Neues Cosmetic `goose` (Kuschelgans) im Shop, dauerhaft für 4 Münzen im Platz `hands`. „Ausverkauft“ verlangt damit 9 Shop-Cosmetics |
 | 1.26.0  | Neues Cosmetic `long-schnoerbi` (Long Schnörbi) im Shop, dauerhaft für 4 Münzen im Platz `hands`. „Ausverkauft“ verlangt damit 8 Shop-Cosmetics |

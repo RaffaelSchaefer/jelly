@@ -195,8 +195,14 @@ func TestCosmeticsRequireUnlock(t *testing.T) {
 	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
 		`{"slot":"face","key":"party-hat"}`), http.StatusBadRequest, "unknown_cosmetic")
 	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
-		`{"slot":"head","key":"party-hat","color":"#ffffff"}`),
+		`{"slot":"head","key":"sprout","color":"#ffffff"}`),
 		http.StatusBadRequest, "invalid_cosmetic_color")
+	response = testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"head","key":"party-hat","color":"#ffd45c"}`)
+	tinted := decodeBody[store.PlayerState](t, response).Equipped["head"].Color
+	if tinted == nil || *tinted != "#ffd45c" {
+		t.Fatalf("color: %s", response.body)
+	}
 }
 
 func TestNewLANRestartsXPAndKeepsHistory(t *testing.T) {
