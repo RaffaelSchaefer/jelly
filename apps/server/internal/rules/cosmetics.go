@@ -140,11 +140,11 @@ func ListCosmetics() []Cosmetic {
 		},
 		{
 			Key: "long-schnoerbi", Name: "Long Schnörbi", Scope: ScopePermanent, Slot: SlotHands,
-			Unlock: UnlockShop, Price: priceLongSchnoerbi,
+			Colorable: true, Unlock: UnlockShop, Price: priceLongSchnoerbi,
 		},
 		{
 			Key: "goose", Name: "Kuschelgans", Scope: ScopePermanent, Slot: SlotHands,
-			Unlock: UnlockShop, Price: priceGoose,
+			Colorable: true, Unlock: UnlockShop, Price: priceGoose,
 		},
 		{
 			Key: "chicken", Name: "Kuschelhuhn", Scope: ScopePermanent, Slot: SlotHands,
@@ -156,7 +156,7 @@ func ListCosmetics() []Cosmetic {
 		},
 		{
 			Key: "ogre-ears", Name: "Oger-Ohren", Scope: ScopePermanent, Slot: SlotHead,
-			Unlock: UnlockShop, Price: priceOgreEars,
+			Colorable: true, Unlock: UnlockShop, Price: priceOgreEars,
 		},
 		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
