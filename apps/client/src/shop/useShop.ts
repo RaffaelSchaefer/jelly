@@ -14,7 +14,6 @@ import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import * as backend from "../backend";
 import { desktop } from "../backend";
 import {
-  equipColor,
   previewCoinGift,
   previewSettings,
   previewShop,
@@ -103,27 +102,26 @@ function useShopData() {
 type ShopData = ReturnType<typeof useShopData>;
 
 /** Legt Waren an und ab. */
-function useEquip({ catalog, patchGame, run, setGame }: ShopData) {
+function useEquip({ patchGame, run, setGame }: ShopData) {
   /** Legt eine Ware auf ihren Platz oder leert ihn mit `null`. `true`, wenn es geklappt hat. */
   return useCallback(
     async (slot: CosmeticSlot, key: string | null) => {
-      const color = equipColor(key, catalog);
       if (!desktop) {
         patchGame((current) => ({
           ...current,
           me: current.me && {
             ...current.me,
-            equipped: withEquipped(current.me.equipped, slot, key, color),
+            equipped: withEquipped(current.me.equipped, slot, key),
           },
         }));
         return true;
       }
-      const next = await run(() => backend.equipCosmetic(slot, key, color));
+      const next = await run(() => backend.equipCosmetic(slot, key));
       if (!next) return false;
       setGame(next);
       return true;
     },
-    [catalog, patchGame, run, setGame],
+    [patchGame, run, setGame],
   );
 }
 

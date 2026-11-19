@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   achievementRows,
   coinLabel,
-  equipColor,
   isUnlocked,
   levelProgress,
   PET_SIZE,
@@ -15,6 +14,7 @@ import {
   stageLayout,
   shopItems,
   unlockLabel,
+  isColorable,
   wornCosmetics,
 } from ".";
 
@@ -111,10 +111,10 @@ describe("unlocks", () => {
 });
 
 describe("slots", () => {
-  it("sends the first colour only for colourable cosmetics", () => {
-    expect(equipColor("beanie", PREVIEW_CATALOG)).toBe(PREVIEW_CATALOG.cosmetic_colors[0]);
-    expect(equipColor("headset", PREVIEW_CATALOG)).toBeUndefined();
-    expect(equipColor(null, PREVIEW_CATALOG)).toBeUndefined();
+  it("knows which cosmetics the server lets color", () => {
+    expect(isColorable("beanie", PREVIEW_CATALOG)).toBe(true);
+    expect(isColorable("headset-neutral", PREVIEW_CATALOG)).toBe(false);
+    expect(isColorable("unbekannt", PREVIEW_CATALOG)).toBe(false);
   });
   it("wears what it can draw, head before face before hands", () => {
     const worn = wornCosmetics({

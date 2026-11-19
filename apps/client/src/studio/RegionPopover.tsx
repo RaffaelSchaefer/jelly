@@ -39,13 +39,14 @@ function ItemFace({ item }: { item: StudioItem }) {
 }
 
 /**
- * Die Einträge einer Region. Es wirkt nur, was noch nicht angelegt ist.
+ * Die Einträge einer Region. Es wirkt nur, was noch nicht angelegt ist, und das angelegte, wenn es
+ * sich färben lässt: Es öffnet das Farbrad.
  *
  * Gesperrt wird mit `aria-disabled` statt `disabled`: Jede Wahl sperrt kurz, solange der Aufruf
  * läuft, und `disabled` würde dem Knopf dabei den Fokus nehmen.
  *
  * @param busy - Es läuft gerade ein Aufruf, die Wahl hätte keine Wirkung.
- * @param onPick - Bekommt die ID des Eintrags.
+ * @param onPick - Bekommt den gewählten Eintrag.
  */
 export default function RegionPopover({
   region,
@@ -56,7 +57,7 @@ export default function RegionPopover({
   region: StudioRegion;
   items: StudioItem[];
   busy: boolean;
-  onPick: (id: string | null) => void;
+  onPick: (item: StudioItem) => void;
 }) {
   return (
     <div
@@ -70,16 +71,19 @@ export default function RegionPopover({
         <button
           key={item.id ?? "nichts"}
           type="button"
-          aria-label={item.name}
+          className={item.paintable ? "paintable" : undefined}
+          aria-label={item.paintable ? `${item.name} färben` : item.name}
           aria-pressed={item.state === "equipped"}
+          aria-haspopup={item.paintable || undefined}
           aria-disabled={busy}
-          data-tip={item.name}
-          data-sound={item.state === "equipped" ? "none" : "select"}
+          data-tip={item.paintable ? `${item.name} · färben` : item.name}
+          data-sound={item.state === "equipped" && !item.paintable ? "none" : "select"}
           onClick={() => {
-            if (!busy && item.state === "unlocked") onPick(item.id);
+            if (!busy && (item.state === "unlocked" || item.paintable)) onPick(item);
           }}
         >
           <ItemFace item={item} />
+          {item.paintable ? <i className="paint-hint" /> : null}
         </button>
       ))}
     </div>
