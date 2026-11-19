@@ -141,8 +141,14 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (Typen, Takt), `wizardPick.ts`, `wizardLines.ts` (Sätze), `wizardVoice.ts`, `wizardClips.ts`, `voiceTimbre.ts`,
   `wizardFaceRig.ts`. Abgespielt in `src/shop/useWizard.ts`, `useWizardPlayer.ts`, `useWizardSenses.ts` und
   `wizardEffects.ts`. `src/pet/contracts.test.ts` hält Paket, Verstand, Bühne und Klang beieinander.
+- Updates der App: `src-tauri/src/commands/update.rs` (`tauri-plugin-updater`, Liste `latest.json` am Release auf
+  GitHub, Fortschritt per `Channel`), `src/useUpdate.ts`, `src/UpdateNotice.tsx`, `src/UpdateBanner.tsx` (Rakete als
+  SVG in der Jelly-Farbe) und `src/update.css` (Karte über dem Dock, für die Bühne Panel `update`, in der
+  Browser-Vorschau `/#update`). Der Changelog steht in `apps/client/CHANGELOG.md`, geht als `notes` in `latest.json`
+  und wird in `src/pet/changelog.ts` gelesen.
+  `scripts/updater-manifest.mjs` (schreibt `latest.json` im Release-Lauf). Ablauf und Schlüssel: README des Clients.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
-  `commands/partner.rs`, `commands/stage.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
+  `commands/partner.rs`, `commands/stage.rs`, `commands/update.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
   `events.rs` (Server-Stream), `popout.rs` (Fenster von Karte und Shop), `error.rs`, `pet.rs` (lokaler Stand,
   reine Regeln), `store.rs` (atomares Speichern von `jelly.json`).
 
