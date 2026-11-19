@@ -40,6 +40,7 @@ describe("shop", () => {
       ["snail-shell", "affordable", 0],
       ["piercings", "affordable", 0],
       ["ogre-ears", "affordable", 0],
+      ["kamina-glasses", "affordable", 0],
       ["hood", "short", 1],
       ["long-schnoerbi", "short", 1],
       ["goose", "short", 1],

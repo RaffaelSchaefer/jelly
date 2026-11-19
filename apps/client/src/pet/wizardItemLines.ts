@@ -102,6 +102,16 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Rock die Halle, {name}!"],
     hover: ["Psst! Tut kein bisschen weh, Ehrenwort."],
   },
+  "kamina-glasses": {
+    offer: [
+      "Die Kamina-Brille! Spitz genug, den Himmel zu durchbohren.",
+      "Rote Spitzen, großes Herz. Die Brille eines Anführers.",
+    ],
+    short: ["Für die Kamina-Brille fehlt noch Gold. Und Kampfgeist."],
+    worn: ["Was glaubst du eigentlich, wer du bist? Ein Held!"],
+    bought: ["Durchbohre den Himmel, {name}!"],
+    hover: ["Psst! Die Spitzen sind schärfer als mein Zauberstab."],
+  },
   "ogre-ears": {
     offer: ["Oger-Ohren! Frisch aus dem Sumpf.", "Damit hörst du jeden Schritt in der Halle."],
     short: ["Für die Ohren fehlt noch etwas Gold."],
