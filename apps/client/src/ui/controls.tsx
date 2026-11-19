@@ -170,13 +170,25 @@ export function PrimaryButton({ className, ...rest }: ComponentProps<"button">) 
   return <button className={cx("primary-button", className)} {...rest} />;
 }
 
-/** Fehlermeldung unter dem Pet. Mit `onRetry` gibt es einen Knopf zum erneuten Versuchen. */
-export function ErrorAlert({ message, onRetry }: { message: string; onRetry?: () => void }) {
+/**
+ * Fehlermeldung unter dem Pet. Mit `onRetry` gibt es einen Knopf zum erneuten Versuchen, `children`
+ * kommen darunter, etwa ein Update.
+ */
+export function ErrorAlert({
+  message,
+  onRetry,
+  children,
+}: {
+  message: string;
+  onRetry?: () => void;
+  children?: ReactNode;
+}) {
   return (
     <div className="error" role="alert">
       <strong>Das hat nicht geklappt.</strong>
       <span>{message}</span>
       {onRetry ? <button onClick={onRetry}>Erneut versuchen</button> : null}
+      {children}
     </div>
   );
 }

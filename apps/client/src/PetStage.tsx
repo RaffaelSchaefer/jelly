@@ -37,8 +37,12 @@ const PetScene = lazy(() => import("./scene/PetScene"));
 /** So lange wartet das Jelly höchstens auf die gespeicherten Einstellungen, in Millisekunden. */
 const SETTINGS_WAIT_MS = 1500;
 
-/** Welches Panel über dem Dock oder direkt am Jelly offen ist. */
-export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "signs";
+/**
+ * Welches Panel über dem Dock oder direkt am Jelly offen ist. `update` öffnet niemand: Die App gibt
+ * es der Bühne, solange die Update-Karte steht, damit Tropfen und Sprechblase wie bei einem Panel
+ * gehen.
+ */
+export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "signs" | "update";
 
 /** Vorübergehende Anzeige, ohne die letzte Fortschrittsmeldung zu überschreiben. */
 function emoteMessage(emote: ActiveEmote | null) {

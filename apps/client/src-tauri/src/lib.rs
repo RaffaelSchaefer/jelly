@@ -47,6 +47,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             focus_main_window(app)
         }))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(commands::GameState::default())
         .on_window_event(|window, event| match (window.label(), event) {
             // Ohne das Pet haben Karte und Shop keinen Sinn, und die App liefe mit ihnen ohne Pet
@@ -82,7 +83,9 @@ pub fn run() {
             commands::equip_cosmetic,
             commands::purchase_cosmetic,
             commands::update_settings,
-            commands::presence
+            commands::presence,
+            commands::update::check_update,
+            commands::update::install_update
         ])
         .run(tauri::generate_context!())
         .expect("Jelly konnte nicht gestartet werden");

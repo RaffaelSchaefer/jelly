@@ -1,0 +1,79 @@
+/* Update-Karte über dem Dock (`UpdateNotice.tsx`). Lage, Glas und optimierte Fläche kommen von `.panel`. */
+@property --update-turn { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+/* `.panel.update-card`, damit Fläche und Abstand von `.panel` sicher verlieren. Abstände nur 4, 8, 12 und 16 px.
+   Ohne Platz für Rollbalken: Scrollen kann nur die aufgeklappte Liste, sonst säße das Bild nicht randlos. */
+.panel.update-card { display: block; padding: 0; scrollbar-gutter: auto; text-align: left; animation: update-in 560ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+/* Ein Lichtstreif, der langsam um den Rand läuft, auch über dem Bild. */
+.update-card::before { content: ''; position: absolute; z-index: 1; inset: 0; padding: 1px; border-radius: inherit; pointer-events: none; background: conic-gradient(from var(--update-turn), transparent 0 60%, color-mix(in srgb, var(--accent) 85%, white) 78%, transparent 92%); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: update-turn 6s linear infinite; }
+
+/* Das Bild (`UpdateBanner.tsx`) liegt randlos oben, der Rand der Karte schneidet seine Ecken. Die Rakete schwebt entlang ihrer Achse, die Flamme flackert, Rauch zieht ab, Sterne funkeln. */
+.update-banner { display: block; width: 100%; height: auto; border-bottom: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+.update-rocket { animation: update-fly 2.6s ease-in-out infinite alternate; }
+.update-fire { transform-box: fill-box; transform-origin: 50% 0; animation: update-flicker 160ms ease-in-out infinite alternate; }
+.update-puff { transform-box: fill-box; transform-origin: center; animation: update-puff 2.4s linear infinite; }
+.update-twinkle { animation: update-blink 2.6s ease-in-out infinite; }
+
+.update-body { display: grid; padding: 12px 16px 16px; }
+/* Überschrift und Untertitel links, „alt → neu“ rechts mittig neben beiden. */
+.update-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; }
+.update-heading h2, .update-heading .update-hint { grid-column: 1; }
+.update-heading .update-versions { grid-column: 2; grid-row: 1 / span 2; }
+/* Die Überschrift glänzt ab und zu wie Folie. */
+.update-card h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.2px; color: transparent; background: linear-gradient(100deg, #fff 42%, color-mix(in srgb, var(--accent) 55%, white) 50%, #fff 58%) 100% 0 / 260% 100%; -webkit-background-clip: text; background-clip: text; animation: update-foil 5s ease-in-out 600ms infinite; }
+.update-versions { display: inline-flex; flex: none; align-items: center; gap: 6px; margin: 0; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.update-versions span:first-child { color: var(--text-muted); }
+.update-hint { margin: 4px 0 0; color: var(--text-muted); font-size: 11px; line-height: 16px; }
+
+/* „Was ist neu“: vor jedem Eintrag ein Zeichen für die Art, + neu, ↑ besser, − weg. */
+.update-log { display: grid; margin-top: 16px; }
+.update-log h3 { margin: 0 0 8px; color: var(--text-muted); font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.update-log ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; color: #e3ecf0; font-size: 11.5px; line-height: 16px; }
+/* Aufgeklappt scrollt nur die Liste, die Knöpfe bleiben in der Karte. */
+.update-log ul[data-open] { max-height: 96px; overflow-y: auto; mask-image: linear-gradient(#000 78%, transparent); scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
+.update-log li { display: flex; align-items: flex-start; gap: 8px; }
+.update-log li::before { content: '•'; flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: #ffffff0d; color: var(--text-muted); font-size: 11px; font-weight: 700; line-height: 1; }
+.update-log li[data-kind='neu']::before { content: '+'; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.update-log li[data-kind='besser']::before { content: '↑'; background: #ffd07a24; color: #ffd07a; }
+.update-log li[data-kind='weg']::before { content: '−'; background: #ff9c8a22; color: #ffb0a0; }
+.update-more { justify-self: start; margin: 8px 0 0 24px; padding: 0; border: 0; background: none; color: var(--accent); font-size: 10.5px; font-weight: 600; cursor: pointer; }
+.update-more:hover { text-decoration: underline; }
+
+/* „Später“ so breit wie sein Wort, „Aktualisieren“ nimmt den Rest. Allein (Kapsel, Fehler) über die ganze Zeile. */
+.update-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; margin-top: 16px; }
+.update-actions > :only-child, .update-actions .update-error { grid-column: 1 / -1; }
+.update-actions .secondary-button { height: 38px; padding: 0 16px; border-radius: 12px; }
+
+/* Knopf und Kapsel teilen sich die Form, auch in der Fehlermeldung. `:is` schlägt `.error button`. */
+:is(.update-card, .error) :is(.update-install, .update-progress) { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 38px; margin: 0; padding: 0 14px; overflow: hidden; border-radius: 12px; font-size: 12px; font-weight: 650; }
+.error :is(.update-install, .update-progress) { margin-top: 10px; }
+:is(.update-card, .error) .update-install { border: 0; color: var(--accent-ink); background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, white), var(--accent)); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent), inset 0 1px 0 #fff6; transition: translate 200ms, box-shadow 200ms; }
+:is(.update-card, .error) .update-install:hover { translate: 0 -1px; box-shadow: 0 9px 24px color-mix(in srgb, var(--accent) 50%, transparent), inset 0 1px 0 #fff6; }
+:is(.update-card, .error) .update-install:active { translate: 0 1px; }
+.update-install svg { width: 16px; height: 16px; stroke-width: 1.8; }
+.update-install::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, #ffffff8c 50%, transparent 65%); translate: -120% 0; animation: update-sheen 3.6s ease-in-out 900ms infinite; }
+
+/* Beim Laden füllt sich die Kapsel. Darüber liegt die Schrift zweimal: hell auf leer, dunkel auf voll. */
+:is(.update-card, .error) .update-progress { border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: #fff; }
+.update-progress::before { content: ''; position: absolute; inset: 0; width: var(--update-progress); background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 75%, white), var(--accent)); transition: width 300ms ease-out; }
+.update-progress::after { content: attr(data-label); position: absolute; inset: 0; display: grid; place-items: center; color: var(--accent-ink); clip-path: inset(0 calc(100% - var(--update-progress)) 0 0); transition: clip-path 300ms ease-out; }
+:is(.update-card, .error) .update-progress span { position: relative; display: block; margin: 0; max-height: none; overflow: visible; line-height: 1; }
+/* Größe unbekannt oder schon beim Einspielen: Streifen laufen durch. */
+.update-progress[data-waiting]::before { background: repeating-linear-gradient(-45deg, var(--accent) 0 10px, color-mix(in srgb, var(--accent) 72%, white) 10px 20px) 0 0 / 28.28px 28.28px; animation: update-stripes 700ms linear infinite; }
+.update-error { display: block; margin-top: 0; color: #ffb4a8; font-size: 10.5px; line-height: 1.5; overflow-wrap: anywhere; }
+
+@keyframes update-in { from { opacity: 0; scale: 0.9; translate: 0 14px; } }
+@keyframes update-turn { to { --update-turn: 360deg; } }
+/* Im SVG `transform` statt `translate`: WebKit unter macOS und Linux bewegt SVG-Teile sicher nur so. */
+@keyframes update-fly { to { transform: translate(0, -3px); } }
+@keyframes update-flicker { to { transform: scaleY(0.8); } }
+@keyframes update-puff { from { opacity: 1; transform: translate(0, 0) scale(0.8); } to { opacity: 0; transform: translate(-12px, 7px) scale(1.35); } }
+@keyframes update-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes update-foil { 0%, 30% { background-position: 100% 0; } 60%, 100% { background-position: 0 0; } }
+@keyframes update-sheen { 0% { translate: -120% 0; } 30%, 100% { translate: 120% 0; } }
+@keyframes update-stripes { to { background-position: 28.28px 0; } }
+
+html[data-reduced-motion] .update-card,
+html[data-reduced-motion] :is(.update-card, .update-install, .update-progress) *,
+html[data-reduced-motion] :is(.update-card, .update-install, .update-progress)::before,
+html[data-reduced-motion] :is(.update-install, .update-progress)::after { animation: none; transition: none; }
