@@ -115,16 +115,19 @@ const HELD_LAYER = 1;
 
 /**
  * Was das Jelly trägt. Muss in seiner Wurzel liegen: Kopf- und Gesichts-Cosmetics wippen mit dem
- * Kopf, die für die Hände folgen ihnen, der Rest bleibt beim Körper.
+ * Kopf, die für die Hände folgen ihnen, der Rest bleibt beim Körper. Hält es eine Tafel, legt es
+ * das Gehaltene so lange beiseite.
  */
 function WornCosmetics({
   jelly,
   worn,
   ink,
+  handsFree,
 }: {
   jelly: Jelly;
   worn: ReturnType<typeof wornCosmetics>;
   ink: string;
+  handsFree: boolean;
 }) {
   const draw = (slots: CosmeticSlot[], layer?: number) =>
     worn
@@ -135,7 +138,9 @@ function WornCosmetics({
   return (
     <>
       {createPortal(draw(["head", "face"]), jelly.faceAnchor)}
-      <HandHeld jelly={jelly}>{draw(["hands"], HELD_LAYER)}</HandHeld>
+      <HandHeld jelly={jelly} visible={handsFree}>
+        {draw(["hands"], HELD_LAYER)}
+      </HandHeld>
       {draw(["body", "aura"])}
     </>
   );
@@ -228,7 +233,7 @@ export default function Character({
   return (
     <group ref={stand}>
       <primitive object={jelly.root}>
-        <WornCosmetics jelly={jelly} worn={worn} ink={palette.outline} />
+        <WornCosmetics jelly={jelly} worn={worn} ink={palette.outline} handsFree={!sign} />
         <SignBoard jelly={jelly} label={sign} color={color} reducedMotion={reducedMotion} />
       </primitive>
     </group>

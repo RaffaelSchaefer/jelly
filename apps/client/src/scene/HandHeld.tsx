@@ -17,7 +17,16 @@ import { boardPose } from "../pet";
  * Modelle entstehen um die Hände in Ruhe. Der innere Versatz hebt die Lage auf, die sie dort haben,
  * so bleibt ein Modell an seinem Platz und dreht sich nur um die Mitte zwischen ihnen.
  */
-export default function HandHeld({ jelly, children }: { jelly: Jelly; children: ReactNode }) {
+export default function HandHeld({
+  jelly,
+  visible = true,
+  children,
+}: {
+  jelly: Jelly;
+  /** Ausgeblendet bleibt das Modell geladen, etwa solange die Hände eine Tafel halten. */
+  visible?: boolean;
+  children: ReactNode;
+}) {
   const holder = useRef<Object3D>(null);
 
   useFrame(() => {
@@ -28,7 +37,7 @@ export default function HandHeld({ jelly, children }: { jelly: Jelly; children: 
   });
 
   return (
-    <object3D ref={holder}>
+    <object3D ref={holder} visible={visible}>
       <object3D position={[0, -HAND.y, 0]}>{children}</object3D>
     </object3D>
   );
