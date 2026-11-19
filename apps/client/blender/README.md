@@ -33,7 +33,10 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    Textures, roughness and transparency are ignored. A custom property `glow` (0–1) on the material
    dampens the light lower edge: dark colours turn grey there otherwise (the wizard's hat uses 0.15).
    A custom property `fluff` (0–1) makes it plush: no jelly gloss, fur grain and a light, fuzzy rim
-   (the long Schnörbi's fur uses 1).
+   (the long Schnörbi's fur uses 1). A custom property `tint` makes it take the colour the wearer picks
+   instead of its own: 1 is that colour, below 1 a darker shade (colour × tint), above 1 a lighter
+   one (towards white by tint − 1). Without it the material keeps its Base Color (the hood's green
+   uses 1, its hem 0.58).
 4. Use **Shade Smooth**. The outline is the mesh pushed out along its normals, so hard edges crack open.
 5. Cosmetics are drawn on top of the head like a sticker. Parts that would be hidden behind the head
    (the back of a hood, the far ear cup) still show, so model only what is seen from the front.

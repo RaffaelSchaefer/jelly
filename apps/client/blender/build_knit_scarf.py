@@ -72,11 +72,11 @@ STEP = ACROSS["period"] / ACROSS["per"]
 # their tips. Sections (across, deep) at root, middle and tip.
 FRINGE = {"count": 7, "pitch": 0.03, "splay": 6.0, "length": 0.085, "sink": 0.018, "sections": [(0.015, 0.013), (0.016, 0.014), (0.009, 0.009)], "ring": 6}
 
-# name -> (hex, glow, fluff). Much deeper than they show: the app lightens every colour towards
+# name -> (hex, glow, fluff, tint). Much deeper than they show: the app lightens every colour towards
 # pastel and the plush adds a light rim (a bandana in #d81f2a came out salmon pink). Roll and end
 # are one part, so a low glow keeps the end from fading to rose below the roll.
 SWATCH = {
-    "Schalrot": ("#a00a18", 0.12, 0.85),
+    "Schalrot": ("#a00a18", 0.12, 0.85, 1),
     "Schalcreme": ("#f3dcb4", 0.5, 0.85),
 }
 

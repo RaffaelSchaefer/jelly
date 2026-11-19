@@ -48,11 +48,11 @@ KEYHOLE = {"hole": (0.0, -0.36), "size": (0.25, 0.17), "slit": 0.1, "from": 24, 
 # so it does not bump the bell's outline.
 KEYHOLE_DEPTH = {"half": 0.007, "lift": 0.004, "bottom_lift": -0.007}
 
-# name -> (hex, glow, fluff). Much deeper than they show: the app lightens every colour towards
+# name -> (hex, glow, fluff, tint). Much deeper than they show: the app lightens every colour towards
 # pastel (a red #d81f2a turns light salmon), so this pink ends up bubblegum and the gold butter yellow.
 # The keyhole stays near ink, as in the line art.
 SWATCH = {
-    "Glöckchenrosa": ("#dc3a78", 0.4, 0.4),
+    "Glöckchenrosa": ("#dc3a78", 0.4, 0.4, 1),
     "Glöckchengold": ("#eea412", 0.5, None),
     "Glöckchenschlitz": ("#33100d", 0.1, None),
 }

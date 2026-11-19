@@ -172,7 +172,7 @@ def pompom_mesh():
 def build(collection):
     """Cone, stripes, ruffle and pompom, one material each."""
     add = generator.add_mesh
-    add(collection, "party_hat_cone", cone_mesh(), generator.material("Partygelb", YELLOW, GLOW))
+    add(collection, "party_hat_cone", cone_mesh(), generator.material("Partygelb", YELLOW, GLOW, tint=1))
     teal = generator.material("Partytürkis", TEAL, GLOW)
     for k in range(STRIPES):
         add(collection, f"party_hat_stripe_{k}", stripe_mesh(STRIPE["phase"] + 2 * math.pi * k / STRIPES), teal)

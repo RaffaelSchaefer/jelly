@@ -72,11 +72,11 @@ CLAW_SECTIONS = [(0.046, 0.03), (0.04, 0.027), (0.028, 0.021), (0.016, 0.015)]
 GRID = {"low": (0.3, -0.3, WING_Z - 0.07), "high": (1.5, 0.9, WING_Z + 0.1), "step": 0.008}
 WING_BUDGET = 1300
 
-# name -> (hex, glow). Deeper than they show: the app lightens every colour towards pastel.
+# name -> (hex, glow, fluff, tint). Deeper than they show: the app lightens every colour towards pastel.
 SWATCH = {
-    "Fledermauslila": ("#2e1f4a", 0.15),
-    "Fledermaushaut": ("#5a3f8e", 0.25),
-    "Fledermausknochen": ("#6a4c9e", 0.3),
+    "Fledermauslila": ("#2e1f4a", 0.15, None, 0.27),
+    "Fledermaushaut": ("#5a3f8e", 0.25, None, 1),
+    "Fledermausknochen": ("#6a4c9e", 0.3, None, 1.03),
 }
 
 

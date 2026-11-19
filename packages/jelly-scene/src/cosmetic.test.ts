@@ -70,6 +70,7 @@ describe("Cosmetic-Modelle", () => {
     expect(model.getAttribute("aColor").count).toBe(count);
     expect(model.getAttribute("aGlowRange").count).toBe(count);
     expect(model.getAttribute("aFluff").count).toBe(count);
+    expect(model.getAttribute("aTint").count).toBe(count);
     model.computeBoundingBox();
     expect(model.boundingBox!.max.y + COSMETIC_OUTLINE).toBeLessThan(BUBBLE_Y);
   });
@@ -127,6 +128,47 @@ describe("createCosmetic", () => {
     expect(cleared).toBe(0);
     render(meshesOf(createCosmetic(model, "#16248a", "sticker"))[0]);
     expect(cleared).toBe(1);
+  });
+});
+
+/** Was der Server einfärben lässt (`colorable` in `apps/server/internal/rules/cosmetics.go`). */
+const COLORABLE = new Set([
+  "beanie",
+  "hood",
+  "headset",
+  "pixel-glasses",
+  "party-hat",
+  "crown",
+  "bandana",
+  "bell-collar",
+  "knit-scarf",
+  "mini-backpack",
+  "fairy-wings",
+  "bat-wings",
+  "snail-shell",
+]);
+
+describe("Farbe des Trägers", () => {
+  // Ohne `tint` aus Blender gäbe es im Studio eine Farbwahl, die nichts tut.
+  it.each(Object.keys(COSMETIC_MODELS))("%s färbt nur, was der Server einfärbt", async (key) => {
+    const tints = (await loadModel(key)).getAttribute("aTint");
+    const tinted = Array.from({ length: tints.count }, (_, index) => tints.getX(index)).some(
+      (tint) => tint > 0,
+    );
+    expect(tinted).toBe(COLORABLE.has(key));
+  });
+
+  it("gibt die Farbe linear an den Shader, ohne Farbe bleibt sie aus", async () => {
+    const model = await loadModel("beanie");
+    const tintOf = (tint?: string | null) =>
+      (
+        (createCosmetic(model, "#16248a", "sticker", { tint }).children[1] as Mesh)
+          .material as ShaderMaterial
+      ).uniforms.uTint?.value as { x: number; w: number };
+    expect(tintOf().w).toBe(0);
+    expect(tintOf(null).w).toBe(0);
+    expect(tintOf("#ffffff")).toMatchObject({ x: 1, w: 1 });
+    expect(tintOf("#808080").x).toBeCloseTo(0.2158, 3);
   });
 });
 
@@ -260,7 +302,7 @@ describe("loadModelParts", () => {
     const parts = await loadModelParts(url);
     expect([...parts.keys()].sort()).toEqual(["beard", "hat"]);
     const hat = parts.get("hat")!;
-    for (const name of ["position", "normal", "aColor", "aGlowRange", "aFluff"]) {
+    for (const name of ["position", "normal", "aColor", "aGlowRange", "aFluff", "aTint"]) {
       expect(hat.getAttribute(name).count).toBe(6);
     }
     expect(hat.getAttribute("uv")).toBeUndefined();

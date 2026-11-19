@@ -41,16 +41,16 @@ GEMS = {"angles": (-33, 33), "radius": 0.047, "half": 0.03, "sink": 0.009}
 # The velvet cap fills the ring: its underside lies on the head ball, its rim hides in the band and
 # its cushion swells into the gaps between the points.
 CAP = {"radius": 0.345, "dome": 0.25, "power": 3.5}
-# name -> (hex, glow). The pet's canvas tone-maps with ACES filmic: a bright yellow such as #ffc93c
-# turns to butter there and its white lower edge to beige. Gold reads as gold with an orange base,
-# no blue and a low glow: the band shows about #e8c23b, the points #df9d1c.
+# name -> (hex, glow, fluff, tint). The pet's canvas tone-maps with ACES filmic: a bright yellow
+# such as #ffc93c turns to butter there and its white lower edge to beige. Gold reads as gold with
+# an orange base, no blue and a low glow: the band shows about #e8c23b, the points #df9d1c.
 SWATCH = {
     "Kronengold": ("#ffb400", 0.3),
     "Kronenzacken": ("#e08a00", 0.4),
     "Kronenperle": ("#fff3dc", 1.0),
     "Kronenrubin": ("#e8264a", 0.3),
     "Kronentürkis": ("#0fa59b", 0.35),
-    "Kronensamt": ("#b0103a", 0.25),
+    "Kronensamt": ("#b0103a", 0.25, None, 1),
 }
 
 
@@ -140,7 +140,7 @@ def heart_outline(size, samples=96):
 
 def build(collection):
     """Cap, band, points with their pearls, heart and gems: one object and one material each."""
-    mats = {name: generator.material(name, hex_color, glow) for name, (hex_color, glow) in SWATCH.items()}
+    mats = {name: generator.material(name, *swatch) for name, swatch in SWATCH.items()}
     generator.add_mesh(collection, "crown_cap", place(cap_mesh()), mats["Kronensamt"])
     generator.add_mesh(collection, "crown_band", place(band_mesh()), mats["Kronengold"])
     for k, (angle, pearl_at) in enumerate(POINTS):

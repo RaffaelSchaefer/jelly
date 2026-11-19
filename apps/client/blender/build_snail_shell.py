@@ -70,12 +70,12 @@ GROWTH = {
     "ends": 0.1, "fullness": 0.6, "samples": 9, "ring": 8, "caps": 3, "search": (0.5, 201),
 }
 
-# name -> (hex, glow). Much deeper than they show: the app lightens them towards pastel (a bandana's
+# name -> (hex, glow, fluff, tint). Much deeper than they show: the app lightens them towards pastel (a bandana's
 # #d81f2a came out light salmon).
 SWATCH = {
-    "Schneckenkaramell": ("#a8481a", 0.3),
+    "Schneckenkaramell": ("#a8481a", 0.3, None, 1),
     "Schneckenspirale": ("#f3dcb4", 0.6),
-    "Schneckenrille": ("#6e2e0c", 0.3),
+    "Schneckenrille": ("#6e2e0c", 0.3, None, 0.41),
 }
 
 

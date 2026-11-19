@@ -76,10 +76,10 @@ TAILS = [(-106, 0.18), (-34, 0.16)]
 TAIL = {"radii": (0.022, 0.058, 0.032), "belly": 0.7, "taper": 1.5, "lift": 0.02, "half": 0.011, "rise": 0.035}
 TAIL_PROFILE = [(1.0, -1.0), (1.0, 0.0), (0.92, 0.8), (0.6, 1.0)]
 
-# name -> (hex, glow, fluff). Deeper than they show: the app lightens every colour towards pastel.
+# name -> (hex, glow, fluff, tint). Deeper than they show: the app lightens every colour towards pastel.
 SWATCH = {
-    "Halstuchrot": ("#a00a18", 0.25, 0.4),
-    "Halstuchband": ("#7a0412", 0.2, 0.4),
+    "Halstuchrot": ("#a00a18", 0.25, 0.4, 1),
+    "Halstuchband": ("#7a0412", 0.2, 0.4, 0.55),
     "Halstuchpunkte": ("#fbe9c8", 0.9, 0.4),
 }
 
