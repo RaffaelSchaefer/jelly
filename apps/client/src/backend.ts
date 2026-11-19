@@ -12,7 +12,7 @@
 
 import type { StageEvent, StageMove, StageTrip } from "@jelly/stage";
 
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -151,6 +151,28 @@ export const updateSettings = (settings: Settings) => invoke<Game>("update_setti
 
 /** Meldet, dass die App noch läuft (`presence`). */
 export const presence = () => invoke<Game>("presence");
+
+/** Eine neuere Version am letzten Release auf GitHub, dazu die laufende. */
+export interface AvailableUpdate {
+  current: string;
+  version: string;
+  /** Die `CHANGELOG.md` des Releases, ausgelesen von `changelogSince`. */
+  notes: string | null;
+}
+
+/** Sieht nach einer neueren Version (`check_update`), sonst `null`. */
+export const checkUpdate = () => invoke<AvailableUpdate | null>("check_update");
+
+/**
+ * Lädt die neue Version, spielt sie ein und startet neu (`install_update`). Kehrt nur zurück, wenn
+ * es doch nichts gab oder etwas scheiterte. `onProgress` bekommt ganze Prozent bis 99, dann 100
+ * fürs Einspielen.
+ */
+export function installUpdate(onProgress: (percent: number) => void) {
+  const progress = new Channel<number>();
+  progress.onmessage = onProgress;
+  return invoke<void>("install_update", { progress });
+}
 
 /** Hört auf Ereignisse zum eigenen Jelly. Liefert die Funktion zum Abmelden. */
 export const onServerEvent = (handler: (event: ServerEvent) => void) =>

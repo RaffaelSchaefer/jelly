@@ -342,11 +342,47 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-Der Lauf bricht ab, wenn der Tag nicht zur Version passt oder `JELLY_SERVER_URL` fehlt. Ein Bindestrich
-im Tag (`v0.2.0-alpha.1`) macht daraus eine Vorabversion. Die macOS-Bundles sind nur ad-hoc signiert:
-Beim ersten Start blockiert macOS Jelly, freigeben geht unter Systemeinstellungen, Datenschutz &
-Sicherheit, „Trotzdem öffnen“. Echte Signierung und automatische Updates sind noch nicht
-konfiguriert.
+Der Lauf bricht ab, wenn der Tag nicht zur Version passt, `JELLY_SERVER_URL` fehlt oder der Schlüssel für
+Updates fehlt. Ein Bindestrich im Tag (`v0.2.0-alpha.1`) macht daraus eine Vorabversion. Die macOS-Bundles
+sind nur ad-hoc signiert: Beim ersten Start blockiert macOS Jelly, freigeben geht unter Systemeinstellungen,
+Datenschutz & Sicherheit, „Trotzdem öffnen“.
+
+### Updates
+
+Die App sieht beim Start nach einer neuen Version und spielt sie auf Knopfdruck an Ort und Stelle ein,
+danach startet sie neu. Verlangt der Server eine neuere App, steht der Knopf in der Fehlermeldung. Das
+übernimmt `tauri-plugin-updater` in Rust (`src-tauri/src/commands/update.rs`), die Oberfläche fragt nur
+(`src/useUpdate.ts`, `src/UpdateNotice.tsx`, in der Browser-Vorschau `/#update`). Geladen wird immer das
+ganze Paket, kein Unterschied zur alten Version.
+
+Die Liste der Versionen ist `latest.json` am neuesten Release auf GitHub
+(`plugins.updater.endpoints` in `tauri.conf.json`). Der Release-Lauf schreibt sie mit
+`scripts/updater-manifest.mjs` aus den signierten Paketen: NSIS und MSI unter Windows, AppImage, `.deb` und
+`.rpm` unter Linux, `.app.tar.gz` unter macOS. Jede App nimmt das Paket ihrer Installer-Art.
+`releases/latest` überspringt Vorabversionen, sie kommen also nie als Update an. Releases für die LAN
+bekommen deshalb einen Tag ohne Bindestrich. Eine Vorabversion `v0.3.0-alpha.1` heißt in der App schon
+`0.3.0`, ein späteres `v0.3.0` wäre für sie nicht neuer.
+
+Die Karte zeigt, was seit der installierten Version dazukam. Das steht in `CHANGELOG.md`, von Hand auf
+Deutsch gepflegt: je Version `## X.Y.Z`, darunter kurze Zeilen mit `Neu:`, `Besser:` oder `Weg:`. Der
+Release-Lauf legt die Datei als `notes` in `latest.json`, die App liest sie mit `src/pet/changelog.ts`. Ein
+Tag ohne Abschnitt für seine Version bricht früh ab.
+
+Signiert wird mit einem eigenen Schlüsselpaar, einmalig erzeugt mit:
+
+```sh
+pnpm tauri signer generate -w ~/.tauri/jelly.key
+```
+
+Der öffentliche Schlüssel (`jelly.key.pub`, der Inhalt, kein Pfad) gehört nach `plugins.updater.pubkey` in
+`tauri.conf.json`. Der private Schlüssel und sein Passwort gehören in die Repository-Secrets
+`TAURI_SIGNING_PRIVATE_KEY` und `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. **Den privaten Schlüssel sicher
+aufheben: Geht er verloren, kann keine installierte App mehr aktualisiert werden.** Die Update-Pakete schaltet
+erst `--config src-tauri/tauri.updater.conf.json` ein, ein lokales `pnpm run tauri build` braucht den
+Schlüssel deshalb nicht.
+
+Testen lässt sich das nur mit zwei echten Releases: eins installieren, das nächste veröffentlichen, die
+installierte App starten. `tauri dev` spielt nichts ein. Die App braucht dafür Zugang zu `github.com`.
 
 `pnpm run check` kombiniert die Frontend-Tests, den Frontend-Build und die Rust-Tests.
 

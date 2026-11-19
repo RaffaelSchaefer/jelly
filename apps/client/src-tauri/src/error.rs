@@ -77,6 +77,10 @@ pub enum Error {
     /// Das Fenster der Karte ließ sich nicht öffnen.
     #[error("Die Karte konnte nicht geöffnet werden: {0}")]
     Window(#[source] tauri::Error),
+
+    /// Das Update ließ sich nicht finden, laden oder einspielen. Die alte Version bleibt.
+    #[error("Das Update hat nicht geklappt: {0}")]
+    Update(#[from] tauri_plugin_updater::Error),
 }
 
 /// Serialisiert den Fehler als seine Meldung, denn mehr braucht die Oberfläche nicht.

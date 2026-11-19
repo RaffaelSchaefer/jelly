@@ -21,6 +21,7 @@ use crate::{
 pub mod partner;
 mod session;
 pub mod stage;
+pub mod update;
 
 use session::session;
 pub use session::{Game, GameState};
