@@ -168,7 +168,10 @@ func TestNormalizeName(t *testing.T) {
 }
 
 func TestValidateColor(t *testing.T) {
-	for _, color := range []string{"mint", "lilac", "peach", "lime"} {
+	for _, color := range []string{
+		"mint", "sky", "violet", "lilac", "rose", "cherry",
+		"peach", "tangerine", "lemon", "lime", "clover",
+	} {
 		if err := rules.ValidateColor(color); err != nil {
 			t.Errorf("ValidateColor(%q) = %v", color, err)
 		}

@@ -63,9 +63,16 @@ func BuildNameKey(name string) string {
 func ListColors() []CatalogEntry {
 	return []CatalogEntry{
 		{Key: "mint", Label: "Aqua"},
+		{Key: "sky", Label: "Himmelblau"},
+		{Key: "violet", Label: "Lila"},
 		{Key: "lilac", Label: "Flieder"},
+		{Key: "rose", Label: "Rosa"},
+		{Key: "cherry", Label: "Rot"},
 		{Key: "peach", Label: "Pfirsich"},
+		{Key: "tangerine", Label: "Orange"},
+		{Key: "lemon", Label: "Gelb"},
 		{Key: "lime", Label: "Hellgrün"},
+		{Key: "clover", Label: "Grün"},
 	}
 }
 
