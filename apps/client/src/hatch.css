@@ -63,8 +63,9 @@
 .hatch-capsule[data-back] {
   padding-left: 7px;
 }
+/* Elf Tropfen in einer Reihe: fast so breit wie das Fenster. */
 .hatch-capsule[data-step="color"] {
-  --capsule: 228px;
+  --capsule: 360px;
 }
 .hatch-capsule[data-step="code"],
 .hatch-capsule[data-step="recover"] {
@@ -190,11 +191,11 @@
     hatch-pulse 700ms ease-in-out infinite alternate;
 }
 
-/* Die kleinen Jellies. Die gewählte Farbe trägt den schillernden Ring der Tropfen. */
+/* Die Tropfen wie im Farbrad des Studios. Der gewählte wächst und trägt einen weißen Rand. */
 .hatch-colors {
   flex: 1;
   display: flex;
-  justify-content: space-evenly;
+  justify-content: space-between;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -204,36 +205,33 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
+  width: 22px;
+  height: 38px;
   cursor: pointer;
-  transition:
-    scale 200ms var(--spring),
-    background 150ms;
+  transition: scale 200ms var(--spring);
 }
 .hatch-color svg {
+  width: 17px;
+  height: 23px;
+  overflow: visible;
+  fill: currentColor;
+  stroke: #ffffffa6;
+  stroke-width: 1.5px;
   filter: drop-shadow(0 1px 2px #0008);
 }
 .hatch-color:hover {
-  scale: 1.12;
-  background: #ffffff26;
+  scale: 1.15;
 }
 .hatch-color:has(input:checked) {
-  background: #ffffff1f;
+  scale: 1.2;
 }
-.hatch-color:has(input:checked)::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(var(--film));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
-  animation: levelup-spin 6s linear infinite;
+.hatch-color:has(input:checked) svg {
+  stroke: #fff;
+  stroke-width: 3px;
 }
-.hatch-color:has(input:focus-visible) {
-  outline: 2px solid #fff;
-  outline-offset: 1px;
+/* Ein Rahmen stünde zu eng um den schmalen Tropfen, der Fokus leuchtet deshalb. */
+.hatch-color:has(input:focus-visible) svg {
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #fff);
 }
 
 /* Unter der Kapsel endet das Fenster. */

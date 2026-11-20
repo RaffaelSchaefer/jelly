@@ -27,15 +27,21 @@ fn a_profile_patch_only_sends_what_changes() {
 }
 
 #[test]
-fn lime_is_named_like_the_server_names_it() {
-    assert_eq!(
-        serde_json::from_str::<Color>("\"lime\"").unwrap(),
-        Color::Lime
-    );
-    assert_eq!(
-        serde_json::to_value(Color::Lime).unwrap(),
-        serde_json::json!("lime")
-    );
+fn colors_are_named_like_the_server_names_them() {
+    for (name, color) in [
+        ("lime", Color::Lime),
+        ("tangerine", Color::Tangerine),
+        ("clover", Color::Clover),
+    ] {
+        assert_eq!(
+            serde_json::from_str::<Color>(&format!("\"{name}\"")).unwrap(),
+            color
+        );
+        assert_eq!(
+            serde_json::to_value(color).unwrap(),
+            serde_json::json!(name)
+        );
+    }
 }
 
 #[test]

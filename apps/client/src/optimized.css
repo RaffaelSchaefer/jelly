@@ -175,9 +175,6 @@ html[data-optimized-rendering] .hatch-next {
   background: var(--accent);
   box-shadow: none;
 }
-html[data-optimized-rendering] .hatch-color::after {
-  animation: none;
-}
 
 /* Die Update-Karte: Fläche kommt von `.panel`. Rakete, Rauch, Sterne, Glanz und Streifen bleiben stehen. */
 html[data-optimized-rendering] .update-card *,

@@ -23,6 +23,13 @@
 :root[data-pet-color='lilac'] { --accent: #dcc2fb; --accent-ink: #2a1546; --base: #231e2d; --backdrop: #3a3047; --backdrop-deep: #16131d; }
 :root[data-pet-color='peach'] { --accent: #ffcfa3; --accent-ink: #44210d; --base: #2a221e; --backdrop: #463830; --backdrop-deep: #1b1614; }
 :root[data-pet-color='lime'] { --accent: #c6f2a2; --accent-ink: #173a12; --base: #1e2a1d; --backdrop: #31452e; --backdrop-deep: #131b12; }
+:root[data-pet-color='sky'] { --accent: #a8e4ff; --accent-ink: #0b2f45; --base: #1a2530; --backdrop: #2a3c4a; --backdrop-deep: #111922; }
+:root[data-pet-color='violet'] { --accent: #c9bfff; --accent-ink: #1e1650; --base: #1f1d2e; --backdrop: #33304a; --backdrop-deep: #14121d; }
+:root[data-pet-color='rose'] { --accent: #ffc2dd; --accent-ink: #4a1230; --base: #2b1e25; --backdrop: #48303c; --backdrop-deep: #1c1318; }
+:root[data-pet-color='cherry'] { --accent: #ffb3a8; --accent-ink: #4a0e10; --base: #2c1d1e; --backdrop: #4a2f30; --backdrop-deep: #1d1314; }
+:root[data-pet-color='tangerine'] { --accent: #ffd08a; --accent-ink: #452406; --base: #2b231b; --backdrop: #483a2b; --backdrop-deep: #1c1611; }
+:root[data-pet-color='lemon'] { --accent: #fff0a0; --accent-ink: #3d3005; --base: #29261a; --backdrop: #45402a; --backdrop-deep: #1a1810; }
+:root[data-pet-color='clover'] { --accent: #a8f0c8; --accent-ink: #0b3a22; --base: #1b2a23; --backdrop: #2c4538; --backdrop-deep: #121b16; }
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; width: 100%; min-height: 100%; background: transparent; }

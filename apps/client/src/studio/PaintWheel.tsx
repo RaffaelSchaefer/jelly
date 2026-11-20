@@ -1,7 +1,7 @@
 /**
- * Das Farbrad eines angelegten Cosmetics: die Farben des Servers als Tropfen im Kreis, in der Mitte
- * „Original“, darunter zurück zu den Einträgen. Es nimmt den Platz des Popovers ein, mit derselben
- * Vorlage für den Tropfen aus Glas.
+ * Das Farbrad: die Farben des Servers für ein angelegtes Cosmetic oder die Körperfarben, als
+ * Tropfen im Kreis. Beim Cosmetic steht „Original“ in der Mitte. Darunter geht es zurück. Es nimmt
+ * den Platz des Popovers ein, mit derselben Vorlage für den Tropfen aus Glas.
  *
  * @module
  */
@@ -21,8 +21,11 @@ export function PaintWheelShape({ region }: { region: StudioRegion }) {
   return <span className={`${placement(region)} pop-shape`} data-liquid />;
 }
 
-/** Ein Tropfen mit der Spitze nach oben. `rotate` in `studio.css` dreht sie zur Mitte. */
-function Drop() {
+/**
+ * Ein Tropfen mit der Spitze nach oben, gefüllt mit `currentColor`. Im Rad dreht `rotate` in
+ * `studio.css` sie zur Mitte.
+ */
+export function PaintDrop() {
   return (
     <svg viewBox="0 0 22 30" aria-hidden="true">
       <path d="M11 1C11 1 21 13.2 21 19a10 10 0 0 1-20 0C1 13.2 11 1 11 1Z" />
@@ -33,7 +36,7 @@ function Drop() {
 /** Eigenschaften von {@link PaintWheel}. */
 interface PaintWheelProps {
   region: StudioRegion;
-  /** „Original“ zuerst, dann die Farben, wie `paintItems` sie liefert. */
+  /** Die Farben. Beim Cosmetic zuerst „Original“ (`paint: null`), wie `paintItems` es liefert. */
   items: StudioItem[];
   /** Es läuft gerade ein Aufruf, die Wahl hätte keine Wirkung. */
   busy: boolean;
@@ -57,7 +60,8 @@ function choice(item: StudioItem, busy: boolean, onPick: (item: StudioItem) => v
 
 /** Das Farbrad. Die Tropfen stehen in der Reihenfolge der Farben im Uhrzeigersinn, oben beginnend. */
 export default function PaintWheel({ region, items, busy, onPick, onBack }: PaintWheelProps) {
-  const [original, ...paints] = items;
+  const original = items[0]?.paint === null ? items[0] : null;
+  const paints = original ? items.slice(1) : items;
   return (
     <div
       id="studio-pop"
@@ -73,7 +77,7 @@ export default function PaintWheel({ region, items, busy, onPick, onBack }: Pain
           style={{ "--i": index, color: item.paint ?? undefined } as CSSProperties}
           {...choice(item, busy, onPick)}
         >
-          <Drop />
+          <PaintDrop />
         </button>
       ))}
       {original?.icon ? (

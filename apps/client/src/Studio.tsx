@@ -93,7 +93,7 @@ function focusSoon(selector: string) {
 /**
  * Die offene Region und was dort gewählt wird. Ein Klick auf das angelegte, färbbare Cosmetic macht
  * das Popover zum Farbrad, jede andere Region, „zurück“ und ein anderes Cosmetic wieder zum
- * Popover.
+ * Popover. Die Region „Farbe“ zeigt gleich das Rad der Körperfarben.
  */
 function useChoice({ me, catalog, region, onRegion, onEquip, onColor }: StudioProps) {
   // Das Cosmetic, dessen Farbrad offen ist. Liegt dort etwas anderes, gilt es nicht mehr.
@@ -101,11 +101,12 @@ function useChoice({ me, catalog, region, onRegion, onEquip, onColor }: StudioPr
   const open = REGIONS.find((item) => item.id === region);
   const worn = open?.slot && me.equipped[open.slot]?.key;
   const paints = open?.slot && worn === painting ? paintItems(open.slot, me, catalog) : [];
+  // Die Körperfarben stehen gleich im Rad, die Cosmetics erst nach einem Klick aufs angelegte.
   const choice: Choice | null = open
     ? {
         region: open,
         items: paints.length > 0 ? paints : regionItems(open, me, catalog),
-        wheel: paints.length > 0,
+        wheel: paints.length > 0 || !open.slot,
       }
     : null;
 
@@ -124,7 +125,12 @@ function useChoice({ me, catalog, region, onRegion, onEquip, onColor }: StudioPr
     else if (worn) onEquip(slot, worn, item.paint ?? undefined);
   }
 
+  /** Vom Farbrad eines Cosmetics zurück zu seinen Einträgen, beim Rad der Körperfarben ganz zu. */
   function back() {
+    if (!open?.slot) {
+      document.querySelector<HTMLElement>(".blob[aria-expanded='true']")?.focus();
+      return changeRegion(null);
+    }
     setPainting(null);
     focusSoon(".paintable");
   }

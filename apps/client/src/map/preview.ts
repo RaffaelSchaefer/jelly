@@ -26,7 +26,19 @@ import { FRAME_RATE, PREVIEW_CATALOG, PREVIEW_ME, PREVIEW_RULES, type PartnerInv
  * ihm.
  */
 const OWN_ID = 1;
-const COLORS = ["mint", "lilac", "peach", "lime"];
+const COLORS = [
+  "mint",
+  "sky",
+  "violet",
+  "lilac",
+  "rose",
+  "cherry",
+  "peach",
+  "tangerine",
+  "lemon",
+  "lime",
+  "clover",
+];
 const SIGN = "cs2";
 /** So viele Jellies stehen je Tischreihe, jedes vierte hält ein Schild hoch. */
 const PLACES_PER_SEAT = [0.25, 0.75];

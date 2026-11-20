@@ -62,7 +62,7 @@ export interface StudioItem {
   /** Symbol des Eintrags. Farben zeigen stattdessen ein kleines Jelly in `swatch`. */
   icon: IconName | null;
   swatch?: JellyPalette;
-  /** Gibt es nur im Farbrad: die Farbe als Hex-Text, `null` heißt wie modelliert. */
+  /** Gibt es nur im Farbrad: die Farbe als Hex-Text, `null` heißt wie modelliert („Original“). */
   paint?: string | null;
   /** Das angelegte Cosmetic lässt sich färben: Ein Klick darauf öffnet das Farbrad. */
   paintable?: boolean;
@@ -92,13 +92,14 @@ function cosmeticRows(slot: Cosmetic["slot"], me: Me, catalog: Catalog): StudioI
   ];
 }
 
-/** Die drei Körperfarben. Jede ist frei. */
+/** Die Körperfarben für das Farbrad. Jede ist frei. */
 function colorRows(me: Me): StudioItem[] {
   return Object.entries(PET_COLORS).map(([key, color]) => ({
     id: key,
     name: color.label,
     icon: null,
     swatch: color,
+    paint: color.hex,
     state: me.color === key ? "equipped" : "unlocked",
   }));
 }
