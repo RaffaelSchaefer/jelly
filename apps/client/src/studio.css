@@ -45,7 +45,7 @@
 .opens-up { translate: -50% calc(-100% - 20px); transform-origin: 50% 100%; }
 .opens-down { translate: -50% 18px; transform-origin: 50% 0; }
 .opens-left { --room: calc(var(--at) - 28px); translate: calc(-100% - 22px) -50%; transform-origin: 100% 50%; }
-/* Links fehlt der Platz: Solange die Farben offen sind, rückt der Blob nach rechts, die vier Farben enden 8 px vor dem Fensterrand. */
+/* Links fehlt der Platz: Solange die Farben offen sind, rückt der Blob nach rechts, die Farben enden 8 px vor dem Fensterrand. */
 .studio:has(.pop.at-farbe) .at-farbe { --x: max(var(--anchor-farbe-x), calc(50% + 4px)); }
 .opens-right { --room: calc(100% - var(--at) - 24px); translate: 18px -50%; transform-origin: 0 50%; }
 .ink .pop > button { animation: pop-ink 200ms ease-out 140ms both; }
@@ -72,15 +72,16 @@
 .pop.wheel { --wheel: calc(150px * clamp(0.8, var(--pet-scale, 1), 1.15)); display: block; width: var(--wheel); height: calc(var(--wheel) + 30px); min-height: 0; padding: 0; }
 .pop.wheel.opens-right { left: min(var(--at), calc(100% - var(--wheel) - 24px)); top: clamp(calc(var(--wheel) / 2 + 21px), var(--y), calc(100% - var(--wheel) / 2 - 21px)); }
 .pop.wheel.opens-down { top: min(var(--y), calc(100% - var(--wheel) - 54px)); }
-.wheel .petal { --a: calc(var(--i) * 360deg / var(--n, 9) - 90deg); --w: calc(var(--wheel) * 0.19); --h: calc(var(--wheel) * 0.26); position: absolute; left: calc(var(--wheel) / 2 - var(--w) / 2); top: calc(var(--wheel) / 2 - var(--h) / 2); width: var(--w); height: var(--h); border-radius: 0; translate: calc(cos(var(--a)) * var(--wheel) * 0.33) calc(sin(var(--a)) * var(--wheel) * 0.33); rotate: calc(var(--a) - 90deg); }
+/* Bis neun Tropfen haben volle Größe, mehr werden kleiner und passen so weiter in den Ring (`--k`). */
+.wheel .petal { --a: calc(var(--i) * 360deg / var(--n, 9) - 90deg); --k: min(1, calc(9 / var(--n, 9))); --w: calc(var(--wheel) * 0.19 * var(--k)); --h: calc(var(--wheel) * 0.26 * var(--k)); position: absolute; left: calc(var(--wheel) / 2 - var(--w) / 2); top: calc(var(--wheel) / 2 - var(--h) / 2); width: var(--w); height: var(--h); border-radius: 0; translate: calc(cos(var(--a)) * var(--wheel) * 0.33) calc(sin(var(--a)) * var(--wheel) * 0.33); rotate: calc(var(--a) - 90deg); }
 .wheel .petal svg { width: 100%; height: 100%; overflow: visible; fill: currentColor; stroke: #ffffffa6; stroke-width: 1.5px; filter: drop-shadow(0 1px 2px #0007); }
 .pop.wheel button.petal[aria-pressed] { background: none; }
 /*
- * Trefferfläche: ein Keil von 40° von nahe der Mitte bis zum Rand, gedreht mit dem Tropfen. Die neun
- * Keile füllen den Ring ohne Lücke, jeder Klick dort trifft einen Tropfen.
- * ponytail: Der Keil passt zu neun Farben. Bringt der Server mehr, überlappen die Keile etwas.
+ * Trefferfläche: ein Keil von 360° / n von nahe der Mitte bis zum Rand, gedreht mit dem Tropfen. Die
+ * Keile füllen den Ring ohne Lücke, jeder Klick dort trifft einen Tropfen. Kleinere Tropfen machen
+ * ihn schmaler (`--k`), die Länge bleibt.
  */
-.pop.wheel button.petal[aria-pressed]::after { content: ''; position: absolute; inset: calc(var(--wheel) * -0.053) calc(var(--wheel) * -0.087) calc(var(--wheel) * -0.04); border: 0; border-radius: 0; background: none; mask: none; animation: none; clip-path: polygon(35% 0, 65% 0, 100% 100%, 0 100%); }
+.pop.wheel button.petal[aria-pressed]::after { content: ''; position: absolute; inset: calc(var(--wheel) * (-0.053 - 0.13 * (1 - var(--k)))) calc(var(--wheel) * -0.087 * var(--k)) calc(var(--wheel) * (-0.04 - 0.13 * (1 - var(--k)))); border: 0; border-radius: 0; background: none; mask: none; animation: none; clip-path: polygon(35% 0, 65% 0, 100% 100%, 0 100%); }
 .wheel .petal[aria-pressed='true'] svg { stroke: #fff; stroke-width: 3px; }
 /* Ein Rahmen stünde schief um den gedrehten Tropfen, der Fokus leuchtet deshalb. */
 .pop.wheel .petal:focus-visible { outline: none; }
@@ -93,12 +94,14 @@
 [data-tip]:is(:hover, :focus-visible)::before { opacity: 1; }
 
 /* Namensschild: bleibt immer über dem Dock, auch wenn die Füße beim Zoom aus dem Bild wandern. Der Spiegel-Text gibt ihm seine Breite. */
-.name-tag { position: absolute; left: var(--anchor-name-x); top: min(var(--anchor-name-y), calc(var(--stage-height, 330px) - var(--canvas-top, 43px) - 18px)); translate: -50% -50%; display: inline-grid; min-width: 72px; max-width: 220px; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.name-tag { position: absolute; left: var(--anchor-name-x); top: min(var(--anchor-name-y), calc(var(--stage-height, 330px) - var(--canvas-top, 43px) - 18px)); translate: -50% -50%; display: inline-grid; min-width: 72px; max-width: 220px; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 150ms, visibility 150ms; }
 .name-tag > span, .studio .name-tag input { grid-area: 1 / 1; padding: 6px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.1px; }
 .name-tag > span { visibility: hidden; white-space: pre; overflow: hidden; }
 .studio .name-tag input { width: 100%; min-width: 0; border: 0; border-radius: 14px; background: transparent; color: #fff; text-align: center; text-shadow: 0 1px 2px #0008; cursor: text; }
 .studio .name-tag input:focus-visible { outline: 1.5px solid #ffffffb0; outline-offset: -2px; }
 .name-tag:hover, .name-tag:focus-within { scale: 1.06; }
+/* Die Körperfarben brechen in mehrere Reihen um und reichen bis zum Namen: Solange sie offen sind, tritt er zurück, sonst fingen Klick und Tab ihn ab. */
+.studio[data-open='farbe'] .name-tag { visibility: hidden; opacity: 0; }
 
 /* Vom Fenstermittelpunkt aus gerechnet, damit es bei jeder Pet-Größe im Fenster bleibt. */
 .studio-done { position: absolute; top: 2px; left: calc(50% + 122px); padding: 6px 14px; border: 0; border-radius: 14px; background: transparent; color: #fff; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px #0008; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }

@@ -11,9 +11,16 @@ import type { Catalog } from "./types";
 export const PREVIEW_CATALOG: Catalog = {
   colors: [
     { key: "mint", label: "Aqua" },
+    { key: "sky", label: "Himmelblau" },
+    { key: "violet", label: "Lila" },
     { key: "lilac", label: "Flieder" },
+    { key: "rose", label: "Rosa" },
+    { key: "cherry", label: "Rot" },
     { key: "peach", label: "Pfirsich" },
+    { key: "tangerine", label: "Orange" },
+    { key: "lemon", label: "Gelb" },
     { key: "lime", label: "Hellgrün" },
+    { key: "clover", label: "Grün" },
   ],
   emotes: [
     { key: "wave", label: "Winken" },

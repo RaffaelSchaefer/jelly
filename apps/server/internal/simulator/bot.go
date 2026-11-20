@@ -93,7 +93,10 @@ type bot struct {
 
 // listColors returns the colors a player can choose.
 func listColors() []string {
-	return []string{"mint", "lilac", "peach", "lime"}
+	return []string{
+		"mint", "sky", "violet", "lilac", "rose", "cherry",
+		"peach", "tangerine", "lemon", "lime", "clover",
+	}
 }
 
 // listEmotes returns the emotes the bots use.

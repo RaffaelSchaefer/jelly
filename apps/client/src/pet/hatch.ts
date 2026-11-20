@@ -13,9 +13,16 @@ export type HatchStep = "name" | "color" | "code" | "recover";
 /** Was das Jelly zur frischen Farbe sagt. */
 const COLOR_LINES: Record<PetColor, string> = {
   mint: "Aqua! Frisch wie ein Schluck Wasser.",
+  sky: "Himmelblau! Ich schwebe auf Wolke sieben.",
+  violet: "Lila! Geheimnisvoll, so wie ich.",
   lilac: "Flieder! Das ist so was von meins.",
+  rose: "Rosa! Zuckerwatte mit Glibber.",
+  cherry: "Rot! Feurig und kein bisschen schüchtern.",
   peach: "Pfirsich! Süß und ein bisschen frech.",
+  tangerine: "Orange! Saftig wie eine Mandarine.",
+  lemon: "Gelb! Ich strahle mit der Sonne um die Wette.",
   lime: "Hellgrün! Ich wachse über mich hinaus.",
+  clover: "Grün! Ein Kleeblatt bringt Glück.",
 };
 
 /** Datum als „25.11., 12:00“. */

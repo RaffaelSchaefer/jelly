@@ -42,12 +42,26 @@ pub const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub enum Color {
     /// Blau mit türkisem Leuchten, in der Oberfläche „Aqua“.
     Mint,
+    /// Himmelblau.
+    Sky,
+    /// Lila.
+    Violet,
     /// Flieder.
     Lilac,
+    /// Rosa.
+    Rose,
+    /// Rot.
+    Cherry,
     /// Pfirsich.
     Peach,
+    /// Orange.
+    Tangerine,
+    /// Gelb.
+    Lemon,
     /// Hellgrün.
     Lime,
+    /// Grün.
+    Clover,
 }
 
 /// Was die Oberfläche beim Server auslösen kann. In JSON klein geschrieben (`"poke"`).

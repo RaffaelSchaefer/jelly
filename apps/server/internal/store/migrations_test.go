@@ -15,18 +15,7 @@ const versionBeforeLime = 21
 // The lime migration rebuilds players. With foreign keys on, dropping the old table would cascade
 // into every table that points at players, so their rows must survive the rebuild.
 func TestLimeMigrationKeepsPlayersAndTheirRows(t *testing.T) {
-	database, err := sql.Open("sqlite", "file:"+filepath.Join(t.TempDir(), "jelly.db")+
-		"?_pragma=foreign_keys(1)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = database.Close() }()
-	// Like the store's write pool, which runs the migrations.
-	database.SetMaxOpenConns(1)
-	provider, err := goose.NewProvider(goose.DialectSQLite3, database, os.DirFS("migrations"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	database, provider := openMigrations(t)
 	if _, err := provider.UpTo(t.Context(), versionBeforeLime); err != nil {
 		t.Fatalf("up to %d: %v", versionBeforeLime, err)
 	}
@@ -77,6 +66,63 @@ func checkLimePlayers(t *testing.T, database *sql.DB) {
 	if err != nil || foreignKeys != 1 {
 		t.Errorf("foreign_keys = %d, %v, want 1", foreignKeys, err)
 	}
+}
+
+// The last migration before the players table allowed the colors of colorable cosmetics.
+const versionBeforeMoreColors = 22
+
+// The rebuild for the new colors must keep the rows that point at players, and rolling it back
+// turns each new color into its nearest old one.
+func TestMoreColorsMigrationKeepsRowsAndRollsBack(t *testing.T) {
+	database, provider := openMigrations(t)
+	if _, err := provider.UpTo(t.Context(), versionBeforeMoreColors); err != nil {
+		t.Fatalf("up to %d: %v", versionBeforeMoreColors, err)
+	}
+	execAll(
+		t,
+		database,
+		`INSERT INTO players (id, token_hash, name, name_key, color, created_at)
+			VALUES (7, 'token-7', 'Glibber', 'glibber', 'lime', 1)`,
+		`INSERT INTO purchases (player_id, cosmetic_key, price, created_at)
+			VALUES (7, 'sprout', 2, 1)`,
+	)
+	if _, err := provider.UpTo(t.Context(), versionBeforeMoreColors+1); err != nil {
+		t.Fatalf("up: %v", err)
+	}
+	if count := countRows(t, database, "purchases"); count != 1 {
+		t.Errorf("purchases has %d rows, want 1", count)
+	}
+	execAll(t, database, `UPDATE players SET color = 'cherry' WHERE id = 7`)
+	if _, err := provider.DownTo(t.Context(), versionBeforeMoreColors); err != nil {
+		t.Fatalf("down: %v", err)
+	}
+	var color string
+	err := database.QueryRowContext(t.Context(),
+		`SELECT color FROM players WHERE id = 7`).Scan(&color)
+	if err != nil || color != "peach" {
+		t.Errorf("color after rollback = %q, %v, want peach", color, err)
+	}
+	if count := countRows(t, database, "purchases"); count != 1 {
+		t.Errorf("purchases has %d rows after rollback, want 1", count)
+	}
+}
+
+// openMigrations opens an empty database with foreign keys on and a goose provider for it.
+func openMigrations(t *testing.T) (*sql.DB, *goose.Provider) {
+	t.Helper()
+	database, err := sql.Open("sqlite", "file:"+filepath.Join(t.TempDir(), "jelly.db")+
+		"?_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	// Like the store's write pool, which runs the migrations.
+	database.SetMaxOpenConns(1)
+	provider, err := goose.NewProvider(goose.DialectSQLite3, database, os.DirFS("migrations"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return database, provider
 }
 
 // execAll runs each statement and stops the test at the first error.

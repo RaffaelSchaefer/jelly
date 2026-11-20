@@ -19,7 +19,14 @@ import { JELLY_COLORS } from "@jelly/scene/colors";
  */
 export const PET_COLORS = {
   mint: { label: "Aqua", ...JELLY_COLORS.mint },
+  sky: { label: "Himmelblau", ...JELLY_COLORS.sky },
+  violet: { label: "Lila", ...JELLY_COLORS.violet },
   lilac: { label: "Flieder", ...JELLY_COLORS.lilac },
+  rose: { label: "Rosa", ...JELLY_COLORS.rose },
+  cherry: { label: "Rot", ...JELLY_COLORS.cherry },
   peach: { label: "Pfirsich", ...JELLY_COLORS.peach },
+  tangerine: { label: "Orange", ...JELLY_COLORS.tangerine },
+  lemon: { label: "Gelb", ...JELLY_COLORS.lemon },
   lime: { label: "Hellgrün", ...JELLY_COLORS.lime },
+  clover: { label: "Grün", ...JELLY_COLORS.clover },
 } as const;

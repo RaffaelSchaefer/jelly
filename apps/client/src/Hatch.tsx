@@ -25,7 +25,7 @@ import {
   type HatchStep,
   type PetColor,
 } from "./pet";
-import JellySwatch from "./studio/JellySwatch";
+import { PaintDrop } from "./studio/PaintWheel";
 import { Icon, PrimaryButton } from "./ui";
 import "./hatch.css";
 
@@ -144,13 +144,21 @@ function useStepFocus(step: HatchStep, error: string) {
   return capsule;
 }
 
-/** Die Farben als kleine Jellies. Jede Wahl färbt sofort das echte Jelly und die Oberfläche. */
+/**
+ * Die Farben als Tropfen wie im Farbrad des Studios. Jede Wahl färbt sofort das echte Jelly und die
+ * Oberfläche.
+ */
 function ColorPicker({ color, onPick }: { color: PetColor; onPick: (color: PetColor) => void }) {
   return (
     <fieldset className="hatch-colors">
       <legend className="sr-only">Lieblingsfarbe</legend>
       {COLORS.map((key) => (
-        <label key={key} className="hatch-color" title={PET_COLORS[key].label}>
+        <label
+          key={key}
+          className="hatch-color"
+          title={PET_COLORS[key].label}
+          style={{ color: PET_COLORS[key].hex }}
+        >
           <input
             className="sr-only"
             type="radio"
@@ -159,7 +167,7 @@ function ColorPicker({ color, onPick }: { color: PetColor; onPick: (color: PetCo
             checked={color === key}
             onChange={() => onPick(key)}
           />
-          <JellySwatch id={`hatch-${key}`} palette={PET_COLORS[key]} />
+          <PaintDrop />
           <span className="sr-only">{PET_COLORS[key].label}</span>
         </label>
       ))}

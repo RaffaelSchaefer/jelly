@@ -68,11 +68,12 @@ describe("studio regions", () => {
   });
   it("offers the body colours", () => {
     const colors = items("farbe");
-    expect(colors).toHaveLength(4);
+    expect(colors).toHaveLength(Object.keys(PET_COLORS).length);
     expect(colors[0]).toMatchObject({
       id: "mint",
       state: "equipped",
       swatch: PET_COLORS.mint,
+      paint: PET_COLORS.mint.hex,
     });
   });
 });

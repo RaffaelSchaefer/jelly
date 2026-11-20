@@ -21,7 +21,18 @@ import type {
 } from "@jelly/stage";
 
 /** Farbvariante des Pets (Rust: `Color`, Server: Katalog `colors`). */
-export type PetColor = "mint" | "lilac" | "peach" | "lime";
+export type PetColor =
+  | "mint"
+  | "sky"
+  | "violet"
+  | "lilac"
+  | "rose"
+  | "cherry"
+  | "peach"
+  | "tangerine"
+  | "lemon"
+  | "lime"
+  | "clover";
 
 /** Was die Oberfläche beim Server auslösen kann (Rust: `Action`). */
 export type Action = "poke" | "food" | "drink";
