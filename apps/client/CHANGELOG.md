@@ -6,6 +6,13 @@ Zeilen. Je Version eine Überschrift `## X.Y.Z` wie in `tauri.conf.json`, darunt
 `Neu:`, `Besser:` oder `Weg:`, je höchstens etwa 40 Zeichen, damit sie in eine Zeile der Karte
 passen. Ohne Abschnitt für die Version bricht das Release ab.
 
+## 0.4.0
+
+- Neu: Zeitplan der LAN im Dock
+- Neu: Erinnerung zehn Minuten vorher
+- Neu: Paket für Arch Linux
+- Besser: Karte zeigt alle Cosmetics
+
 ## 0.3.1
 
 - Neu: Katzen-Set im Zauberladen
