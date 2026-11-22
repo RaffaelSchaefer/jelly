@@ -1,0 +1,46 @@
+name: Server Image
+
+# Forgejo only: when .forgejo/workflows exists, Forgejo ignores .github/workflows,
+# and GitHub never reads this directory.
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  REGISTRY: forge.stash.deadpostbox.net
+  IMAGE: forge.stash.deadpostbox.net/tomek/jelly-server
+
+jobs:
+  image:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A tag event does not know its branch, so only tags on main are built.
+      - name: Require tagged commit on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag $GITHUB_REF_NAME is not on main, skipping."
+            exit 1
+          fi
+
+      - name: Log in to the registry
+        run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.repository_owner }}" --password-stdin
+
+      - name: Build
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          docker build -f apps/server/Dockerfile \
+            -t "$IMAGE:$VERSION" -t "$IMAGE:latest" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.version=$VERSION" .
+
+      - name: Push
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          docker push "$IMAGE:$VERSION"
+          docker push "$IMAGE:latest"
