@@ -10,8 +10,10 @@ The pet's front surface (`head_z`, `body_z`, `surface_z`, `on_pet`) mirrors
 Plush parts that flow into each other are implicit surfaces: signed distances on numpy arrays,
 joined with `smooth_union` and meshed by `surface_nets`; `sdf_decal` lays flat parts onto them.
 """
+import functools
 import itertools
 import math
+import random
 
 import numpy as np
 from mathutils import Vector
@@ -153,6 +155,13 @@ def outward(mesh_data):
     verts, faces = mesh_data
     volume = sum(Vector(verts[f[0]]).dot(Vector(verts[f[i]]).cross(Vector(verts[f[i + 1]]))) for f in faces for i in range(1, len(f) - 1))
     return (verts, faces) if volume > 0 else (verts, [tuple(reversed(f)) for f in faces])
+
+
+def mirror_x(mesh_data):
+    """The mesh and its twin at -x, the twin's faces turned so they still point outwards."""
+    verts, faces = mesh_data
+    twin = [(-v[0], v[1], v[2]) for v in verts]
+    return merge([(verts, faces), (twin, [tuple(reversed(f)) for f in faces])])
 
 
 def merge(meshes):
@@ -326,6 +335,39 @@ def badge(outline, center, normal, radius, half, ring_size=24, stacks=3, up=Vect
 
 # ---------------------------------------------------------------------------------------------
 # The pet's front and parts that rest on it.
+
+
+# What the app keeps clear on the pet's face, as (x low, x high, y low, y high): the mouth, both
+# cheeks and both eyes (pupils looking up included).
+FACE_WINDOWS = [(-0.12, 0.12, 0.345, 0.52), (0.255, 0.405, 0.495, 0.585), (-0.405, -0.255, 0.495, 0.585), (0.11, 0.27, 0.58, 0.74), (-0.27, -0.11, 0.58, 0.74)]
+# What the pet holds stays inside its hands' inner edges at their height: the band (y low, y high)
+# and the reach. The default ink edge, for the frame.
+HELD = {"band": (-0.6, -0.2), "reach": 0.72}
+INK = 0.035
+
+
+def problems(parts, room, held=False):
+    """Every rule the parts' vertices break: the face windows grown by `room` (ink and a little
+    air), the frame (|x| 1.85, y up to the speech bubble at 1.6 and down to -1.05) and, for what the
+    pet holds (`held`), the hands' inner edges and the belly, which must stay behind it."""
+    found = []
+    low, high = HELD["band"]
+    for name, (verts, _) in parts.items():
+        x, y, z = np.array(verts, float).T
+        for x0, x1, y0, y1 in FACE_WINDOWS:
+            if ((x > x0 - room) & (x < x1 + room) & (y > y0 - room) & (y < y1 + room)).any():
+                found.append(f"{name} in the window {(x0, x1, y0, y1)}")
+        if (np.abs(x) + INK).max() >= 1.85 or (y + INK).max() >= 1.6 or y.min() < -1.05:
+            found.append(f"{name} out of bounds: |x| {np.abs(x).max():.3f}, y {y.min():.3f} to {y.max():.3f}")
+        if not held:
+            continue
+        wide = (y > low) & (y < high) & (np.abs(x) > HELD["reach"])
+        if wide.any():
+            found.append(f"{name} beyond |x| {HELD['reach']} at the hands, up to {np.abs(x[wide]).max():.3f}")
+        behind = z < np.array([surface_z(a, b) for a, b in zip(x, y)])
+        if behind.any():
+            found.append(f"{name} behind the pet's front, down to z {z[behind].min():.3f}")
+    return found
 
 
 def head_z(x, y):
@@ -622,3 +664,56 @@ def sdf_decal(sdf, centre, normal, outline, lift, half, profile=None, up=(0, 1, 
     out = unit_rows(sdf_gradient(sdf, middle))[0]
     back, front = middle[0] + out * (lift - half), middle[0] + out * (lift + half)
     return outward(skin(rings, len(flat), Vector(back), Vector(front)))
+
+
+# ---------------------------------------------------------------------------------------------
+# Fur: tufts pushed out of a mesh where it turns away from the camera.
+
+
+@functools.lru_cache(maxsize=None)
+def tuft_point(seed, cell):
+    """The tuft in grid `cell` (in cells) and its share of the full height, the same on every run."""
+    rng = random.Random(f"{seed}{cell}")
+    return Vector(cell) + Vector((rng.random(), rng.random(), rng.random())), 0.6 + 0.4 * rng.random()
+
+
+def tuft_height(p, tufts):
+    """How far the fur stands out at `p`: the highest of the tufts around it."""
+    q = p / tufts["cell"]
+    base = [math.floor(c) for c in q]
+    best = 0.0
+    for offset in itertools.product((-1, 0, 1), repeat=3):
+        point, share = tuft_point(tufts["seed"], tuple(b + o for b, o in zip(base, offset)))
+        reach = (q - point).length * tufts["cell"] / tufts["reach"]
+        if reach < 1:
+            best = max(best, share * (1 - reach) ** tufts["sharp"])
+    return best * tufts["height"]
+
+
+def vertex_normals(verts, faces):
+    """Smooth normals: the sum of the (Newell) normals of every face round a vertex."""
+    normals = [Vector() for _ in verts]
+    for face in faces:
+        n = Vector()
+        for a, b in ((verts[i], verts[j]) for i, j in zip(face, face[1:] + face[:1])):
+            n += Vector(((a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y)))
+        for i in face:
+            normals[i] += n
+    return [n.normalized() for n in normals]
+
+
+def fur(mesh_data, tufts):
+    """Pushes tufts of fur out of a mesh where it turns away from the camera: they stand out along
+    the normals round jittered points of a 3D grid (`cell`), each with its own height, up to `reach`
+    from its point and `height` at most, `sharp` how pointed. Only where |normal z| falls from
+    `edge[1]` to `edge[0]`: the front stays smooth, the outline turns fluffy. The same `seed` gives
+    the same tufts on every run."""
+    verts, faces = mesh_data
+    verts = [Vector(v) for v in verts]
+    low, high = tufts["edge"]
+    out = []
+    for v, n in zip(verts, vertex_normals(verts, faces)):
+        t = min(max((abs(n.z) - low) / (high - low), 0.0), 1.0)
+        edge = 1 - t * t * (3 - 2 * t)
+        out.append(v + n * tuft_height(v, tufts) * edge if edge > 0 else v)
+    return out, faces

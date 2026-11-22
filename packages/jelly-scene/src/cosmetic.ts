@@ -30,8 +30,13 @@ import bandana from "./cosmetics/bandana.glb?url&inline";
 import batWings from "./cosmetics/bat-wings.glb?url&inline";
 import beanie from "./cosmetics/beanie.glb?url&inline";
 import bellCollar from "./cosmetics/bell-collar.glb?url&inline";
+import catEars from "./cosmetics/cat-ears.glb?url&inline";
+import catPaws from "./cosmetics/cat-paws.glb?url&inline";
+import catTail from "./cosmetics/cat-tail.glb?url&inline";
+import catWhiskers from "./cosmetics/cat-whiskers.glb?url&inline";
 import chicken from "./cosmetics/chicken.glb?url&inline";
 import crown from "./cosmetics/crown.glb?url&inline";
+import cyberCatEars from "./cosmetics/cyber-cat-ears.glb?url&inline";
 import fairyWings from "./cosmetics/fairy-wings.glb?url&inline";
 import goldenCup from "./cosmetics/golden-cup.glb?url&inline";
 import goose from "./cosmetics/goose.glb?url&inline";
@@ -39,6 +44,7 @@ import headsetNeutral from "./cosmetics/headset-neutral.glb?url&inline";
 import headset from "./cosmetics/headset.glb?url&inline";
 import hood from "./cosmetics/hood.glb?url&inline";
 import kaminaGlasses from "./cosmetics/kamina-glasses.glb?url&inline";
+import kitten from "./cosmetics/kitten.glb?url&inline";
 import knitScarf from "./cosmetics/knit-scarf.glb?url&inline";
 import longSchnoerbi from "./cosmetics/long-schnoerbi.glb?url&inline";
 import miniBackpack from "./cosmetics/mini-backpack.glb?url&inline";
@@ -49,6 +55,7 @@ import pixelGlasses from "./cosmetics/pixel-glasses.glb?url&inline";
 import schnoerbiMask from "./cosmetics/schnoerbi-mask.glb?url&inline";
 import snailShell from "./cosmetics/snail-shell.glb?url&inline";
 import sprout from "./cosmetics/sprout.glb?url&inline";
+import yarnBall from "./cosmetics/yarn-ball.glb?url&inline";
 import outlineFragmentShader from "./shaders/outline.frag.glsl?raw";
 import outlineVertexShader from "./shaders/outline.vert.glsl?raw";
 import fragmentShader from "./shaders/toon.frag.glsl?raw";
@@ -66,8 +73,13 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   "bat-wings": batWings,
   beanie,
   "bell-collar": bellCollar,
+  "cat-ears": catEars,
+  "cat-paws": catPaws,
+  "cat-tail": catTail,
+  "cat-whiskers": catWhiskers,
   chicken,
   crown,
+  "cyber-cat-ears": cyberCatEars,
   "fairy-wings": fairyWings,
   "golden-cup": goldenCup,
   goose,
@@ -75,6 +87,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   "headset-neutral": headsetNeutral,
   hood,
   "kamina-glasses": kaminaGlasses,
+  kitten,
   "knit-scarf": knitScarf,
   "long-schnoerbi": longSchnoerbi,
   "mini-backpack": miniBackpack,
@@ -85,16 +98,22 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   "schnoerbi-mask": schnoerbiMask,
   "snail-shell": snailShell,
   sprout,
+  "yarn-ball": yarnBall,
 };
 
 /** Breite der Outline in Szenen-Einheiten. */
 export const COSMETIC_OUTLINE = 0.035;
 
 /**
- * Abweichende Looks je Schlüssel. Die Piercings sind kaum dicker als die Outline, mit ihr läge um
- * jedes Teil ein dunkler Fleck wie ein Schatten.
+ * Abweichende Looks je Schlüssel. Piercings und Schnurrhaare sind kaum dicker als die Outline, mit
+ * ihr läge um jedes Teil ein dunkler Fleck wie ein Schatten. Katzenohren und -schwanz liegen hinter
+ * dem Jelly: Die Ohren wachsen so hinter dem Kopf hervor, der Schwanz steht nicht vor den Händen.
  */
 const COSMETIC_LOOKS: Readonly<Record<string, CosmeticLook>> = {
+  "cat-ears": { behind: true },
+  "cyber-cat-ears": { behind: true },
+  "cat-tail": { behind: true },
+  "cat-whiskers": { outline: 0.014 },
   piercings: { outline: 0.014 },
 };
 
@@ -113,6 +132,9 @@ const FILL_ORDER = 9;
  * anliegt. Durch den ganzen Kopf reicht er nicht, von hinten scheint also nichts durch.
  */
 const DEPTH_BIAS = 0.2;
+
+/** Zeichenebene eines Stickers hinter dem Jelly: vor dem Gesicht (6–7) und allen Malschichten. */
+const BEHIND_ORDER = { outline: 1, fill: 2 };
 
 /**
  * Wie ein Cosmetic zu dem steht, was schon gezeichnet ist.
@@ -141,6 +163,12 @@ export interface CosmeticLook {
    * Blender, ohne Farbe bleibt das Cosmetic, wie es modelliert ist.
    */
   tint?: string | null;
+  /**
+   * Als Sticker hinter dem Jelly statt obenauf: Es löscht die Tiefe nicht, Körper und Hände
+   * verdecken es also. Für Teile, die hinter dem Körper hervorkommen und vor denen die Hände
+   * stehen.
+   */
+  behind?: boolean;
 }
 
 /**
@@ -231,6 +259,15 @@ function glassOf(material: MeshStandardMaterial) {
   return typeof glass === "number" ? Math.min(1, Math.max(0, glass)) : 0;
 }
 
+/**
+ * Wie stark ein Teil selbst leuchtet, 0 bis 1: die Eigenschaft `neon` des Materials aus Blender.
+ * Neon kennt keinen Schatten und bleibt hell, auch wenn die Szene abdunkelt.
+ */
+function neonOf(material: MeshStandardMaterial) {
+  const neon: unknown = material.userData.neon;
+  return typeof neon === "number" ? Math.min(1, Math.max(0, neon)) : 0;
+}
+
 /** Dieselben `values` für jeden der `count` Vertices, als ein Attribut. */
 function repeated(values: number[], count: number) {
   const size = values.length;
@@ -243,7 +280,7 @@ function repeated(values: number[], count: number) {
 
 /**
  * Ein Mesh aus der glTF-Datei in Koordinaten des Jellys, mit Farbe, y-Bereich und Stärke des
- * Leuchtens sowie Flausch, Einfärbung und Glas je Vertex.
+ * Leuchtens sowie Flausch, Einfärbung, Glas und Neon je Vertex.
  */
 function createPart(mesh: Mesh) {
   const source = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
@@ -263,6 +300,7 @@ function createPart(mesh: Mesh) {
   part.setAttribute("aFluff", repeated([fluffOf(material)], count));
   part.setAttribute("aTint", repeated([tintOf(material)], count));
   part.setAttribute("aGlass", repeated([glassOf(material)], count));
+  part.setAttribute("aNeon", repeated([neonOf(material)], count));
   part.setIndex(source.getIndex());
   return part;
 }
@@ -425,7 +463,9 @@ export function createCosmetic(
   look: CosmeticLook = {},
 ) {
   const glass = hasGlass(model);
-  const order = glass ? glassOrder(look.layer) : stickerOrder(look.layer);
+  const behind = mode === "sticker" && look.behind === true;
+  const layered = glass ? glassOrder(look.layer) : stickerOrder(look.layer);
+  const order = behind ? BEHIND_ORDER : layered;
   const uDepthBias = { value: mode === "depth" ? DEPTH_BIAS : 0 };
   const outline = createOutline(model, ink, look.outline ?? COSMETIC_OUTLINE, uDepthBias);
   outline.renderOrder = order.outline;
@@ -442,7 +482,7 @@ export function createCosmetic(
   fill.material.userData.lightable = true;
   fill.renderOrder = order.fill;
   // Als Sticker löscht, was zuerst zeichnet, die Tiefe: sonst die Outline, mit Glas die Füllung.
-  if (mode === "sticker") (glass ? fill : outline).onBeforeRender = clearDepth;
+  if (mode === "sticker" && !behind) (glass ? fill : outline).onBeforeRender = clearDepth;
   const cosmetic = new Object3D();
   cosmetic.add(outline, fill);
   return cosmetic;

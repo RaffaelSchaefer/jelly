@@ -25,7 +25,7 @@ import { MaterializeContext, type MaterializeContextValue } from "./stageLook";
 /** Ein Modell, das noch lädt. Ohne Modell löst es zu `null` auf. */
 type ModelPromise = Promise<BufferGeometry | null>;
 
-/** Eigenschaften von {@link Sticker}: Modell und Tinte, dazu Malschicht, Strichstärke und Farbe. */
+/** Eigenschaften von {@link Sticker}: Modell und Tinte, dazu der Look aus `@jelly/scene`. */
 interface StickerProps extends CosmeticLook {
   model: ModelPromise;
   ink: string;
@@ -35,11 +35,11 @@ interface StickerProps extends CosmeticLook {
  * Ein Modell in den Koordinaten des Pets, wie es um `blender/pet_reference.obj` modelliert wurde.
  * Hier liegt es als Sticker obenauf, deshalb muss nur modelliert werden, was man von vorn sieht.
  */
-function StickerModel({ model, ink, layer, outline, tint }: StickerProps) {
+function StickerModel({ model, ink, layer, outline, tint, behind }: StickerProps) {
   const geometry = use(model);
   const cosmetic = useMemo(
-    () => geometry && createCosmetic(geometry, ink, "sticker", { layer, outline, tint }),
-    [geometry, ink, layer, outline, tint],
+    () => geometry && createCosmetic(geometry, ink, "sticker", { layer, outline, tint, behind }),
+    [geometry, ink, layer, outline, tint, behind],
   );
   useEffect(() => () => void (cosmetic && disposeCosmetic(cosmetic)), [cosmetic]);
   // Nur beim ersten Erscheinen: Ein späterer Wechsel des Contexts lässt nichts mehr aufspringen.
@@ -101,11 +101,11 @@ function Springing({
  * Renderfehler lassen es still weg, statt das ganze Pet zu verlieren. `model` sollte stabil sein,
  * wie die Promises aus `@jelly/scene`.
  */
-export function Sticker({ model, ink, layer = 0, outline, tint }: StickerProps) {
+export function Sticker({ model, ink, layer = 0, ...look }: StickerProps) {
   return (
     <RenderBoundary fallback={null}>
       <Suspense fallback={null}>
-        <StickerModel model={model} ink={ink} layer={layer} outline={outline} tint={tint} />
+        <StickerModel model={model} ink={ink} layer={layer} {...look} />
       </Suspense>
     </RenderBoundary>
   );

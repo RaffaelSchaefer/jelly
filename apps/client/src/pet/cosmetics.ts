@@ -24,6 +24,11 @@ export interface Cosmetic {
   slot: CosmeticSlot;
   /** Symbol in der Auswahl. */
   icon: IconName;
+  /**
+   * Sitzt an jeder Hand statt zwischen beiden, wie Pfoten. Das Modell ist dann eine Hand, um den
+   * Ursprung modelliert, und die Szene zeichnet es zweimal.
+   */
+  onHands?: boolean;
 }
 
 /**
@@ -43,9 +48,15 @@ export const COSMETICS: Cosmetic[] = [
   { id: "ogre-ears", name: "Oger-Ohren", slot: "head", icon: "ears" },
   { id: "piercings", name: "Piercings", slot: "face", icon: "piercing" },
   { id: "kamina-glasses", name: "Kamina-Brille", slot: "face", icon: "shades" },
+  { id: "cat-ears", name: "Katzenohren", slot: "head", icon: "catears" },
+  { id: "cyber-cat-ears", name: "Cyber-Katzenohren", slot: "head", icon: "cyberears" },
+  { id: "cat-whiskers", name: "Schnurrhaare", slot: "face", icon: "whiskers" },
   { id: "long-schnoerbi", name: "Long Schnörbi", slot: "hands", icon: "plush" },
   { id: "goose", name: "Kuschelgans", slot: "hands", icon: "goose" },
   { id: "chicken", name: "Kuschelhuhn", slot: "hands", icon: "chicken" },
+  { id: "kitten", name: "Kuschelkätzchen", slot: "hands", icon: "kitten" },
+  { id: "yarn-ball", name: "Wollknäuel", slot: "hands", icon: "yarn" },
+  { id: "cat-paws", name: "Samtpfoten", slot: "hands", icon: "paw", onHands: true },
   { id: "golden-cup", name: "Goldener Pokal", slot: "hands", icon: "trophy" },
   { id: "bandana", name: "Halstuch", slot: "body", icon: "bandana" },
   { id: "bell-collar", name: "Glöckchen-Halsband", slot: "body", icon: "bell" },
@@ -54,6 +65,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: "mini-backpack", name: "Mini-Rucksack", slot: "body", icon: "backpack" },
   { id: "fairy-wings", name: "Feenflügel", slot: "body", icon: "wings" },
   { id: "bat-wings", name: "Fledermausflügel", slot: "body", icon: "batwings" },
+  { id: "cat-tail", name: "Katzenschwanz", slot: "body", icon: "tail" },
 ];
 
 /**

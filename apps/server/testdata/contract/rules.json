@@ -159,6 +159,20 @@
       "error": null
     },
     {
+      "name": "the kitten costs four coins",
+      "key": "kitten",
+      "coins": 4,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "one coin is too few for the cat whiskers",
+      "key": "cat-whiskers",
+      "coins": 1,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
       "name": "the bat wings are not for sale",
       "key": "bat-wings",
       "coins": 100,

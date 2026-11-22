@@ -1,5 +1,6 @@
 /**
- * Was das Jelly in den Händen trägt: Es folgt ihnen wie die Tafel in `SignBoard.tsx`.
+ * Was das Jelly in den Händen trägt: Es folgt ihnen wie die Tafel in `SignBoard.tsx`. Was es an den
+ * Händen trägt, folgt jeder Hand einzeln.
  *
  * @module
  */
@@ -11,6 +12,9 @@ import { useFrame } from "@react-three/fiber";
 import { useRef, type ReactNode } from "react";
 
 import { boardPose } from "../pet";
+
+/** Die beiden Hände eines Jellys, links und rechts. */
+const HAND_INDICES = [0, 1] as const;
 
 /**
  * Muss in der Wurzel des Jellys liegen: Es liest die Lage der Hände im selben Koordinatensystem.
@@ -41,4 +45,43 @@ export default function HandHeld({
       <object3D position={[0, -HAND.y, 0]}>{children}</object3D>
     </object3D>
   );
+}
+
+/**
+ * Was das Jelly an den Händen trägt, wie Pfoten: dasselbe Modell an jeder Hand, um den Ursprung
+ * modelliert. Es folgt Lage und Größe seiner Hand, so bleibt es auch beim Winken an ihr. Muss in
+ * der Wurzel des Jellys liegen wie {@link HandHeld}.
+ */
+export function HandWorn({
+  jelly,
+  visible = true,
+  children,
+}: {
+  jelly: Jelly;
+  /** Ausgeblendet bleibt das Modell geladen, etwa solange die Hände eine Tafel halten. */
+  visible?: boolean;
+  children: ReactNode;
+}) {
+  const holders = useRef<(Object3D | null)[]>([]);
+
+  useFrame(() => {
+    jelly.hands.forEach((hand, index) => {
+      const holder = holders.current[index];
+      if (!holder) return;
+      holder.position.copy(hand.position);
+      holder.scale.copy(hand.scale);
+      holder.visible = visible && hand.visible;
+    });
+  });
+
+  return HAND_INDICES.map((index) => (
+    <object3D
+      key={index}
+      ref={(holder) => {
+        holders.current[index] = holder;
+      }}
+    >
+      {children}
+    </object3D>
+  ));
 }

@@ -15,10 +15,8 @@ mirrored by a modifier: both sides are built in place. Three.js coordinates.
 """
 import bisect
 import functools
-import itertools
 import math
 import os
-import random
 import sys
 
 from mathutils import Vector
@@ -26,7 +24,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import generator  # noqa: E402
-from shapes import badge, blob, catmull, loop_skin, merge, outward, smooth, spow, sweep  # noqa: E402
+from shapes import badge, blob, catmull, fur, loop_skin, merge, outward, smooth, spow, sweep  # noqa: E402
 
 # The centre line (x, y) at depth DEPTH_Z, from the head's centre to the tail on the floor. With
 # tufts and outline it stays within |x| 1.85, the pet window shows little more. The body passes
@@ -154,7 +152,7 @@ def body_mesh():
     for s in stops:
         r = radius_at(s, total)
         samples.append((along(s)[0], r, r * FLAT_DEPTH))
-    return fluff_out(*outward(sweep(samples, ring_size=STEP["ring"], cap_rings=STEP["cap"])))
+    return fur(outward(sweep(samples, ring_size=STEP["ring"], cap_rings=STEP["cap"])), TUFTS)
 
 
 def heart_outline(samples=64):
@@ -192,47 +190,6 @@ def heart_mesh(index):
     return outward((bent, faces))
 
 
-@functools.lru_cache(maxsize=None)
-def tuft_point(cell):
-    """The tuft in grid `cell` (in cells) and its share of the full height, the same on every run."""
-    rng = random.Random(f"{TUFTS['seed']}{cell}")
-    return Vector(cell) + Vector((rng.random(), rng.random(), rng.random())), 0.6 + 0.4 * rng.random()
-
-
-def tuft_height(p):
-    """How far the fur stands out at `p`: the highest of the tufts around it."""
-    q = p / TUFTS["cell"]
-    base = [math.floor(c) for c in q]
-    best = 0.0
-    for offset in itertools.product((-1, 0, 1), repeat=3):
-        point, share = tuft_point(tuple(b + o for b, o in zip(base, offset)))
-        reach = (q - point).length * TUFTS["cell"] / TUFTS["reach"]
-        if reach < 1:
-            best = max(best, share * (1 - reach) ** TUFTS["sharp"])
-    return best * TUFTS["height"]
-
-
-def vertex_normals(verts, faces):
-    """Smooth normals: the sum of the (Newell) normals of every face round a vertex."""
-    normals = [Vector() for _ in verts]
-    for face in faces:
-        n = Vector()
-        for a, b in ((verts[i], verts[j]) for i, j in zip(face, face[1:] + face[:1])):
-            n += Vector(((a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y)))
-        for i in face:
-            normals[i] += n
-    return [n.normalized() for n in normals]
-
-
-def fluff_out(verts, faces):
-    """Pushes tufts of fur out of the surface where it turns away from the camera."""
-    verts = [Vector(v) for v in verts]
-    low, high = TUFTS["edge"]
-    out = []
-    for v, n in zip(verts, vertex_normals(verts, faces)):
-        edge = 1 - smoothstep((abs(n.z) - low) / (high - low))
-        out.append(v + n * tuft_height(v) * edge if edge > 0 else v)
-    return out, faces
 
 
 # ---------------------------------------------------------------------------------------------

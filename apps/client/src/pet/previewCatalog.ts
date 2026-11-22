@@ -7,6 +7,9 @@
 
 import type { Catalog } from "./types";
 
+/** Was eine einfärbbare Ware des Shops gemeinsam hat, die über alle LANs bleibt. */
+const WARE = { scope: "permanent", colorable: true, unlock: "shop" } as const;
+
 /** Auszug aus dem Server-Katalog. */
 export const PREVIEW_CATALOG: Catalog = {
   colors: [
@@ -256,6 +259,21 @@ export const PREVIEW_CATALOG: Catalog = {
       unlock: "shop",
       price: 3,
     },
+    // Das Katzen-Set.
+    { ...WARE, key: "cat-ears", name: "Katzenohren", slot: "head", price: 3 },
+    { ...WARE, key: "cyber-cat-ears", name: "Cyber-Katzenohren", slot: "head", price: 4 },
+    {
+      ...WARE,
+      key: "cat-whiskers",
+      name: "Schnurrhaare",
+      slot: "face",
+      price: 2,
+      colorable: false,
+    },
+    { ...WARE, key: "kitten", name: "Kuschelkätzchen", slot: "hands", price: 4 },
+    { ...WARE, key: "yarn-ball", name: "Wollknäuel", slot: "hands", price: 2 },
+    { ...WARE, key: "cat-paws", name: "Samtpfoten", slot: "hands", price: 3 },
+    { ...WARE, key: "cat-tail", name: "Katzenschwanz", slot: "body", price: 3 },
   ],
   cosmetic_slots: [
     { key: "head", label: "Kopf" },

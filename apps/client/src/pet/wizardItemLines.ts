@@ -119,6 +119,58 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Willkommen im Sumpf, {name}!"],
     hover: ["Psst! Nicht an den Ohren ziehen."],
   },
+  "cat-ears": {
+    offer: [
+      "Katzenohren! Flauschig bis in die Spitzen.",
+      "Mit dem Flaum darin hörst du sogar Mäuse.",
+    ],
+    short: ["Für die Ohren fehlt noch etwas Gold."],
+    worn: ["Miau! Die Ohren stehen dir vorzüglich."],
+    bought: ["Spitz die Ohren, {name}!"],
+    hover: ["Psst! Der Flaum ist echter Wolkenplüsch."],
+  },
+  "cyber-cat-ears": {
+    offer: ["Cyber-Ohren! Die leuchten ganz von allein.", "Katzenohren aus der Zukunft. Mit Neon!"],
+    short: ["Neon ist teuer. Es fehlt noch Gold."],
+    worn: ["Du leuchtest ja heller als meine Kugel!"],
+    bought: ["Leuchte ihnen heim, {name}!"],
+    hover: ["Nicht anfassen, das Neon kitzelt."],
+  },
+  "cat-whiskers": {
+    offer: ["Schnurrhaare! Damit spürst du jeden Luftzug.", "Mit Näschen dazu, ganz in Rosa."],
+    short: ["Für die Schnurrhaare fehlt noch Gold."],
+    worn: ["Schnurr! Das Näschen ist allerliebst."],
+    bought: ["Immer der Nase nach, {name}!"],
+    hover: ["Nicht zupfen, das kitzelt!"],
+  },
+  kitten: {
+    offer: ["Ein Kätzchen! Es schnurrt, wenn man es drückt.", "So klein und schon so verschlafen."],
+    short: ["Das Kätzchen wartet, bis das Gold reicht."],
+    worn: ["Es mag dich. Hörst du es schnurren?"],
+    bought: ["Pass gut darauf auf, {name}!"],
+    hover: ["Leise! Es ist gerade eingeschlafen."],
+  },
+  "yarn-ball": {
+    offer: ["Ein Wollknäuel! Rollt, wohin es will.", "Feinste Mondwolle, frisch aufgewickelt."],
+    short: ["Für die Wolle fehlt noch ein Faden Gold."],
+    worn: ["Halt es gut fest, sonst rollt es davon."],
+    bought: ["Verheddere dich nicht, {name}!"],
+    hover: ["Am Faden bitte nicht ziehen."],
+  },
+  "cat-paws": {
+    offer: ["Samtpfoten! Mit rosa Bohnen vorn dran.", "So weich schleicht sonst nur mein Kater."],
+    short: ["Für die Pfoten fehlt noch etwas Gold."],
+    worn: ["Zeig her die Bohnen! Zum Anbeißen."],
+    bought: ["Tapse sachte, {name}!"],
+    hover: ["Die Bohnen sind nur zum Ansehen da."],
+  },
+  "cat-tail": {
+    offer: ["Ein Katzenschwanz! Er wedelt von allein.", "Flauschig, mit heller Spitze."],
+    short: ["Für den Schwanz fehlt noch etwas Gold."],
+    worn: ["Er wedelt. Du freust dich wohl!"],
+    bought: ["Kopf hoch und Schwanz hoch, {name}!"],
+    hover: ["Bitte nicht drauftreten."],
+  },
   "knit-scarf": {
     offer: [
       "Ein Strickschal! Kuschelig bis zur letzten Runde.",

@@ -39,7 +39,7 @@ import {
   type PetColor,
 } from "../pet";
 import Cosmetic from "./Cosmetic";
-import HandHeld from "./HandHeld";
+import HandHeld, { HandWorn } from "./HandHeld";
 import SignBoard from "./SignBoard";
 
 /** Ein Jelly ohne Angabe trägt nichts. */
@@ -115,8 +115,8 @@ const HELD_LAYER = 1;
 
 /**
  * Was das Jelly trägt. Muss in seiner Wurzel liegen: Kopf- und Gesichts-Cosmetics wippen mit dem
- * Kopf, die für die Hände folgen ihnen, der Rest bleibt beim Körper. Hält es eine Tafel, legt es
- * das Gehaltene so lange beiseite.
+ * Kopf, die für die Hände folgen ihnen (Pfoten jeder Hand einzeln), der Rest bleibt beim Körper.
+ * Hält es eine Tafel, legt es das Gehaltene so lange beiseite.
  */
 function WornCosmetics({
   jelly,
@@ -129,9 +129,9 @@ function WornCosmetics({
   ink: string;
   handsFree: boolean;
 }) {
-  const draw = (slots: CosmeticSlot[], layer?: number) =>
+  const draw = (slots: CosmeticSlot[], layer?: number, onHands = false) =>
     worn
-      .filter((item) => slots.includes(item.slot))
+      .filter((item) => slots.includes(item.slot) && Boolean(item.onHands) === onHands)
       .map((item) => (
         <Cosmetic key={item.id} id={item.id} ink={ink} layer={layer} tint={item.color} />
       ));
@@ -141,6 +141,9 @@ function WornCosmetics({
       <HandHeld jelly={jelly} visible={handsFree}>
         {draw(["hands"], HELD_LAYER)}
       </HandHeld>
+      <HandWorn jelly={jelly} visible={handsFree}>
+        {draw(["hands"], HELD_LAYER, true)}
+      </HandWorn>
       {draw(["body", "aura"])}
     </>
   );
