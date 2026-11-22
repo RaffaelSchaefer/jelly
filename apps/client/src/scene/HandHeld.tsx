@@ -7,11 +7,9 @@
 
 import type { Object3D } from "three";
 
-import { HAND, type Jelly } from "@jelly/scene";
+import { boardPose, HAND, type Jelly } from "@jelly/scene";
 import { useFrame } from "@react-three/fiber";
 import { useRef, type ReactNode } from "react";
-
-import { boardPose } from "../pet";
 
 /** Die beiden Hände eines Jellys, links und rechts. */
 const HAND_INDICES = [0, 1] as const;

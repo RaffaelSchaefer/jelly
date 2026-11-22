@@ -185,7 +185,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   durch. Teile davor brauchen dann eine Fläche ohne Rückseite und Kante, sonst bekommen sie eine Innenlinie.
   Was hinter dem Jelly liegen soll, bekommt `behind` in `COSMETIC_LOOKS`: Es löscht die Tiefe nicht, Körper, Kopf und
   Hände verdecken es. So wachsen die Katzenohren hinter dem Kopf hervor, und der Katzenschwanz steht nicht vor den Händen. Was an den Händen sitzt wie die Pfoten,
-  bekommt `onHands` in `src/pet/cosmetics.ts`: ein Modell um den Ursprung, an jeder Hand gezeichnet (`HandWorn`). Ein neues Modell groß ansehen:
+  steht in `ON_HANDS` (`packages/jelly-scene/src/held.ts`): ein Modell um den Ursprung, an jeder Hand gezeichnet (`HandWorn` in der App, `held.ts` auf der Bühne). Ein neues Modell groß ansehen:
   `/scripts/cosmetic-check.html?wear=<Schlüssel>&color=<Farbe>&tint=<Hex>` in der Browser-Vorschau.
 - **Einfärbbares Cosmetic:** Materialien mit der Blender-Eigenschaft `tint` nehmen die Farbe des Trägers (1 genau,
   darunter dunkler, darüber zu Weiß hin), der Rest bleibt. Dazu `Colorable` im Server (`rules/cosmetics.go`, neue

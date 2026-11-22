@@ -84,25 +84,6 @@ export function fitSignLines(label: string, widthAt100: (text: string) => number
   return best;
 }
 
-/** Wie weit die Tafel den Händen folgt, in Einheiten des Jellys. So bleibt sie unter dem Gesicht. */
-const BOARD_RANGE = { x: 0.2, minY: -0.62, maxY: -0.15, tilt: 0.22 };
-
-/** `value` auf den Bereich von `min` bis `max` begrenzt. */
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-/** Lage der Tafel zwischen beiden Händen. */
-export function boardPose(left: { x: number; y: number }, right: { x: number; y: number }) {
-  return {
-    x: clamp((left.x + right.x) / 2, -BOARD_RANGE.x, BOARD_RANGE.x),
-    y: clamp((left.y + right.y) / 2, BOARD_RANGE.minY, BOARD_RANGE.maxY),
-    tilt: clamp(
-      Math.atan2(right.y - left.y, right.x - left.x),
-      -BOARD_RANGE.tilt,
-      BOARD_RANGE.tilt,
-    ),
-  };
-}
-
 /** Sekunden, die die Tafel für einen Textwechsel braucht. */
 const FLIP_SECONDS = 0.32;
 

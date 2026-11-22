@@ -9,10 +9,8 @@ import {
   animateJelly,
   BODY_BOTTOM,
   cosmeticLook,
-  createCosmetic,
   createJelly,
   createMotion,
-  disposeCosmetic,
   disposeJelly,
   HEAD,
   loadCosmetic,
@@ -26,6 +24,15 @@ import type { StagePlayer } from "./types.ts";
 import type { FloorPoint, ScenePoint } from "./world.ts";
 
 import { findEmote, findMotionPose } from "./effects.ts";
+import {
+  createWearer,
+  followHands,
+  holdsModel,
+  takeOff,
+  wearCosmetic,
+  WORN_SLOTS,
+  type Wearer,
+} from "./held.ts";
 import { findPalette } from "./palette.ts";
 import { calculateRandomValue } from "./random.ts";
 import { createShadowInstances, disposeShadow, SHADOW_HEIGHT } from "./shadow.ts";
@@ -68,8 +75,6 @@ const WINNER_SCALE = 1.8;
 const GROW_RATE = 2;
 /** With reduced motion a jelly glides along its move, without hopping or leaning. */
 const STILL_WALK: WalkPose = { lift: 0, lean: 0 };
-/** The slots that move with the head. Hands need the logic of the app and no model exists yet. */
-const WORN_SLOTS = ["head", "face"];
 
 /** One jelly on the stage. */
 interface StageJelly {
@@ -87,7 +92,8 @@ interface StageJelly {
   elevation: number;
   /** Size of the jelly, 1 usually and larger for the winner of a ceremony. */
   scale: number;
-  worn: Worn<Object3D>;
+  wearer: Wearer;
+  worn: Worn<Object3D[]>;
 }
 
 /** All jellies on the stage. */
@@ -155,6 +161,7 @@ function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): v
     shadowScale: 1,
     elevation: 0,
     scale: 1,
+    wearer: createWearer(jelly),
     worn: new Map(),
   });
 }
@@ -168,7 +175,7 @@ function removeJelly(cast: JellyCast, shown: StageJelly): void {
 }
 
 /** Dresses a jelly in what its player wears, without building the jelly again. */
-function dressJelly({ jelly, player, worn }: StageJelly): void {
+function dressJelly({ wearer, player, worn }: StageJelly): void {
   const wanted = new Map<string, WornWish>();
   for (const slot of WORN_SLOTS) {
     const equipped = player.equipped[slot];
@@ -176,19 +183,13 @@ function dressJelly({ jelly, player, worn }: StageJelly): void {
   }
   syncWorn(worn, wanted, {
     load: loadCosmetic,
-    put: (model, { key, color }) => {
-      // Real depth here: with the sticker of the app a jelly would stand in front of the couch.
-      const cosmetic = createCosmetic(model, findPalette(player.color).outline, "depth", {
-        ...cosmeticLook(key),
-        tint: color,
-      });
-      jelly.faceAnchor.add(cosmetic);
-      return cosmetic;
-    },
-    remove: (cosmetic) => {
-      jelly.faceAnchor.remove(cosmetic);
-      disposeCosmetic(cosmetic);
-    },
+    put: (model, { key, color }, slot) =>
+      wearCosmetic(wearer, model, findPalette(player.color).outline, {
+        key,
+        slot,
+        look: { ...cosmeticLook(key), tint: color },
+      }),
+    remove: takeOff,
   });
 }
 
@@ -253,9 +254,10 @@ function updateJelly(shown: StageJelly, frame: JellyFrame): void {
     rawDelta: frame.seconds,
     pulse: shown.pulse,
     reducedMotion: frame.reducedMotion,
-    holding: frame.visitors.has(shown.player.id),
+    holding: frame.visitors.has(shown.player.id) || holdsModel(shown.player),
     emote: findEmote(frame.effects, shown.player.id, frame.now),
   });
+  followHands(shown.wearer);
 }
 
 /** Puts every shadow under its jelly. A mesh that got too small is replaced by a larger one. */

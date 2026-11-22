@@ -9,19 +9,12 @@
  * @module
  */
 
-import { GRIP, type Jelly } from "@jelly/scene";
+import { boardPose, GRIP, type Jelly } from "@jelly/scene";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ExtrudeGeometry, Shape, ShapeGeometry, type Object3D } from "three";
 
-import {
-  boardAngle,
-  boardPose,
-  createBoardMotion,
-  PET_COLORS,
-  stepBoard,
-  type PetColor,
-} from "../pet";
+import { boardAngle, createBoardMotion, PET_COLORS, stepBoard, type PetColor } from "../pet";
 import { createSignTexture, SIGN_TEXTURE } from "./signTexture";
 
 /** Halbe Breite: Die Tafel reicht bis an die Hände, die sie halten. */

@@ -46,6 +46,9 @@ const SIGN_EVERY = 4;
 const LEVELS = 9;
 /** Was die Jellies tragen, je zwei von dreien eines der Headsets. */
 const HEADSETS = ["headset", "headset-neutral"];
+/** Gehaltenes und Getragenes am Körper, damit die Vorschau jeden Platz der Bühne zeigt. */
+const HELD = ["goose", "cat-paws", "long-schnoerbi", "chicken"];
+const BODY = ["fairy-wings", "knit-scarf", "cat-tail", "mini-backpack", "snail-shell"];
 const BARE_EVERY = 3;
 /** Alle paar Augenblicke läuft das nächste Jelly los, so lange und so weit. */
 const WALK_EVERY_MS = 500;
@@ -68,7 +71,11 @@ function previewFrameLimit() {
 /** Was das Jelly mit dieser Nummer trägt. */
 function previewEquipped(index: number): StagePlayer["equipped"] {
   if (index % BARE_EVERY === 0) return {};
-  return { head: { key: HEADSETS[index % HEADSETS.length] ?? "headset", color: null } };
+  return {
+    head: { key: HEADSETS[index % HEADSETS.length] ?? "headset", color: null },
+    hands: { key: HELD[index % HELD.length] ?? "goose", color: null },
+    body: { key: BODY[index % BODY.length] ?? "fairy-wings", color: null },
+  };
 }
 
 /** Die Jellies auf den Plätzen der Halle, das erste ist das eigene. */
