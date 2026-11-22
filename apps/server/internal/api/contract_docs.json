@@ -24,7 +24,7 @@
     "id": "The number of the player.",
     "key": "The stage key, for the stage page. Players send their secret as a bearer token instead.",
     "since": "The last event ID the client knows, usually `last_event_id` from a state it just read. A cursor ahead of the newest event, as after a restart of the server, gets `reset` and the client reads its state again.",
-    "topics": "Comma-separated list of `events` and `moves`. Without it, both arrive. Unknown topics answer `400 invalid_request`.",
+    "topics": "Comma-separated list of `events`, `moves` and `own`. Without it, `events` and `moves` arrive. `own` is for a player without the map: only own events, events naming the player and events for everyone. A stage asking for `own` and unknown topics answer `400 invalid_request`.",
     "Last-Event-ID": "Sent by the browser or the client when it reconnects, and takes priority over `since`. When the cursor is ahead of the newest event, for example after a restart of the server, the stream starts at the newest event and first sends `reset`, so the client reads its state again."
   },
   "schemas": {
