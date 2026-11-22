@@ -57,6 +57,13 @@ const (
 	pricePiercings     = 3
 	priceOgreEars      = 3
 	priceKaminaGlasses = 3
+	priceCatEars       = 3
+	priceCyberCatEars  = 4
+	priceCatWhiskers   = 2
+	priceKitten        = 4
+	priceYarnBall      = 2
+	priceCatPaws       = 3
+	priceCatTail       = 3
 )
 
 // Cosmetic is one item. It unlocks through a purchase, an event, or only through an award.
@@ -164,6 +171,30 @@ func ListCosmetics() []Cosmetic {
 			Colorable: true, Unlock: UnlockShop, Price: priceKaminaGlasses,
 		},
 		{
+			Key: "cat-ears", Name: "Katzenohren", Scope: ScopePermanent, Slot: SlotHead,
+			Colorable: true, Unlock: UnlockShop, Price: priceCatEars,
+		},
+		{
+			Key: "cyber-cat-ears", Name: "Cyber-Katzenohren", Scope: ScopePermanent, Slot: SlotHead,
+			Colorable: true, Unlock: UnlockShop, Price: priceCyberCatEars,
+		},
+		{
+			Key: "cat-whiskers", Name: "Schnurrhaare", Scope: ScopePermanent, Slot: SlotFace,
+			Unlock: UnlockShop, Price: priceCatWhiskers,
+		},
+		{
+			Key: "kitten", Name: "Kuschelkätzchen", Scope: ScopePermanent, Slot: SlotHands,
+			Colorable: true, Unlock: UnlockShop, Price: priceKitten,
+		},
+		{
+			Key: "yarn-ball", Name: "Wollknäuel", Scope: ScopePermanent, Slot: SlotHands,
+			Colorable: true, Unlock: UnlockShop, Price: priceYarnBall,
+		},
+		{
+			Key: "cat-paws", Name: "Samtpfoten", Scope: ScopePermanent, Slot: SlotHands,
+			Colorable: true, Unlock: UnlockShop, Price: priceCatPaws,
+		},
+		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
 			Unlock: UnlockAward,
 		},
@@ -194,6 +225,10 @@ func ListCosmetics() []Cosmetic {
 		{
 			Key: "bat-wings", Name: "Fledermausflügel", Scope: ScopePermanent, Slot: SlotBody,
 			Colorable: true, Unlock: UnlockEvent,
+		},
+		{
+			Key: "cat-tail", Name: "Katzenschwanz", Scope: ScopePermanent, Slot: SlotBody,
+			Colorable: true, Unlock: UnlockShop, Price: priceCatTail,
 		},
 		{
 			Key: "glow-aura", Name: "Glüh-Aura", Scope: ScopePermanent, Slot: SlotAura,

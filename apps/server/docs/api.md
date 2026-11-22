@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.31.0**
+Aktuelle Version: **1.32.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.31.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.32.0  | Katzen-Set im Shop, alle dauerhaft und bis auf die Schnurrhaare einfärbbar (`colorable`): `cat-ears` (Katzenohren, `head`) für 3 Münzen, `cyber-cat-ears` (Cyber-Katzenohren, `head`) für 4, `cat-whiskers` (Schnurrhaare, `face`) für 2, `kitten` (Kuschelkätzchen, `hands`) für 4, `yarn-ball` (Wollknäuel, `hands`) für 2, `cat-paws` (Samtpfoten, `hands`) für 3 und `cat-tail` (Katzenschwanz, `body`) für 3. „Ausverkauft“ verlangt damit 26 Shop-Cosmetics |
 | 1.31.0  | Sieben neue Farben in `colors` des Katalogs, für alle frei wählbar: `sky` (Himmelblau), `violet` (Lila), `rose` (Rosa), `cherry` (Rot), `tangerine` (Orange), `lemon` (Gelb) und `clover` (Grün), passend zu den Farben der einfärbbaren Cosmetics |
 | 1.30.0  | Neues Cosmetic `kamina-glasses` (Kamina-Brille) im Shop, dauerhaft für 3 Münzen im Platz `face` und einfärbbar (`colorable`). „Ausverkauft“ verlangt damit 19 Shop-Cosmetics |
 | 1.29.0  | Mehr einfärbbare Cosmetics (`colorable`): `headset`, `pixel-glasses`, `party-hat`, `crown`, `ogre-ears`, `goose`, `long-schnoerbi`, `bandana`, `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings` und `bat-wings` nehmen wie `beanie` und `hood` eine Farbe aus `cosmetic_colors`. Ohne `color` sieht ein Cosmetic aus wie modelliert |
