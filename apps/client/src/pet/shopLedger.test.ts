@@ -45,20 +45,25 @@ function ware(id: string, me: Me = PREVIEW_ME) {
 }
 
 /** Die Waren der Vorschau zu 2 Münzen, nach Namen. Die Mütze hat der Spieler schon. */
-const FOR_TWO = ["bell-collar", "bandana", "sprout"];
+const FOR_TWO = ["bell-collar", "bandana", "cat-whiskers", "sprout", "yarn-ball"];
 
 /** Was der Spieler der Vorschau noch nicht hat ab 3 Münzen, nach Preis und dann nach Namen. */
 const FROM_THREE = [
   "kamina-glasses",
+  "cat-ears",
+  "cat-tail",
   "snail-shell",
   "ogre-ears",
   "piercings",
   "pixel-glasses",
+  "cat-paws",
   "schnoerbi-mask",
   "knit-scarf",
+  "cyber-cat-ears",
   "hood",
   "goose",
   "chicken",
+  "kitten",
   "long-schnoerbi",
   "mini-backpack",
   "fairy-wings",
@@ -78,7 +83,9 @@ const EVERY_WARE = [
   "bell-collar",
   "bandana",
   "beanie",
+  "cat-whiskers",
   "sprout",
+  "yarn-ball",
   ...FROM_THREE,
 ];
 
@@ -191,11 +198,17 @@ describe("shopSummary", () => {
   });
 
   it("zählt, was sich das Jelly leisten kann", () => {
-    const twoOwned = [...PREVIEW_ME.cosmetics, "bandana", "bell-collar"];
+    const twoOwned = [
+      ...PREVIEW_ME.cosmetics,
+      "bandana",
+      "bell-collar",
+      "cat-whiskers",
+      "yarn-ball",
+    ];
     expect(summary(jelly({ coins: 2, cosmetics: twoOwned }))).toBe(
       "Mit 2 Münzen kannst du dir eine Ware leisten.",
     );
-    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 10 Waren leisten.");
+    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 15 Waren leisten.");
   });
 
   it("nennt, was zur günstigsten Ware fehlt", () => {

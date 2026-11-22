@@ -51,30 +51,40 @@ describe("shopTier", () => {
   });
 });
 
+/** Die Güte jeder Ware der Vorschau. */
+const PREVIEW_TIERS = {
+  headset: "schlicht",
+  "headset-neutral": "schlicht",
+  beanie: "fein",
+  sprout: "fein",
+  "pixel-glasses": "edel",
+  hood: "edel",
+  "long-schnoerbi": "edel",
+  goose: "edel",
+  crown: "sagenhaft",
+  "schnoerbi-mask": "edel",
+  bandana: "fein",
+  "bell-collar": "fein",
+  "knit-scarf": "edel",
+  "snail-shell": "edel",
+  "mini-backpack": "edel",
+  "fairy-wings": "sagenhaft",
+  chicken: "edel",
+  piercings: "edel",
+  "ogre-ears": "edel",
+  "kamina-glasses": "edel",
+  "cat-ears": "edel",
+  "cyber-cat-ears": "edel",
+  "cat-whiskers": "fein",
+  kitten: "edel",
+  "yarn-ball": "fein",
+  "cat-paws": "edel",
+  "cat-tail": "edel",
+};
+
 describe("shopItems", () => {
   it("stuft die Waren der Vorschau nach ihrem Preis ein", () => {
-    expect(tiers(shopItems(PREVIEW_CATALOG, PREVIEW_ME))).toEqual({
-      headset: "schlicht",
-      "headset-neutral": "schlicht",
-      beanie: "fein",
-      sprout: "fein",
-      "pixel-glasses": "edel",
-      hood: "edel",
-      "long-schnoerbi": "edel",
-      goose: "edel",
-      crown: "sagenhaft",
-      "schnoerbi-mask": "edel",
-      bandana: "fein",
-      "bell-collar": "fein",
-      "knit-scarf": "edel",
-      "snail-shell": "edel",
-      "mini-backpack": "edel",
-      "fairy-wings": "sagenhaft",
-      chicken: "edel",
-      piercings: "edel",
-      "ogre-ears": "edel",
-      "kamina-glasses": "edel",
-    });
+    expect(tiers(shopItems(PREVIEW_CATALOG, PREVIEW_ME))).toEqual(PREVIEW_TIERS);
   });
 
   it("behält die Güte nach einem Kauf", () => {
@@ -88,7 +98,7 @@ describe("shopItems", () => {
   it("sortiert nach Preis und kennt Besitz, Kaufbares und Fehlendes", () => {
     const items = shopItems(PREVIEW_CATALOG, PREVIEW_ME);
     expect(items.map((item) => item.price)).toEqual([
-      1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 6, 6,
+      1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 6, 6,
     ]);
     const states = Object.fromEntries(
       items.map((item) => [item.cosmetic.id, [item.state, item.missing]]),

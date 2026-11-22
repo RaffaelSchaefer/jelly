@@ -87,6 +87,34 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Aus einem Sumpf weit hinter der Halle. Hören jedes Flüstern, auch das ungefragte.",
     article: "die",
   },
+  "cat-ears": {
+    lore: "Aus Wolkenplüsch genäht. Zucken, wenn irgendwo eine Tüte raschelt.",
+    article: "die",
+  },
+  "cyber-cat-ears": {
+    lore: "Aus einer Zukunft, in der Katzen das Netz regieren. Leuchten auch im Dunkeln.",
+    article: "die",
+  },
+  "cat-whiskers": {
+    lore: "Spüren jeden Luftzug in der Halle. Und jede offene Chipstüte.",
+    article: "die",
+  },
+  kitten: {
+    lore: "Schnurrt, wenn man es drückt. Schläft sonst den ganzen Tag, wie es sich gehört.",
+    article: "das",
+  },
+  "yarn-ball": {
+    lore: "Rollt immer genau dorthin, wo man nicht hinkommt. Der Faden hört nie auf.",
+    article: "das",
+  },
+  "cat-paws": {
+    lore: "Weich wie Samt, mit rosa Bohnen. Krallen wurden vorsichtshalber weggezaubert.",
+    article: "die",
+  },
+  "cat-tail": {
+    lore: "Wedelt von allein, wenn du gewinnst. Bei Lag zuckt nur die Spitze.",
+    article: "den",
+  },
   hood: {
     lore: "Für geheime Wege durch die Halle. Niemand erkennt dich. Fast niemand.",
     article: "die",
