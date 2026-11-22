@@ -123,6 +123,10 @@ func listAdminErrors() []knownError {
 		{store.ErrAreaNotAssignable, problem{
 			http.StatusConflict, "area_not_assignable", "In diesem Bereich kann kein Jelly stehen.",
 		}},
+		{rules.ErrInvalidSchedule, problem{
+			http.StatusBadRequest, "invalid_schedule",
+			"Jeder Punkt braucht einen Titel, eine bekannte Art und eine Zeit innerhalb der LAN.",
+		}},
 		{rules.ErrInvalidArea, problem{
 			http.StatusBadRequest, "invalid_area",
 			"Dieser Bereich passt nicht auf die Bühne oder hat keine bekannte Art.",

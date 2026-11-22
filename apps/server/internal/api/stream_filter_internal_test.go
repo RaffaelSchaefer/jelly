@@ -34,6 +34,7 @@ func listOwnEventCases() map[string]string {
 		"stage.changed":         "global",
 		"gathering.changed":     "global",
 		"rules.changed":         "global",
+		"schedule.changed":      "global",
 		"move":                  "message",
 		"reset":                 "message",
 	}

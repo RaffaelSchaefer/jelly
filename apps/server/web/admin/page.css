@@ -270,6 +270,19 @@ button.is-armed {
   font-weight: 600;
 }
 
+.program-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.program-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.4rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
 .unit-box {
   display: flex;
   align-items: center;

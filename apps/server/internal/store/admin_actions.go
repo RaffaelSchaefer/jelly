@@ -28,6 +28,7 @@ const (
 	AdminActionGathering   = "lan.gathering"
 	AdminActionLANUpdate   = "lan.update"
 	AdminActionLANDelete   = "lan.delete"
+	AdminActionSchedule    = "lan.schedule"
 	// AdminActionEventCodeEnd targets the event code, not the LAN.
 	AdminActionEventCodeEnd = "event_code.end"
 

@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.33.0**
+Aktuelle Version: **1.34.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.33.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.34.0  | Zeitplan der LAN: `GET /lans/current/schedule`, Ereignis `schedule.changed`, Admin-Wege `GET` und `PUT /admin/api/lans/{id}/schedule` |
 | 1.33.0  | `?topics=own` im Stream: nur eigene Ereignisse, solche, die den Spieler nennen, und solche für alle. Für die App ohne offene Karte, spart bei 300 Spielern rund 90 % des Verkehrs |
 | 1.32.0  | Katzen-Set im Shop, alle dauerhaft und bis auf die Schnurrhaare einfärbbar (`colorable`): `cat-ears` (Katzenohren, `head`) für 3 Münzen, `cyber-cat-ears` (Cyber-Katzenohren, `head`) für 4, `cat-whiskers` (Schnurrhaare, `face`) für 2, `kitten` (Kuschelkätzchen, `hands`) für 4, `yarn-ball` (Wollknäuel, `hands`) für 2, `cat-paws` (Samtpfoten, `hands`) für 3 und `cat-tail` (Katzenschwanz, `body`) für 3. „Ausverkauft“ verlangt damit 26 Shop-Cosmetics |
 | 1.31.0  | Sieben neue Farben in `colors` des Katalogs, für alle frei wählbar: `sky` (Himmelblau), `violet` (Lila), `rose` (Rosa), `cherry` (Rot), `tangerine` (Orange), `lemon` (Gelb) und `clover` (Grün), passend zu den Farben der einfärbbaren Cosmetics |
@@ -106,6 +107,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 400    | `invalid_request`                         | Admin-Angaben, `since`, `cursor` oder `topics` sind ungültig |
 | 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, oder `xp_per_level` oder `coins_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
+| 400    | `invalid_schedule`                        | Zeitplan mit Punkt außerhalb der LAN, ohne Titel oder mit unbekannter Art |
 | 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
 | 400    | `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color` | Cosmetic passt nicht |
@@ -151,6 +153,19 @@ entscheiden wird, zum Beispiel die Reichweite `near_distance` in Metern oder den
 `xp_per_level` gilt linear für jedes Level, Standard 100, und lässt sich nur bis zum Start der LAN ändern. Sonst würden
 Level und Cosmetics für alle springen. `coins_per_level` zahlt bei jedem Level-Aufstieg Münzen für den Shop, Standard 1,
 und ist ebenfalls nach dem Start der LAN fest. Ein Kauf senkt kein Level.
+
+### Zeitplan
+
+`GET /lans/current/schedule` liefert das Programm derselben LAN, deren Regeln `GET /lans/current` nennt, ohne Konto
+lesbar. Ohne LAN ist `items` leer. Ein Punkt hat `starts_at` und optional `ends_at` in Unix-Millisekunden, `title` (bis
+80 Zeichen), optional `detail` (Spiel, Gericht, Hinweis, bis 200 Zeichen) und `kind`: `orga`, `food`, `yoga`,
+`tournament` oder `together`. Weitere Arten können dazukommen und sind neutral zu zeigen. Ohne `ends_at` dauert ein
+Punkt bis zum nächsten, die Länge des letzten und Erinnerungen bestimmt die App.
+
+Die Orga pflegt den Plan mit `PUT /admin/api/lans/{id}/schedule` und `{"items":[…]}`, bis 128 KiB und 300 Punkte. Der
+Server ersetzt den ganzen Plan, sortiert nach Beginn, entfernt leere Details und antwortet mit dem gespeicherten Plan.
+Jeder Punkt muss in der LAN liegen und braucht Titel und bekannte Art, sonst folgt `400 invalid_schedule`. Danach
+kommt `schedule.changed`.
 
 ### Stand eines Spielers
 
@@ -234,6 +249,7 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `GET /version` (ohne `/v1`) |                                          | `{"api_version","min_client_version"}` |
 | `GET /catalog`            |                                            | Feste Listen, siehe unten      |
 | `GET /lans/current`       |                                            | `{"server_time","current","next","joined"}` |
+| `GET /lans/current/schedule` |                                         | `{"items"}`, siehe [Zeitplan](#zeitplan) |
 | `POST /auth/redeem`       | `{"code","name","color"}`, Secret optional | `{"secret","seat_assigned","me"}` |
 | `POST /auth/recover`      | `{"code"}`                                 | `{"secret","me"}`              |
 | `GET /players/me`         |                                            | Stand                          |
@@ -421,7 +437,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 - **Themen:** `?topics=events`, `?topics=moves` oder `?topics=events,moves` wählen aus, ohne Angabe kommt beides.
 - **Nur Eigenes:** `?topics=own` ist für die App ohne offene Karte. Sie bekommt dann nur Ereignisse, deren `player_id`
   sie selbst ist, solche, die sie im Payload nennen (`player_id` bei `player.removed`, `partner_id` und `from_id` bei
-  Partner-Emotes), und die für alle: `rules.changed`, `stage.changed`, `gathering.changed`. Ausgelassene Ereignisse
+  Partner-Emotes), und die für alle: `rules.changed`, `stage.changed`, `gathering.changed`, `schedule.changed`. Ausgelassene Ereignisse
   rücken `Last-Event-ID` trotzdem weiter, über eine Nachricht nur mit `id`. Eine Bühne bekommt auf `own`
   `400 invalid_request`. Die Karte öffnet weiter den vollen Stream.
   Unbekannte Themen ergeben `400 invalid_request`.
@@ -451,6 +467,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `stack.changed`, `highlight`                      | Stapel, ein Jelly leuchtet auf     |
 | `stage.changed`                                   | Raumkarte geändert, Stand neu laden |
 | `rules.changed`                                   | Regeln geändert, `GET /lans/current` neu lesen |
+| `schedule.changed`                                | Zeitplan geändert, `GET /lans/current/schedule` neu lesen |
 | `gathering.changed`                               | Essens-Event oder Siegerehrung, Stand neu laden |
 
 Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` hängt vom Typ ab:
@@ -473,7 +490,7 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `trip.changed`                                    | Spieler     | `{"x","y","ends_at"}`, `null` am Ende |
 | `stack.changed`                                   | Spieler, `null` beim Ablauf | Der Stapel, nach dem Absteigen oder Ablauf nur `{"id"}` |
 | `highlight`                                       | Spieler     | `{"target_id","ends_at","cosmetic_key"}` |
-| `stage.changed`, `rules.changed`                  | `null`      | `{}`                              |
+| `stage.changed`, `rules.changed`, `schedule.changed` | `null`   | `{}`                              |
 | `gathering.changed`                               | `null`      | Das Gathering, `null` am Ende     |
 
 Ausflug, Folgen, Stapel und Gathering melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
@@ -512,6 +529,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |
 | `POST /admin/api/awards`                         | `{"player_id","title","cosmetic_key"}`, der Schlüssel muss im Katalog stehen |
 | `GET /admin/api/actions`                         | Antwort: die letzten 200 Admin-Aktionen   |
+| `GET`, `PUT /admin/api/lans/{id}/schedule`       | `{"items"}`, `PUT` ersetzt den ganzen Zeitplan, siehe [Zeitplan](#zeitplan) |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments","sizes"}`, `sizes` nennt `width_m` und `height_m` je Zone |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","rotation","kind","name","blocks","prop"}` |
 | `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |

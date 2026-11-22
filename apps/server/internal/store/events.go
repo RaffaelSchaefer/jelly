@@ -32,6 +32,7 @@ const (
 	EventStageChanged      = "stage.changed"
 	EventGatheringChanged  = "gathering.changed"
 	EventRulesChanged      = "rules.changed"
+	EventScheduleChanged   = "schedule.changed"
 	EventPartnerEmote      = "partner.emote"
 	EventPartnerInvite     = "partner_emote.updated"
 	maxEventsPerQueryRows  = 200
@@ -48,7 +49,9 @@ type Event struct {
 
 // listGlobalEventTypes returns the events every player needs, because they change the LAN for all.
 func listGlobalEventTypes() []string {
-	return []string{EventRulesChanged, EventStageChanged, EventGatheringChanged}
+	return []string{
+		EventRulesChanged, EventStageChanged, EventGatheringChanged, EventScheduleChanged,
+	}
 }
 
 // eventPeople are the players a payload can name besides the player of the event.

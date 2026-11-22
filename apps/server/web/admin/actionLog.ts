@@ -21,6 +21,7 @@ function listActionNames(): Record<string, [text: string, target: string]> {
     "player.achievement": ["Achievement freigeschaltet", "Konto"],
     "award.give": ["Preis vergeben", "Konto"],
     "lan.rules": ["Regeln geändert", "LAN"],
+    "lan.schedule": ["Programm geändert", "LAN"],
     "lan.join_code": ["LAN-Code ersetzt", "LAN"],
     "lan.map_import": ["Karte importiert", "LAN"],
     "lan.gathering": ["Essens-Event oder Siegerehrung", "LAN"],
