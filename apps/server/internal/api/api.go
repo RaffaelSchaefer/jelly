@@ -121,6 +121,7 @@ func (server *apiServer) buildHandler() http.Handler {
 // addContractRoutes registers everything the OpenAPI document describes.
 func (server *apiServer) addContractRoutes(contract huma.API) {
 	server.addLANRoutes(contract)
+	server.addScheduleRoute(contract)
 	server.addPlayerRoutes(contract)
 	server.addActionRoutes(contract)
 	server.addPartnerRoutes(contract)

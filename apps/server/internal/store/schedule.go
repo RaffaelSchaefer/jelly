@@ -1,0 +1,108 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
+)
+
+// LoadLANSchedule returns the program of a LAN, sorted by start.
+func (store *Store) LoadLANSchedule(
+	ctx context.Context,
+	lanID int64,
+) ([]rules.ScheduleItem, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	var scheduleJSON string
+	const selectScheduleSQL = `SELECT schedule FROM lans WHERE id = ?`
+	err := store.readDB.QueryRowContext(queryCtx, selectScheduleSQL, lanID).Scan(&scheduleJSON)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrLANNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load schedule: %w", err)
+	}
+	return parseSchedule(scheduleJSON)
+}
+
+// LoadCurrentSchedule returns the program of the running LAN, otherwise of the next one, the same
+// LAN whose rules `GET /lans/current` names. Without a LAN, the program is empty.
+func (store *Store) LoadCurrentSchedule(
+	ctx context.Context,
+	now int64,
+) ([]rules.ScheduleItem, error) {
+	queryCtx, cancel := withQueryTimeout(ctx)
+	defer cancel()
+	var scheduleJSON string
+	const selectCurrentScheduleSQL = `SELECT schedule FROM lans WHERE ends_at > ?1
+		ORDER BY (starts_at <= ?1) DESC, starts_at LIMIT 1`
+	err := store.readDB.QueryRowContext(queryCtx, selectCurrentScheduleSQL, now).Scan(&scheduleJSON)
+	if errors.Is(err, sql.ErrNoRows) {
+		return []rules.ScheduleItem{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load current schedule: %w", err)
+	}
+	return parseSchedule(scheduleJSON)
+}
+
+// ReplaceLANSchedule checks and stores the whole program of a LAN and tells open apps about it.
+func (store *Store) ReplaceLANSchedule(
+	ctx context.Context, lanID int64, items []rules.ScheduleItem, now int64,
+) ([]rules.ScheduleItem, error) {
+	var prepared []rules.ScheduleItem
+	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
+		var startsAt, endsAt int64
+		const selectLANTimesSQL = `SELECT starts_at, ends_at FROM lans WHERE id = ?`
+		err := transaction.QueryRowContext(ctx, selectLANTimesSQL, lanID).Scan(&startsAt, &endsAt)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrLANNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("load LAN times: %w", err)
+		}
+		prepared, err = rules.PrepareSchedule(items, startsAt, endsAt)
+		if err != nil {
+			return fmt.Errorf("check schedule: %w", err)
+		}
+		return storeSchedule(ctx, transaction, lanID, prepared, now)
+	})
+	return prepared, err
+}
+
+// storeSchedule writes the program, the admin log and the event in one transaction.
+func storeSchedule(
+	ctx context.Context, transaction *sql.Tx, lanID int64, items []rules.ScheduleItem, now int64,
+) error {
+	scheduleJSON, err := json.Marshal(items)
+	if err != nil {
+		return fmt.Errorf("encode schedule: %w", err)
+	}
+	const updateScheduleSQL = `UPDATE lans SET schedule = ? WHERE id = ?`
+	_, err = transaction.ExecContext(ctx, updateScheduleSQL, string(scheduleJSON), lanID)
+	if err != nil {
+		return fmt.Errorf("update schedule: %w", err)
+	}
+	err = recordAdminAction(ctx, transaction, AdminActionSchedule, lanID, now)
+	if err != nil {
+		return err
+	}
+	return appendEvent(ctx, transaction, eventRecord{
+		lanID: lanID, eventType: EventScheduleChanged, scope: scopePublic,
+		playerID: 0, payload: struct{}{}, now: now,
+	})
+}
+
+// parseSchedule reads a stored program.
+func parseSchedule(scheduleJSON string) ([]rules.ScheduleItem, error) {
+	items := []rules.ScheduleItem{}
+	err := json.Unmarshal([]byte(scheduleJSON), &items)
+	if err != nil {
+		return nil, fmt.Errorf("parse schedule: %w", err)
+	}
+	return items, nil
+}

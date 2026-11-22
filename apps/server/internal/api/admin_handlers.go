@@ -47,6 +47,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"DELETE /admin/api/players/{id}/purchases/{purchase}": server.handleRefundPurchase,
 		"POST /admin/api/players/{id}/achievements":           server.handleGrantAchievement,
 		"GET /admin/api/achievements":                         server.handleListAchievements,
+		"GET /admin/api/lans/{id}/schedule":                   server.handleLoadLANSchedule,
+		"PUT /admin/api/lans/{id}/schedule":                   server.handleReplaceLANSchedule,
 		"GET /admin/api/stage-link":                           server.handleStageLink,
 	}
 	maps.Copy(routes, server.listBotRoutes())

@@ -31,6 +31,7 @@ const (
 	EventStageChanged      = "stage.changed"
 	EventGatheringChanged  = "gathering.changed"
 	EventRulesChanged      = "rules.changed"
+	EventScheduleChanged   = "schedule.changed"
 	EventPartnerEmote      = "partner.emote"
 	EventPartnerInvite     = "partner_emote.updated"
 	maxEventsPerQueryRows  = 200
