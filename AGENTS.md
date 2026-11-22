@@ -147,6 +147,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Browser-Vorschau `/#update`). Der Changelog steht in `apps/client/CHANGELOG.md`, geht als `notes` in `latest.json`
   und wird in `src/pet/changelog.ts` gelesen.
   `scripts/updater-manifest.mjs` (schreibt `latest.json` im Release-Lauf). Ablauf und Schlüssel: README des Clients.
+  `arch/PKGBUILD` baut im selben Lauf das Paket für Arch Linux (`.pkg.tar.zst`), es steht nicht in `latest.json` und
+  aktualisiert sich nicht selbst.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `commands/update.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
   `events.rs` (Server-Stream), `popout.rs` (Fenster von Karte und Shop), `error.rs`, `pet.rs` (lokaler Stand,

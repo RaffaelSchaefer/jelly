@@ -1,0 +1,36 @@
+# Das Paket für Arch Linux: jelly-bin-<Version>-1-x86_64.pkg.tar.zst.
+#
+# Tauri 2.12 hat kein pacman-Ziel, deshalb packt makepkg hier um, was `tauri build` unter Linux
+# hinterlässt. Der Lauf in .github/workflows/client.yml legt `jelly.deb` und die rohe Binärdatei
+# `jelly` daneben und gibt die Version aus tauri.conf.json mit.
+# ponytail: von Hand, bis Tauri sein pacman-Ziel veröffentlicht. Dann schreibt der Bundler diese Datei.
+
+pkgname=jelly-bin
+pkgver=${JELLY_VERSION:?fehlt, die Version steht in src-tauri/tauri.conf.json}
+pkgrel=1
+pkgdesc='Ein kleiner Desktop-Begleiter für die LAN am Umwelt-Campus Birkenfeld'
+arch=('x86_64')
+url='https://github.com/RaffaelSchaefer/jelly'
+# Das Repository nennt keine Lizenz.
+license=('LicenseRef-unknown')
+# Die GStreamer-Plugins sind bei webkit2gtk-4.1 nur optional, ohne sie bliebe Jelly stumm:
+# Web Audio braucht sie für die Ausgabe und für die MP3s der Oberfläche.
+depends=('webkit2gtk-4.1' 'gtk3' 'gst-plugins-base' 'gst-plugins-good')
+provides=('jelly')
+conflicts=('jelly')
+# Fertig gebaut: makepkg soll weder Symbole entfernen noch ein -debug-Paket abspalten.
+options=('!strip' '!debug')
+source=('jelly.deb' 'jelly')
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  # Starter und Icon kommen so an wie in der .deb.
+  tar -xf data.tar.gz -C "$pkgdir"
+  # Die Binärdatei aus der .deb trägt die Kennung „deb“, mit ihr riefe der Updater dpkg. Die rohe
+  # trägt keine: Die App bietet dann kein Update an, das neue Paket kommt mit `pacman -U`.
+  install -m755 jelly "$pkgdir/usr/bin/jelly"
+  if ! grep -qF __TAURI_BUNDLE_TYPE_VAR_UNK "$pkgdir/usr/bin/jelly"; then
+    echo 'Die rohe Binärdatei trägt eine Installer-Art, die App böte ein Update an, das scheitert.' >&2
+    return 1
+  fi
+}

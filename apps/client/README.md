@@ -335,6 +335,10 @@ Prüfungen, gebaut wird beim manuellen Start und bei einem Tag. Die Server-Adres
 Eingabe des manuellen Starts, sonst aus der Repository-Variable `JELLY_SERVER_URL`. Ohne beide zeigen
 die Bundles auf `http://localhost:8080` und taugen nicht für die LAN.
 
+Für Arch Linux baut der Lauf zusätzlich `jelly-bin-<Version>-1-x86_64.pkg.tar.zst`, installiert wird es mit
+`sudo pacman -U <Datei>`. Tauri 2.12 hat kein pacman-Ziel, deshalb packt `makepkg` im Container
+`archlinux:base-devel` die `.deb` um (`arch/PKGBUILD`). Die Version kommt aus `tauri.conf.json`.
+
 Ein Release entsteht aus einem Tag. Vorher die Version in `src-tauri/tauri.conf.json` anheben, dann:
 
 ```sh
@@ -362,6 +366,10 @@ Die Liste der Versionen ist `latest.json` am neuesten Release auf GitHub
 `releases/latest` überspringt Vorabversionen, sie kommen also nie als Update an. Releases für die LAN
 bekommen deshalb einen Tag ohne Bindestrich. Eine Vorabversion `v0.3.0-alpha.1` heißt in der App schon
 `0.3.0`, ein späteres `v0.3.0` wäre für sie nicht neuer.
+
+Das Arch-Paket steht nicht in der Liste, denn der Updater kann kein pacman-Paket einspielen. Seine Binärdatei
+trägt keine Installer-Art, die App findet deshalb keinen Eintrag und bietet kein Update an, auch nicht, wenn
+der Server eine neuere App verlangt. Die neue Version kommt dort mit `pacman -U`.
 
 Die Karte zeigt, was seit der installierten Version dazukam. Das steht in `CHANGELOG.md`, von Hand auf
 Deutsch gepflegt: je Version `## X.Y.Z`, darunter kurze Zeilen mit `Neu:`, `Besser:` oder `Weg:`. Der

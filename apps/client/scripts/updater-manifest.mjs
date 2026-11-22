@@ -17,6 +17,7 @@ import { pathToFileURL } from "node:url";
  * Welche Plattform-Schlüssel ein Bundle bedient. Zuerst der mit Installer-Art, den das Plugin
  * bevorzugt, dann der allgemeine als Rückfall für Apps, die ihre Art nicht kennen. Linux bekommt
  * keinen: Fehlte die Signatur einer `.deb`, nähme die App sonst das AppImage, und das scheitert.
+ * Auch das Arch-Paket (`arch/PKGBUILD`) verlässt sich darauf, es kennt keine Installer-Art.
  */
 const PLATFORMS = [
   { suffix: "-setup.exe", keys: ["windows-x86_64-nsis", "windows-x86_64"] },
