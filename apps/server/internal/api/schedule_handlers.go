@@ -56,9 +56,6 @@ func (server *apiServer) handleReplaceLANSchedule(
 	if !server.readLimitedJSON(writer, request, &body, maxScheduleBytes) {
 		return
 	}
-	if body.Items == nil {
-		body.Items = []rules.ScheduleItem{}
-	}
 	items, err := server.Store.ReplaceLANSchedule(
 		request.Context(), lanID, body.Items, server.currentMillis(),
 	)

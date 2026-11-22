@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"cmp"
 	"errors"
 	"slices"
 	"strings"
@@ -18,10 +19,9 @@ const (
 
 const (
 	// A LAN of four days has about forty points, this leaves plenty of room.
-	maxScheduleItems    = 300
-	maxScheduleTitle    = 80
-	maxScheduleDetail   = 200
-	scheduleUnsetMillis = 0
+	maxScheduleItems  = 300
+	maxScheduleTitle  = 80
+	maxScheduleDetail = 200
 )
 
 // ErrInvalidSchedule reports a schedule the server cannot keep.
@@ -60,7 +60,7 @@ func PrepareSchedule(items []ScheduleItem, startsAt, endsAt int64) ([]ScheduleIt
 		prepared = append(prepared, item)
 	}
 	slices.SortStableFunc(prepared, func(first, second ScheduleItem) int {
-		return int(first.StartsAt - second.StartsAt)
+		return cmp.Compare(first.StartsAt, second.StartsAt)
 	})
 	return prepared, nil
 }
@@ -80,7 +80,7 @@ func trimScheduleItem(item ScheduleItem) ScheduleItem {
 
 // isScheduleItemValid reports whether a point lies in the LAN, has a title and a known kind.
 func isScheduleItemValid(item ScheduleItem, startsAt, endsAt int64) bool {
-	if item.StartsAt < startsAt || item.StartsAt > endsAt || item.StartsAt == scheduleUnsetMillis {
+	if item.StartsAt < startsAt || item.StartsAt > endsAt {
 		return false
 	}
 	if item.EndsAt != nil && (*item.EndsAt <= item.StartsAt || *item.EndsAt > endsAt) {

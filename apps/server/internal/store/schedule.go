@@ -15,39 +15,41 @@ func (store *Store) LoadLANSchedule(
 	ctx context.Context,
 	lanID int64,
 ) ([]rules.ScheduleItem, error) {
-	queryCtx, cancel := withQueryTimeout(ctx)
-	defer cancel()
-	var scheduleJSON string
 	const selectScheduleSQL = `SELECT schedule FROM lans WHERE id = ?`
-	err := store.readDB.QueryRowContext(queryCtx, selectScheduleSQL, lanID).Scan(&scheduleJSON)
-	if errors.Is(err, sql.ErrNoRows) {
+	items, found, err := store.loadSchedule(ctx, selectScheduleSQL, lanID)
+	if err == nil && !found {
 		return nil, ErrLANNotFound
 	}
-	if err != nil {
-		return nil, fmt.Errorf("load schedule: %w", err)
-	}
-	return parseSchedule(scheduleJSON)
+	return items, err
 }
 
 // LoadCurrentSchedule returns the program of the running LAN, otherwise of the next one, the same
 // LAN whose rules `GET /lans/current` names. Without a LAN, the program is empty.
 func (store *Store) LoadCurrentSchedule(
-	ctx context.Context,
-	now int64,
+	ctx context.Context, now int64,
 ) ([]rules.ScheduleItem, error) {
+	const selectCurrentScheduleSQL = `SELECT schedule FROM lans WHERE ends_at > ?1
+		ORDER BY (starts_at <= ?1) DESC, starts_at LIMIT 1`
+	items, _, err := store.loadSchedule(ctx, selectCurrentScheduleSQL, now)
+	return items, err
+}
+
+// loadSchedule reads the program of the one LAN a query finds. Without a LAN it is empty.
+func (store *Store) loadSchedule(
+	ctx context.Context, selectScheduleSQL string, argument int64,
+) ([]rules.ScheduleItem, bool, error) {
 	queryCtx, cancel := withQueryTimeout(ctx)
 	defer cancel()
 	var scheduleJSON string
-	const selectCurrentScheduleSQL = `SELECT schedule FROM lans WHERE ends_at > ?1
-		ORDER BY (starts_at <= ?1) DESC, starts_at LIMIT 1`
-	err := store.readDB.QueryRowContext(queryCtx, selectCurrentScheduleSQL, now).Scan(&scheduleJSON)
+	err := store.readDB.QueryRowContext(queryCtx, selectScheduleSQL, argument).Scan(&scheduleJSON)
 	if errors.Is(err, sql.ErrNoRows) {
-		return []rules.ScheduleItem{}, nil
+		return []rules.ScheduleItem{}, false, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("load current schedule: %w", err)
+		return nil, false, fmt.Errorf("load schedule: %w", err)
 	}
-	return parseSchedule(scheduleJSON)
+	items, err := parseSchedule(scheduleJSON)
+	return items, true, err
 }
 
 // ReplaceLANSchedule checks and stores the whole program of a LAN and tells open apps about it.
