@@ -28,19 +28,27 @@ jobs:
             exit 1
           fi
 
+      # The job image has no docker CLI, only the DinD daemon is reachable.
+      # buildx is needed because the Dockerfile uses BuildKit cache mounts.
+      - name: Install docker CLI and buildx
+        run: |
+          set -eu
+          curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz \
+            | tar -xz --strip-components=1 -C /usr/local/bin docker/docker
+          mkdir -p "$HOME/.docker/cli-plugins"
+          curl -fsSL -o "$HOME/.docker/cli-plugins/docker-buildx" \
+            https://github.com/docker/buildx/releases/download/v0.19.3/buildx-v0.19.3.linux-amd64
+          chmod +x "$HOME/.docker/cli-plugins/docker-buildx"
+          docker version
+          docker buildx version
+
       - name: Log in to the registry
         run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.repository_owner }}" --password-stdin
 
-      - name: Build
+      - name: Build and push
         run: |
           VERSION="${GITHUB_REF_NAME#server-v}"
-          docker build -f apps/server/Dockerfile \
+          docker buildx build --platform linux/amd64 --push -f apps/server/Dockerfile \
             -t "$IMAGE:$VERSION" -t "$IMAGE:latest" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --label "org.opencontainers.image.version=$VERSION" .
-
-      - name: Push
-        run: |
-          VERSION="${GITHUB_REF_NAME#server-v}"
-          docker push "$IMAGE:$VERSION"
-          docker push "$IMAGE:latest"
