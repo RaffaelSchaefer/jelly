@@ -1,20 +1,19 @@
 name: Server Tests
 
-# Forgejo only, like server-image.yml. Runs lint and tests of apps/server on every push and pull
-# request that touches the server or the packages its stage bundles.
+# Forgejo only, like server-image.yml. Runs lint and tests of apps/server on every push to main
+# that touches the server or the packages its stage bundles. The runner has room for one or two
+# jobs, so a feature branch is tested by hand before its merge: `fj actions dispatch` or the button
+# on the forge.
 on:
   push:
+    branches:
+      - main
     paths:
       - "apps/server/**"
       - "packages/**"
       - "pnpm-lock.yaml"
       - ".forgejo/workflows/server-test.yml"
-  pull_request:
-    paths:
-      - "apps/server/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - ".forgejo/workflows/server-test.yml"
+  workflow_dispatch:
 
 jobs:
   test:
@@ -29,10 +28,17 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # The runner has no cache server, so every run starts cold and a cache step only waits.
       - uses: actions/setup-go@v5
         with:
           go-version-file: apps/server/go.mod
-          cache-dependency-path: apps/server/go.sum
+          cache: false
+
+      # A release binary instead of `go run`, which would compile the linter on every run.
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" v2.15.0
 
       # The stage page bundles three.js and the packages, as in the Dockerfile.
       - name: Install packages
@@ -44,7 +50,9 @@ jobs:
         run: go generate ./internal/web
 
       - name: Lint
-        run: pnpm lint
+        run: |
+          golangci-lint run
+          pnpm exec oxlint --deny-warnings web
 
       - name: Check types
         run: pnpm check-types
