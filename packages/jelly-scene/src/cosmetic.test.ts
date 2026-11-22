@@ -27,6 +27,7 @@ import {
   loadModelParts,
   stickerOrder,
 } from "./cosmetic.ts";
+import { COSMETIC_MODEL_KEYS } from "./cosmeticKeys.ts";
 
 /** Oberkante des Sichtbereichs, darüber liegt die Sprechblase (`apps/client/blender/README.md`). */
 const BUBBLE_Y = 1.6;
@@ -40,33 +41,8 @@ async function loadModel(key: string) {
 
 describe("Cosmetic-Modelle", () => {
   it("kennt die Modelle im Bundle und nichts anderes", () => {
-    expect(hasCosmeticModel("beanie")).toBe(true);
-    expect(hasCosmeticModel("headset")).toBe(true);
-    expect(hasCosmeticModel("headset-neutral")).toBe(true);
-    expect(hasCosmeticModel("pixel-glasses")).toBe(true);
-    expect(hasCosmeticModel("party-hat")).toBe(true);
-    expect(hasCosmeticModel("hood")).toBe(true);
-    expect(hasCosmeticModel("crown")).toBe(true);
-    expect(hasCosmeticModel("golden-cup")).toBe(true);
-    expect(hasCosmeticModel("sprout")).toBe(true);
-    expect(hasCosmeticModel("schnoerbi-mask")).toBe(true);
-    expect(hasCosmeticModel("long-schnoerbi")).toBe(true);
-    expect(hasCosmeticModel("goose")).toBe(true);
-    for (const key of [
-      "bandana",
-      "bell-collar",
-      "knit-scarf",
-      "snail-shell",
-      "mini-backpack",
-      "fairy-wings",
-      "bat-wings",
-      "piercings",
-      "ogre-ears",
-      "chicken",
-      "kamina-glasses",
-    ]) {
-      expect(hasCosmeticModel(key)).toBe(true);
-    }
+    // Die Liste ohne Three.js nennt jedes Modell, `cosmeticKeys.test.ts` hält sie vollständig.
+    for (const key of COSMETIC_MODEL_KEYS) expect(hasCosmeticModel(key)).toBe(true);
     expect(hasCosmeticModel("glow-aura")).toBe(false);
     expect(hasCosmeticModel("unbekannt")).toBe(false);
     expect(hasCosmeticModel("constructor")).toBe(false);
@@ -82,6 +58,7 @@ describe("Cosmetic-Modelle", () => {
     expect(model.getAttribute("aFluff").count).toBe(count);
     expect(model.getAttribute("aTint").count).toBe(count);
     expect(model.getAttribute("aGlass").count).toBe(count);
+    expect(model.getAttribute("aNeon").count).toBe(count);
     model.computeBoundingBox();
     expect(model.boundingBox!.max.y + COSMETIC_OUTLINE).toBeLessThan(BUBBLE_Y);
   });
@@ -161,6 +138,12 @@ const COLORABLE = new Set([
   "bat-wings",
   "snail-shell",
   "kamina-glasses",
+  "cat-ears",
+  "cyber-cat-ears",
+  "kitten",
+  "yarn-ball",
+  "cat-paws",
+  "cat-tail",
 ]);
 
 describe("Farbe des Trägers", () => {
@@ -373,6 +356,7 @@ describe("loadModelParts", () => {
       "aFluff",
       "aTint",
       "aGlass",
+      "aNeon",
     ]) {
       expect(hat.getAttribute(name).count).toBe(6);
     }

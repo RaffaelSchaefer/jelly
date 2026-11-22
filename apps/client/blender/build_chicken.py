@@ -18,7 +18,6 @@ import math
 import os
 import sys
 
-import bpy
 import numpy as np
 from mathutils import Vector
 
@@ -26,8 +25,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import generator  # noqa: E402
 from shapes import (  # noqa: E402
-    PATCH, badge, blob, circles_outline, dome, merge, outward, ray_onto, resample, sd_chain, sd_ellipsoid, sd_round_cone,
-    from_blender, sdf_decal, sdf_gradient, smooth_union, surface_nets, surface_z, sweep, to_blender, unit_rows,
+    PATCH, badge, blob, circles_outline, dome, merge, outward, problems, ray_onto, resample, sd_chain, sd_ellipsoid,
+    sd_round_cone, sdf_decal, sdf_gradient, smooth_union, surface_nets, sweep, unit_rows,
 )
 
 # The plush piece: an egg of a fuller breast and a rounder rear; the back stays in front of the
@@ -97,14 +96,6 @@ SWATCH = {
     "Huhnglanz": ("#fffaf0", 1.0),
     "Huhnbäckchen": ("#ff6f9a", 0.6, 0.5),
 }
-
-# What the app keeps clear, as (x low, x high, y low, y high): the pet's mouth, both cheeks and both
-# eyes. Grown by the outline and a little room, as the plush is nearer the camera than the face.
-WINDOWS = [(-0.12, 0.12, 0.345, 0.52), (0.255, 0.405, 0.495, 0.585), (-0.405, -0.255, 0.495, 0.585), (0.11, 0.27, 0.58, 0.74), (-0.27, -0.11, 0.58, 0.74)]
-OUTLINE, ROOM = 0.035, 0.015
-# Inside the hands at their height, the band (y low, y high) and the reach.
-HANDS = {"band": (-0.6, -0.2), "reach": 0.72}
-
 
 def mat(name):
     return generator.material(name, *SWATCH[name])
@@ -222,19 +213,6 @@ def comb_mesh():
     return outward((verts, faces)), comb_sdf
 
 
-def thin(obj, budget, sdf):
-    """Decimates `obj` to about `budget` vertices and gives every vertex the implicit surface's own
-    normal: the long triangles Decimate leaves would otherwise shade in bands."""
-    obj.modifiers.new("Vereinfachen", "DECIMATE").ratio = min(1.0, budget / len(obj.data.vertices))
-    mesh = bpy.data.meshes.new_from_object(obj.evaluated_get(bpy.context.evaluated_depsgraph_get()))
-    old, obj.data = obj.data, mesh
-    obj.modifiers.clear()
-    bpy.data.meshes.remove(old)
-    mesh.name = obj.name
-    points = np.array([from_blender(v.co) for v in mesh.vertices])
-    mesh.normals_split_custom_set_from_vertices([to_blender(n) for n in unit_rows(sdf_gradient(sdf, points))])
-
-
 # ---------------------------------------------------------------------------------------------
 # Wing, breast and feet.
 
@@ -280,32 +258,6 @@ def feet_mesh():
     return merge(feet)
 
 
-# ---------------------------------------------------------------------------------------------
-# The rules the app needs.
-
-
-def problems(parts):
-    """Every rule a part's vertices break: the pet's face windows with the outline, the hands, the
-    bounds and the belly behind the plush."""
-    found = []
-    grow = OUTLINE + ROOM
-    low, high = HANDS["band"]
-    for name, (verts, _) in parts.items():
-        x, y, z = np.array(verts, float).T
-        for x0, x1, y0, y1 in WINDOWS:
-            if ((x > x0 - grow) & (x < x1 + grow) & (y > y0 - grow) & (y < y1 + grow)).any():
-                found.append(f"{name} in the window {(x0, x1, y0, y1)}")
-        wide = (y > low) & (y < high) & (np.abs(x) > HANDS["reach"])
-        if wide.any():
-            found.append(f"{name} beyond |x| {HANDS['reach']} at the hands, up to {np.abs(x[wide]).max():.3f}")
-        if (np.abs(x) + OUTLINE).max() >= 1.85 or (y + OUTLINE).max() >= 1.6 or y.min() < -1.05:
-            found.append(f"{name} out of bounds: |x| {np.abs(x).max():.3f}, y {y.min():.3f} to {y.max():.3f}")
-        behind = z < np.array([surface_z(a, b) for a, b in zip(x, y)])
-        if behind.any():
-            found.append(f"{name} behind the pet's front, down to z {z[behind].min():.3f}")
-    return found
-
-
 def build(collection):
     """The plush piece, the comb and wattle, the wing and breast, the face, the beak and the feet."""
     plush = surface_nets(chicken_sdf, GRID["low"], GRID["high"], GRID["step"])
@@ -332,8 +284,9 @@ def build(collection):
     for name, (mesh_data, material, implicit) in parts.items():
         obj = generator.add_mesh(collection, name, mesh_data, mat(material))
         if implicit:
-            thin(obj, *implicit)
-    found = problems({name: part[0] for name, part in parts.items()})
+            generator.thin(obj, *implicit)
+    # The plush is nearer the camera than the face: ink and a little air round every window.
+    found = problems({name: part[0] for name, part in parts.items()}, 0.05, held=True)
     print("CHECK", found or "ok")
     assert not found, found
 

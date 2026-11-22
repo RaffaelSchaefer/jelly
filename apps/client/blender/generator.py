@@ -2,9 +2,11 @@
 
 A generator (`build_party_hat.py`, `build_hood.py`, `build_crown.py`, `build_golden_cup.py`,
 `build_sprout.py`, `build_schnoerbi_mask.py`, `build_long_schnoerbi.py`, `build_goose.py`,
-`build_chicken.py`, `build_piercings.py`, `build_ogre_ears.py`, `build_kamina_glasses.py` and the body
-cosmetics `build_bandana.py`, `build_bell_collar.py`, `build_knit_scarf.py`, `build_snail_shell.py`,
-`build_mini_backpack.py`, `build_fairy_wings.py`, `build_bat_wings.py`) holds only its numbers and a
+`build_chicken.py`, `build_piercings.py`, `build_ogre_ears.py`, `build_kamina_glasses.py`,
+`build_cat_ears.py`, `build_cyber_cat_ears.py`, `build_cat_whiskers.py`, `build_kitten.py`,
+`build_yarn_ball.py`, `build_cat_paws.py` and the body cosmetics `build_bandana.py`,
+`build_bell_collar.py`, `build_knit_scarf.py`, `build_snail_shell.py`, `build_mini_backpack.py`,
+`build_fairy_wings.py`, `build_bat_wings.py`, `build_cat_tail.py`) holds only its numbers and a
 `build(collection)` and ends with `generator.run(...)`:
 
     blender blender/cosmetics.blend --background --python blender/build_crown.py -- [--save] [--export]
@@ -21,27 +23,29 @@ import os
 import sys
 
 import bpy
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.dont_write_bytecode = True  # no __pycache__ next to the .blend
 
 import setup_cosmetics  # noqa: E402
-from shapes import to_blender  # noqa: E402
+from shapes import from_blender, mirror_x, outward, sdf_gradient, surface_nets, to_blender, unit_rows  # noqa: E402
 
 
 def linear(channel):
     return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
 
 
-def material(name, hex_color, glow=None, fluff=None, tint=None, glass=None):
+def material(name, hex_color, glow=None, fluff=None, tint=None, glass=None, neon=None):
     """The material `name` in `hex_color`, created or updated. `glow` (0–1) dampens the light lower
     edge the app adds; without it the material lights up fully. `fluff` (0–1) turns it into plush:
     no jelly gloss, fur grain and a light, fuzzy rim instead. `tint` makes it take the wearer's
     chosen colour instead of `hex_color`: 1 is that colour, below 1 a darker shade (colour × tint),
     above 1 a lighter one (towards white by tint − 1). Without it the material keeps its own
     colour. `glass` (0–1) makes it see-through from the front, more so the higher it is; towards
-    its rim it covers more."""
+    its rim it covers more. `neon` (0–1) makes it shine by itself: no shading, bright even where a
+    scene dims its light."""
     mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     if mat.node_tree is None:
         mat.use_nodes = True
@@ -50,7 +54,7 @@ def material(name, hex_color, glow=None, fluff=None, tint=None, glass=None):
     bsdf.inputs["Base Color"].default_value = (*rgb, 1)
     bsdf.inputs["Roughness"].default_value = 0.35
     mat.diffuse_color = (*rgb, 1)
-    for key, value in (("glow", glow), ("fluff", fluff), ("tint", tint), ("glass", glass)):
+    for key, value in (("glow", glow), ("fluff", fluff), ("tint", tint), ("glass", glass), ("neon", neon)):
         if value is None:
             mat.pop(key, None)
         else:
@@ -58,8 +62,10 @@ def material(name, hex_color, glow=None, fluff=None, tint=None, glass=None):
     return mat
 
 
-def add_mesh(collection, name, mesh_data, mat, mirror=False):
-    """One smooth-shaded object with exactly one material; `mirror` adds its twin at -x."""
+def add_mesh(collection, name, mesh_data, mat, mirror=False, budget=None, normals=None):
+    """One smooth-shaded object with exactly one material; `mirror` adds its twin at -x. `budget`
+    thins it to about that many vertices first. `normals` (one per vertex) replace the ones Blender
+    works out, for parts cut from one surface: their shared edges then shade and ink alike."""
     verts, faces = mesh_data
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata([to_blender(v) for v in verts], [], faces)
@@ -67,12 +73,46 @@ def add_mesh(collection, name, mesh_data, mat, mirror=False):
     mesh.polygons.foreach_set("use_smooth", [True] * len(mesh.polygons))
     mesh.update()
     mesh.materials.append(mat)
+    if normals is not None:
+        mesh.normals_split_custom_set_from_vertices([to_blender(n) for n in normals])
     obj = bpy.data.objects.new(name, mesh)
     collection.objects.link(obj)
+    if budget:
+        obj.modifiers.new("Vereinfachen", "DECIMATE").ratio = min(1.0, budget / len(verts))
     if mirror:
         mod = obj.modifiers.new("Spiegel", "MIRROR")
         mod.use_axis[0] = True
         mod.use_mirror_merge = False
+    return obj
+
+
+def thin(obj, budget, sdf):
+    """Decimates `obj` to about `budget` vertices and gives every vertex the implicit surface's own
+    normal: the long triangles Decimate leaves would otherwise shade in bands."""
+    obj.modifiers.new("Vereinfachen", "DECIMATE").ratio = min(1.0, budget / len(obj.data.vertices))
+    mesh = bpy.data.meshes.new_from_object(obj.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    old, obj.data = obj.data, mesh
+    obj.modifiers.clear()
+    bpy.data.meshes.remove(old)
+    mesh.name = obj.name
+    points = np.array([from_blender(v.co) for v in mesh.vertices])
+    mesh.normals_split_custom_set_from_vertices([to_blender(n) for n in unit_rows(sdf_gradient(sdf, points))])
+
+
+def add_implicit(collection, name, sdf, grid, mat, budget, mirror=False):
+    """The surface where `sdf` is zero inside the box `grid` (`low`, `high`, `step`) as one object,
+    thinned to about `budget` vertices and shaded by the surface's own normals. `mirror` adds its
+    twin at -x to the same mesh, so no modifier has to carry the normals over."""
+    mesh = outward(surface_nets(sdf, grid["low"], grid["high"], grid["step"]))
+    shade = sdf
+    if mirror:
+        mesh = mirror_x(mesh)
+
+        def shade(points):
+            return sdf(np.column_stack([np.abs(points[:, 0]), points[:, 1], points[:, 2]]))
+
+    obj = add_mesh(collection, name, mesh, mat)
+    thin(obj, budget, shade)
     return obj
 
 
@@ -106,7 +146,7 @@ def save(script):
 
 
 def run(name, slot, build, script):
-    """Rebuilds the collection `name` (slot `Kopf`, `Gesicht` or `Hände`) and handles the flags."""
+    """Rebuilds the collection `name` (slot `Kopf`, `Gesicht`, `Hände` or `Körper`) and handles the flags."""
     args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     collection = cosmetic_collection(name, slot)
     rebuild(collection, build)

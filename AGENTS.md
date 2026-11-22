@@ -179,9 +179,14 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   zeigt das nicht, denn dort gilt keine CSP. Einen Ladefehler sieht man nur im gebauten Binary. Ein Material kann sein
   Leuchten von unten mit der Blender-Eigenschaft `glow` (0 bis 1) dämpfen, sonst wirken dunkle Farben unten grau. Mit
   `fluff` (0 bis 1) wird es zu Plüsch: ohne Glanz, mit Fellkörnung und hellem Rand (`plush` in `toon.frag.glsl`).
-  Mit `glass` (0 bis 1) wird es durchsichtig, zum Rand hin deckt es mehr. Ein Cosmetic mit Glas zeichnet zuletzt in
+  Mit `neon` (0 bis 1) leuchtet es selbst: ohne Schatten und Glanz, satt auch im Dunkel des Shops, am Tonemapping
+  vorbei (`toon.frag.glsl`). Mit `glass` (0 bis 1) wird es durchsichtig, zum Rand hin deckt es mehr. Ein Cosmetic mit Glas zeichnet zuletzt in
   seiner Malschicht, erst die Füllung, dann die Outline (`glassOrder` in `cosmetic.ts`), sonst schiene ihre Tinte
   durch. Teile davor brauchen dann eine Fläche ohne Rückseite und Kante, sonst bekommen sie eine Innenlinie.
+  Was hinter dem Jelly liegen soll, bekommt `behind` in `COSMETIC_LOOKS`: Es löscht die Tiefe nicht, Körper, Kopf und
+  Hände verdecken es. So wachsen die Katzenohren hinter dem Kopf hervor, und der Katzenschwanz steht nicht vor den Händen. Was an den Händen sitzt wie die Pfoten,
+  bekommt `onHands` in `src/pet/cosmetics.ts`: ein Modell um den Ursprung, an jeder Hand gezeichnet (`HandWorn`). Ein neues Modell groß ansehen:
+  `/scripts/cosmetic-check.html?wear=<Schlüssel>&color=<Farbe>&tint=<Hex>` in der Browser-Vorschau.
 - **Einfärbbares Cosmetic:** Materialien mit der Blender-Eigenschaft `tint` nehmen die Farbe des Trägers (1 genau,
   darunter dunkler, darüber zu Weiß hin), der Rest bleibt. Dazu `Colorable` im Server (`rules/cosmetics.go`, neue
   API-Version), `COLORABLE` in `packages/jelly-scene/src/cosmetic.test.ts` und `colorable` in

@@ -18,7 +18,8 @@ This writes `blender/cosmetics.blend` with:
 - **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `headset-neutral`, `beanie`, `party-hat`,
   `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`, `goose`, `bandana`,
   `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings`, `bat-wings`, `chicken`, `piercings`, `ogre-ears`,
-  `kamina-glasses`). The collection name is the id.
+  `kamina-glasses`, `cat-ears`, `cyber-cat-ears`, `cat-whiskers`, `kitten`, `yarn-ball`, `cat-paws`, `cat-tail`). The
+  collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -40,18 +41,30 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    the higher it is, while its rim covers more (the Kamina glasses' lens uses 0.35). The app then
    draws the whole cosmetic last in its paint layer and its outline after the fill, so ink only
    shows outside: a part in front of glass must be an open sheet facing the front, without back or
-   edge, or its outline inks a line round it (the glasses' glints).
+   edge, or its outline inks a line round it (the glasses' glints). A custom property `neon` (0–1)
+   makes it shine by itself: no shading and no gloss, its colour stays as bright and saturated as
+   modelled, even where a scene dims its light (the cyber cat ears' panel uses 1). A darker shade
+   of the same colour round it, also neon, reads as its glow.
 4. Use **Shade Smooth**. The outline is the mesh pushed out along its normals, so hard edges crack open.
 5. Cosmetics are drawn on top of the head like a sticker. Parts that would be hidden behind the head
-   (the back of a hood, the far ear cup) still show, so model only what is seen from the front.
+   (the back of a hood, the far ear cup) still show, so model only what is seen from the front. A
+   cosmetic with `behind` in `COSMETIC_LOOKS` (cosmetic.ts) is drawn behind the pet instead, so the
+   pet and its ink edge cover it: the cat ears grow out from behind the head that way. Near the
+   head's outline such a part stays behind z 0.2, where that ink lies, or it shows in front of it.
 6. Head and face cosmetics (slot `Kopf`, `Gesicht`) bob with the head. Cosmetics for the hands (slot
    `Hände`) sit between `hand_left` and `hand_right` of the reference pet, and `src/scene/HandHeld.tsx`
-   moves them with the hands. Body cosmetics (slot `Körper`) stay with the body while the head bobs
-   above them: neckwear sits just below the seam, and parts behind the pet (wings, backpack, shell)
-   exist only outside its silhouette, tucked under the body's edge, not the head's. Held cosmetics
-   paint one layer above them. The slot comes from `src/pet.ts`; the `slot` property on the
+   moves them with the hands. What the pet wears on its hands instead (the cat paws, `onHands` in
+   `src/pet/cosmetics.ts`) is one hand's part round the origin: the app draws it on each hand, so
+   it stays on while the pet waves. Body cosmetics (slot `Körper`) stay with the body while the head
+   bobs above them: neckwear sits just below the seam, and parts behind the pet (wings, backpack,
+   shell) exist only outside its silhouette, tucked under the body's edge, not the head's. The cat
+   tail is drawn behind the pet instead (`behind`, see 5.) and needs no such cut: body and hands
+   cover it. Held cosmetics paint one layer above them. The slot comes from `src/pet.ts`; the `slot` property on the
    collection is only a reminder.
-7. Modifiers are fine (Mirror, Subdivision, Solidify): the export applies them.
+7. Modifiers are fine (Mirror, Subdivision, Solidify): the export applies them. For implicit
+   surfaces `generator.add_implicit` meshes, thins and shades them by the surface's own normals and
+   mirrors them itself; `shapes.problems` checks the face's windows, the frame and the hands, and
+   `shapes.fur` pushes tufts of fur out of a mesh where its outline is.
 8. Plush parts that flow into each other without a crease can be one implicit surface in a generator:
    signed distances from `shapes.py`, joined by `smooth_union` and meshed by `surface_nets`, with a
    Decimate modifier to stay in budget. `sdf_decal` lays eyes, cheeks or patches onto it. See

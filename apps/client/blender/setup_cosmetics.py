@@ -40,6 +40,13 @@ COSMETICS = [
     ("piercings", "Gesicht"),
     ("ogre-ears", "Kopf"),
     ("kamina-glasses", "Gesicht"),
+    ("cat-ears", "Kopf"),
+    ("cyber-cat-ears", "Kopf"),
+    ("cat-whiskers", "Gesicht"),
+    ("kitten", "Hände"),
+    ("yarn-ball", "Hände"),
+    ("cat-paws", "Hände"),
+    ("cat-tail", "Körper"),
 ]
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"

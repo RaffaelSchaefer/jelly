@@ -2,6 +2,7 @@
 // vGlowRange ist der y-Bereich des Teils, von unten (volles Leuchten) nach oben (Grundfarbe), und
 // in z, wie stark es leuchtet. vFluff macht ein Teil zu Plüsch: ohne Glanz, mit Fell und hellem Rand.
 // vGlass lässt von vorn durchscheinen, was dahinter liegt (Mischen in cosmetic.ts).
+// vNeon lässt ein Teil selbst leuchten: ohne Schatten, auch im Dunkel einer Szene.
 // Mit SCENE_LIGHT kommt das Licht einer Szene dazu (Block <scene-light>).
 
 varying vec3 vColor;
@@ -9,6 +10,7 @@ varying vec3 vGlow;
 varying vec3 vGlowRange;
 varying float vFluff;
 varying float vGlass;
+varying float vNeon;
 varying vec3 vNormal;
 varying vec3 vPosition;
 varying vec3 vViewPosition;
@@ -115,4 +117,10 @@ void main() {
   gl_FragColor = vec4(color, 1.0 - vGlass * facing);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
+  // Neon leuchtet selbst: Schatten, Glanz und das Dunkel der Szene gelten nicht. Wo es zur Kamera
+  // blickt, glüht es heller, je heller seine Farbe ist, an seinem runden Rand bleibt die satte Farbe.
+  // Es umgeht auch das Tonemapping, das satte helle Farben zu Pastell bleicht.
+  float hot = pow(facing, 4.0);
+  vec3 neon = vColor * (1.0 + 0.3 * hot) + dot(vColor, vec3(0.2126, 0.7152, 0.0722)) * 0.25 * hot;
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, linearToOutputTexel(vec4(neon, 1.0)).rgb, vNeon);
 }
