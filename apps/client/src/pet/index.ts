@@ -21,6 +21,7 @@ export * from "./progress";
 export * from "./purse";
 export * from "./rendering";
 export * from "./reports";
+export * from "./schedule";
 export * from "./sealCeremony";
 export * from "./shop";
 export * from "./shopAmbience";

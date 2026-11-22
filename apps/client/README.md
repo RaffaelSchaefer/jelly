@@ -246,6 +246,7 @@ src/
   useFollow.ts        Hook: was das Pet vom Dazustellen auf der Karte mitbekommt
   usePartnerEmote.ts  Hook: auf Aufforderungen antworten und das Duett zeigen
   useStagePopover.ts  Hook: Auswahlen am Jelly schließen, Fokus halten
+  useSchedule.ts      Hook: Zeitplan der LAN, Erinnerung kurz vor jedem Punkt
   useJellyVoice.ts    Hook: was das Jelly gerade sagt und welcher Laut erklingt
   voice.ts            Synthesizer der Stimme (WebAudio)
   WindowChrome.tsx    Fensterknöpfe, Kopf- und Fußzeile der Vorschau
@@ -261,7 +262,7 @@ src/
     fx/               kurze Effekte auf einer Canvas2D: Wirbel, Münzen, Komet, Einschlag
   fonts/              mitgelieferte Schriften (Cinzel und Alegreya für den Zauberladen, OFL)
   pet/                reine Logik ohne React (spiegelt Server-Vertrag und src-tauri/src/pet.rs)
-  panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Einstellungen)
+  panels/             Inhalte der Glas-Panels (XP mit Reitern, Level, Zeitplan, Einstellungen)
   scene/              3D: Canvas, Kamera, Anker und Glas des Studios, Pet, Cosmetics und Schild-Tafel;
                       Jelly, Animation und Modelle aus packages/jelly-scene
     shaders/          GLSL des Studio-Glases, per `?raw` importiert
@@ -269,6 +270,7 @@ src/
   styles.css          Transparenz, Leiste, Panels und Browser-Vorschau
   studio.css          Knöpfe und Vorlagen des Studios
   signs.css           Schild-Tropfen und Kapsel-Säule
+  schedule.css        Zeitplan: Karte, Zeitleiste, Punkt am Dock
   optimized.css       feste Flächen statt Glas im optimierten Modus
 src-tauri/
   src/main.rs         Desktop-Einstieg, ruft nur jelly_lib::run()

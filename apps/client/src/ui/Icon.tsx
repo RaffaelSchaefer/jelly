@@ -68,6 +68,8 @@ export type IconName =
   | "dice"
   | "search"
   | "map"
+  | "calendar"
+  | "lotus"
   | "coin"
   | "shop"
   | "chest";
@@ -148,6 +150,9 @@ const paths: Record<IconName, string> = {
   back: "m15 5-7 7 7 7",
   next: "M5 12h14m-6-6 6 6-6 6",
   search: "M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm2 10-4.35-4.35",
+  calendar: "M5 5h14v16H5V5Zm3-3v6m8-6v6M5 10h14M8 14h2m4 0h2m-8 3.5h2",
+  lotus:
+    "M12 5c-2 2.5-2 9.5 0 13 2-3.5 2-10.5 0-13Zm0 13c-3.5 0-7-2-8.5-6 3.5-.5 6.5 1.5 8.5 6Zm0 0c3.5 0 7-2 8.5-6-3.5-.5-6.5 1.5-8.5 6Z",
   map: "M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5ZM9 4v13.5m6-11V20",
   coin: "M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z",
   shop: "M5 8h14l-1.2 12H6.2L5 8Zm4 0V7a3 3 0 0 1 6 0v1",

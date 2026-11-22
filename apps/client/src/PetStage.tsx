@@ -42,7 +42,15 @@ const SETTINGS_WAIT_MS = 1500;
  * es der Bühne, solange die Update-Karte steht, damit Tropfen und Sprechblase wie bei einem Panel
  * gehen.
  */
-export type PanelId = "lan" | "levelup" | "look" | "settings" | "emotes" | "signs" | "update";
+export type PanelId =
+  | "lan"
+  | "levelup"
+  | "look"
+  | "settings"
+  | "emotes"
+  | "signs"
+  | "schedule"
+  | "update";
 
 /** Vorübergehende Anzeige, ohne die letzte Fortschrittsmeldung zu überschreiben. */
 function emoteMessage(emote: ActiveEmote | null) {
