@@ -5,7 +5,7 @@ name: Server Image
 on:
   push:
     tags:
-      - "v*"
+      - "server-v*"
 
 env:
   REGISTRY: forge.stash.deadpostbox.net
@@ -33,7 +33,7 @@ jobs:
 
       - name: Build
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#server-v}"
           docker build -f apps/server/Dockerfile \
             -t "$IMAGE:$VERSION" -t "$IMAGE:latest" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
@@ -41,6 +41,6 @@ jobs:
 
       - name: Push
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#server-v}"
           docker push "$IMAGE:$VERSION"
           docker push "$IMAGE:latest"
