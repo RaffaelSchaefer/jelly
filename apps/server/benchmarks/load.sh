@@ -2,7 +2,8 @@
 # Runs the simulator against a fresh local server and prints throughput, latency and server errors.
 # Usage: benchmarks/load.sh [players] [min-delay] [max-delay] [seconds] [stages] [streams]
 # stages is the number of stage screens. streams "on" lets every jelly keep an event stream open as
-# the app with its map does, "events" only with events as the app without its map would.
+# the app with its map does, "events" only with events, "own" only with the events of the player as the
+# app without its map can.
 # Baselines and how to read them: benchmarks/README.md
 set -u
 cd "$(dirname "$0")/.."
@@ -48,7 +49,7 @@ cpu_before="$(awk '{print $14 + $15}' "/proc/$server_pid/stat")"
 "$work_dir/jelly-server" simulate -url "http://$address" -players "$players" \
   -min-delay "$min_delay" -max-delay "$max_delay" -duration "${seconds}s" \
   -stages "$stages" "-streams=$([ "$streams" != off ] && echo true || echo false)" \
-  -stream-topics "$([ "$streams" = events ] && echo events)" </dev/null 2>&1 |
+  -stream-topics "$(case "$streams" in events | own) echo "$streams" ;; esac)" </dev/null 2>&1 |
   grep -E 'simulation ended|level=ERROR' | sed -E 's/^time=[^ ]+ //'
 curl -s -o /dev/null -w 'state:    %{http_code} in %{time_total}s\n' \
   "http://$address/v1/stage?key=$JELLY_STAGE_KEY"

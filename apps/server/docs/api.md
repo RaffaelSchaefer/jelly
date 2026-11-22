@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.32.0**
+Aktuelle Version: **1.33.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.32.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.33.0  | `?topics=own` im Stream: nur eigene Ereignisse, solche, die den Spieler nennen, und solche für alle. Für die App ohne offene Karte, spart bei 300 Spielern rund 90 % des Verkehrs |
 | 1.32.0  | Katzen-Set im Shop, alle dauerhaft und bis auf die Schnurrhaare einfärbbar (`colorable`): `cat-ears` (Katzenohren, `head`) für 3 Münzen, `cyber-cat-ears` (Cyber-Katzenohren, `head`) für 4, `cat-whiskers` (Schnurrhaare, `face`) für 2, `kitten` (Kuschelkätzchen, `hands`) für 4, `yarn-ball` (Wollknäuel, `hands`) für 2, `cat-paws` (Samtpfoten, `hands`) für 3 und `cat-tail` (Katzenschwanz, `body`) für 3. „Ausverkauft“ verlangt damit 26 Shop-Cosmetics |
 | 1.31.0  | Sieben neue Farben in `colors` des Katalogs, für alle frei wählbar: `sky` (Himmelblau), `violet` (Lila), `rose` (Rosa), `cherry` (Rot), `tangerine` (Orange), `lemon` (Gelb) und `clover` (Grün), passend zu den Farben der einfärbbaren Cosmetics |
 | 1.30.0  | Neues Cosmetic `kamina-glasses` (Kamina-Brille) im Shop, dauerhaft für 3 Münzen im Platz `face` und einfärbbar (`colorable`). „Ausverkauft“ verlangt damit 19 Shop-Cosmetics |
@@ -418,6 +419,11 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
 für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 
 - **Themen:** `?topics=events`, `?topics=moves` oder `?topics=events,moves` wählen aus, ohne Angabe kommt beides.
+- **Nur Eigenes:** `?topics=own` ist für die App ohne offene Karte. Sie bekommt dann nur Ereignisse, deren `player_id`
+  sie selbst ist, solche, die sie im Payload nennen (`player_id` bei `player.removed`, `partner_id` und `from_id` bei
+  Partner-Emotes), und die für alle: `rules.changed`, `stage.changed`, `gathering.changed`. Ausgelassene Ereignisse
+  rücken `Last-Event-ID` trotzdem weiter, über eine Nachricht nur mit `id`. Eine Bühne bekommt auf `own`
+  `400 invalid_request`. Die Karte öffnet weiter den vollen Stream.
   Unbekannte Themen ergeben `400 invalid_request`.
 - **Wege:** Nachrichten vom Typ `move` haben keine ID und stehen nicht im Ereignis-Log. Jede neue Verbindung bekommt
   zuerst den aktuellen Weg jedes Jellys, nach einem Abbruch geht also nichts verloren.
