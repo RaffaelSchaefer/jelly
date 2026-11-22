@@ -1,0 +1,54 @@
+name: Server Tests
+
+# Forgejo only, like server-image.yml. Runs lint and tests of apps/server on every push and pull
+# request that touches the server or the packages its stage bundles.
+on:
+  push:
+    paths:
+      - "apps/server/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".forgejo/workflows/server-test.yml"
+  pull_request:
+    paths:
+      - "apps/server/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".forgejo/workflows/server-test.yml"
+
+jobs:
+  test:
+    runs-on: docker
+    defaults:
+      run:
+        working-directory: apps/server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/server/go.mod
+          cache-dependency-path: apps/server/go.sum
+
+      # The stage page bundles three.js and the packages, as in the Dockerfile.
+      - name: Install packages
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --filter @jelly/server...
+
+      - name: Build pages
+        run: go generate ./internal/web
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check types
+        run: pnpm check-types
+
+      # The race detector needs cgo, which the runner image brings with gcc.
+      - name: Test
+        run: go test -race -count=1 ./...
