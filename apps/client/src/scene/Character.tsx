@@ -16,6 +16,7 @@ import {
   disposeJelly,
   hasCosmeticModel,
   isEmoteKey,
+  isWornOnHands,
   isPartnerMotionKey,
   partnerPose,
   restPose,
@@ -131,7 +132,7 @@ function WornCosmetics({
 }) {
   const draw = (slots: CosmeticSlot[], layer?: number, onHands = false) =>
     worn
-      .filter((item) => slots.includes(item.slot) && Boolean(item.onHands) === onHands)
+      .filter((item) => slots.includes(item.slot) && isWornOnHands(item.id) === onHands)
       .map((item) => (
         <Cosmetic key={item.id} id={item.id} ink={ink} layer={layer} tint={item.color} />
       ));

@@ -24,11 +24,6 @@ export interface Cosmetic {
   slot: CosmeticSlot;
   /** Symbol in der Auswahl. */
   icon: IconName;
-  /**
-   * Sitzt an jeder Hand statt zwischen beiden, wie Pfoten. Das Modell ist dann eine Hand, um den
-   * Ursprung modelliert, und die Szene zeichnet es zweimal.
-   */
-  onHands?: boolean;
 }
 
 /**
@@ -56,7 +51,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: "chicken", name: "Kuschelhuhn", slot: "hands", icon: "chicken" },
   { id: "kitten", name: "Kuschelkätzchen", slot: "hands", icon: "kitten" },
   { id: "yarn-ball", name: "Wollknäuel", slot: "hands", icon: "yarn" },
-  { id: "cat-paws", name: "Samtpfoten", slot: "hands", icon: "paw", onHands: true },
+  { id: "cat-paws", name: "Samtpfoten", slot: "hands", icon: "paw" },
   { id: "golden-cup", name: "Goldener Pokal", slot: "hands", icon: "trophy" },
   { id: "bandana", name: "Halstuch", slot: "body", icon: "bandana" },
   { id: "bell-collar", name: "Glöckchen-Halsband", slot: "body", icon: "bell" },
