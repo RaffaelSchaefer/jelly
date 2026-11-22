@@ -18,6 +18,7 @@ import {
 import { createEventCodesTab } from "./eventCodes.ts";
 import type { FailureHandler } from "./failure.ts";
 import type { SectionContext } from "./lanContext.ts";
+import { createProgramPanel } from "./program.ts";
 import { formatDateTime } from "./format.ts";
 import { createPlayerPicker } from "./playerPicker.ts";
 
@@ -142,6 +143,7 @@ export function createActionsSection(context: SectionContext): HTMLElement {
     "div",
     "detail",
     createGatheringPanel(lan, onFailure),
+    createProgramPanel(lan, onFailure),
     createEventCodesTab(lan, onFailure),
   );
 }

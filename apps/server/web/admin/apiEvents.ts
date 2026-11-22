@@ -92,3 +92,26 @@ export async function loadCosmetics(): Promise<Cosmetic[]> {
   const catalog = await readPublic<{ cosmetics: Cosmetic[] }>("/catalog");
   return catalog.cosmetics;
 }
+
+/** One point of the program of a LAN. Times are Unix milliseconds. */
+export interface ProgramItem {
+  starts_at: number;
+  ends_at: number | null;
+  title: string;
+  detail: string | null;
+  kind: string;
+}
+
+/** Reads the program of a LAN. */
+export async function loadProgram(lanID: number): Promise<ProgramItem[]> {
+  const program = await sendRequest<{ items: ProgramItem[] }>("GET", `/lans/${lanID}/schedule`);
+  return program.items;
+}
+
+/** Replaces the whole program of a LAN and returns what the server stored, sorted by start. */
+export async function saveProgram(lanID: number, items: ProgramItem[]): Promise<ProgramItem[]> {
+  const program = await sendRequest<{ items: ProgramItem[] }>("PUT", `/lans/${lanID}/schedule`, {
+    items,
+  });
+  return program.items;
+}
