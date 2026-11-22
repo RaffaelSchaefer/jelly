@@ -6,6 +6,12 @@ Zeilen. Je Version eine Überschrift `## X.Y.Z` wie in `tauri.conf.json`, darunt
 `Neu:`, `Besser:` oder `Weg:`, je höchstens etwa 40 Zeichen, damit sie in eine Zeile der Karte
 passen. Ohne Abschnitt für die Version bricht das Release ab.
 
+## 0.3.1
+
+- Neu: Katzen-Set im Zauberladen
+- Neu: Sieben neue Jelly-Farben
+- Neu: Jelly-Farbe per Farbrad
+
 ## 0.3.0
 
 - Neu: Zauberladen mit Funkelbart und Münzen
