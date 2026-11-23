@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { boardPose, isWornOnHands } from "./held.ts";
+import { boardPose, handsOf, isWornOnHands } from "./held.ts";
 
 describe("boardPose", () => {
   it("rests between the hands", () => {
@@ -22,8 +22,13 @@ describe("boardPose", () => {
 });
 
 describe("isWornOnHands", () => {
-  it("puts paws on each hand and plushies between them", () => {
+  it("puts paws on each hand, the shield on the left and plushies between them", () => {
     expect(isWornOnHands("cat-paws")).toBe(true);
+    expect(isWornOnHands("kite-shield")).toBe(true);
     expect(isWornOnHands("goose")).toBe(false);
+    expect(handsOf("cat-paws")).toEqual([0, 1]);
+    expect(handsOf("kite-shield")).toEqual([0]);
+    expect(handsOf("goose")).toEqual([]);
+    expect(handsOf("constructor")).toEqual([]);
   });
 });

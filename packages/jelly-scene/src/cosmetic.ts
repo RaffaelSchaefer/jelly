@@ -21,11 +21,13 @@ import {
   SrcAlphaFactor,
   Vector4,
   type MeshStandardMaterial,
+  type Vector3,
   type WebGLRenderer,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
+import { waveUniforms, type CosmeticPulse, type CosmeticWave } from "./cosmeticPulse.ts";
 import bandana from "./cosmetics/bandana.glb?url&inline";
 import batWings from "./cosmetics/bat-wings.glb?url&inline";
 import beanie from "./cosmetics/beanie.glb?url&inline";
@@ -44,10 +46,13 @@ import headsetNeutral from "./cosmetics/headset-neutral.glb?url&inline";
 import headset from "./cosmetics/headset.glb?url&inline";
 import hood from "./cosmetics/hood.glb?url&inline";
 import kaminaGlasses from "./cosmetics/kamina-glasses.glb?url&inline";
+import kiteShield from "./cosmetics/kite-shield.glb?url&inline";
 import kitten from "./cosmetics/kitten.glb?url&inline";
 import knitScarf from "./cosmetics/knit-scarf.glb?url&inline";
 import longSchnoerbi from "./cosmetics/long-schnoerbi.glb?url&inline";
 import miniBackpack from "./cosmetics/mini-backpack.glb?url&inline";
+import nasalHelmet from "./cosmetics/nasal-helmet.glb?url&inline";
+import octopus from "./cosmetics/octopus.glb?url&inline";
 import ogreEars from "./cosmetics/ogre-ears.glb?url&inline";
 import partyHat from "./cosmetics/party-hat.glb?url&inline";
 import piercings from "./cosmetics/piercings.glb?url&inline";
@@ -87,10 +92,13 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   "headset-neutral": headsetNeutral,
   hood,
   "kamina-glasses": kaminaGlasses,
+  "kite-shield": kiteShield,
   kitten,
   "knit-scarf": knitScarf,
   "long-schnoerbi": longSchnoerbi,
   "mini-backpack": miniBackpack,
+  "nasal-helmet": nasalHelmet,
+  octopus,
   "ogre-ears": ogreEars,
   "party-hat": partyHat,
   piercings,
@@ -108,12 +116,18 @@ export const COSMETIC_OUTLINE = 0.035;
  * Abweichende Looks je Schlüssel. Piercings und Schnurrhaare sind kaum dicker als die Outline, mit
  * ihr läge um jedes Teil ein dunkler Fleck wie ein Schatten. Katzenohren und -schwanz liegen hinter
  * dem Jelly: Die Ohren wachsen so hinter dem Kopf hervor, der Schwanz steht nicht vor den Händen.
+ * Der Oktopus sitzt schräg oben am Kopf und schwillt um seinen Sitz an, so bleibt er dort. Seine
+ * Arme wedeln ab dem Rand seines Kopfes, dessen Mitte und Radius aus `build_octopus.py` stammen.
  */
 const COSMETIC_LOOKS: Readonly<Record<string, CosmeticLook>> = {
   "cat-ears": { behind: true },
   "cyber-cat-ears": { behind: true },
   "cat-tail": { behind: true },
   "cat-whiskers": { outline: 0.014 },
+  octopus: {
+    pulse: { at: [0.36, 1.17, 0.25], amount: 0.06, rate: 1.1 },
+    wave: { at: [0.45, 1.31, 0.36], from: 0.215, span: 0.25, amount: 0.04, rate: 0.7 },
+  },
   piercings: { outline: 0.014 },
 };
 
@@ -169,6 +183,10 @@ export interface CosmeticLook {
    * stehen.
    */
   behind?: boolean;
+  /** Ob und wie es pulsiert. Das Anschwellen übernimmt `pulseCosmetics` je Bild. */
+  pulse?: CosmeticPulse;
+  /** Ob und wie seine Arme wedeln. Den Takt gibt ebenfalls `pulseCosmetics`. */
+  wave?: CosmeticWave;
 }
 
 /**
@@ -242,12 +260,13 @@ function fluffOf(material: MeshStandardMaterial) {
 }
 
 /**
- * Wie ein Teil die Farbe des Trägers annimmt, 0 bis 2: die Eigenschaft `tint` des Materials aus
+ * Wie ein Teil die Farbe des Trägers annimmt, -2 bis 2: die Eigenschaft `tint` des Materials aus
  * Blender. 0 heißt eigene Farbe, 1 genau die gewählte, darunter dunkler, darüber zu Weiß hin.
+ * Negativ gilt dasselbe für ihre Gegenfarbe, wie bei der Iris des Oktopus.
  */
 function tintOf(material: MeshStandardMaterial) {
   const tint: unknown = material.userData.tint;
-  return typeof tint === "number" ? Math.min(2, Math.max(0, tint)) : 0;
+  return typeof tint === "number" ? Math.min(2, Math.max(-2, tint)) : 0;
 }
 
 /**
@@ -419,7 +438,7 @@ function createOutline(
   model: BufferGeometry,
   ink: string,
   width: number,
-  uDepthBias: { value: number },
+  shared: Record<string, { value: unknown }>,
 ) {
   return new Mesh(
     model,
@@ -429,7 +448,7 @@ function createOutline(
       uniforms: {
         uWidth: { value: width },
         uInk: { value: new Color(ink) },
-        uDepthBias,
+        ...shared,
       },
       vertexShader: outlineVertexShader,
       fragmentShader: outlineFragmentShader,
@@ -442,10 +461,16 @@ function createOutline(
  * Kristallkugel. Sie löscht vorher die Tiefe wie die Outline jedes Cosmetics als Sticker.
  */
 export function createStickerOutline(model: BufferGeometry, ink: string, width: number, layer = 0) {
-  const outline = createOutline(model, ink, width, { value: 0 });
+  const outline = createOutline(model, ink, width, { uDepthBias: { value: 0 }, ...waveUniforms() });
   outline.renderOrder = stickerOrder(layer).outline;
   outline.onBeforeRender = clearDepth;
   return outline;
+}
+
+/** Merkt sich am Cosmetic, wie es pulsiert und wedelt, für `pulseCosmetics`. */
+function rememberMotion(cosmetic: Object3D, look: CosmeticLook, move: Vector3) {
+  if (look.pulse) cosmetic.userData.pulse = look.pulse;
+  if (look.wave) cosmetic.userData.wave = { ...look.wave, move };
 }
 
 /**
@@ -467,12 +492,14 @@ export function createCosmetic(
   const layered = glass ? glassOrder(look.layer) : stickerOrder(look.layer);
   const order = behind ? BEHIND_ORDER : layered;
   const uDepthBias = { value: mode === "depth" ? DEPTH_BIAS : 0 };
-  const outline = createOutline(model, ink, look.outline ?? COSMETIC_OUTLINE, uDepthBias);
+  const wave = waveUniforms(look.wave);
+  const shared = { uDepthBias, ...wave };
+  const outline = createOutline(model, ink, look.outline ?? COSMETIC_OUTLINE, shared);
   outline.renderOrder = order.outline;
   const fill = new Mesh(
     model,
     new ShaderMaterial({
-      uniforms: { uDepthBias, uTint: { value: tintUniform(look.tint) } },
+      uniforms: { ...shared, uTint: { value: tintUniform(look.tint) } },
       vertexShader,
       fragmentShader,
       ...(glass ? GLASS_BLENDING : {}),
@@ -485,6 +512,7 @@ export function createCosmetic(
   if (mode === "sticker" && !behind) (glass ? fill : outline).onBeforeRender = clearDepth;
   const cosmetic = new Object3D();
   cosmetic.add(outline, fill);
+  rememberMotion(cosmetic, look, wave.uWaveMove.value);
   return cosmetic;
 }
 

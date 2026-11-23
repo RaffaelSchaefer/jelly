@@ -18,8 +18,8 @@ This writes `blender/cosmetics.blend` with:
 - **Cosmetics**: one collection per cosmetic from `src/pet.ts` (`headset`, `headset-neutral`, `beanie`, `party-hat`,
   `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`, `goose`, `bandana`,
   `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings`, `bat-wings`, `chicken`, `piercings`, `ogre-ears`,
-  `kamina-glasses`, `cat-ears`, `cyber-cat-ears`, `cat-whiskers`, `kitten`, `yarn-ball`, `cat-paws`, `cat-tail`). The
-  collection name is the id.
+  `kamina-glasses`, `cat-ears`, `cyber-cat-ears`, `cat-whiskers`, `kitten`, `yarn-ball`, `cat-paws`, `cat-tail`,
+  `nasal-helmet`, `kite-shield`, `octopus`). The collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -28,7 +28,9 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
 
 1. Put your meshes into the cosmetic's collection, positioned on the reference pet as they should sit.
    Model in world space: the export keeps positions as they are, nothing is re-anchored.
-2. Stay inside **Sichtbereich**. Anything above its top edge ends up behind the speech bubble.
+2. Stay inside **Sichtbereich**. Anything above its top edge ends up behind the speech bubble. A
+   cosmetic with `pulse` in `COSMETIC_LOOKS` (cosmetic.ts), like the octopus, swells by its `amount`
+   round its point while the pet moves: leave it that much room.
 3. One material per mesh. Only the **Base Color** of the Principled BSDF is used: the app shades every
    cosmetic like the pet (jelly gloss, light lower edge, outline in the pet's ink colour).
    Textures, roughness and transparency are ignored. A custom property `glow` (0–1) on the material
@@ -36,8 +38,9 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    A custom property `fluff` (0–1) makes it plush: no jelly gloss, fur grain and a light, fuzzy rim
    (the long Schnörbi's fur uses 1). A custom property `tint` makes it take the colour the wearer picks
    instead of its own: 1 is that colour, below 1 a darker shade (colour × tint), above 1 a lighter
-   one (towards white by tint − 1). Without it the material keeps its Base Color (the hood's green
-   uses 1, its hem 0.58). A custom property `glass` (0–1) makes it see-through from the front, more
+   one (towards white by tint − 1). A negative `tint` does the same with the colour opposite to the
+   picked one, half a turn round the colour wheel (the octopus's iris uses −1). Without it the
+   material keeps its Base Color (the hood's green uses 1, its hem 0.58). A custom property `glass` (0–1) makes it see-through from the front, more
    the higher it is, while its rim covers more (the Kamina glasses' lens uses 0.35). The app then
    draws the whole cosmetic last in its paint layer and its outline after the fill, so ink only
    shows outside: a part in front of glass must be an open sheet facing the front, without back or
@@ -53,9 +56,9 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    head's outline such a part stays behind z 0.2, where that ink lies, or it shows in front of it.
 6. Head and face cosmetics (slot `Kopf`, `Gesicht`) bob with the head. Cosmetics for the hands (slot
    `Hände`) sit between `hand_left` and `hand_right` of the reference pet, and `src/scene/HandHeld.tsx`
-   moves them with the hands. What the pet wears on its hands instead (the cat paws, `onHands` in
-   `src/pet/cosmetics.ts`) is one hand's part round the origin: the app draws it on each hand, so
-   it stays on while the pet waves. Body cosmetics (slot `Körper`) stay with the body while the head
+   moves them with the hands. What the pet wears on its hands instead (the cat paws on each, the
+   kite shield on the left one: `ON_HANDS` in `packages/jelly-scene/src/held.ts`) is one hand's part
+   round the origin: the app draws it on those hands, so it stays on while the pet waves. Body cosmetics (slot `Körper`) stay with the body while the head
    bobs above them: neckwear sits just below the seam, and parts behind the pet (wings, backpack,
    shell) exist only outside its silhouette, tucked under the body's edge, not the head's. The cat
    tail is drawn behind the pet instead (`behind`, see 5.) and needs no such cut: body and hands

@@ -1,18 +1,24 @@
 /**
- * Prüft, was einzelne Cosmetics anders zeichnen: Neon und Teile hinter dem Jelly.
+ * Prüft, was einzelne Cosmetics anders zeichnen: Neon, Teile hinter dem Jelly und Pulsieren.
  *
  * @module
  */
 
+import { Object3D, Vector3, type Mesh, type ShaderMaterial } from "three";
 import { describe, expect, it } from "vitest";
 
 import {
   COSMETIC_MODELS,
+  COSMETIC_OUTLINE,
   cosmeticLook,
   createCosmetic,
   disposeCosmetic,
   loadCosmetic,
 } from "./cosmetic.ts";
+import { pulseCosmetics } from "./cosmeticPulse.ts";
+
+/** Oberkante des Sichtbereichs, darüber liegt die Sprechblase (`apps/client/blender/README.md`). */
+const BUBBLE_Y = 1.6;
 
 /** Lädt ein Modell, das es geben muss. */
 async function loadModel(key: string) {
@@ -60,5 +66,62 @@ describe("hinter dem Jelly", () => {
     const order = (look: { behind?: boolean }) =>
       createCosmetic(model, "#16248a", "depth", look).children.map((mesh) => mesh.renderOrder);
     expect(order({ behind: true })).toEqual(order({}));
+  });
+});
+
+describe("Pulsieren", () => {
+  it("lässt nur den Oktopus pulsieren", () => {
+    const pulsing = Object.keys(COSMETIC_MODELS).filter((key) => cosmeticLook(key).pulse);
+    expect(pulsing).toEqual(["octopus"]);
+  });
+
+  it("schwillt um seinen Punkt an und steht bei reduzierter Bewegung still", async () => {
+    const look = cosmeticLook("octopus");
+    const pulse = look.pulse!;
+    const cosmetic = createCosmetic(await loadModel("octopus"), "#16248a", "sticker", look);
+    const root = new Object3D().add(cosmetic);
+    const peak = 0.5 / pulse.rate;
+    pulseCosmetics(root, peak, false);
+    expect(cosmetic.scale.x).toBeCloseTo(1 + pulse.amount);
+    const centre = new Vector3(...pulse.at);
+    const moved = centre.clone().multiplyScalar(cosmetic.scale.x).add(cosmetic.position);
+    expect(moved.distanceTo(centre)).toBeCloseTo(0);
+    pulseCosmetics(root, peak, true);
+    expect(cosmetic.scale.x).toBe(1);
+    expect(cosmetic.position.length()).toBe(0);
+    disposeCosmetic(cosmetic);
+  });
+
+  it("lässt seine Arme wedeln, bei reduzierter Bewegung nicht", async () => {
+    const look = cosmeticLook("octopus");
+    const cosmetic = createCosmetic(await loadModel("octopus"), "#16248a", "sticker", look);
+    const root = new Object3D().add(cosmetic);
+    const moves = cosmetic.children.map(
+      (mesh) => ((mesh as Mesh).material as ShaderMaterial).uniforms.uWaveMove?.value as Vector3,
+    );
+    // Füllung und Outline teilen sich das Uniform, sonst liefen sie auseinander.
+    expect(moves[0]).toBe(moves[1]);
+    pulseCosmetics(root, 1, false);
+    expect(moves[0]!.x).toBe(look.wave!.amount);
+    expect(moves[0]!.z).toBeCloseTo(2 * Math.PI * look.wave!.rate);
+    pulseCosmetics(root, 1, true);
+    expect(moves[0]!.x).toBe(0);
+    disposeCosmetic(cosmetic);
+  });
+
+  it("lässt ohne Angabe nichts wedeln", async () => {
+    const [outline] = createCosmetic(await loadModel("crown"), "#16248a", "sticker").children;
+    const move = ((outline as Mesh).material as ShaderMaterial).uniforms.uWaveMove
+      ?.value as Vector3;
+    expect(move.x).toBe(0);
+  });
+
+  it("bleibt auch angeschwollen unter der Sprechblase", async () => {
+    const pulse = cosmeticLook("octopus").pulse!;
+    const model = await loadModel("octopus");
+    model.computeBoundingBox();
+    const swell = 1 + pulse.amount;
+    const top = pulse.at[1] + (model.boundingBox!.max.y - pulse.at[1]) * swell;
+    expect(top + COSMETIC_OUTLINE * swell).toBeLessThan(BUBBLE_Y);
   });
 });

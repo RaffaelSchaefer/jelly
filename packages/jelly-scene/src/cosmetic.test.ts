@@ -144,6 +144,8 @@ const COLORABLE = new Set([
   "yarn-ball",
   "cat-paws",
   "cat-tail",
+  "kite-shield",
+  "octopus",
 ]);
 
 describe("Farbe des Trägers", () => {
@@ -151,9 +153,15 @@ describe("Farbe des Trägers", () => {
   it.each(Object.keys(COSMETIC_MODELS))("%s färbt nur, was der Server einfärbt", async (key) => {
     const tints = (await loadModel(key)).getAttribute("aTint");
     const tinted = Array.from({ length: tints.count }, (_, index) => tints.getX(index)).some(
-      (tint) => tint > 0,
+      (tint) => tint !== 0,
     );
     expect(tinted).toBe(COLORABLE.has(key));
+  });
+
+  it("gibt der Iris des Oktopus die Gegenfarbe, seinem Körper die gewählte", async () => {
+    const tints = (await loadModel("octopus")).getAttribute("aTint");
+    const values = new Set(Array.from({ length: tints.count }, (_, index) => tints.getX(index)));
+    expect([...values].sort()).toEqual([-1, 0, 1]);
   });
 
   it("gibt die Farbe linear an den Shader, ohne Farbe bleibt sie aus", async () => {
