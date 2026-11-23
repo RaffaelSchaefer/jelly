@@ -1,6 +1,7 @@
 /**
  * Where a jelly wears its cosmetics: head and face move with the head, a plushie follows both
- * hands, paws sit on each hand and the rest stays with the body. The same places as in the app.
+ * hands, paws sit on each hand, the shield on the left one, and the rest stays with the body. The
+ * same places as in the app.
  *
  * @module
  */
@@ -10,8 +11,8 @@ import {
   createCosmetic,
   disposeCosmetic,
   HAND,
+  handsOf,
   hasCosmeticModel,
-  isWornOnHands,
   type CosmeticLook,
   type Jelly,
 } from "@jelly/scene";
@@ -44,11 +45,12 @@ export function createWearer(jelly: Jelly): Wearer {
   return { jelly, held, heldModel, paws };
 }
 
-/** The holders that `key` in `slot` goes into. Paws need one model per hand. */
+/** The holders that `key` in `slot` goes into. Paws need one model per hand, the shield one. */
 function holdersFor(wearer: Wearer, slot: string, key: string): Object3D[] {
   if (slot === "head" || slot === "face") return [wearer.jelly.faceAnchor];
   if (slot !== "hands") return [wearer.jelly.root];
-  return isWornOnHands(key) ? wearer.paws : [wearer.heldModel];
+  const hands = handsOf(key);
+  return hands.length > 0 ? hands.flatMap((index) => wearer.paws[index] ?? []) : [wearer.heldModel];
 }
 
 /** Puts `model` into the holders of its slot and returns every copy. */

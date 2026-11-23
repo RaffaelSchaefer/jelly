@@ -14,6 +14,7 @@ import {
   disposeJelly,
   HEAD,
   loadCosmetic,
+  pulseCosmetics,
   type Jelly,
   type Motion,
 } from "@jelly/scene";
@@ -258,6 +259,7 @@ function updateJelly(shown: StageJelly, frame: JellyFrame): void {
     emote: findEmote(frame.effects, shown.player.id, frame.now),
   });
   followHands(shown.wearer);
+  pulseCosmetics(shown.jelly.root, frame.time + shown.timeOffset, frame.reducedMotion);
 }
 
 /** Puts every shadow under its jelly. A mesh that got too small is replaced by a larger one. */
