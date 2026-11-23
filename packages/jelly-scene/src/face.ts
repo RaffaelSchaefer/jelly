@@ -189,12 +189,16 @@ export function createFace(ink: string): Face {
  * ist absolut: Mit 0 und 0 sitzen sie wieder wie beim Bau. Größe und Spiegelung bleiben, wie die
  * Animation sie gesetzt hat. Die Werte werden auf {@link EYE_GAZE} begrenzt, so bleibt die
  * Vorderseite der Augen vor dem Kopf.
+ *
+ * @param cross - Wie weit beide Augen zur Mitte rücken, etwa beim Schielen zur Nase. Ebenfalls
+ *   begrenzt.
  */
-export function placeEyes(face: Pick<Face, "eyes">, dx: number, dy: number) {
+export function placeEyes(face: Pick<Face, "eyes">, dx: number, dy: number, cross = 0) {
   const x = Math.min(EYE_GAZE.x, Math.max(-EYE_GAZE.x, dx));
   const y = Math.min(EYE_GAZE.y, Math.max(-EYE_GAZE.y, dy));
+  const inward = Math.min(EYE_GAZE.x, Math.max(0, cross));
   face.eyes.forEach((eye, index) => {
     const side = SIDES[index] ?? 1;
-    placeOnHead(eye, { x: side * EYE.x + x, y: EYE.y + y, inset: EYE_INSET });
+    placeOnHead(eye, { x: side * (EYE.x - inward) + x, y: EYE.y + y, inset: EYE_INSET });
   });
 }
