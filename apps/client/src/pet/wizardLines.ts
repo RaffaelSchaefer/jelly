@@ -214,6 +214,33 @@ export const WIZARD_LINES = {
     "Noch einmal, und ich zaubere dir Socken an.",
     "Genug gestupst!",
   ],
+  "tease.guard": [
+    "Finger weg von meinem Hut!",
+    "Der Hut bleibt, wo er ist!",
+    "Lass los! Der ist maßgeschneidert!",
+  ],
+  "tease.snatched": [
+    "Mein Hut! Gib ihn sofort zurück!",
+    "He! Ohne Hut zieht es am Kopf!",
+    "Mein schöner Hut! Du Schlingel!",
+  ],
+  "tease.beard": [
+    "Autsch! Der ist angewachsen!",
+    "Au! Mein Bart ist kein Glockenseil!",
+    "Aua! Hundert Jahre Bartpflege!",
+    "Au! Lass meinen Bart in Ruhe!",
+  ],
+  "tease.fedUp": [
+    "Erst der Hut, dann der Bart. Hast du kein Herz?",
+    "Kein Hut, kein Bartfrieden. Ich bin gekränkt.",
+    "Jetzt bin ich aber gekränkt.",
+  ],
+  "tease.bald": ["Der Hut ist doch schon weg!", "Hier oben gibt es nichts mehr zu holen."],
+  "tease.back": [
+    "Simsalabim! Da ist er wieder.",
+    "Hokuspokus, Hut zurück!",
+    "So. Und der bleibt jetzt oben!",
+  ],
 } as const satisfies Record<string, readonly LineVariant[]>;
 
 /** Ein Anlass, zu dem er etwas sagt. */

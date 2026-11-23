@@ -41,6 +41,10 @@ export const GESTURE_SECONDS = {
   peek: 1.2,
   chuckle: 1.6,
   huff: 1.8,
+  guard: 1.6,
+  unhat: 1.4,
+  rehat: 2,
+  yank: 1.3,
   point: 1.6,
 } as const;
 
@@ -59,6 +63,7 @@ export const CLIP_MS = {
   mumble: 700,
   hum: 3400,
   oh: 200,
+  yelp: 450,
 };
 
 /** Einer seiner Laute ohne Worte. */
@@ -82,7 +87,9 @@ export type WizardMood =
   | "drowsy"
   | "asleep"
   | "startled"
-  | "sheepish";
+  | "sheepish"
+  | "indignant"
+  | "hurt";
 
 /** Ein Effekt, den Bühne oder Oberfläche zeigen. */
 export type WizardEffect =
@@ -90,6 +97,8 @@ export type WizardEffect =
   | "fizzle"
   | "orbGlint"
   | "hatSparkle"
+  | "hatPuff"
+  | "hatConjure"
   | "highlightItem"
   | "purseClink";
 
@@ -104,7 +113,9 @@ export type WizardSfx =
   | "pageTurn"
   | "hatTip"
   | "glint"
-  | "snort";
+  | "snort"
+  | "tug"
+  | "snap";
 
 /** Wie er etwas sagt. Die Sprechblase zeigt es mit `data-kind`. */
 export type SayStyle = "speech" | "thought" | "incantation" | "snore";
@@ -195,6 +206,8 @@ export interface WizardPose {
   /** Seit wann er schläft, auf der Uhr von `performance.now()`. Takt des Schnarchens. */
   asleepSince: number | null;
   speaking: boolean;
+  /** Ob sein Hut geklaut ist und seit wann das so ist, auf der Uhr von `performance.now()`. */
+  hat: { off: boolean; at: number };
 }
 
 /** Wach, ruhig, mit Blick nach vorn. */
@@ -204,6 +217,7 @@ export const RESTING_POSE: WizardPose = {
   gaze: "viewer",
   asleepSince: null,
   speaking: false,
+  hat: { off: false, at: -Infinity },
 };
 
 /** Was er über Laden und Kundschaft weiß. `null` heißt unbekannt. */
@@ -260,7 +274,7 @@ export interface ScriptKit {
 
 /** Ein Hinweis der Oberfläche oder vom Server an den Zauberer. */
 export type WizardNotice =
-  | { kind: "hover"; target: "item" | "seal" | "purse"; itemId?: string }
+  | { kind: "hover"; target: "item" | "seal" | "purse" | "wizard"; itemId?: string }
   | { kind: "unhover" }
   | { kind: "select"; item: ShopItem }
   | { kind: "hold"; item: ShopItem }
@@ -271,6 +285,7 @@ export type WizardNotice =
   | { kind: "blocked"; item?: ShopItem; itemId?: string }
   | { kind: "equipped"; item: ShopItem; worn: boolean }
   | { kind: "poke" }
+  | { kind: "tease"; target: "hat" | "beard" }
   | { kind: "server"; event: ServerEvent };
 
 /** Alles, worauf sein Gehirn reagiert. `input` ist eine Eingabe, `strong` ein Klick oder eine Taste. */
@@ -283,10 +298,14 @@ export type WizardEvent =
   | { kind: "hidden" }
   | { kind: "visible" };
 
-/** Ein Blick oder eine Stimmung ohne Skript, etwa zur Ware unter dem Zeiger. */
+/**
+ * Ein Blick oder eine Stimmung ohne Skript, etwa zur Ware unter dem Zeiger. `hatOff` nimmt ihm den
+ * Hut oder gibt ihn zurück: Das gilt sofort und überlebt jedes unterbrochene Skript.
+ */
 export interface WizardLook {
   gaze?: GazeTarget;
   mood?: WizardMood;
+  hatOff?: boolean;
 }
 
 /** Tempo je Sprechweise. */

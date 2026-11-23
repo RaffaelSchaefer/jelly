@@ -138,6 +138,8 @@ export const SHOP_SFX = [
   "hatTip",
   "glint",
   "snort",
+  "tug",
+  "snap",
 ] as const;
 
 /** Ein Geräusch des Zauberers. */

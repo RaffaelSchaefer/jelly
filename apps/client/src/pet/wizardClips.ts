@@ -1,7 +1,7 @@
 /**
- * Die Laute des Zauberers ohne Worte: Brummen, Kichern, Gähnen, Schnarchen, Murmeln, Summen und ein
- * erschrockenes „Oh“. Von Hand geschriebene Noten wie in `voiceClips.ts`, die Tonhöhen in Halbtönen
- * vor seiner tieferen Stimme (`WIZARD_PITCH`).
+ * Die Laute des Zauberers ohne Worte: Brummen, Kichern, Gähnen, Schnarchen, Murmeln, Summen, ein
+ * erschrockenes „Oh“ und ein Aufjaulen. Von Hand geschriebene Noten wie in `voiceClips.ts`, die
+ * Tonhöhen in Halbtönen vor seiner tieferen Stimme (`WIZARD_PITCH`).
  *
  * Das Schnarchen dauert genau einen Atemzug (`SNORE_PERIOD_SECONDS` in
  * `@jelly/scene/wizard-timing`): Einatmen von 0,15 bis 1,75 s, Ausatmen von 2,1 bis 3,7 s. Die
@@ -81,6 +81,11 @@ export const WIZARD_CLIP_NOTES: Readonly<Record<WizardClipKey, VoiceNote[]>> = {
   ]),
   // „Oh!“, erschrocken steigend.
   oh: clip([[0, 0.18, 2, 9, "o", 1, 12, "tick"]]),
+  // „Au-uu!“, ein Aufjaulen: hoch hinauf und bebend wieder herab.
+  yelp: clip([
+    [0, 0.14, 7, 14, "a", 1, 10, "tick"],
+    [0.14, 0.3, 14, 5, "u", 0.8, 26],
+  ]),
 };
 
 /** Die Noten eines Lauts. */

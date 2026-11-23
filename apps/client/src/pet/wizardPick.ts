@@ -372,7 +372,7 @@ export function itemSlots(ctx: WizardContext, item: ShopItem | null, id: string)
 }
 
 /** Worauf der Zeiger oder der Fokus zeigt. */
-export type HoverTarget = "item" | "seal" | "purse";
+export type HoverTarget = "item" | "seal" | "purse" | "wizard";
 
 /** Wo der Zeiger oder der Fokus verweilt, seit wann, und was davon schon kam. */
 export interface Attention {
@@ -385,13 +385,14 @@ export interface Attention {
 
 /**
  * Nach 250 ms schaut er hin, nach `dwellMs` sagt er etwas. `gazeAt` ist, wohin er schaut. Im Schlaf
- * weckt ihn ein Verweilen von `wakeMs`.
+ * weckt ihn ein Verweilen von `wakeMs`. Über seinem Hut oder Bart (`wizard`) schaut er nur wachsam
+ * auf und sagt nichts.
  */
 export const ATTENTION = {
   gazeMs: 250,
   wakeMs: 1500,
-  dwellMs: { item: 1600, seal: 1200, purse: 1200 },
-  gazeAt: { item: "ledger", seal: "seal", purse: "purse" },
+  dwellMs: { item: 1600, seal: 1200, purse: 1200, wizard: Infinity },
+  gazeAt: { item: "ledger", seal: "seal", purse: "purse", wizard: "viewer" },
 } as const;
 
 /** Wann das Verweilen wieder etwas auslöst. Im Schlaf weckt es ihn nach 1,5 s. */

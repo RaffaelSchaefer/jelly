@@ -1,6 +1,7 @@
 /**
  * Der Takt des Zauberladens als reine Rechnung: wann beim Kauf die Münzen fliegen, die Glocke
- * klingt, der Zauber losbricht und landet, und welcher Moment auf der Bühne gerade beginnt.
+ * klingt, der Zauber losbricht und landet, welcher Moment auf der Bühne gerade beginnt und wie
+ * lange das Nerven des Zauberers dauert.
  *
  * Alle Zeiten zählen in Millisekunden. Der Kauf zählt ab C: Der Server hat bestätigt und das Siegel
  * ist gestempelt. Licht, Funken, Klang, Börse, Zauberer und Kundschaft lesen dieselben Zahlen, so
@@ -92,6 +93,24 @@ export const TAKE_OFF = { end: 420 } as const;
 
 /** Wie lange das Siegel gehalten sein muss, bis der Zauber sich auflädt. */
 export const CHARGE = { lateHold: 250 } as const;
+
+/**
+ * Das Nerven des Zauberers. Der geklaute Hut fliegt in `snatch` davon. Beim Zurückzaubern kreisen
+ * die Funken `conjure` lang, dann erscheint der Hut. Der Bart dehnt sich `stretch` lang, dann
+ * schnalzt er zurück. `settle` nach einem Satz beruhigt sich sein Gesicht. Der Hut bleibt `hatBack`
+ * fort, nach der gekränkten Antwort nur noch `sulk`. Hält den Zauberer etwas auf, versucht er es
+ * alle `retry` wieder. In der Vorschau kommt der Hut mit `#shop-nerven` schon nach `previewBack`.
+ */
+export const TEASE = {
+  snatch: 500,
+  conjure: 700,
+  stretch: 400,
+  settle: 600,
+  hatBack: 25_000,
+  sulk: 3000,
+  retry: 1000,
+  previewBack: 9000,
+} as const;
 
 /** Ein Moment auf der Bühne: anprobieren, kaufen, anlegen oder ablegen. */
 export type StageMoment = "anprobe" | "kauf" | "anlegen" | "ablegen";

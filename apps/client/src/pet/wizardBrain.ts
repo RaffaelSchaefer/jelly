@@ -8,35 +8,35 @@
  * nicht mehr hält. Sonst wartet Rang 0 bis 2 in einem Platz für 4 s, Rang 3 entfällt. Der Zufall
  * kommt aus dem Startwert: Dieselben Ereignisse geben dieselben Skripte. Zeiten in Millisekunden.
  *
- * Was er tut, steht in `wizard.ts`, wie er döst und sich beschäftigt, in `wizardIdle.ts`.
+ * Was er tut, steht in `wizard.ts`, wie er döst und sich beschäftigt, in `wizardIdle.ts`, wie man
+ * ihn nervt, in `wizardTease.ts`. Sein Gedächtnis steht in `wizardMind.ts`.
  *
  * @module
  */
 
 import type { ShopItem } from "./shop";
 
+import { TEASE } from "./shopTimeline";
 import * as moment from "./wizard";
 import * as rest from "./wizardIdle";
+import { copyMind, type WizardMind } from "./wizardMind";
 import {
   ATTENTION,
   attentionAt,
   attentionDue,
   contextChange,
   createScriptKit,
-  EMPTY_HISTORY,
   itemSlots,
   leaveAttention,
   selectionPattern,
   slotsFor,
   wornAfter,
   type Attention,
-  type Selection,
 } from "./wizardPick";
 import {
   mood,
   scriptLength,
   unannounced,
-  UNKNOWN_CONTEXT,
   type Priority,
   type ScriptDraft,
   type ScriptKit,
@@ -45,9 +45,9 @@ import {
   type WizardLook,
   type WizardScript,
 } from "./wizardScripts";
+import { hatReturn, teaseReaction, type TeaseReaction, type TeaseTarget } from "./wizardTease";
 
-/** Was gerade läuft: das Skript mit Beginn und Ende. */
-type Running = WizardScript & { startedAt: number; endsAt: number };
+export { createWizardMind, type WizardMind } from "./wizardMind";
 
 /** Zeiten des Gehirns. */
 const BRAIN = {
@@ -68,44 +68,6 @@ const BRAIN = {
   sameClickMs: 400,
 } as const;
 
-/**
- * Ein frisches Gedächtnis.
- *
- * @param seed - Startwert des Zufalls, etwa `Date.now()`.
- * @param timing - Kürzeres Dösen für die Vorschau.
- */
-export function createWizardMind(seed: number, now: number, timing: Partial<rest.DozeTiming> = {}) {
-  return {
-    seed: seed >>> 0,
-    nextId: 1,
-    ctx: UNKNOWN_CONTEXT,
-    lines: EMPTY_HISTORY,
-    greeted: false,
-    running: null as Running | null,
-    /** Der eine Platz für ein Skript, das warten muss. */
-    queued: null as { draft: ScriptDraft; until: number } | null,
-    rest: rest.freshRest(now, timing),
-    hover: null as Attention | null,
-    /** Blicke, die noch kommen, etwa zurück nach vorn. */
-    looks: [] as { at: number; look: WizardLook }[],
-    selections: [] as Selection[],
-    /** Der Satz zur letzten Wahl nach schnellem Blättern. */
-    pending: null as { item: ShopItem; at: number } | null,
-    discussed: [] as string[],
-    /** Was je Fenster nur einmal kommt. */
-    once: [] as string[],
-    compareAt: -Infinity,
-    quipAt: -Infinity,
-    haggles: 0,
-    commitAt: -Infinity,
-    ladder: moment.FRESH_LADDER,
-    merge: null as moment.ServerMerge | null,
-  };
-}
-
-/** Alles, was er weiß und sich merkt. Nur über {@link wizardStep} ändern. */
-export type WizardMind = ReturnType<typeof createWizardMind>;
-
 /** Was ein Schritt ergibt. `interrupt`: Stimme verstummt, Geste klingt aus. */
 export interface WizardStep {
   mind: WizardMind;
@@ -118,11 +80,6 @@ export interface WizardStep {
 
 /** Was ein Ereignis auslöst. */
 type Act = { script?: WizardScript; interrupt?: boolean; look?: WizardLook } | null;
-
-/** Eine Kopie, die sich in einem Schritt ändern lässt, ohne das Original zu berühren. */
-function copyMind(m: WizardMind): WizardMind {
-  return { ...m, once: [...m.once], rest: rest.copyRest(m.rest), hover: m.hover && { ...m.hover } };
-}
 
 /** Das laufende Skript, `null` wenn keins mehr läuft. */
 function activeRun(m: WizardMind, now: number) {
@@ -257,12 +214,37 @@ function onSelect(m: WizardMind, item: ShopItem, now: number, kit: ScriptKit): A
   return act(m, now, moment.browseScript());
 }
 
-/** Gestupst: die Leiter hinauf. Im Schlaf schreckt er nur hoch. */
-function onPoke(m: WizardMind, now: number, kit: ScriptKit): Act {
-  if (m.rest.activity === "asleep") return wake(m, now, kit);
-  // Der Druck, der ihn eben weckte, gehört zu diesem Klick: Er war der Stupser.
+/** Ob der Druck, der ihn eben weckte, zu diesem Klick gehört: Dann war er schon die Antwort. */
+function wokeByClick(m: WizardMind, now: number) {
   const run = activeRun(m, now);
-  if (run?.topic === "wake" && now - run.startedAt < BRAIN.sameClickMs) return null;
+  return run?.topic === "wake" && now - run.startedAt < BRAIN.sameClickMs;
+}
+
+/**
+ * Spielt, was das Nerven auslöst, und merkt es sich. Hält ein Skript sein Wort, etwa beim Kauf,
+ * zählt nichts davon und nichts wartet: `false`.
+ */
+function tease(m: WizardMind, reaction: TeaseReaction, now: number): Act | false {
+  const admitted = admits(m, reaction.draft, now);
+  if (!admitted) return false;
+  const off = reaction.tease.hatOff;
+  const look = off === m.tease.hatOff ? undefined : { hatOff: off };
+  m.tease = reaction.tease;
+  return { ...start(m, reaction.draft, now, admitted === "interrupt"), look };
+}
+
+/** Am Hut gezerrt oder am Bart gezogen. Im Schlaf schreckt er nur hoch. */
+function onTease(m: WizardMind, target: TeaseTarget, now: number, kit: ScriptKit): Act {
+  if (m.rest.activity === "asleep") return wake(m, now, kit);
+  if (wokeByClick(m, now)) return null;
+  return tease(m, teaseReaction(kit, m.tease, target, now), now) || lift(m, now);
+}
+
+/** Gestupst: die Leiter hinauf. Im Schlaf schreckt er nur hoch, ohne Hut schnaubt er nur. */
+function onPoke(m: WizardMind, now: number, kit: ScriptKit): Act {
+  if (m.tease.hatOff) return onTease(m, "hat", now, kit);
+  if (m.rest.activity === "asleep") return wake(m, now, kit);
+  if (wokeByClick(m, now)) return null;
   const reaction = moment.pokeReaction(kit, m.ladder, now);
   m.ladder = reaction.ladder;
   return act(m, now, reaction.draft);
@@ -362,6 +344,13 @@ const DUE: ((m: WizardMind, now: number, kit: ScriptKit) => Act)[] = [
     const waiting = take(m, "pending", now);
     return waiting && offer(m, unannounced(selectFor(m, waiting.item, now, kit)), now);
   },
+  (m, now, kit) => {
+    if (now < m.tease.backAt) return null;
+    // Hält ihn etwas auf oder sieht es keiner, zaubert er den Hut gleich danach zurück.
+    const back = m.rest.hiddenSince === null && tease(m, hatReturn(kit, m.tease), now);
+    if (!back) m.tease = { ...m.tease, backAt: now + TEASE.retry };
+    return back || null;
+  },
   attend,
   (m, now) => {
     const due = m.looks.filter((entry) => entry.at <= now);
@@ -377,6 +366,7 @@ function nextTickAt(m: WizardMind) {
     queueAt(m),
     m.merge?.at ?? Infinity,
     m.pending?.at ?? Infinity,
+    m.tease.backAt,
     attentionAt(m.hover, m.rest.activity === "asleep"),
     ...m.looks.map((entry) => entry.at),
     rest.restDeadline(m.rest),
@@ -443,6 +433,7 @@ const HANDLERS: { [K in WizardEvent["kind"]]: Handler<K> } = {
     return act(m, now, moment.equippedScript(kit, item, worn));
   },
   poke: (m, _, now, kit) => onPoke(m, now, kit),
+  tease: (m, { target }, now, kit) => onTease(m, target, now, kit),
   server: (m, { event }, now, kit) => {
     const reaction = moment.serverReaction(kit, event, m.merge, now);
     m.merge = reaction.merge;

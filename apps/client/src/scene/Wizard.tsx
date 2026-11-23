@@ -24,10 +24,11 @@ import Character from "./Character";
 import { WizardHead, WizardOrb, WizardRobe, WizardWand, type WizardHolders } from "./WizardParts";
 import WizardRig from "./WizardRig";
 
-/** Neue, leere Halter für Hut, Kugel, Brauen und Schnurrbart. */
+/** Neue, leere Halter für Hut, Bart, Kugel, Brauen und Schnurrbart. */
 function createHolders(): WizardHolders {
   return {
     hat: createRef(),
+    beard: createRef(),
     orb: createRef(),
     ball: createRef(),
     crystal: createRef(),

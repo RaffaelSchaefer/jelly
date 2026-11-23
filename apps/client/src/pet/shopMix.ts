@@ -130,6 +130,8 @@ export const CUE_TARGETS = {
   glint: -26,
   hatTip: -30,
   snort: -28,
+  tug: -28,
+  snap: -24,
   clink: -24,
   till: -16,
   spell: -14,

@@ -1,8 +1,8 @@
 /**
  * Bewegt den Zauberer Bild für Bild nach seiner Haltung (`WizardPose`): Geste, Stimmung und schwere
- * Lider aus `@jelly/scene/wizard`, dazu sein Blick, der gelüpfte Hut, die steigende und glühende
- * Kugel, buschige Brauen, die den gezeichneten folgen, und ein Schnurrbart, der bei offenen Vokalen
- * zuckt. Die Rechnung dazu steht in `pet/wizardFaceRig.ts`.
+ * Lider aus `@jelly/scene/wizard`, dazu sein Blick, der gelüpfte oder geklaute Hut, der gedehnte
+ * Bart, die steigende und glühende Kugel, buschige Brauen, die den gezeichneten folgen, und ein
+ * Schnurrbart, der bei offenen Vokalen zuckt. Die Rechnung dazu steht in `pet/wizardFaceRig.ts`.
  *
  * Läuft mit Priorität 0, also nach dem Jelly (−1), dessen Grundanimation Kopf, Augen und Brauen
  * jedes Bild neu setzt.
@@ -16,6 +16,8 @@ import type { Object3D } from "three";
 import {
   animateCrystalBall,
   animateWizard,
+  BEARD_STRETCH,
+  HAT_FLIGHT,
   HAT_PIVOT,
   placeEyes,
   WIZARD_PARTS,
@@ -82,12 +84,23 @@ function useFlare(pulse: number, reducedMotion: boolean) {
   };
 }
 
-/** Der Hut an der Krempe: gelüpft und gekippt, in seinen Grenzen. */
-function placeHat(hat: Object3D | null, { hatLift, hatTilt }: WizardExtras) {
+/**
+ * Der Hut an der Krempe: gelüpft und gekippt, in seinen Grenzen. Geklaut fliegt er kippend hinauf
+ * aus dem Bild und ist dann nicht mehr zu sehen.
+ */
+function placeHat(hat: Object3D | null, { hatLift, hatTilt, hatAway }: WizardExtras) {
   if (!hat) return;
-  const lift = MathUtils.clamp(hatLift, 0, HAT_LIMIT.lift);
-  hat.position.set(HAT_PIVOT[0], HAT_PIVOT[1] + lift, HAT_PIVOT[2]);
-  hat.rotation.z = MathUtils.clamp(hatTilt, -HAT_LIMIT.tilt, HAT_LIMIT.tilt);
+  const lift = MathUtils.clamp(hatLift, 0, HAT_LIMIT.lift) + HAT_FLIGHT.rise * hatAway;
+  hat.position.set(HAT_PIVOT[0] + HAT_FLIGHT.drift * hatAway, HAT_PIVOT[1] + lift, HAT_PIVOT[2]);
+  const tilt = MathUtils.clamp(hatTilt, -HAT_LIMIT.tilt, HAT_LIMIT.tilt);
+  hat.rotation.z = tilt + HAT_FLIGHT.tilt * hatAway;
+  hat.scale.setScalar(MathUtils.lerp(1, HAT_FLIGHT.scale, hatAway));
+  hat.visible = hatAway < 1;
+}
+
+/** Der Bart am Kinn: Gezogen wird er länger und schmaler, beim Zurückschnalzen kurz gestaucht. */
+function placeBeard(beard: Object3D | null, { beardPull }: WizardExtras) {
+  beard?.scale.set(1 - BEARD_STRETCH.thin * beardPull, 1 + BEARD_STRETCH.long * beardPull, 1);
 }
 
 /**
@@ -185,6 +198,7 @@ export default function WizardRig({
     placeEyes(jelly.face, gaze.current.dx, gaze.current.dy);
     jelly.head.rotation.z += gaze.current.roll;
     placeHat(holders.hat.current, extras);
+    placeBeard(holders.beard.current, extras);
     const lift = placeOrb(holders, extras, reducedMotion ? 0 : now, flare(rawDelta));
     if (orbLift) {
       // Licht und Schein lesen die Lage vor diesem Bild. Steht die Uhr, holen sie sie im nächsten nach.

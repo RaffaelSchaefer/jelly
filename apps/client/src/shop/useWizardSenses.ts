@@ -1,9 +1,9 @@
 /**
  * Die Sinne des Zauberers: Sie machen aus dem Fenster Ereignisse für sein Gehirn. Was der Zeiger
- * oder der Fokus berührt (`[data-item-id]`, `[data-gaze]`), Stupser (`[data-wizard-poke]`), das
- * gesperrte Siegel (`#shop-seal[aria-disabled=true]`), ob jemand da ist (Zeiger, Klick, Taste,
- * Mausrad), ob das Fenster zu sehen ist, Ereignisse vom Server und was er über Laden, Kundschaft
- * und Uhrzeit weiß.
+ * oder der Fokus berührt (`[data-item-id]`, `[data-gaze]`), Stupser (`[data-wizard-poke]`), Griffe
+ * an Hut und Bart (`[data-wizard-tease]`), das gesperrte Siegel (`#shop-seal[aria-disabled=true]`),
+ * ob jemand da ist (Zeiger, Klick, Taste, Mausrad), ob das Fenster zu sehen ist, Ereignisse vom
+ * Server und was er über Laden, Kundschaft und Uhrzeit weiß.
  *
  * Alle Hörer hängen einmal am Dokument und suchen ihr Ziel selbst, so braucht die Oberfläche keine
  * eigenen Rückrufe. In der Vorschau spielt `#shop-nacht` die Nacht.
@@ -62,12 +62,18 @@ function hoverOf(element: Element | null): WizardEvent {
   const itemId = element?.getAttribute("data-item-id") ?? undefined;
   if (gaze === "seal") return { kind: "hover", target: "seal", itemId };
   if (gaze === "purse") return { kind: "hover", target: "purse" };
+  if (gaze === "wizard") return { kind: "hover", target: "wizard" };
   return itemId ? { kind: "hover", target: "item", itemId } : { kind: "unhover" };
 }
 
-/** Was ein Klick bedeutet: ein Stupser, ein Griff nach dem gesperrten Siegel oder nichts. */
+/**
+ * Was ein Klick bedeutet: ein Griff an Hut oder Bart, ein Stupser, ein Griff nach dem gesperrten
+ * Siegel oder nichts.
+ */
 function clickOf(target: EventTarget | null): WizardEvent | null {
   if (!(target instanceof Element)) return null;
+  const tease = target.closest("[data-wizard-tease]")?.getAttribute("data-wizard-tease");
+  if (tease === "hat" || tease === "beard") return { kind: "tease", target: tease };
   if (target.closest("[data-wizard-poke]")) return { kind: "poke" };
   const seal = target.closest("#shop-seal[aria-disabled='true']");
   if (!seal) return null;
