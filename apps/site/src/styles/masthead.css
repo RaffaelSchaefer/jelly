@@ -1,0 +1,91 @@
+/* Kopf der Seite: Marke links, drei Textlinks und die Sprache rechts. Kein Balken, er scrollt mit. */
+.masthead-inner {
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 3vw, 36px);
+  height: 80px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.brand img {
+  border-radius: 7px;
+}
+
+.brand:hover {
+  color: var(--text);
+}
+
+.nav-links {
+  display: flex;
+  gap: clamp(20px, 3vw, 36px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-links a,
+.footer-links a {
+  color: var(--text-muted);
+  font-size: 15px;
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.nav-links a {
+  display: block;
+  padding: 10px 0;
+}
+
+.nav-links a:hover,
+.footer-links a:hover {
+  color: var(--text);
+}
+
+/* Sprachschalter: beide Kürzel nebeneinander, das aktuelle hell. */
+.lang {
+  display: inline-flex;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.lang span + span::before {
+  content: "/";
+  margin: 0 7px;
+  color: var(--text-soft);
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.lang [data-current] {
+  color: var(--text);
+}
+
+.lang:hover span:not([data-current]) {
+  color: var(--accent);
+}
+
+@media (max-width: 620px) {
+  .masthead-inner {
+    height: 64px;
+  }
+
+  .masthead nav {
+    display: none;
+  }
+}

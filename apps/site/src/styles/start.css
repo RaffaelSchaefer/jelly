@@ -1,0 +1,185 @@
+/* „Loslegen“: System wählen, dann drei Schritte als Zeilen: Laden, Öffnen, Schlüpfen. */
+.start-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px 48px;
+}
+
+.tab-list {
+  display: flex;
+  gap: clamp(20px, 3vw, 32px);
+}
+
+.tab-list [role="tab"] {
+  padding: 8px 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-soft);
+  font-size: 17px;
+  font-weight: 600;
+  transition: color 140ms ease;
+}
+
+.tab-list [role="tab"]:hover {
+  color: var(--text);
+}
+
+.tab-list [role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+.steps {
+  margin: clamp(24px, 3vw, 36px) 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps > li {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  column-gap: clamp(20px, 3vw, 40px);
+  padding: clamp(28px, 4vw, 44px) 0;
+  border-top: 1px solid var(--line-soft);
+  counter-increment: step;
+}
+
+.steps > li:last-child {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.steps h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  font-size: clamp(22px, 2.5vw, 30px);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+
+.steps h3::before {
+  content: counter(step);
+  min-width: 1ch;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.step-body {
+  max-width: 38em;
+  color: var(--text-muted);
+}
+
+.step-body strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+/* Der große Knopf: Pfeil links, daneben Titel und Datei. */
+.button-download {
+  flex-direction: row;
+  gap: 14px;
+  padding: 12px 26px 12px 20px;
+  text-align: left;
+}
+
+.button-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.button-title {
+  font-size: 17px;
+}
+
+.download-alt {
+  max-width: 24em;
+  margin-top: 24px;
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+.download-alt[hidden] {
+  display: none;
+}
+
+.download-others {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+}
+
+.download-others li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.download-others li:last-child {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.download-size {
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.download-hint {
+  margin-top: 12px;
+}
+
+.linux-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 10px 24px;
+  margin: 18px 0 0;
+  font-size: 15px;
+}
+
+.linux-list dt {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.linux-list dd {
+  margin: 0;
+}
+
+.start-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin-top: 22px;
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+@media (max-width: 760px) {
+  .steps > li {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 16px;
+  }
+
+  .linux-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .linux-list dd {
+    margin-bottom: 10px;
+  }
+}

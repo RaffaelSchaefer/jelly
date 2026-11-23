@@ -1,0 +1,176 @@
+/* Der Einstieg: Text links, das Jelly rechts. Das Plakat steht sofort, die Canvas blendet darüber. */
+.hero {
+  position: relative;
+  padding: clamp(28px, 5vw, 72px) 0 clamp(48px, 8vw, 104px);
+  overflow: hidden;
+}
+
+/* Das Raster aus der Browser-Vorschau der App, zum Rand hin ausgeblendet. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--accent) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 70% at 60% 40%, #000 30%, transparent 75%);
+}
+
+.hero-inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 64px);
+}
+
+.hero h1 {
+  font-size: clamp(40px, 6.4vw, 76px);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.lead {
+  max-width: 34em;
+  margin-top: 20px;
+  color: var(--text-muted);
+  font-size: clamp(17px, 1.6vw, 20px);
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.hero-note {
+  margin-top: 24px;
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+.hero-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.hero-jelly {
+  position: relative;
+  width: min(440px, 100%);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--jelly-glow) 14%, transparent), transparent 62%);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hero-poster,
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-poster {
+  inset: 22%;
+  width: 56%;
+  height: 56%;
+  object-fit: contain;
+  transition: opacity 500ms ease;
+  animation: poster-float 4.5s ease-in-out infinite alternate;
+}
+
+.hero-canvas {
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+
+.hero-jelly[data-ready="true"] .hero-canvas {
+  opacity: 1;
+}
+
+.hero-jelly[data-ready="true"] .hero-poster {
+  opacity: 0;
+}
+
+.hero-shadow {
+  position: absolute;
+  left: 32%;
+  right: 32%;
+  bottom: 18%;
+  height: 5%;
+  border-radius: 50%;
+  background: #050b12aa;
+  filter: blur(10px);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.swatches[hidden] {
+  display: none;
+}
+
+.swatch-label {
+  width: 100%;
+  color: var(--text-soft);
+  font-size: 14px;
+  text-align: center;
+}
+
+.swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid #ffffff26;
+  border-radius: 50%;
+  background: var(--swatch);
+  transition: transform 140ms ease, border-color 140ms ease;
+}
+
+.swatch:hover {
+  transform: scale(1.1);
+}
+
+.swatch[aria-pressed="true"] {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+@keyframes poster-float {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-8px);
+  }
+}
+
+@media (max-width: 860px) {
+  .hero-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-visual {
+    order: -1;
+  }
+
+  .hero-jelly {
+    width: min(300px, 80vw);
+  }
+}

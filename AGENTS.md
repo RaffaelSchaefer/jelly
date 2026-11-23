@@ -6,8 +6,9 @@ Menschen: [apps/client/README.md](apps/client/README.md).
 ## Projekt
 
 Jelly ist ein Desktop-Begleiter (Tauri 2) für die LAN am Umwelt-Campus Birkenfeld. pnpm-/Turborepo-
-Monorepo mit zwei Apps: `apps/client` mit Rust-Backend (`src-tauri/`) und React-19-/TypeScript-7-
-Oberfläche mit React Three Fiber (`src/`), dazu `apps/server` in Go. Das 3D-Jelly steht in
+Monorepo mit drei Apps: `apps/client` mit Rust-Backend (`src-tauri/`) und React-19-/TypeScript-7-
+Oberfläche mit React Three Fiber (`src/`), `apps/server` in Go und `apps/site`, die statische Website
+mit Downloads auf GitHub Pages. Das 3D-Jelly steht in
 `packages/jelly-scene` (`@jelly/scene`), App und Bühne des Servers zeigen damit dasselbe Jelly. Die
 3D-Bühne steht in `packages/jelly-stage` (`@jelly/stage`), Server-Seite und Karte der App zeigen
 damit dieselbe Halle. Der Server entscheidet über XP, Level, Cosmetics und Erfolge. In der App spricht
@@ -17,8 +18,9 @@ nur an. Regeln, Aufbau und Vertrag des Servers stehen in
 
 ## Befehle
 
-`pnpm install` im Root. Für den Server in `apps/server` und für beide Pakete in `packages/`:
-`pnpm test`, `pnpm lint`, `pnpm run check-types`, `pnpm format` (Server zusätzlich `pnpm build`).
+`pnpm install` im Root. Für den Server in `apps/server`, die Website in `apps/site` und für beide
+Pakete in `packages/`: `pnpm test`, `pnpm lint`, `pnpm run check-types`, `pnpm format` (Server und
+Website zusätzlich `pnpm build`).
 Alles andere in `apps/client`:
 
 ```sh
@@ -153,6 +155,16 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `scripts/updater-manifest.mjs` (schreibt `latest.json` im Release-Lauf). Ablauf und Schlüssel: README des Clients.
   `arch/PKGBUILD` baut im selben Lauf das Paket für Arch Linux (`.pkg.tar.zst`), es steht nicht in `latest.json` und
   aktualisiert sich nicht selbst.
+- `apps/site`: die Website unter `raffaelschaefer.github.io/jelly/` (Deutsch, umschaltbar auf Englisch), ohne React.
+  `pnpm build` holt das neueste Release nach `src/generated/release.json` (mit `GH_TOKEN`, ohne Netz ein Verweis
+  auf die Release-Seite) und baut die Seite nach `dist/`. Oben läuft das Jelly aus `@jelly/scene` (`src/hero/`), die
+  gewählte Farbe färbt den Akzent der Seite. Im Fuß schaut dasselbe Jelly als großer, angeschnittener Kopf zum
+  Zeiger herauf (`FOOTER_VIEW` in `src/hero/views.ts`), eine zweite Szene, die erst kurz vor dem Fuß startet. Die drei Bilder aus der App (`src/assets/shot-*.webp`) stammen aus der
+  Browser-Vorschau des Clients, ihre Marken stehen als `--x` und `--y` in `index.html`: Nach einer neuen Aufnahme
+  die Marken nachziehen. „Loslegen“ zeigt Download und ersten Start für das gewählte System (`src/tabs.ts`,
+  `src/downloads/`). Die Seite nennt keine bestimmte LAN. Veröffentlicht wird per `.github/workflows/pages.yml` bei
+  Änderungen auf `main` und nach jedem Release, Pull Requests prüfen und bauen sie dort nur. Einmalig im Repository:
+  Settings › Pages › Source auf „GitHub Actions“ stellen, sonst scheitert der erste Deploy.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `commands/update.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
   `events.rs` (Server-Stream), `popout.rs` (Fenster von Karte und Shop), `error.rs`, `pet.rs` (lokaler Stand,
@@ -257,5 +269,5 @@ feat(server): add registration and pokes
 
 Typen: `feat` (neue Funktion), `fix` (Fehler behoben), `refactor` (Umbau ohne neues Verhalten),
 `docs`, `test`, `style`, `perf`, `build`, `ci`, `chore` (Pflege), `revert`. Bereiche: `server`,
-`client`, `scene` (das Paket `packages/jelly-scene`), `stage` (das Paket `packages/jelly-stage`).
-Inkompatible Änderungen tragen ein `!` nach Typ oder Bereich.
+`client`, `site` (die Website `apps/site`), `scene` (das Paket `packages/jelly-scene`), `stage` (das Paket
+`packages/jelly-stage`). Inkompatible Änderungen tragen ein `!` nach Typ oder Bereich.

@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171d25" />
+    <meta name="color-scheme" content="dark" />
+    <title data-i18n="meta.title">Jelly · Dein Begleiter für deine LAN</title>
+    <meta
+      name="description"
+      content="Jelly ist ein kleiner Desktop-Begleiter für LAN-Partys: dein eigenes 3D-Jelly, die Halle mit allen anderen, XP, Level und ein Zauberladen. Für Windows, macOS und Linux."
+      data-i18n-attrs="content:meta.description"
+    />
+    <meta property="og:title" content="Jelly · Dein Begleiter für deine LAN" />
+    <meta
+      property="og:description"
+      content="Ein kleiner Desktop-Begleiter für LAN-Partys. Für Windows, macOS und Linux."
+    />
+    <link rel="icon" type="image/svg+xml" href="./src/assets/favicon.svg" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main" data-i18n="nav.skip">Zum Inhalt springen</a>
+
+    <header class="masthead">
+      <div class="wrap masthead-inner">
+        <a class="brand" href="#top" aria-label="Jelly">
+          <img src="./src/assets/favicon.svg" alt="" width="26" height="26" />
+          <span>Jelly</span>
+        </a>
+        <nav aria-label="Hauptnavigation" data-i18n-attrs="aria-label:nav.label">
+          <ul class="nav-links">
+            <li><a href="#features" data-i18n="nav.features">Funktionen</a></li>
+            <li><a href="#start" data-i18n="nav.start">Loslegen</a></li>
+            <li><a href="https://github.com/RaffaelSchaefer/jelly">GitHub</a></li>
+          </ul>
+        </nav>
+        <button class="lang" type="button" data-lang-toggle>
+          <span data-lang="de">DE</span>
+          <span data-lang="en">EN</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="wrap hero-inner">
+          <div class="hero-copy">
+            <h1 id="hero-title" data-i18n="hero.title">Dein Jelly für deine&nbsp;LAN.</h1>
+            <p class="lead" data-i18n="hero.lead">
+              Ein kleiner Begleiter, der neben deinen Spielen auf dem Desktop sitzt. Er sammelt XP,
+              wenn du isst und bei Events mitmachst, trifft die Jellies der anderen in der Halle und
+              kauft beim Zauberer Funkelbart ein.
+            </p>
+            <div class="cta-row" id="hero-cta">
+              <a class="button button-primary" href="#start" data-i18n="hero.download">
+                Jelly herunterladen
+              </a>
+              <a class="button button-ghost" href="#features" data-i18n="hero.features">
+                Funktionen ansehen
+              </a>
+            </div>
+            <p class="hero-note" data-i18n="hero.note">
+              Für Windows, macOS und Linux. Den Beitrittscode bekommst du auf deiner LAN.
+            </p>
+          </div>
+          <div class="hero-visual">
+            <button
+              class="hero-jelly"
+              type="button"
+              id="hero-jelly"
+              aria-label="Jelly anstupsen"
+              data-i18n-attrs="aria-label:hero.poke"
+            >
+              <img
+                class="hero-poster"
+                src="./src/assets/jelly-poster.svg"
+                alt=""
+                width="320"
+                height="296"
+              />
+              <span class="hero-shadow" aria-hidden="true"></span>
+            </button>
+            <div class="swatches" id="hero-swatches" role="group" aria-labelledby="swatch-label" hidden>
+              <span class="swatch-label" id="swatch-label" data-i18n="hero.colors">
+                Farbe ausprobieren
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section features" id="features" aria-labelledby="features-title">
+        <div class="wrap">
+          <header class="section-head">
+            <h2 id="features-title" data-i18n="features.title">Was Jelly kann</h2>
+            <p class="section-lead" data-i18n="features.lead">Alle Bilder stammen aus der App.</p>
+          </header>
+
+          <article class="place place-desktop" aria-labelledby="place-desktop-title">
+            <figure class="shot shot-desktop">
+              <img
+                src="./src/assets/shot-desktop.webp"
+                alt="Jelly auf dem Desktop mit Sprechblase, vier Glastropfen und dem Dock darunter."
+                data-i18n-attrs="alt:desktop.alt"
+                width="900"
+                height="900"
+                loading="lazy"
+                decoding="async"
+              />
+              <span class="pin" style="--x: 74.5%; --y: 5.5%" aria-hidden="true">1</span>
+              <span class="pin" style="--x: 88.5%; --y: 32%" aria-hidden="true">2</span>
+              <span class="pin" style="--x: 68.5%; --y: 91.5%" aria-hidden="true">3</span>
+            </figure>
+            <div class="place-copy">
+              <h3 id="place-desktop-title" data-i18n="desktop.title">Auf deinem Desktop</h3>
+              <p data-i18n="desktop.text">Jelly sitzt ohne Fenster auf deinem Desktop, neben dem Spiel. Bedient wird es direkt am Jelly.</p>
+              <ol class="legend">
+                <li>
+                  <strong data-i18n="desktop.bubble">Jelly sagt Bescheid</strong>
+                  <span data-i18n="desktop.bubbleText">Zehn Minuten vor jedem Programmpunkt, bei einem neuen Level und wenn dich jemand zu einem Partner-Emote auffordert.</span>
+                </li>
+                <li>
+                  <strong data-i18n="desktop.drops">Tropfen öffnen</strong>
+                  <span data-i18n="desktop.dropsText">Emotes, Schild, Shop und Karte hängen als Tropfen am Jelly.</span>
+                </li>
+                <li>
+                  <strong data-i18n="desktop.dock">XP melden</strong>
+                  <span data-i18n="desktop.dockText">Im Dock trägst du Essen, Getränke und Events ein. Dort findest du auch Zeitplan, Aussehen und Einstellungen.</span>
+                </li>
+              </ol>
+            </div>
+          </article>
+
+          <article class="place place-map" aria-labelledby="place-map-title">
+            <div class="place-copy">
+              <h3 id="place-map-title" data-i18n="map.title">In der Halle</h3>
+              <p data-i18n="map.text">Die Karte zeigt die Halle in 3D. An jedem Platz steht das Jelly der Person, die dort sitzt.</p>
+              <ol class="legend">
+                <li>
+                  <strong data-i18n="map.seat">Dein Jelly finden</strong>
+                  <span data-i18n="map.seatText">Es steht an deinem Platz. Die Leertaste holt die Kamera zu ihm zurück.</span>
+                </li>
+                <li>
+                  <strong data-i18n="map.others">Zu anderen dazustellen</strong>
+                  <span data-i18n="map.othersText">Klick ein Jelly an, um dich dazuzustellen oder es hervorzuheben. Für ein Partner-Emote klickst du dein eigenes an, wählst eine Geste und forderst ein Jelly in der Nähe auf.</span>
+                </li>
+                <li>
+                  <strong data-i18n="map.bar">Auf Ausflug schicken</strong>
+                  <span data-i18n="map.barText">Ein Klick auf den Boden, und dein Jelly läuft hin. In der Leiste unten suchst du nach Namen und zoomst.</span>
+                </li>
+              </ol>
+            </div>
+            <figure class="shot shot-window">
+              <img
+                src="./src/assets/shot-map.webp"
+                alt="Die Karte: eine Halle von oben mit Bühne, Sofaecke, Snackbar und Tischreihen voller Jellies."
+                data-i18n-attrs="alt:map.alt"
+                width="1200"
+                height="1452"
+                loading="lazy"
+                decoding="async"
+              />
+              <span class="pin" style="--x: 13.5%; --y: 38%" aria-hidden="true">1</span>
+              <span class="pin" style="--x: 77.5%; --y: 34.5%" aria-hidden="true">2</span>
+              <span class="pin" style="--x: 62%; --y: 95.5%" aria-hidden="true">3</span>
+            </figure>
+          </article>
+
+          <article class="place place-shop" aria-labelledby="place-shop-title">
+            <figure class="shot shot-window">
+              <img
+                src="./src/assets/shot-shop.webp"
+                alt="Der Zauberladen: Funkelbart hinter der Theke, ein Jelly probiert Katzenohren an, rechts der Kaufbrief mit Siegel."
+                data-i18n-attrs="alt:shop.alt"
+                width="1800"
+                height="1350"
+                loading="lazy"
+                decoding="async"
+              />
+              <span class="pin" style="--x: 82.5%; --y: 19%" aria-hidden="true">1</span>
+              <span class="pin" style="--x: 69.5%; --y: 88%" aria-hidden="true">2</span>
+              <span class="pin" style="--x: 16%; --y: 2.8%" aria-hidden="true">3</span>
+            </figure>
+            <div class="place-copy">
+              <h3 id="place-shop-title" data-i18n="shop.title">Im Zauberladen</h3>
+              <p data-i18n="shop.text">Für jedes neue Level gibt es Münzen. Die gibst du im Laden von Zauberer Funkelbart für Cosmetics aus.</p>
+              <blockquote class="lore">
+                <p data-i18n="shop.lore">
+                  „Aus Wolkenplüsch genäht. Zucken, wenn irgendwo eine Tüte raschelt.“
+                </p>
+                <cite data-i18n="shop.loreSource">Kaufbrief der Katzenohren</cite>
+              </blockquote>
+              <ol class="legend">
+                <li>
+                  <strong data-i18n="shop.try">Anprobieren</strong>
+                  <span data-i18n="shop.tryText">Klick eine Ware an, dein Jelly trägt sie sofort zur Probe.</span>
+                </li>
+                <li>
+                  <strong data-i18n="shop.brief">Kaufen</strong>
+                  <span data-i18n="shop.briefText">Halte das Siegel auf dem Kaufbrief gedrückt.</span>
+                </li>
+                <li>
+                  <strong data-i18n="shop.purse">Münzen</strong>
+                  <span data-i18n="shop.purseText">Oben links steht, wie viele du hast.</span>
+                </li>
+              </ol>
+            </div>
+          </article>
+
+          <div class="more">
+            <h3 class="more-title" data-i18n="more.title">Und außerdem</h3>
+            <ul class="more-list">
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M7.5 8a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0ZM5 20.5c0-4 2.7-6.5 6-6.5s6 2.5 6 6.5H5ZM2.5 17a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0Zm15-6.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0Zm2.8-4.2c.9.4 1.5 1.1 1.8 2"
+                  />
+                </svg>
+                <strong data-i18n="more.emotes">Emotes</strong>
+                <span data-i18n="more.emotesText">Zwölf Gesten von Winken bis Tanzen, auch im Duett.</span>
+              </li>
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M5 3h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 14H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 3Zm7 11v8M8 8.5h8"
+                  />
+                </svg>
+                <strong data-i18n="more.signs">Schilder</strong>
+                <span data-i18n="more.signsText">Dein Jelly hält eine Tafel mit deinem Text hoch.</span>
+              </li>
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" />
+                </svg>
+                <strong data-i18n="more.voice">Stimme</strong>
+                <span data-i18n="more.voiceText">Es brabbelt in seiner eigenen Tonlage. Leiser oder aus, wie du magst.</span>
+              </li>
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 0-4h-1a1 1 0 0 1 0-2h3a6 6 0 0 0 6-6c0-3-4-6-9-6ZM7 10h.01M10 6h.01M16 7h.01M6 15h.01"
+                  />
+                </svg>
+                <strong data-i18n="more.studio">Studio</strong>
+                <span data-i18n="more.studioText">Farbe und Cosmetics wählst du direkt am Jelly, in elf Farben.</span>
+              </li>
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M8 4h8v5a4 4 0 0 1-8 0V4ZM8 6H5v1a3 3 0 0 0 3 3m8-4h3v1a3 3 0 0 1-3 3m-4 3v4m-3 3h6"
+                  />
+                </svg>
+                <strong data-i18n="more.achievements">Erfolge</strong>
+                <span data-i18n="more.achievementsText">Kleine Ziele für das ganze Wochenende.</span>
+              </li>
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 5h14v16H5V5Zm3-3v6m8-6v6M5 10h14M8 14h2m4 0h2m-8 3.5h2" />
+                </svg>
+                <strong data-i18n="more.schedule">Zeitplan</strong>
+                <span data-i18n="more.scheduleText">Der Ablauf der LAN im Dock. Jelly erinnert zehn Minuten vorher.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section start" id="start" aria-labelledby="start-title">
+        <div class="wrap" id="start-tabs">
+          <header class="start-head">
+            <div>
+              <h2 id="start-title" data-i18n="start.title">Loslegen</h2>
+              <p class="section-lead" id="download-version">Kostenlos für Windows, macOS und Linux.</p>
+            </div>
+            <div
+              class="tab-list"
+              role="tablist"
+              aria-label="Betriebssystem"
+              data-i18n-attrs="aria-label:start.os"
+            >
+              <button type="button" role="tab" id="tab-windows" aria-controls="panel-windows">
+                Windows
+              </button>
+              <button type="button" role="tab" id="tab-macos" aria-controls="panel-macos">
+                macOS
+              </button>
+              <button type="button" role="tab" id="tab-linux" aria-controls="panel-linux">
+                Linux
+              </button>
+            </div>
+          </header>
+          <ol class="steps">
+            <li>
+              <h3 data-i18n="start.load">Laden</h3>
+              <div class="step-body">
+                <div class="download-primary" id="download-primary">
+                  <a
+                    class="button button-primary"
+                    href="https://github.com/RaffaelSchaefer/jelly/releases/latest"
+                    data-i18n="start.github"
+                  >
+                    Zu den Downloads auf GitHub
+                  </a>
+                </div>
+                <div class="download-alt" id="download-alt" hidden></div>
+              </div>
+            </li>
+            <li>
+              <h3 data-i18n="start.open">Öffnen</h3>
+              <div class="step-body">
+                <div class="tab-panel" role="tabpanel" id="panel-windows" aria-labelledby="tab-windows">
+                  <p data-i18n="start.windows">
+                    Starte den Installer. Meldet Windows „Der Computer wurde durch Windows
+                    geschützt“, klicke auf <strong>Weitere Informationen</strong> und dann auf
+                    <strong>Trotzdem ausführen</strong>. Das passiert einmal, weil Jelly nicht bei
+                    Microsoft registriert ist.
+                  </p>
+                </div>
+                <div class="tab-panel" role="tabpanel" id="panel-macos" aria-labelledby="tab-macos">
+                  <p data-i18n="start.macos">
+                    Öffne die <code>.dmg</code> und zieh Jelly in <strong>Programme</strong>. Den
+                    ersten Start blockiert macOS, weil Jelly nicht bei Apple registriert ist: Öffne
+                    <strong>Systemeinstellungen › Datenschutz &amp; Sicherheit</strong>, klicke bei
+                    Jelly auf <strong>Trotzdem öffnen</strong> und bestätige mit
+                    <strong>Öffnen</strong>.
+                  </p>
+                </div>
+                <div class="tab-panel" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux">
+                  <p data-i18n="start.linux">
+                    Mach das AppImage ausführbar und starte es, oder installiere das Paket deiner
+                    Distribution.
+                  </p>
+                  <dl class="linux-list">
+                    <dt>AppImage</dt>
+                    <dd><code>chmod +x Jelly_*.AppImage &amp;&amp; ./Jelly_*.AppImage</code></dd>
+                    <dt>Debian, Ubuntu</dt>
+                    <dd><code>sudo apt install ./Jelly_*_amd64.deb</code></dd>
+                    <dt>Fedora, openSUSE</dt>
+                    <dd><code>sudo dnf install ./Jelly-*.x86_64.rpm</code></dd>
+                    <dt>Arch Linux</dt>
+                    <dd><code>sudo pacman -U jelly-bin-*.pkg.tar.zst</code></dd>
+                  </dl>
+                </div>
+              </div>
+            </li>
+            <li>
+              <h3 data-i18n="start.hatch">Schlüpfen</h3>
+              <div class="step-body">
+                <p data-i18n="start.hatchText">
+                  Dein Jelly wartet in einem Ei aus Glas. Gib ihm einen Namen, such ihm eine Farbe
+                  aus und tippe den Beitrittscode deiner LAN ein. Dann schlüpft es.
+                </p>
+              </div>
+            </li>
+          </ol>
+          <p class="start-note">
+            <span data-i18n="start.updates">
+              Updates meldet Jelly selbst und spielt sie auf Knopfdruck ein.
+            </span>
+            <a href="https://github.com/RaffaelSchaefer/jelly/releases" data-i18n="start.releases"
+              >Alle Versionen auf GitHub</a
+            >
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-jelly" id="footer-jelly" aria-hidden="true"></div>
+      <div class="wrap footer-inner">
+        <p class="footer-brand">
+          <strong>Jelly</strong>
+          <span data-i18n="footer.made">Ein Desktop-Begleiter für LAN-Partys.</span>
+        </p>
+        <ul class="footer-links">
+          <li>
+            <a href="https://github.com/RaffaelSchaefer/jelly" data-i18n="footer.source"
+              >Quellcode auf GitHub</a
+            >
+          </li>
+          <li>
+            <a id="footer-release" href="https://github.com/RaffaelSchaefer/jelly/releases/latest"
+              >Alle Versionen</a
+            >
+          </li>
+          <li>
+            <button class="lang" type="button" data-lang-toggle>
+              <span data-lang="de">DE</span>
+              <span data-lang="en">EN</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </footer>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

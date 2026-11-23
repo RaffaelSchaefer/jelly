@@ -1,0 +1,27 @@
+{
+  "name": "@jelly/site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/release.mjs && vite --host 127.0.0.1 --port 1430 --strictPort",
+    "build": "node scripts/release.mjs && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 1431 --strictPort",
+    "test": "vitest run",
+    "lint": "oxlint --deny-warnings",
+    "check-types": "tsc --noEmit",
+    "format": "oxfmt --write \"**/*.{ts,mjs,md}\""
+  },
+  "dependencies": {
+    "@jelly/scene": "workspace:*",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.186.0",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.90.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

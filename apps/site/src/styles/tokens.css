@@ -1,0 +1,36 @@
+/* Farben, Abstände und Schriften. Akzent und Flächen wie in der App mit der Farbe Aqua. Wählt der
+   Besucher oben eine andere Jelly-Farbe, setzt `hero/index.ts` Akzent und Leuchten neu. */
+@font-face {
+  font-family: "Alegreya";
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("../fonts/alegreya-latin-wght-italic.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: dark;
+  --font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  --font-lore: "Alegreya", Georgia, serif;
+
+  --bg: #171d25;
+  --bg-deep: #10151c;
+  --backdrop: #2a3b46;
+  --text: #eef3f5;
+  --text-muted: #c6d0d5;
+  --text-soft: #a3b2b6;
+  --accent: #9fe6f2;
+  --accent-ink: #0e2c38;
+  --jelly-glow: #23f5dc;
+  --gold: #e9c77b;
+
+  --line: color-mix(in srgb, var(--accent) 15%, transparent);
+  --line-soft: #ffffff12;
+
+  --radius: 14px;
+  --radius-small: 11px;
+  --wrap: 1160px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --section: clamp(72px, 10vw, 128px);
+}
