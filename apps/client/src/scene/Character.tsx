@@ -55,10 +55,13 @@ const POKE_SETTLE_MS = 1800;
 const SETTLE_FRAME_MS = 100;
 
 /**
- * Bei reduzierter Bewegung steht die Uhr, nach einem Stupser müssen Strahlen und Hände aber noch
- * sichtbar auslaufen. Darum gibt es für diese kurze Zeit eigene Bilder, sonst keine.
+ * Bei reduzierter Bewegung steht die Uhr, nach einem Stupser oder einer Berührung müssen Strahlen,
+ * Hände und Gesicht aber noch sichtbar auslaufen. Darum gibt es für diese kurze Zeit eigene Bilder,
+ * sonst keine.
+ *
+ * @param moment - Ändert sich mit jedem Stupser und jeder Berührung.
  */
-function useSettlingFrames(pulse: number, reducedMotion: boolean) {
+function useSettlingFrames(moment: string, reducedMotion: boolean) {
   const invalidate = useThree((state) => state.invalidate);
   useEffect(() => {
     if (!reducedMotion) return;
@@ -69,7 +72,26 @@ function useSettlingFrames(pulse: number, reducedMotion: boolean) {
       window.clearInterval(timer);
       window.clearTimeout(stop);
     };
-  }, [pulse, reducedMotion, invalidate]);
+  }, [moment, reducedMotion, invalidate]);
+}
+
+/** Berührungen am eigenen Jelly. Nur das Pet der App gibt sie an. */
+export interface CharacterTouch {
+  /** Beginn des letzten Nasenstupsers auf der Uhr von `performance.now()`. */
+  boopedAt: number | null;
+  /** Ob gerade gestreichelt wird. */
+  petting: boolean;
+  /** Wo die streichelnde Hand ist, −1 links bis 1 rechts vom Kopf. Ändert sich ohne Rendern. */
+  lean: RefObject<number>;
+}
+
+/** Die Berührungen dieses Bildes für `@jelly/scene`. */
+function touchFrame({ boopedAt, petting, lean }: CharacterTouch) {
+  return {
+    boop: boopedAt === null ? undefined : (performance.now() - boopedAt) / 1000,
+    petting: petting ? 1 : 0,
+    lean: lean.current,
+  };
 }
 
 /** Die Mundform dieses Bildes. Bei reduzierter Bewegung lächelt das Jelly nur. */
@@ -177,6 +199,8 @@ export interface CharacterProps {
   role?: DuetRole;
   /** Welchen Körper-Shader es bekommt. Ein Wechsel baut das Jelly neu auf, wie bei der Farbe. */
   quality?: JellyQuality;
+  /** Nasenstupser und Streicheln am eigenen Jelly. Ohne Wert bleibt es bei Stupser und Gesten. */
+  touch?: CharacterTouch;
 }
 
 /** Das Pet mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
@@ -192,6 +216,7 @@ export default function Character({
   voiced,
   role = "own",
   quality = "full",
+  touch,
 }: CharacterProps) {
   const worn = wornCosmetics(equipped);
   // Ohne Modell zeigt ein Cosmetic nichts, dann hielte das Jelly leere Hände hin.
@@ -205,7 +230,7 @@ export default function Character({
 
   // Jede Änderung auch zeichnen, wenn reduzierte Bewegung die Animationsuhr anhält.
   useEffect(() => invalidate(), [emote, sign, holding, jelly, equipped, invalidate]);
-  useSettlingFrames(pulse, reducedMotion);
+  useSettlingFrames(`${pulse} ${touch?.boopedAt} ${touch?.petting}`, reducedMotion);
 
   // Fiber gibt `<primitive>`-Objekte nie selbst frei.
   useEffect(() => () => disposeJelly(jelly), [jelly]);
@@ -233,6 +258,7 @@ export default function Character({
             }
           : undefined,
       mouth: currentMouth(voiced, role, reducedMotion),
+      touch: touch && touchFrame(touch),
     });
     pulseCosmetics(jelly.root, clock.elapsedTime, reducedMotion);
     if (stand.current) poseStand(stand.current, emote, role, reducedMotion);

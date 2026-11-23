@@ -38,7 +38,7 @@ export interface ActiveVoice {
  *   Sprechblase. `voiced` hält, was der Mund gerade formt.
  */
 export function useJellyVoice(game: PetGame) {
-  const { message, messageId, pulse, activeEmote: emote, ready } = game;
+  const { message, messageId, pulse, touched, activeEmote: emote, ready } = game;
   const { sound, volume: percent } = game.game.settings;
   const known = ready ? game.game.me : null;
   const level = known ? known.level : null;
@@ -53,10 +53,19 @@ export function useJellyVoice(game: PetGame) {
   }, []);
 
   const voiced = useRef<ActiveVoice | null>(null);
-  const before = useRef<VoiceMoment>({ sound, message, messageId, pulse, level, volume, emote });
+  const before = useRef<VoiceMoment>({
+    sound,
+    message,
+    messageId,
+    pulse,
+    level,
+    volume,
+    emote,
+    touched,
+  });
   // Ein Effekt für alles: Text, Hüpfer und Level kommen im selben Render und sollen nur einen Laut geben.
   useEffect(() => {
-    const after: VoiceMoment = { sound, message, messageId, pulse, level, volume, emote };
+    const after: VoiceMoment = { sound, message, messageId, pulse, level, volume, emote, touched };
     const clip = pickClip(before.current, after);
     // Auch stumm bewegt sich der Mund, so wie die Sprechblase weitertippt.
     const notes = clip ?? pickClip({ ...before.current, sound: true }, { ...after, sound: true });
@@ -71,7 +80,7 @@ export function useJellyVoice(game: PetGame) {
         elapsed: clock ?? startClock(),
       };
     }
-  }, [sound, message, messageId, pulse, level, volume, percent, emote]);
+  }, [sound, message, messageId, pulse, level, volume, percent, emote, touched]);
 
   // `messageId` zählt mit: Auch derselbe Satz wird neu gesprochen.
   const saidAt = useMemo(() => performance.now(), [message, messageId]);

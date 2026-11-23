@@ -10,6 +10,8 @@
 import { EMOTE_MOODS, isEmoteKey, type EmoteKey } from "@jelly/scene/emotes";
 import { isPartnerMotionKey, type PartnerMotionKey } from "@jelly/scene/partner-emotes";
 
+import type { PetTouch } from "./headZones";
+
 import { inMood, noteHz, speechNotes, type VoiceNote, type Vowel } from "./voice";
 
 /**
@@ -47,6 +49,24 @@ export const HOP_CLIPS = [
     [0.08, 0.13, 9, 7, "a"],
   ]),
 ];
+
+/** Die Laute der Berührungen, im Takt ihrer Bewegung in `touch.ts` von `@jelly/scene`. */
+export const TOUCH_CLIPS: Record<PetTouch, VoiceNote[]> = {
+  // „ip?!“ beim Zurückzucken, dann „hi-hi-hi-hi“ mit zugekniffenen Augen und ein zufriedenes „mm“.
+  boop: clip([
+    [0, 0.08, 7, 12, "i", 0.85, undefined, "tick"],
+    [0.45, 0.08, 9, 10, "i", 0.6, undefined, "hiss"],
+    [0.58, 0.08, 7, 8, "i", 0.55, undefined, "hiss"],
+    [0.71, 0.08, 9, 10, "i", 0.6, undefined, "hiss"],
+    [0.84, 0.1, 7, 5, "i", 0.5, undefined, "hiss"],
+    [1, 0.3, 4, 2, "u", 0.5, 12],
+  ]),
+  // Ein leises, zufriedenes „mm-hmm“ mit Vibrato, tief wie das Summen beim Schlafen.
+  pet: clip([
+    [0, 0.55, -2, 0, "u", 0.4, 14],
+    [0.65, 0.75, 0, -3, "o", 0.35, 18],
+  ]),
+};
 
 /** „mi-a-u“, wenn die Geräusche eingeschaltet werden. */
 export const HELLO = clip([
@@ -253,6 +273,8 @@ export interface VoiceMoment {
    * ein zweites Jelly dabei ist.
    */
   emote: { key: string; partner?: unknown } | null;
+  /** Die letzte Berührung mit eigener Reaktion. Jede neue ist ein neues Objekt. */
+  touched: { touch: PetTouch } | null;
 }
 
 /**
@@ -279,6 +301,14 @@ function emoteClip(before: VoiceMoment, after: VoiceMoment) {
   return isEmoteKey(key) ? EMOTE_CLIPS[key] : [];
 }
 
+/**
+ * Der Laut einer neuen Berührung. Er kommt mit seiner Sprechblase und hat Vorrang vor ihr, sonst
+ * spräche das Jelly nur den Satz.
+ */
+function touchClip({ touched: before }: VoiceMoment, { touched: after }: VoiceMoment) {
+  return after && after !== before ? TOUCH_CLIPS[after.touch] : null;
+}
+
 /** Was erklingen soll, wenn der Stand von `before` zu `after` wechselt, oder `null` für nichts. */
 export function pickClip(before: VoiceMoment, after: VoiceMoment): VoiceNote[] | null {
   if (!after.sound) return null;
@@ -287,6 +317,8 @@ export function pickClip(before: VoiceMoment, after: VoiceMoment): VoiceNote[] |
   const gesture = emoteClip(before, after);
   if (gesture) return gesture;
   if (levelRose(before, after)) return LEVEL_UP;
+  const touch = touchClip(before, after);
+  if (touch) return touch;
   if (after.message !== before.message) return speechNotes(after.message);
   if (after.pulse !== before.pulse) return HOP_CLIPS[after.pulse % HOP_CLIPS.length] ?? null;
   return after.messageId === before.messageId ? null : speechNotes(after.message);

@@ -47,6 +47,10 @@ export const EXPRESSIONS = {
   shy: { eyes: "happy", blush: 0.9, mouthScale: [0.6, 0.7] },
   skeptic: { squeeze: 0.15, brows: { lift: -0.01, tilt: -0.15, raise: 0.04 }, mouth: "flat" },
   sleepy: { eyes: "closed", mouth: "m", mouthScale: [0.7, 1] },
+  /** Nach einem Nasenstupser: Augen zugekniffen, kichernd und rot. */
+  booped: { eyes: "squint", mouth: "grin", mouthScale: [0.8, 0.85], blush: 0.8 },
+  /** Beim Streicheln: zufriedene Bögen statt Augen, ein breites, ruhiges Lächeln. */
+  petted: { eyes: "happy", mouthScale: [1.2, 0.9], blush: 0.7 },
 } as const satisfies Record<string, Expression>;
 
 /**

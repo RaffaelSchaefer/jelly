@@ -16,6 +16,7 @@ import {
   CANVAS_OVERSCAN,
   createSlowFrameMeter,
   type CameraFocus,
+  type HeadProbe,
   type RenderProfile,
 } from "../pet";
 import AnimationClock from "./AnimationClock";
@@ -24,6 +25,7 @@ import Character, { type CharacterProps } from "./Character";
 import LiquidGlass from "./LiquidGlass";
 import RenderBoundary from "./RenderBoundary";
 import StudioAnchors from "./StudioAnchors";
+import TouchZones from "./TouchZones";
 
 /** Öffnungswinkel, auf den die Bühnengeometrie in `pet/layout.ts` abgestimmt ist. */
 const STAGE_FOV = 34;
@@ -78,6 +80,8 @@ export interface PetSceneProps extends Omit<CharacterProps, "quality"> {
   anchors?: RefObject<HTMLElement | null>;
   /** Wird gerufen, wenn das Gerät zu langsam ist. Ohne Wert wird nicht gemessen. */
   onSlowDevice?: () => void;
+  /** Bekommt die Abfrage der Trefferzonen am Kopf, für Nasenstupser und Streicheln. */
+  probe?: RefObject<HeadProbe | null>;
 }
 
 /** Das Pet auf transparentem Hintergrund. Ohne WebGL erscheint ein Hinweis statt eines Fehlers. */
@@ -87,6 +91,7 @@ export default function PetScene({
   focus = null,
   anchors,
   onSlowDevice,
+  probe,
   ...character
 }: PetSceneProps) {
   const [jelly, setJelly] = useState<Jelly | null>(null);
@@ -120,6 +125,7 @@ export default function PetScene({
           />
         ) : null}
         {anchors && jelly ? <StudioAnchors jelly={jelly} target={anchors} /> : null}
+        {probe && jelly ? <TouchZones jelly={jelly} probe={probe} /> : null}
         {rendering.glass ? (
           <LiquidGlass
             color={character.color}

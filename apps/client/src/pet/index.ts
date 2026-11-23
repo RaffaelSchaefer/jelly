@@ -13,6 +13,7 @@ export * from "./colors";
 export * from "./cosmetics";
 export * from "./frameRate";
 export * from "./hatch";
+export * from "./headZones";
 export * from "./layout";
 export * from "./mouth";
 export * from "./partner";

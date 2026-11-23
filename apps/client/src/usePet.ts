@@ -3,8 +3,8 @@
  * Rückmeldungen des Pets, Tastatur-Stupser und der Größen-Regler.
  *
  * In der Browser-Vorschau gibt es kein Backend. Aussehen, Cosmetics und Einstellungen ändern dann
- * nur den lokalen Zustand, der Einstieg läuft ohne Server über `previewAccess`, alles mit XP ist
- * gesperrt.
+ * nur den lokalen Zustand, der Einstieg läuft ohne Server über `previewAccess`. Stupser,
+ * Nasenstupser und Streicheln reagieren ohne XP, Selbstmeldungen sind gesperrt.
  *
  * @module
  */
@@ -27,6 +27,7 @@ import {
   type Game,
   type Me,
   type PetColor,
+  type PetTouch,
   type ServerEvent,
   type Settings,
 } from "./pet";
@@ -55,8 +56,18 @@ function pokeMessage(xpGained: number, after: Me | null) {
   return wait > 0 ? `Hihi! Neue XP gibt’s in ${wait} min.` : "Hihi, das kitzelt!";
 }
 
-/** Was das Pet nach einer Aktion sagt, und ob es dabei ein Level aufgestiegen ist. */
-function reactionTo(action: Action, result: backend.ActResult, before: Me) {
+/** Was das Pet nach einer Berührung sagt. */
+const TOUCH_LINES: Record<PetTouch, string> = {
+  boop: "Hihi, meine Nase!",
+  pet: "Mmh, das tut gut …",
+};
+
+/**
+ * Was das Pet nach einer Aktion sagt, und ob es dabei ein Level aufgestiegen ist.
+ *
+ * @param touch - Die Berührung, mit der gestupst wurde. Sie bekommt ihren eigenen Satz.
+ */
+function reactionTo(action: Action, result: backend.ActResult, before: Me, touch?: PetTouch) {
   const after = result.game.me;
   if (after && after.level > before.level) {
     const coins = result.game.lan.rules.coins_per_level;
@@ -65,6 +76,13 @@ function reactionTo(action: Action, result: backend.ActResult, before: Me) {
         ? `Level ${after.level}! ${coinLabel(coins)} mehr für den Shop.`
         : `Level ${after.level}! Weiter so.`;
     return { message, levelUp: true };
+  }
+  if (touch) {
+    const line = TOUCH_LINES[touch];
+    return {
+      message: result.xpGained > 0 ? `+${result.xpGained} XP. ${line}` : line,
+      levelUp: false,
+    };
   }
   if (action === "poke") return { message: pokeMessage(result.xpGained, after), levelUp: false };
   const report = REPORTS.find((item) => item.action === action);
@@ -77,6 +95,12 @@ function allowPoke(lastPoke: { current: number }) {
   if (now - lastPoke.current < POKE_INTERVAL_MS) return false;
   lastPoke.current = now;
   return true;
+}
+
+/** Ob eine Aktion jetzt losgehen darf. In der Vorschau ohne Server gibt es nur den Stupser, ohne XP. */
+function mayAct(action: Action, lastPoke: { current: number }) {
+  if (!desktop && action !== "poke") return false;
+  return action !== "poke" || allowPoke(lastPoke);
 }
 
 /** Was das Pet zu einem Ereignis vom Server sagt, oder `null`, wenn es still bleibt. */
@@ -208,6 +232,41 @@ function useAccount(state: ReturnType<typeof useGameState>, onLevelUp: () => voi
 }
 
 /**
+ * Stupser und Selbstmeldungen samt Reaktion. `pulse` steigt mit jedem Hüpfer, `touched` hält die
+ * letzte Berührung mit eigener Reaktion.
+ */
+function useInteract(
+  { game, setGame }: ReturnType<typeof useGameState>,
+  { ready, inFlight, run, setMessage }: ReturnType<typeof useAccount>,
+  onLevelUp: () => void,
+) {
+  const [pulse, setPulse] = useState(0);
+  const [touched, setTouched] = useState<{ touch: PetTouch; at: number } | null>(null);
+  const lastPoke = useRef(-POKE_INTERVAL_MS);
+
+  /**
+   * Stupser oder Selbstmeldung. Danach reagiert das Pet mit Sprechblase und Hüpfer, nach einem
+   * Stupser per Berührung (`touch`) mit deren eigener Reaktion statt des Hüpfers.
+   */
+  const interact = useCallback(
+    async (action: Action, touch?: PetTouch) => {
+      const before = game.me;
+      if (!ready || !before || inFlight.current || !mayAct(action, lastPoke)) return;
+      const result = desktop ? await run(() => backend.act(action)) : { game, xpGained: 0 };
+      if (!result) return;
+      setGame(result.game);
+      const reaction = reactionTo(action, result, before, touch);
+      setMessage(reaction.message);
+      if (touch) setTouched({ touch, at: performance.now() });
+      else setPulse((value) => value + 1);
+      if (reaction.levelUp) onLevelUp();
+    },
+    [ready, game, inFlight, run, setGame, setMessage, onLevelUp],
+  );
+  return { pulse, setPulse, touched, interact };
+}
+
+/**
  * Hält den Spielstand und alles, was die Oberfläche damit tun kann.
  *
  * @param onLevelUp - Wird nach einem Levelaufstieg aufgerufen, zum Beispiel um ihn auf der Bühne zu
@@ -219,25 +278,7 @@ export function usePet(onLevelUp: () => void) {
   const account = useAccount(state, onLevelUp);
   const { game, setGame, patchGame, catalog } = state;
   const { ready, inFlight, run, setMessage } = account;
-  const [pulse, setPulse] = useState(0);
-  const lastPoke = useRef(-POKE_INTERVAL_MS);
-
-  /** Stupser oder Selbstmeldung. Danach reagiert das Pet mit Sprechblase und Hüpfer. */
-  const interact = useCallback(
-    async (action: Action) => {
-      const before = game.me;
-      if (!ready || !desktop || !before || inFlight.current) return;
-      if (action === "poke" && !allowPoke(lastPoke)) return;
-      const result = await run(() => backend.act(action));
-      if (!result) return;
-      setGame(result.game);
-      const reaction = reactionTo(action, result, before);
-      setMessage(reaction.message);
-      setPulse((value) => value + 1);
-      if (reaction.levelUp) onLevelUp();
-    },
-    [ready, game.me, inFlight, run, setGame, setMessage, onLevelUp],
-  );
+  const { pulse, setPulse, touched, interact } = useInteract(state, account, onLevelUp);
 
   /** Ein Event-Code, Schild, Standort oder Partner: Das Jelly hüpft und sagt etwas dazu. */
   const hopAndSay = useCallback(
@@ -273,6 +314,7 @@ export function usePet(onLevelUp: () => void) {
     catalog,
     offset: state.offset,
     pulse,
+    touched,
     hopAndSay,
     interact,
     redeem,

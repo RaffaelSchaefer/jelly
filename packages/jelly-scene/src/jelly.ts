@@ -21,6 +21,7 @@ import { animateEmote } from "./emoteAnimation.ts";
 import { createFace, type Face } from "./face.ts";
 import { HAND, HEAD } from "./jellyGeometry.ts";
 import { animateMouth, type MouthFrame } from "./mouthShapes.ts";
+import { animateTouch, type TouchFrame } from "./touch.ts";
 
 /** Linke und rechte Seite als Vorzeichen. Index 0 ist links. */
 const SIDES = [-1, 1] as const;
@@ -60,6 +61,8 @@ export interface JellyFrameInput {
   emote?: EmoteFrame;
   /** Was der Mund gerade formt. Ohne Wert lächelt das Jelly. */
   mouth?: MouthFrame;
+  /** Berührungen, nur am eigenen Jelly der App. Ohne Wert bleibt es bei der Grundpose. */
+  touch?: TouchFrame;
 }
 
 /** Eine Hand, anfangs eingezogen und unsichtbar. */
@@ -98,6 +101,7 @@ export function animateJelly(jelly: Jelly, motion: Motion, input: JellyFrameInpu
   animateBody(jelly.root, jelly.head, frame);
   animateFace(jelly.face, motion, frame);
   animateHands(jelly, motion, frame, input.holding);
+  if (input.touch) animateTouch(jelly, motion, input.touch, frame);
   if (input.emote) animateEmote(jelly, input.emote, input.reducedMotion);
   animateMouth(jelly, input.mouth);
 }

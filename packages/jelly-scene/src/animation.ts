@@ -53,6 +53,12 @@ export interface Motion {
   blinkAt: number;
   /** Wann das nächste Blinzeln beginnt. */
   nextBlink: number;
+  /** Ob die Augen gerade zur Nase schielen. Nur Berührungen (`touch.ts`) setzen das. */
+  crossed?: boolean;
+  /** Wie sehr es gerade gestreichelt wird, weich nachgeführt. Nur für Berührungen. */
+  petting?: number;
+  /** Wohin es den Kopf beim Streicheln neigt, weich nachgeführt. Nur für Berührungen. */
+  lean?: number;
 }
 
 /** Was jedes Teil der Animation in diesem Bild braucht. */

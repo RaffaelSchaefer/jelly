@@ -12,6 +12,7 @@ import {
   pickClip,
   speechNotes,
   speechSyllables,
+  TOUCH_CLIPS,
   volumeGain,
   type VoiceMoment,
   type VoiceNote,
@@ -55,6 +56,7 @@ const MOMENT: VoiceMoment = {
   level: 3,
   volume: 100,
   emote: null,
+  touched: null,
 };
 
 describe("speechSyllables", () => {
@@ -192,6 +194,16 @@ describe("pickClip", () => {
     expect(pickClip({ ...MOMENT, level: null }, { ...MOMENT, level: 7 })).toBeNull();
     expect(pickClip({ ...MOMENT, level: 7 }, { ...MOMENT, level: null })).toBeNull();
     expect(pickClip(MOMENT, { ...MOMENT, level: 2 })).toBeNull();
+  });
+  it("plays the sound of a touch rather than speaking its bubble", () => {
+    const after = {
+      ...MOMENT,
+      message: "Hihi, meine Nase!",
+      messageId: 1,
+      touched: { touch: "boop" as const },
+    };
+    expect(pickClip(MOMENT, after)).toBe(TOUCH_CLIPS.boop);
+    expect(pickClip(after, { ...after })).toBeNull();
   });
   it("speaks a new text instead of hopping", () => {
     const after = { ...MOMENT, message: "Hallo!", messageId: 1, pulse: 1 };

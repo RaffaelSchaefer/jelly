@@ -58,6 +58,9 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
 - `src/PetStage.tsx`: Sprechblase, Jelly und seine Overlays. `src/EmotePicker.tsx`, `src/useEmotes.ts`,
   `src/emotes.css`: Emote-Tropfen, Aufruf und laufende Geste. `src/SignPicker.tsx`, `src/useSigns.ts`,
   `src/signs.css`, `src/scene/SignBoard.tsx`: Schild-Tropfen, Kapsel-Säule und die Tafel in den Händen.
+  `src/usePetTouch.ts`, `src/pet/headZones.ts`, `src/scene/TouchZones.tsx`: Nasenstupser und Streicheln. Die Szene
+  projiziert Kopf und Nase auf den Bildschirm, `headZones.ts` entscheidet Zone und Geste, gemeldet wird als Stupser
+  (`interact("poke", touch)`). Die Bewegung steht in `packages/jelly-scene/src/touch.ts`.
   `src/LevelUp.tsx`, `src/levelup.css`: der Levelaufstieg auf der Bühne, im Takt der Fanfare (`LEVEL_UP`). In der
   Browser-Vorschau zeigt ihn `/#levelup`.
 - Dazustellen, Ausflug und Hervorheben gehen auf der Karte (`src/map/main.ts`, `src/map/actions.ts`),
@@ -92,7 +95,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Cosmetics), `src/ui/` (Design-System).
 - `packages/jelly-scene/src/`: das Jelly als reines Three.js. `jelly.ts` baut und animiert es,
   `body.ts` (geraymarchter Körper, Shader in `shaders/`, volle und optimierte Variante per `JellyQuality`), `face.ts`, `eyeShapes.ts` (Augen und Brauen), `mouthShapes.ts`, `expression.ts` (Gesichtsausdrücke aus diesen Bausteinen), `animation.ts`,
-  `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `partnerEmotes.ts` (Duett-Posen der
+  `emotes.ts` (Schlüssel, Dauer), `emoteAnimation.ts` (Gesten), `touch.ts` (Nasenstupser und Streicheln, nur die App gibt
+  `touch` an), `partnerEmotes.ts` (Duett-Posen der
   Partner-Emotes, reine Rechnung), `jellyGeometry.ts` (Maße), `colors.ts` (Farben), `cosmetic.ts` (Cosmetics
   laden und zeichnen, Modelle in `cosmetics/`).
 - `packages/jelly-stage/src/`: die Bühne als reines Three.js. `view.ts` startet sie auf einer Canvas,
