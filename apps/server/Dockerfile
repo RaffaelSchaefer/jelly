@@ -22,7 +22,12 @@ COPY packages/jelly-scene /src/packages/jelly-scene
 COPY packages/jelly-stage /src/packages/jelly-stage
 COPY apps/server /src/apps/server
 RUN go generate ./internal/web
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/jelly-server ./cmd/jelly-server
+# The image workflow passes the tag and commit, the server logs them at start.
+ARG SERVER_VERSION=dev
+ARG SERVER_REVISION=unknown
+RUN CGO_ENABLED=0 go build -trimpath \
+    -ldflags="-s -w -X main.serverVersion=${SERVER_VERSION} -X main.serverRevision=${SERVER_REVISION}" \
+    -o /out/jelly-server ./cmd/jelly-server
 # The volume inherits owner and permissions of this directory on first start.
 RUN mkdir -p /out/data
 

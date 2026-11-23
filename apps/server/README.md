@@ -136,6 +136,7 @@ muss vor `go generate` einmal `pnpm install` im Root laufen. Gebündelt wird üb
 | `JELLY_STAGE_KEY` | keiner     | Pflicht: Schlüssel der Bühne                |
 | `JELLY_ADMIN_SECRET` | keiner  | Pflicht: Geheimnis der Admin-Anmeldung      |
 | `JELLY_MIN_CLIENT_VERSION` | keine | Älteste App, die noch funktioniert, Form `1.2.3` |
+| `JELLY_LOG_LEVEL` | `info` | `debug`, `info`, `warn` oder `error`; `debug` loggt jede Anfrage mit Route, Status und Dauer, nie Query oder Header |
 | `JELLY_HTTP_DEMO` | `0` | `1` lässt die Admin-Anmeldung ohne HTTPS gelten, nur für eine Demo im Heimnetz |
 
 Hinter einem Proxy wie Traefik muss `/v1/stage/events` ungepuffert durchgehen. Wer dort die Middleware `compress`
@@ -169,6 +170,9 @@ den Build gelangt, regelt `Dockerfile.dockerignore`. Der Server speichert unter 
 Volume bestehen bleiben muss. SIGINT und SIGTERM beenden den Server geordnet, offene Anfragen haben dafür bis zu 8
 Sekunden und damit weniger als die 10 Sekunden von `docker stop`. Die Datenbank darf nicht im
 laufenden Betrieb einfach kopiert werden. Backups entstehen mit `sqlite3 jelly.db "VACUUM INTO 'backup.db'"` und gehören auf ein anderes System.
+
+Beim Start loggt der Server Version, Commit, API-Version und Log-Level. Version und Commit setzt der Image-Workflow per
+`--build-arg SERVER_VERSION=… --build-arg SERVER_REVISION=…`, ein eigener Build ohne sie meldet `dev` und `unknown`.
 
 Das Image bringt einen Healthcheck mit: `jelly-server healthcheck` fragt `/health` des Servers auf `JELLY_ADDR` ab und
 endet mit 0, wenn er mit 200 antwortet. `/health` prüft die Datenbank. Docker prüft in der Startphase jede Sekunde, danach

@@ -49,6 +49,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#server-v}"
           docker buildx build --platform linux/amd64 --push -f apps/server/Dockerfile \
+            --build-arg "SERVER_VERSION=$VERSION" --build-arg "SERVER_REVISION=$GITHUB_SHA" \
             -t "$IMAGE:$VERSION" -t "$IMAGE:latest" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --label "org.opencontainers.image.version=$VERSION" .
