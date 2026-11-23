@@ -119,7 +119,7 @@ func ListCosmetics() []Cosmetic {
 		},
 		{
 			Key: "headset-neutral", Name: "Headset schlicht", Scope: ScopePermanent, Slot: SlotHead,
-			Unlock: UnlockShop, Price: priceHeadset,
+			Colorable: true, Unlock: UnlockShop, Price: priceHeadset,
 		},
 		{
 			Key: "beanie", Name: "Mütze", Scope: ScopePermanent, Slot: SlotHead, Colorable: true,

@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.35.0**
+Aktuelle Version: **1.36.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.35.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.36.0  | `headset-neutral` (Headset schlicht) ist einfärbbar (`colorable`) und nimmt wie `headset` eine Farbe aus `cosmetic_colors` |
 | 1.35.0  | Drei neue Cosmetics im Shop, alle dauerhaft: `nasal-helmet` (Nasalhelm, `head`) für 3 Münzen, `kite-shield` (Normannenschild, `hands`) für 3 und einfärbbar (`colorable`), `octopus` (Chibi-Oktopus, `head`) für 4 und einfärbbar. „Ausverkauft“ verlangt damit 29 Shop-Cosmetics |
 | 1.34.0  | Zeitplan der LAN: `GET /lans/current/schedule`, Ereignis `schedule.changed`, Admin-Wege `GET` und `PUT /admin/api/lans/{id}/schedule` |
 | 1.33.0  | `?topics=own` im Stream: nur eigene Ereignisse, solche, die den Spieler nennen, und solche für alle. Für die App ohne offene Karte, spart bei 300 Spielern rund 90 % des Verkehrs |

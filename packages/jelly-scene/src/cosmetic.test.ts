@@ -124,6 +124,7 @@ const COLORABLE = new Set([
   "beanie",
   "hood",
   "headset",
+  "headset-neutral",
   "pixel-glasses",
   "party-hat",
   "crown",

@@ -124,7 +124,7 @@ describe("unlocks", () => {
 describe("slots", () => {
   it("knows which cosmetics the server lets color", () => {
     expect(isColorable("beanie", PREVIEW_CATALOG)).toBe(true);
-    expect(isColorable("headset-neutral", PREVIEW_CATALOG)).toBe(false);
+    expect(isColorable("sprout", PREVIEW_CATALOG)).toBe(false);
     expect(isColorable("unbekannt", PREVIEW_CATALOG)).toBe(false);
   });
   it("wears what it can draw, head before face before hands", () => {
