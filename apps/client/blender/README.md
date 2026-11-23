@@ -29,8 +29,8 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
 1. Put your meshes into the cosmetic's collection, positioned on the reference pet as they should sit.
    Model in world space: the export keeps positions as they are, nothing is re-anchored.
 2. Stay inside **Sichtbereich**. Anything above its top edge ends up behind the speech bubble. A
-   cosmetic with `pulse` in `COSMETIC_LOOKS` (cosmetic.ts), like the octopus, swells by its `amount`
-   round its point while the pet moves: leave it that much room.
+   cosmetic with `pulse` or `wave` in `COSMETIC_LOOKS` (cosmetic.ts), like the octopus, stretches,
+   rocks and sways while the pet moves: leave it room, `cosmeticLooks.test.ts` checks every pose.
 3. One material per mesh. Only the **Base Color** of the Principled BSDF is used: the app shades every
    cosmetic like the pet (jelly gloss, light lower edge, outline in the pet's ink colour).
    Textures, roughness and transparency are ignored. A custom property `glow` (0–1) on the material

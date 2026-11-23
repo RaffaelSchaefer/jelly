@@ -204,8 +204,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Was hinter dem Jelly liegen soll, bekommt `behind` in `COSMETIC_LOOKS`: Es löscht die Tiefe nicht, Körper, Kopf und
   Hände verdecken es. So wachsen die Katzenohren hinter dem Kopf hervor, und der Katzenschwanz steht nicht vor den Händen. Was an den Händen sitzt wie die Pfoten,
   steht in `ON_HANDS` (`packages/jelly-scene/src/held.ts`) mit seinen Händen: ein Modell um den Ursprung, an jeder dieser Hände gezeichnet (`HandWorn` in der App, `held.ts` auf der Bühne). Der Schild sitzt nur an der linken, die rechte bleibt frei für Winken, Zeigen und Grübeln. Was pulsieren soll wie der Oktopus,
-  bekommt `pulse` in `COSMETIC_LOOKS` (Punkt, Stärke, Takt), was mit Armen wedeln soll, `wave` (Punkt, Abstand, Länge, Ausschlag, Takt):
-  `pulseCosmetics` (`cosmeticPulse.ts`) lässt es je Bild anschwellen und gibt dem Wedeln den Takt, in der App aus `Character.tsx`,
+  bekommt `pulse` in `COSMETIC_LOOKS` (Punkt, Stärke, Takt, Schaukeln, Neigung), was mit Armen wedeln soll, `wave` (Punkt, Abstand, Länge, Ausschlag, Takt):
+  `pulseCosmetics` (`cosmeticPulse.ts`) staucht, streckt und schaukelt es je Bild wie Wackelpudding und gibt dem Wedeln den Takt, in der App aus `Character.tsx`,
   auf der Bühne aus `jellies.ts`, bei reduzierter Bewegung nicht. Das Wedeln rechnet `waved` in `toon.vert.glsl` und `outline.vert.glsl`,
   in beiden Zeichen für Zeichen gleich. Ein neues Modell groß ansehen:
   `/scripts/cosmetic-check.html?wear=<Schlüssel>&color=<Farbe>&tint=<Hex>` in der Browser-Vorschau.

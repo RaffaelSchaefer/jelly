@@ -116,8 +116,9 @@ export const COSMETIC_OUTLINE = 0.035;
  * Abweichende Looks je Schlüssel. Piercings und Schnurrhaare sind kaum dicker als die Outline, mit
  * ihr läge um jedes Teil ein dunkler Fleck wie ein Schatten. Katzenohren und -schwanz liegen hinter
  * dem Jelly: Die Ohren wachsen so hinter dem Kopf hervor, der Schwanz steht nicht vor den Händen.
- * Der Oktopus sitzt schräg oben am Kopf und schwillt um seinen Sitz an, so bleibt er dort. Seine
- * Arme wedeln ab dem Rand seines Kopfes, dessen Mitte und Radius aus `build_octopus.py` stammen.
+ * Der Oktopus sitzt schräg oben am Kopf und wackelt um seinen Sitz, so bleibt er dort: gestaucht
+ * entlang seiner eigenen Höhe, die wie in `build_octopus.py` um `TILT` geneigt ist. Seine Arme
+ * wedeln ab dem Rand seines Kopfes, dessen Mitte und Radius ebenfalls von dort stammen.
  */
 const COSMETIC_LOOKS: Readonly<Record<string, CosmeticLook>> = {
   "cat-ears": { behind: true },
@@ -125,8 +126,8 @@ const COSMETIC_LOOKS: Readonly<Record<string, CosmeticLook>> = {
   "cat-tail": { behind: true },
   "cat-whiskers": { outline: 0.014 },
   octopus: {
-    pulse: { at: [0.36, 1.17, 0.25], amount: 0.06, rate: 1.1 },
-    wave: { at: [0.45, 1.31, 0.36], from: 0.215, span: 0.25, amount: 0.04, rate: 0.7 },
+    pulse: { at: [0.36, 1.17, 0.25], amount: 0.24, rate: 1.6, rock: 0.3, lean: -0.61 },
+    wave: { at: [0.45, 1.31, 0.36], from: 0.2, span: 0.26, amount: 0.15, rate: 2.1 },
   },
   piercings: { outline: 0.014 },
 };

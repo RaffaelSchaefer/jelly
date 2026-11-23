@@ -4,7 +4,14 @@
  * @module
  */
 
-import { Object3D, Vector3, type Mesh, type ShaderMaterial } from "three";
+import {
+  Matrix4,
+  Object3D,
+  Vector3,
+  type BufferGeometry,
+  type Mesh,
+  type ShaderMaterial,
+} from "three";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -69,26 +76,52 @@ describe("hinter dem Jelly", () => {
   });
 });
 
+/**
+ * Der höchste Punkt, den ein pulsierendes Cosmetic erreicht: Stauchen, Strecken und Schaukeln über
+ * viele Schläge, dazu der volle Ausschlag seiner Arme, wo sie wedeln.
+ */
+function highestPoint(cosmetic: Object3D, model: BufferGeometry) {
+  const root = new Object3D().add(cosmetic);
+  const wave = cosmeticLook("octopus").wave!;
+  const points = model.getAttribute("position");
+  const hub = new Vector3(...wave.at);
+  const point = new Vector3();
+  let top = -Infinity;
+  for (let time = 0; time < 12; time += 0.03) {
+    pulseCosmetics(root, time, false);
+    for (let index = 0; index < points.count; index += 1) {
+      point.fromBufferAttribute(points, index);
+      // Wie im Shader wächst der Ausschlag vom Rand des Kopfes bis zur Spitze des Arms.
+      const far = Math.min(1, Math.max(0, (point.distanceTo(hub) - wave.from) / wave.span));
+      const waves = wave.amount * far;
+      top = Math.max(top, point.applyMatrix4(cosmetic.matrix).y + waves);
+    }
+  }
+  return top;
+}
+
 describe("Pulsieren", () => {
   it("lässt nur den Oktopus pulsieren", () => {
     const pulsing = Object.keys(COSMETIC_MODELS).filter((key) => cosmeticLook(key).pulse);
     expect(pulsing).toEqual(["octopus"]);
   });
 
-  it("schwillt um seinen Punkt an und steht bei reduzierter Bewegung still", async () => {
+  it("wackelt um seinen Punkt und steht bei reduzierter Bewegung still", async () => {
     const look = cosmeticLook("octopus");
     const pulse = look.pulse!;
     const cosmetic = createCosmetic(await loadModel("octopus"), "#16248a", "sticker", look);
     const root = new Object3D().add(cosmetic);
-    const peak = 0.5 / pulse.rate;
-    pulseCosmetics(root, peak, false);
-    expect(cosmetic.scale.x).toBeCloseTo(1 + pulse.amount);
     const centre = new Vector3(...pulse.at);
-    const moved = centre.clone().multiplyScalar(cosmetic.scale.x).add(cosmetic.position);
-    expect(moved.distanceTo(centre)).toBeCloseTo(0);
-    pulseCosmetics(root, peak, true);
-    expect(cosmetic.scale.x).toBe(1);
-    expect(cosmetic.position.length()).toBe(0);
+    for (const time of [0.1, 0.37, 1.9]) {
+      pulseCosmetics(root, time, false);
+      // Der Punkt staucht und schaukelt nicht mit.
+      expect(centre.clone().applyMatrix4(cosmetic.matrix).distanceTo(centre)).toBeCloseTo(0);
+      // Wie Wackelpudding: Was es flacher wird, geht es in die Breite, der Inhalt bleibt.
+      expect(cosmetic.matrix.determinant()).toBeCloseTo(1);
+      expect(cosmetic.matrix.equals(new Matrix4())).toBe(false);
+    }
+    pulseCosmetics(root, 0.37, true);
+    expect(cosmetic.matrix.equals(new Matrix4())).toBe(true);
     disposeCosmetic(cosmetic);
   });
 
@@ -116,12 +149,13 @@ describe("Pulsieren", () => {
     expect(move.x).toBe(0);
   });
 
-  it("bleibt auch angeschwollen unter der Sprechblase", async () => {
-    const pulse = cosmeticLook("octopus").pulse!;
+  it("bleibt in jeder Lage unter der Sprechblase", async () => {
+    const look = cosmeticLook("octopus");
     const model = await loadModel("octopus");
-    model.computeBoundingBox();
-    const swell = 1 + pulse.amount;
-    const top = pulse.at[1] + (model.boundingBox!.max.y - pulse.at[1]) * swell;
-    expect(top + COSMETIC_OUTLINE * swell).toBeLessThan(BUBBLE_Y);
+    const cosmetic = createCosmetic(model, "#16248a", "sticker", look);
+    // Gestaucht geht es in die Breite, die Outline mit: höchstens so weit, wie es sich staucht.
+    const widest = 1 / Math.sqrt(1 - look.pulse!.amount);
+    expect(highestPoint(cosmetic, model) + COSMETIC_OUTLINE * widest).toBeLessThan(BUBBLE_Y);
+    disposeCosmetic(cosmetic);
   });
 });

@@ -8,9 +8,10 @@ towards +x, so it leans like a hat worn askew.
 
 Head and tentacles are one piece, an implicit surface of an ellipsoid and round cones with soft
 seams, like the plush kitten, but glossy like the pet. The face lies on it as cushions. Its motion
-is not in the model: in `COSMETIC_LOOKS` (cosmetic.ts) `pulse` swells it round its seat and `wave`
-lets the tentacles sway from the rim of its head on, while the pet moves. Both name points of this
-model, turned: after a change to `TILT` or `MANTLE` they move too.
+is not in the model: in `COSMETIC_LOOKS` (cosmetic.ts) `pulse` squashes, stretches and rocks it
+round its seat like jelly and `wave` lets the tentacles sway from the rim of its head on, while the
+pet moves. Both name points of this model, turned, and `pulse` its lean: after a change to `TILT`
+or `MANTLE` they move too.
 
     blender blender/cosmetics.blend --background --python blender/build_octopus.py -- [--save] [--export]
 

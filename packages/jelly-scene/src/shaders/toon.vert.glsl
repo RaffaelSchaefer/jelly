@@ -35,10 +35,13 @@ vec3 waved(vec3 point) {
   vec3 arm = point - uWave.xyz;
   float far = clamp((length(arm) - uWave.w) / uWaveMove.y, 0.0, 1.0);
   if (uWaveMove.x == 0.0 || far <= 0.0) return point;
-  // Quer zum Arm, in der Ebene zur Kamera. Der Winkel versetzt die Arme gegeneinander.
+  // Quer zum Arm, in der Ebene zur Kamera. Der Winkel versetzt die Arme gegeneinander. Zwei
+  // Schwingungen übereinander, die zweite schneller und kürzer: So schlackert er wie Wackelpudding.
   vec2 across = normalize(vec2(-arm.y, arm.x));
-  float swing = sin(uWaveMove.z - far * 3.0 + atan(arm.y, arm.x) * 3.0);
-  return point + vec3(across, 0.0) * (uWaveMove.x * far * far * swing);
+  float turn = atan(arm.y, arm.x);
+  float swing = 0.65 * sin(uWaveMove.z - far * 4.0 + turn * 3.0)
+    + 0.35 * sin(uWaveMove.z * 2.3 - far * 7.0 + turn * 5.0);
+  return point + vec3(across, 0.0) * (uWaveMove.x * far * swing);
 }
 void main() {
   vNormal = normalize(normalMatrix * normal);
