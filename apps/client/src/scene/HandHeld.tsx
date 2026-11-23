@@ -1,6 +1,6 @@
 /**
  * Was das Jelly in den Händen trägt: Es folgt ihnen wie die Tafel in `SignBoard.tsx`. Was es an den
- * Händen trägt, folgt jeder Hand einzeln.
+ * Händen trägt, folgt jeder seiner Hände einzeln.
  *
  * @module
  */
@@ -10,9 +10,6 @@ import type { Object3D } from "three";
 import { boardPose, HAND, type Jelly } from "@jelly/scene";
 import { useFrame } from "@react-three/fiber";
 import { useRef, type ReactNode } from "react";
-
-/** Die beiden Hände eines Jellys, links und rechts. */
-const HAND_INDICES = [0, 1] as const;
 
 /**
  * Muss in der Wurzel des Jellys liegen: Es liest die Lage der Hände im selben Koordinatensystem.
@@ -46,16 +43,19 @@ export default function HandHeld({
 }
 
 /**
- * Was das Jelly an den Händen trägt, wie Pfoten: dasselbe Modell an jeder Hand, um den Ursprung
- * modelliert. Es folgt Lage und Größe seiner Hand, so bleibt es auch beim Winken an ihr. Muss in
- * der Wurzel des Jellys liegen wie {@link HandHeld}.
+ * Was das Jelly an den Händen trägt, wie Pfoten oder den Schild: dasselbe Modell an jeder seiner
+ * Hände, um den Ursprung modelliert. Es folgt Lage und Größe seiner Hand, so bleibt es auch beim
+ * Winken an ihr. Muss in der Wurzel des Jellys liegen wie {@link HandHeld}.
  */
 export function HandWorn({
   jelly,
+  hands,
   visible = true,
   children,
 }: {
   jelly: Jelly;
+  /** An welchen Händen, 0 links, 1 rechts (`handsOf` aus `@jelly/scene`). */
+  hands: readonly number[];
   /** Ausgeblendet bleibt das Modell geladen, etwa solange die Hände eine Tafel halten. */
   visible?: boolean;
   children: ReactNode;
@@ -72,7 +72,7 @@ export function HandWorn({
     });
   });
 
-  return HAND_INDICES.map((index) => (
+  return hands.map((index) => (
     <object3D
       key={index}
       ref={(holder) => {

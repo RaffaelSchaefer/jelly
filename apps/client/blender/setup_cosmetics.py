@@ -47,6 +47,9 @@ COSMETICS = [
     ("yarn-ball", "Hände"),
     ("cat-paws", "Hände"),
     ("cat-tail", "Körper"),
+    ("nasal-helmet", "Kopf"),
+    ("kite-shield", "Hände"),
+    ("octopus", "Kopf"),
 ]
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"

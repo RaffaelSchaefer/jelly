@@ -115,6 +115,18 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Wedelt von allein, wenn du gewinnst. Bei Lag zuckt nur die Spitze.",
     article: "den",
   },
+  "nasal-helmet": {
+    lore: "Geschmiedet für Köpfe, die viel einstecken. Der Nasenschutz hält auch Krümel ab.",
+    article: "den",
+  },
+  "kite-shield": {
+    lore: "Bemalt wie einst bei Hastings. Hält Pfeile ab, Lag leider nicht.",
+    article: "den",
+  },
+  octopus: {
+    lore: "Hat sich im Aquarium der Halle verlaufen. Bleibt jetzt bei dir und pulsiert vor Glück.",
+    article: "den",
+  },
   hood: {
     lore: "Für geheime Wege durch die Halle. Niemand erkennt dich. Fast niemand.",
     article: "die",

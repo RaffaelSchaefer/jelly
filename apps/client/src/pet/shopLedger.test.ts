@@ -53,12 +53,15 @@ const FROM_THREE = [
   "cat-ears",
   "cat-tail",
   "snail-shell",
+  "nasal-helmet",
+  "kite-shield",
   "ogre-ears",
   "piercings",
   "pixel-glasses",
   "cat-paws",
   "schnoerbi-mask",
   "knit-scarf",
+  "octopus",
   "cyber-cat-ears",
   "hood",
   "goose",
@@ -208,7 +211,7 @@ describe("shopSummary", () => {
     expect(summary(jelly({ coins: 2, cosmetics: twoOwned }))).toBe(
       "Mit 2 Münzen kannst du dir eine Ware leisten.",
     );
-    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 15 Waren leisten.");
+    expect(summary(PREVIEW_ME)).toBe("Mit 3 Münzen kannst du dir 17 Waren leisten.");
   });
 
   it("nennt, was zur günstigsten Ware fehlt", () => {

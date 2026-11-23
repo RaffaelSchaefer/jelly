@@ -9,7 +9,7 @@ each toe. The fur takes the wearer's colour, the beans stay pink.
     blender blender/cosmetics.blend --background --python blender/build_cat_paws.py -- [--save] [--export]
 
 Unlike what the pet holds, this is one paw round the origin: the app draws it on each hand and
-lets it follow that hand (`onHands` in src/pet/cosmetics.ts, `HandWorn` in HandHeld.tsx), so it
+lets it follow that hand (`ON_HANDS` in packages/jelly-scene/src/held.ts, `HandWorn` in HandHeld.tsx), so it
 stays on while the pet waves. It covers the hand (radius 0.2) with its ink edge and has to look
 right on both hands, so it is symmetric. Three.js coordinates.
 """

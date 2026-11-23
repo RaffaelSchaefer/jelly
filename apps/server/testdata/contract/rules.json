@@ -173,6 +173,20 @@
       "error": "not_enough_coins"
     },
     {
+      "name": "the octopus costs four coins",
+      "key": "octopus",
+      "coins": 4,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "two coins are too few for the kite shield",
+      "key": "kite-shield",
+      "coins": 2,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
       "name": "the bat wings are not for sale",
       "key": "bat-wings",
       "coins": 100,

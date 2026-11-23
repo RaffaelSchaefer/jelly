@@ -64,6 +64,9 @@ const (
 	priceYarnBall      = 2
 	priceCatPaws       = 3
 	priceCatTail       = 3
+	priceNasalHelmet   = 3
+	priceKiteShield    = 3
+	priceOctopus       = 4
 )
 
 // Cosmetic is one item. It unlocks through a purchase, an event, or only through an award.
@@ -193,6 +196,18 @@ func ListCosmetics() []Cosmetic {
 		{
 			Key: "cat-paws", Name: "Samtpfoten", Scope: ScopePermanent, Slot: SlotHands,
 			Colorable: true, Unlock: UnlockShop, Price: priceCatPaws,
+		},
+		{
+			Key: "nasal-helmet", Name: "Nasalhelm", Scope: ScopePermanent, Slot: SlotHead,
+			Unlock: UnlockShop, Price: priceNasalHelmet,
+		},
+		{
+			Key: "kite-shield", Name: "Normannenschild", Scope: ScopePermanent, Slot: SlotHands,
+			Colorable: true, Unlock: UnlockShop, Price: priceKiteShield,
+		},
+		{
+			Key: "octopus", Name: "Chibi-Oktopus", Scope: ScopePermanent, Slot: SlotHead,
+			Colorable: true, Unlock: UnlockShop, Price: priceOctopus,
 		},
 		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,

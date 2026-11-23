@@ -1,5 +1,5 @@
 /**
- * Was das Jelly mit beiden Händen hält oder an jeder Hand trägt: reine Rechnung für App und Bühne.
+ * Was das Jelly mit beiden Händen hält oder an den Händen trägt: reine Rechnung für App und Bühne.
  *
  * @module
  */
@@ -8,10 +8,14 @@
 const BOARD_RANGE = { x: 0.2, minY: -0.62, maxY: -0.15, tilt: 0.22 };
 
 /**
- * Cosmetics, die an jeder Hand sitzen statt zwischen beiden. Ihr Modell ist eine Hand um den
- * Ursprung.
+ * Cosmetics, die an den Händen sitzen statt zwischen beiden, mit den Händen (0 links, 1 rechts):
+ * Pfoten an jeder, der Schild an der linken. Die rechte bleibt so frei für Winken, Zeigen und
+ * Grübeln. Ihr Modell ist eine Hand um den Ursprung.
  */
-const ON_HANDS = new Set(["cat-paws"]);
+const ON_HANDS: Readonly<Record<string, readonly number[]>> = {
+  "cat-paws": [0, 1],
+  "kite-shield": [0],
+};
 
 /** `value` auf den Bereich von `min` bis `max` begrenzt. */
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -29,7 +33,12 @@ export function boardPose(left: { x: number; y: number }, right: { x: number; y:
   };
 }
 
-/** Ob das Cosmetic `key` an jeder Hand sitzt, wie Pfoten, statt zwischen beiden. */
+/** An welchen Händen das Cosmetic `key` sitzt, 0 links, 1 rechts. Leer heißt zwischen beiden. */
+export function handsOf(key: string): readonly number[] {
+  return Object.hasOwn(ON_HANDS, key) ? (ON_HANDS[key] ?? []) : [];
+}
+
+/** Ob das Cosmetic `key` an den Händen sitzt, wie Pfoten oder der Schild, statt zwischen beiden. */
 export function isWornOnHands(key: string) {
-  return ON_HANDS.has(key);
+  return handsOf(key).length > 0;
 }

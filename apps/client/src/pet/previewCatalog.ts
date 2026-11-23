@@ -274,6 +274,17 @@ export const PREVIEW_CATALOG: Catalog = {
     { ...WARE, key: "yarn-ball", name: "Wollknäuel", slot: "hands", price: 2 },
     { ...WARE, key: "cat-paws", name: "Samtpfoten", slot: "hands", price: 3 },
     { ...WARE, key: "cat-tail", name: "Katzenschwanz", slot: "body", price: 3 },
+    // Der kleine Normanne und sein Oktopus.
+    {
+      ...WARE,
+      key: "nasal-helmet",
+      name: "Nasalhelm",
+      slot: "head",
+      price: 3,
+      colorable: false,
+    },
+    { ...WARE, key: "kite-shield", name: "Normannenschild", slot: "hands", price: 3 },
+    { ...WARE, key: "octopus", name: "Chibi-Oktopus", slot: "head", price: 4 },
   ],
   cosmetic_slots: [
     { key: "head", label: "Kopf" },
