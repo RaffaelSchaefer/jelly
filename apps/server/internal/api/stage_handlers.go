@@ -153,6 +153,9 @@ func (server *apiServer) handleStream(
 	if controller.Flush() != nil {
 		return
 	}
+	// The request log notes the close, with how long the stream was open.
+	server.Logger.DebugContext(request.Context(), "stream opened",
+		"player_id", viewerID, "own_topics", topics.own)
 	cursor := &streamCursor{topics: topics, afterEvent: afterID, afterMove: 0, playerID: viewerID}
 	server.sendStreamTicks(writer, request, controller, cursor)
 }
