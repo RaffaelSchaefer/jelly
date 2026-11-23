@@ -166,6 +166,8 @@ die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit do
   Fehler zurück, `addOperation` übersetzt sie über `listKnownErrors`. `/health` und `/admin/api` nutzen
   weiter `net/http` und stehen nicht im Vertrag. `GET /version` steht im Vertrag, aber außerhalb von
   `/v1` (`addRootOperation`), damit auch alte Apps ihn nach einem Wechsel des Pfads noch finden.
+- Ein Image entsteht nur aus einem Tag `server-v<APIVersion>` auf `main`, also erst nach dem Merge taggen und die Nummer
+  aus `internal/api/openapi.go` nehmen. `server-image.yml` bricht bei anderer Nummer ab.
 - Jedes Feature erhöht `APIVersion` und bekommt eine Zeile im Changelog von `docs/api.md`. Erweiterungen
   bleiben in `/v1`. Was den Vertrag bricht, bekommt einen neuen Pfad und eine Begründung in `docs/api.md`.
 

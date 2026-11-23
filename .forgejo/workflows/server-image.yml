@@ -28,6 +28,21 @@ jobs:
             exit 1
           fi
 
+      # The image is named after the tag, and /version reports APIVersion, so both must match.
+      - name: Require tag to match APIVersion
+        run: |
+          set -eu
+          TAG_VERSION="${GITHUB_REF_NAME#server-v}"
+          API_VERSION="$(sed -n 's/^[[:space:]]*APIVersion = "\(.*\)"$/\1/p' apps/server/internal/api/openapi.go)"
+          if [ -z "$API_VERSION" ]; then
+            echo "APIVersion not found in apps/server/internal/api/openapi.go."
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$API_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match APIVersion $API_VERSION, tag server-v$API_VERSION instead."
+            exit 1
+          fi
+
       # The job image has no docker CLI, only the DinD daemon is reachable.
       # buildx is needed because the Dockerfile uses BuildKit cache mounts.
       - name: Install docker CLI and buildx
