@@ -69,7 +69,7 @@ export const PREVIEW_CATALOG: Catalog = {
       name: "Headset schlicht",
       scope: "permanent",
       slot: "head",
-      colorable: false,
+      colorable: true,
       unlock: "shop",
       price: 1,
     },

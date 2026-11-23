@@ -91,7 +91,7 @@ describe("studio paints", () => {
     const paintable = (me: typeof RICH) =>
       items("kopf", me).flatMap((item) => (item.paintable ? [item.id] : []));
     expect(paintable(wearing("beanie"))).toEqual(["beanie"]);
-    expect(paintable(wearing("headset-neutral"))).toEqual([]);
+    expect(paintable(wearing("sprout"))).toEqual([]);
     expect(items("kopf").some((item) => item.paintable)).toBe(false);
   });
   it("offers Original and the server colors", () => {
@@ -105,7 +105,7 @@ describe("studio paints", () => {
     expect(chosen.map((item) => item.paint)).toEqual(["#ffd45c"]);
   });
   it("has no wheel for fixed cosmetics or empty slots", () => {
-    expect(wheel(wearing("headset-neutral"))).toEqual([]);
+    expect(wheel(wearing("sprout"))).toEqual([]);
     expect(wheel()).toEqual([]);
   });
 });
