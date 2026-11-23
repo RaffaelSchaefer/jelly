@@ -151,6 +151,7 @@ Passwort. Alle Anmeldeversuche teilen sich einen Zähler, sonst könnte jeder im
 | Ort                | Inhalt                                                  |
 | ------------------ | ------------------------------------------------------- |
 | `cmd/jelly-server` | Einstieg, Serverstart, `create-lan`, `simulate`, `openapi`, `healthcheck` |
+| `internal/logging` | baut den einen Logger, `cmd/jelly-server` gibt ihn weiter |
 | `internal/api`     | HTTP-Wege, OpenAPI über huma, Fehlercodes               |
 | `internal/store`   | SQLite, Transaktionen, goose-Migrationen in `migrations/` |
 | `internal/architecture` | Tests für Regeln, die kein Linter prüft            |

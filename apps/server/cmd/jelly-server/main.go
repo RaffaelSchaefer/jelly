@@ -19,13 +19,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/logging"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
 var errUnknownCommand = errors.New("unknown command")
 
 func main() {
-	logger, err := createLogger(os.Stderr, readEnv("JELLY_LOG_LEVEL", defaultLogLevel))
+	logger, err := logging.New(os.Stderr, readEnv("JELLY_LOG_LEVEL", logging.DefaultLevel))
 	if err != nil {
 		// Without a valid level there is no logger yet, so the default one reports the mistake.
 		fallback := slog.New(slog.NewTextHandler(os.Stderr, nil))
