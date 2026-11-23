@@ -115,7 +115,7 @@ func (server *apiServer) buildHandler() http.Handler {
 		// Without a method, so that it does not collide with the catch-all of the version above.
 		mux.Handle("/", server.Web)
 	}
-	return mux
+	return server.logRequests(mux)
 }
 
 // addContractRoutes registers everything the OpenAPI document describes.

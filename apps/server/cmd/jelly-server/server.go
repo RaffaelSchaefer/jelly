@@ -44,6 +44,7 @@ func runServer(appCtx context.Context, logger *slog.Logger) error {
 	if isHTTPDemo {
 		logger.WarnContext(appCtx, "admin cookie without Secure, only for a demo")
 	}
+	logServerStart(appCtx, logger, readDatabasePath())
 	database, err := openDatabase(appCtx)
 	if err != nil {
 		return err

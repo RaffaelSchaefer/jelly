@@ -7,7 +7,7 @@
 //	jelly-server healthcheck      exits 0 if the server on JELLY_ADDR is healthy, for Docker
 //
 // Settings come from the environment variables JELLY_DB, JELLY_ADDR, JELLY_STAGE_KEY,
-// JELLY_ADMIN_SECRET and JELLY_MIN_CLIENT_VERSION.
+// JELLY_ADMIN_SECRET, JELLY_MIN_CLIENT_VERSION and JELLY_LOG_LEVEL.
 package main
 
 import (
@@ -19,14 +19,21 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/logging"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
 var errUnknownCommand = errors.New("unknown command")
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	err := runProgram(logger)
+	logger, err := logging.New(os.Stderr, readEnv("JELLY_LOG_LEVEL", logging.DefaultLevel))
+	if err != nil {
+		// Without a valid level there is no logger yet, so the default one reports the mistake.
+		fallback := slog.New(slog.NewTextHandler(os.Stderr, nil))
+		fallback.Error("program failed", "error", err)
+		os.Exit(1)
+	}
+	err = runProgram(logger)
 	if err != nil {
 		logger.Error("program failed", "error", err)
 		os.Exit(1)
@@ -59,9 +66,14 @@ func runProgram(logger *slog.Logger) error {
 	return fmt.Errorf("%w: %q", errUnknownCommand, arguments[0])
 }
 
+// readDatabasePath names the database file from JELLY_DB.
+func readDatabasePath() string {
+	return readEnv("JELLY_DB", "jelly.db")
+}
+
 // openDatabase opens the database named by the environment.
 func openDatabase(ctx context.Context) (*store.Store, error) {
-	database, err := store.Open(ctx, readEnv("JELLY_DB", "jelly.db"))
+	database, err := store.Open(ctx, readDatabasePath())
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
