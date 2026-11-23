@@ -4,6 +4,7 @@
 //	jelly-server create-lan ...   creates a LAN, see -h for options
 //	jelly-server simulate ...     plays many jellies against a server, see -h for options
 //	jelly-server openapi          prints the API contract as OpenAPI
+//	jelly-server healthcheck      exits 0 if the server on JELLY_ADDR is healthy, for Docker
 //
 // Settings come from the environment variables JELLY_DB, JELLY_ADDR, JELLY_STAGE_KEY,
 // JELLY_ADMIN_SECRET and JELLY_MIN_CLIENT_VERSION.
@@ -51,6 +52,9 @@ func runProgram(logger *slog.Logger) error {
 	}
 	if arguments[0] == commandOpenAPI {
 		return runOpenAPI()
+	}
+	if arguments[0] == commandHealthcheck {
+		return runHealthcheck(appCtx)
 	}
 	return fmt.Errorf("%w: %q", errUnknownCommand, arguments[0])
 }
