@@ -149,7 +149,7 @@ Passwort. Alle Anmeldeversuche teilen sich einen Zähler, sonst könnte jeder im
 
 | Ort                | Inhalt                                                  |
 | ------------------ | ------------------------------------------------------- |
-| `cmd/jelly-server` | Einstieg, Serverstart, `create-lan`, `simulate`, `openapi` |
+| `cmd/jelly-server` | Einstieg, Serverstart, `create-lan`, `simulate`, `openapi`, `healthcheck` |
 | `internal/api`     | HTTP-Wege, OpenAPI über huma, Fehlercodes               |
 | `internal/store`   | SQLite, Transaktionen, goose-Migrationen in `migrations/` |
 | `internal/architecture` | Tests für Regeln, die kein Linter prüft            |
@@ -169,3 +169,9 @@ den Build gelangt, regelt `Dockerfile.dockerignore`. Der Server speichert unter 
 Volume bestehen bleiben muss. SIGINT und SIGTERM beenden den Server geordnet, offene Anfragen haben dafür bis zu 8
 Sekunden und damit weniger als die 10 Sekunden von `docker stop`. Die Datenbank darf nicht im
 laufenden Betrieb einfach kopiert werden. Backups entstehen mit `sqlite3 jelly.db "VACUUM INTO 'backup.db'"` und gehören auf ein anderes System.
+
+Das Image bringt einen Healthcheck mit: `jelly-server healthcheck` fragt `/health` des Servers auf `JELLY_ADDR` ab und
+endet mit 0, wenn er mit 200 antwortet. `/health` prüft die Datenbank. Docker prüft in der Startphase jede Sekunde, danach
+alle 30 Sekunden; Traefik leitet erst an einen gesunden Container weiter. Im Stack braucht es dafür nichts. Wer den
+Healthcheck dort überschreibt, schreibt ihn als Liste, `test: ["CMD", "/app/jelly-server", "healthcheck"]`: Das Image
+ist distroless und hat weder Shell noch `wget` oder `curl`, ein `test` als Text scheitert an `/bin/sh`.

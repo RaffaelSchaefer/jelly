@@ -31,4 +31,7 @@ COPY --from=build --chown=nonroot:nonroot /out/ /app/
 ENV JELLY_DB=/app/data/jelly.db JELLY_ADDR=:8080
 VOLUME /app/data
 EXPOSE 8080
+# The image has no shell and no wget, so the server checks itself. --start-interval needs Docker 25.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --start-interval=1s --retries=3 \
+  CMD ["/app/jelly-server", "healthcheck"]
 ENTRYPOINT ["/app/jelly-server"]
