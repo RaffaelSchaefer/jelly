@@ -164,6 +164,30 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Tapse sachte, {name}!"],
     hover: ["Die Bohnen sind nur zum Ansehen da."],
   },
+  "nasal-helmet": {
+    offer: ["Ein Nasalhelm! Stahl für kluge Köpfe.", "Der Helm hält Hiebe ab. Und kalte Ohren."],
+    short: ["Für den Helm fehlt noch etwas Gold."],
+    worn: ["Der Helm sitzt. Ritterlich siehst du aus!"],
+    bought: ["Kopf hoch, {name}! Der Helm hält."],
+    hover: ["Nicht klopfen, er dröhnt so."],
+  },
+  "kite-shield": {
+    offer: ["Ein Normannenschild! Frisch bemalt.", "Hinter dem Schild bist du sicher. Meistens."],
+    short: ["Für den Schild fehlt noch ein Goldstück."],
+    worn: ["Schild hoch! Du siehst wehrhaft aus."],
+    bought: ["Halt ihn gut fest, {name}!"],
+    hover: ["Vorsicht, die Farbe ist noch frisch."],
+  },
+  octopus: {
+    offer: [
+      "Ein Oktopus! Er sucht einen Kopf zum Kuscheln.",
+      "Acht Arme, ein Herz. Na gut, drei Herzen.",
+    ],
+    short: ["Der Oktopus wartet, bis das Gold reicht."],
+    worn: ["Er mag dich. Siehst du, wie er pulsiert?"],
+    bought: ["Er bleibt bei dir, {name}!"],
+    hover: ["Nicht kitzeln, sonst kringelt er sich."],
+  },
   "cat-tail": {
     offer: ["Ein Katzenschwanz! Er wedelt von allein.", "Flauschig, mit heller Spitze."],
     short: ["Für den Schwanz fehlt noch etwas Gold."],

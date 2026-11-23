@@ -80,6 +80,9 @@ const PREVIEW_TIERS = {
   "yarn-ball": "fein",
   "cat-paws": "edel",
   "cat-tail": "edel",
+  "nasal-helmet": "edel",
+  "kite-shield": "edel",
+  octopus: "edel",
 };
 
 describe("shopItems", () => {
@@ -98,7 +101,7 @@ describe("shopItems", () => {
   it("sortiert nach Preis und kennt Besitz, Kaufbares und Fehlendes", () => {
     const items = shopItems(PREVIEW_CATALOG, PREVIEW_ME);
     expect(items.map((item) => item.price)).toEqual([
-      1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 6, 6,
+      1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 6, 6,
     ]);
     const states = Object.fromEntries(
       items.map((item) => [item.cosmetic.id, [item.state, item.missing]]),

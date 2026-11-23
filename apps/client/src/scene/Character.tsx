@@ -16,7 +16,9 @@ import {
   disposeJelly,
   hasCosmeticModel,
   isEmoteKey,
+  handsOf,
   isWornOnHands,
+  pulseCosmetics,
   isPartnerMotionKey,
   partnerPose,
   restPose,
@@ -116,8 +118,8 @@ const HELD_LAYER = 1;
 
 /**
  * Was das Jelly trägt. Muss in seiner Wurzel liegen: Kopf- und Gesichts-Cosmetics wippen mit dem
- * Kopf, die für die Hände folgen ihnen (Pfoten jeder Hand einzeln), der Rest bleibt beim Körper.
- * Hält es eine Tafel, legt es das Gehaltene so lange beiseite.
+ * Kopf, die für die Hände folgen ihnen (Pfoten und Schild ihrer Hand einzeln), der Rest bleibt beim
+ * Körper. Hält es eine Tafel, legt es das Gehaltene so lange beiseite.
  */
 function WornCosmetics({
   jelly,
@@ -130,6 +132,7 @@ function WornCosmetics({
   ink: string;
   handsFree: boolean;
 }) {
+  const held = worn.find((item) => item.slot === "hands");
   const draw = (slots: CosmeticSlot[], layer?: number, onHands = false) =>
     worn
       .filter((item) => slots.includes(item.slot) && isWornOnHands(item.id) === onHands)
@@ -142,7 +145,7 @@ function WornCosmetics({
       <HandHeld jelly={jelly} visible={handsFree}>
         {draw(["hands"], HELD_LAYER)}
       </HandHeld>
-      <HandWorn jelly={jelly} visible={handsFree}>
+      <HandWorn jelly={jelly} hands={handsOf(held?.id ?? "")} visible={handsFree}>
         {draw(["hands"], HELD_LAYER, true)}
       </HandWorn>
       {draw(["body", "aura"])}
@@ -231,6 +234,7 @@ export default function Character({
           : undefined,
       mouth: currentMouth(voiced, role, reducedMotion),
     });
+    pulseCosmetics(jelly.root, clock.elapsedTime, reducedMotion);
     if (stand.current) poseStand(stand.current, emote, role, reducedMotion);
   }, -1);
 

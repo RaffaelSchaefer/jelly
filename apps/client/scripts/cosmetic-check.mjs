@@ -4,8 +4,9 @@
  *
  * Parameter: `wear` (Schlüssel, kommagetrennt, der Platz kommt aus `COSMETICS`), `color` (Farbe des
  * Jellys, sonst `mint`), `tint` (Farbe der einfärbbaren Teile als Hex-Text), `optimized` für den
- * optimierten Körper und `bg` (Hintergrund als CSS-Farbe). Für Nahaufnahmen ein großes Fenster
- * wählen und ausschneiden.
+ * optimierten Körper, `bg` (Hintergrund als CSS-Farbe), `emote` (Schlüssel einer Geste, die
+ * dauerhaft läuft) und `motion` (volle Bewegung statt reduzierter, etwa fürs Pulsieren). Für
+ * Nahaufnahmen ein großes Fenster wählen und ausschneiden.
  *
  * @module
  */
@@ -37,7 +38,10 @@ createRoot(document.querySelector("#root")).render(
     frameLimit: null,
     color: PARAMS.get("color") ?? "mint",
     pulse: 0,
-    reducedMotion: true,
+    reducedMotion: !PARAMS.has("motion"),
     equipped,
+    emote: PARAMS.has("emote")
+      ? { key: PARAMS.get("emote"), label: "", startedAt: performance.now(), seconds: 600 }
+      : null,
   }),
 );
