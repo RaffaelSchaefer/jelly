@@ -1,0 +1,96 @@
+/* Abschnitte, ihre Überschriften und der Fuß. */
+.section {
+  padding: var(--section) 0 0;
+}
+
+.section h2 {
+  font-size: clamp(34px, 4.8vw, 58px);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.section-lead {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: clamp(17px, 1.6vw, 20px);
+}
+
+/* Der Fuß: Aus der Unterkante schaut der Kopf eines riesigen Jellys herauf, zum Zeiger hin. Der
+   Text liegt über seinem Kinn, das dafür ins Dunkel der Seite ausläuft. */
+.footer {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: clamp(420px, 46vw, 660px);
+  margin-top: clamp(40px, 6vw, 88px);
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+/* Ohne WebGL bleibt nur die Textzeile. */
+.footer:has(.footer-jelly[hidden]) {
+  height: auto;
+  margin-top: var(--section);
+  border-top: 1px solid var(--line-soft);
+}
+
+.footer-jelly {
+  position: absolute;
+  inset: 0;
+}
+
+.footer-jelly[hidden] {
+  display: none;
+}
+
+.footer-jelly[data-ready="true"] .hero-canvas {
+  opacity: 1;
+}
+
+/* Dieselbe Farbe in allen Stufen, nur die Deckkraft fällt: So entsteht im Verlauf kein grauer Rand. */
+.footer::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: max(34%, 190px);
+  pointer-events: none;
+  background: linear-gradient(to top, #10151c 0%, #10151ceb 24%, #10151c8f 52%, #10151c33 78%, #10151c00);
+}
+
+.footer-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 40px;
+  padding-top: 28px;
+  padding-bottom: 28px;
+  text-shadow: 0 1px 12px #10151c;
+}
+
+.footer-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+
+.footer-brand strong {
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px clamp(20px, 3vw, 36px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

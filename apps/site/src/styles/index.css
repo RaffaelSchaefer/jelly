@@ -1,0 +1,8 @@
+/* Alle Stile der Seite. Farben und Glas folgen der App (apps/client/src/styles.css). */
+@import "./tokens.css";
+@import "./base.css";
+@import "./masthead.css";
+@import "./hero.css";
+@import "./sections.css";
+@import "./features.css";
+@import "./start.css";

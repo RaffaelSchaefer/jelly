@@ -1,0 +1,135 @@
+name: Deploy Site
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/site/**"
+      # Das Jelly oben auf der Seite kommt aus packages/jelly-scene.
+      - "packages/jelly-scene/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/pages.yml"
+  # Pull Requests prüfen und bauen die Seite, veröffentlicht wird erst auf main.
+  pull_request:
+    paths:
+      - "apps/site/**"
+      - "packages/jelly-scene/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+  # Nach einem Release zeigen die Download-Knöpfe die neue Version. Auf `release` hört dieser Lauf
+  # nicht: Build Client legt das Release mit github.token an, und das löst keine Workflows aus.
+  workflow_run:
+    workflows:
+      - "Build Client"
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  check:
+    name: Test & Lint (Site)
+    # Build Client läuft auch für Pull Requests und Testbuilds. Nur ein erfolgreicher Lauf auf einem
+    # Tag hat ein neues Release veröffentlicht.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Ohne src/generated/release.json, wie vor dem ersten Bau: Die Seite verlinkt dann GitHub.
+      - name: Type check
+        run: pnpm --filter @jelly/site run check-types
+
+      - name: Lint
+        run: pnpm --filter @jelly/site lint
+
+      - name: Test
+        run: pnpm --filter @jelly/site test
+
+      - name: Check formatting
+        run: pnpm --filter @jelly/site exec oxfmt --check "**/*.{ts,mjs,md}"
+
+  build:
+    name: Build Site
+    needs: check
+    # Ein neuerer Lauf bricht den älteren Bau ab, bevor er hochlädt. Sonst könnte ein älterer Stand
+    # zuletzt fertig werden und den neueren überschreiben. Pull Requests bauen je für sich.
+    concurrency:
+      group: pages-build-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    steps:
+      # Auch nach einem Release baut der Stand von main, nicht der des Tags.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Setzt voraus, dass unter Settings › Pages › Source „GitHub Actions“ gewählt ist (einmalig).
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v6
+
+      # Holt das neueste Release für die Download-Knöpfe (release.json) und baut die Seite. Mit Token
+      # zählt das Limit der API nicht pro IP des Runners.
+      - name: Build site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm --filter @jelly/site build
+
+      - name: Upload site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: apps/site/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request'
+    # Immer nur ein Deploy, ein laufender wird nicht abgebrochen: Sonst bliebe die Seite halb. Am Job
+    # statt am Workflow: Die übersprungenen Läufe nach Pull Requests verdrängten sonst einen
+    # wartenden Deploy aus der Gruppe.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
