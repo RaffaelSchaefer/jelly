@@ -8,7 +8,7 @@
  * Geräusche spielt `shopSound`, seine Effekte `shopFx` und die Rolle (`wizardEffects.ts`). Er grüßt
  * 350 ms nachdem die Szene steht, spätestens 2,5 s nachdem die Daten da sind, und auch im
  * StrictMode nur einmal. In der Vorschau döst er mit `#shop-doesen` schon nach 4 s und schläft nach
- * 8 s.
+ * 8 s, mit `#shop-nerven` kommt sein geklauter Hut schneller zurück.
  *
  * @module
  */
@@ -20,9 +20,10 @@ import type { ActiveEmote } from "../useEmotes";
 import type { ActiveVoice } from "../useJellyVoice";
 
 import { desktop } from "../backend";
+import { TEASE } from "../pet/shopTimeline";
 import { WIZARD_TIMBRE } from "../pet/voiceTimbre";
 import { createWizardMind, wizardStep, type WizardMind } from "../pet/wizardBrain";
-import { type DozeTiming } from "../pet/wizardIdle";
+import { type MindTiming } from "../pet/wizardMind";
 import { type WizardEvent, type WizardNotice, type WizardPose } from "../pet/wizardScripts";
 import { OS_REDUCED_MOTION } from "../useDocumentTheme";
 import { createVoice } from "../voice";
@@ -60,9 +61,17 @@ const GREET = { afterSceneMs: 350, fallbackMs: 2500 } as const;
 /** Der Zeitgeber wartet mindestens so lange und höchstens so lange, wie der Browser kann. */
 const TICK = { minMs: 10, maxMs: 2 ** 31 - 1 } as const;
 
-/** Dösen in der Vorschau mit `#shop-doesen`: schläfrig nach 4 s, eingeschlafen nach 8 s. */
-const DOZE_PREVIEW: Partial<DozeTiming> =
-  !desktop && location.hash === "#shop-doesen" ? { drowsyMs: 4000, asleepMs: 4000 } : {};
+/**
+ * Kürzere Zeiten in der Vorschau: Mit `#shop-doesen` ist er nach 4 s schläfrig und nach 8 s
+ * eingeschlafen, mit `#shop-nerven` zaubert er sich den geklauten Hut schon nach 9 s zurück.
+ */
+const PREVIEW_TIMING: Readonly<Record<string, MindTiming>> = {
+  "#shop-doesen": { drowsyMs: 4000, asleepMs: 4000 },
+  "#shop-nerven": { hatBackMs: TEASE.previewBack },
+};
+
+/** Die Zeiten dieses Fensters. */
+const MIND_TIMING: MindTiming = (!desktop && PREVIEW_TIMING[location.hash]) || {};
 
 /** Alles, was der Zauberer dem Laden bietet. */
 export interface WizardControls {
@@ -118,7 +127,7 @@ function useMind({ play, look }: Pick<WizardPlayer, "play" | "look">) {
   const dispatch = useCallback(
     function step(event: WizardEvent) {
       const now = performance.now();
-      mind.current ??= createWizardMind(Date.now(), now, DOZE_PREVIEW);
+      mind.current ??= createWizardMind(Date.now(), now, MIND_TIMING);
       const result = wizardStep(mind.current, event, now);
       mind.current = result.mind;
       if (result.look) look(result.look);

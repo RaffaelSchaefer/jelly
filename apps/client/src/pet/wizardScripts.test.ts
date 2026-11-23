@@ -136,6 +136,10 @@ describe("lines and gestures", () => {
         "peek",
         "chuckle",
         "huff",
+        "guard",
+        "unhat",
+        "rehat",
+        "yank",
         "point",
       ].sort(),
     );

@@ -99,7 +99,7 @@ describe("Blick", () => {
 });
 
 describe("Haltung als Bild", () => {
-  it("spielt nur seine eigenen Gesten, mit Laufzeit und Schlaf in Sekunden", () => {
+  it("spielt nur seine eigenen Gesten, mit Laufzeit, Schlaf und Hut in Sekunden", () => {
     const pose = {
       ...RESTING_POSE,
       mood: "asleep" as const,
@@ -111,8 +111,14 @@ describe("Haltung als Bild", () => {
       mood: "asleep",
       speaking: false,
       asleepFor: 2,
+      hat: { off: false, since: Infinity },
       gesture: { key: "cast", elapsed: 1, seconds: 3.4, releaseAt: 1.2 },
     });
+    const bald = { ...pose, hat: { off: true, at: 2500 } };
+    expect(wizardFrame(bald, 3000, 7).hat).toEqual({ off: true, since: 0.5 });
+    // Ohne Hut bleibt er empört, auch wenn etwas die Stimmung zurücksetzt. Gekränkt bleibt gekränkt.
+    expect(wizardFrame({ ...bald, mood: "neutral" }, 3000, 7).mood).toBe("indignant");
+    expect(wizardFrame({ ...bald, mood: "hurt" }, 3000, 7).mood).toBe("hurt");
     const pointing = { ...pose, gesture: { key: "point" as const, startedAt: 0, seconds: 1.6 } };
     expect(wizardFrame(pointing, 3000, 7).gesture).toBeNull();
     expect(wizardFrame(RESTING_POSE, 3000, 7).asleepFor).toBeNull();

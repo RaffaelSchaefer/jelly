@@ -16,6 +16,7 @@ import {
   countTapTimes,
   isWizardGestureKey,
   SNORE_PERIOD_SECONDS,
+  TEASE_TIMING,
   WIZARD_GESTURE_KEYS,
   WIZARD_GESTURE_SECONDS,
   type WizardGestureKey,
@@ -232,6 +233,32 @@ function eyeIn(frame: Partial<WizardFrame>) {
   const eye = jelly.face.eyes[1]!;
   return { eye, shapes: jelly.face.eyeShapes, jelly };
 }
+
+describe("Nerven", () => {
+  it("lässt den geklauten Hut davonfliegen und den gezauberten erst nach den Funken landen", () => {
+    const step = wizard();
+    const { snatch, conjure, land } = TEASE_TIMING;
+    expect(step().extras.hatAway).toBe(0);
+    expect(step({ hat: { off: true, since: snatch / 2 } }).extras.hatAway).toBeCloseTo(0.5);
+    expect(step({ hat: { off: true, since: 60 } }).extras.hatAway).toBe(1);
+    expect(step({ hat: { off: false, since: conjure } }).extras.hatAway).toBe(1);
+    expect(step({ hat: { off: false, since: conjure + land } }).extras.hatAway).toBe(0);
+    // Auch eine Geste setzt ihm den Hut nicht wieder auf, und ruhig fliegt nichts.
+    const tipped = step({ hat: { off: true, since: 60 }, gesture: gesture("tip", 0.9) });
+    expect(tipped.extras.hatAway).toBe(1);
+    expect(wizard(true)({ hat: { off: true, since: 0 } }).extras.hatAway).toBe(1);
+  });
+
+  it("dehnt den Bart beim Ziehen und lässt ihn zurückschnalzen und ausfedern", () => {
+    const step = wizard();
+    const { stretch } = TEASE_TIMING;
+    const pull = (elapsed: number) => step({ gesture: gesture("yank", elapsed) }).extras.beardPull;
+    expect(pull(stretch)).toBeCloseTo(1, 1);
+    expect(pull(stretch + 0.11)).toBeLessThan(0);
+    expect(Math.abs(pull(stretch + 0.8))).toBeLessThan(0.02);
+    expect(step().extras.beardPull).toBe(0);
+  });
+});
 
 describe("Stimmung", () => {
   it("trägt schwere Lider, rechts gespiegelt", () => {

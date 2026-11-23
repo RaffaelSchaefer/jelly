@@ -245,6 +245,16 @@ export const STAGE_ZONES = {
   poke: { left: 16, right: 36, top: 12, bottom: 72 },
 } as const;
 
+/**
+ * Wo man den Zauberer nervt: Hut und Bart als Rechtecke in seinen Koordinaten, in der Tiefe `z`, in
+ * der sie vor ihm liegen. Die Maße stammen aus `wizard.glb`: der Hut über der Krempe, der Bart samt
+ * den Locken darunter.
+ */
+export const TEASE_SPOTS = {
+  hat: { left: -0.85, right: 0.85, bottom: 0.98, top: 1.99, z: 0.3 },
+  beard: { left: -0.42, right: 0.42, bottom: -0.25, top: 0.4, z: 0.75 },
+} as const;
+
 /** Die Sprechblase des Zauberers: links oben in Prozent, Breite in Prozent mit Grenzen in Pixeln. */
 export const BUBBLE = { left: 35, top: 5, width: 31, minPx: 150, maxPx: 340 } as const;
 
@@ -368,6 +378,13 @@ export function rectStyle(rect: WallRect, z: number) {
     width: cssPercent(width),
     height: cssPercent(height),
   };
+}
+
+/** Wo ein Rechteck am Zauberer auf der Bühne liegt, als Lage fürs CSS. */
+export function wizardRectStyle({ left, right, bottom, top, z }: WallRect & { z: number }) {
+  const [x, y, depth] = WIZARD_AT;
+  const rect = { left: left + x, right: right + x, bottom: bottom + y, top: top + y };
+  return rectStyle(rect, depth + z);
 }
 
 /** Punkte der Bühne als `polygon()` für `clip-path`. */

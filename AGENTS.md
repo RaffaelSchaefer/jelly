@@ -123,7 +123,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   die Börse `purse.ts`, das Siegel `sealCeremony.ts`, der Brief `shopLore.ts`. In der Browser-Vorschau neben `/#join`:
   `/shop.html` mit `?optimized`, `?ruhig`, `?fps=30` und `#shop-pleite`, `#shop-reich`, `#shop-alles`, `#shop-zu`,
   `#shop-leer`, `#shop-laden`, `#shop-fehler`, `#shop-langsam`, `#shop-muenzen`, `#shop-nacht`, `#shop-doesen`,
-  `#shop-runen`, `#shop-anprobe` und `#shop-zauber` (`PREVIEW_SHOP_HASHES` in `src/pet/preview.ts`). Münzen gibt es je
+  `#shop-runen`, `#shop-anprobe`, `#shop-zauber` und `#shop-nerven` (`PREVIEW_SHOP_HASHES` in `src/pet/preview.ts`). Münzen gibt es je
   Level-Aufstieg (`coins_per_level`), gekauft wird mit `POST /v1/purchases`. Der Aufstieg (`src/LevelUp.tsx`) zeigt die
   Münzen und führt zum Shop. Wie die Karte vertritt der Shop das Pet, solange er offen ist.
 - Bühne und Takt des Ladens: Kamera, Plätze und benannte Punkte stehen in `src/pet/shopStage.ts`, DOM und WebGL rechnen
@@ -145,12 +145,19 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `src/pet/shopLight.ts`), Pet, Karte und Bühne des Servers bleiben ohne.
 - Der Zauberer Funkelbart: `src/scene/Wizard.tsx`, `WizardParts.tsx` (Teile aus `wizard.glb`) und `WizardRig.tsx`
   (Gesten, Blick, Brauen, Schnurrbart, Kugel). Im Paket `wizard.ts` (`@jelly/scene/wizard`), `wizardGestures.ts`,
-  `wizardFace.ts`, `crystal.ts` und `wizardTiming.ts` (`@jelly/scene/wizard-timing`, ohne three). Ein `wizard.glb` mit
+  `wizardTease.ts`, `wizardMove.ts`, `wizardFace.ts`, `crystal.ts` und `wizardTiming.ts` (`@jelly/scene/wizard-timing`,
+  ohne three). Ein `wizard.glb` mit
   14 Teilen aus `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS` und nicht im Katalog. Sein Verstand
-  steht rein in `src/pet/`: `wizardBrain.ts` (wann), `wizard.ts` und `wizardIdle.ts` (Skripte), `wizardScripts.ts`
+  steht rein in `src/pet/`: `wizardBrain.ts` (wann), `wizardMind.ts` (Gedächtnis), `wizard.ts` und `wizardIdle.ts`
+  (Skripte), `wizardScripts.ts`
   (Typen, Takt), `wizardPick.ts`, `wizardLines.ts` (Sätze), `wizardVoice.ts`, `wizardClips.ts`, `voiceTimbre.ts`,
   `wizardFaceRig.ts`. Abgespielt in `src/shop/useWizard.ts`, `useWizardPlayer.ts`, `useWizardSenses.ts` und
   `wizardEffects.ts`. `src/pet/contracts.test.ts` hält Paket, Verstand, Bühne und Klang beieinander.
+- Den Zauberer nerven: Klicks auf Hut und Bart treffen zwei Knöpfe in `src/shop/StageSigns.tsx` (`data-wizard-tease`,
+  Flächen `TEASE_SPOTS` in `src/pet/shopStage.ts`). `src/pet/wizardTease.ts` zählt: drei Abwehren, dann ist der Hut
+  weg, danach drei Züge am Bart sind „genug genervt“ (`fedUp`). Der Stand lebt nur im Fenster, gemeldet wird nichts.
+  Der Hut ist ein Stand der Haltung (`WizardPose.hat`), keine Geste. Zeiten in `TEASE` (`src/pet/shopTimeline.ts`)
+  und `TEASE_TIMING` im Paket. In der Browser-Vorschau kommt der Hut mit `/shop.html#shop-nerven` schneller zurück.
 - Updates der App: `src-tauri/src/commands/update.rs` (`tauri-plugin-updater`, Liste `latest.json` am Release auf
   GitHub, Fortschritt per `Channel`), `src/useUpdate.ts`, `src/UpdateNotice.tsx`, `src/UpdateBanner.tsx` (Rakete als
   SVG in der Jelly-Farbe) und `src/update.css` (Karte über dem Dock, für die Bühne Panel `update`, in der

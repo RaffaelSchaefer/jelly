@@ -4,8 +4,8 @@
  * Hand. Malschicht und Strichstärke jedes Teils stehen in `WIZARD_PARTS` (`@jelly/scene/wizard`).
  *
  * Was Gesten bewegen, hängt in eigenen Haltern ({@link WizardHolders}): der Hut an seinem
- * Drehpunkt, die Kugel samt Ständer, die Glaskugel in ihren Krallen, Brauen und Schnurrbart je
- * Seite. Bewegt werden sie Bild für Bild in `WizardRig.tsx`.
+ * Drehpunkt, der Bart am Kinn, die Kugel samt Ständer, die Glaskugel in ihren Krallen, Brauen und
+ * Schnurrbart je Seite. Bewegt werden sie Bild für Bild in `WizardRig.tsx`.
  *
  * @module
  */
@@ -14,6 +14,7 @@ import type { Jelly } from "@jelly/scene";
 import type { BufferGeometry, Object3D } from "three";
 
 import {
+  BEARD_PIVOT,
   createCrystalBall,
   disposeCrystalBall,
   HAT_PIVOT,
@@ -39,6 +40,8 @@ type Sides = readonly [Holder, Holder];
 export interface WizardHolders {
   /** Hut und Hutband, am Drehpunkt der Krempe (`HAT_PIVOT`). */
   hat: Holder;
+  /** Bart und Locken, am Kinn (`BEARD_PIVOT`). Von dort dehnen sie sich, wenn man am Bart zieht. */
+  beard: Holder;
   /** Die Kugel samt Ständer, an ihrem Ruheplatz auf der Theke (`ORB_REST`). */
   orb: Holder;
   /** Nur die Glaskugel in ihren Krallen. Sie schwebt ein wenig, beim Zaubern hebt sie sich. */
@@ -103,14 +106,25 @@ function Hat({ holder }: { holder: Holder }) {
   );
 }
 
+/** Bart und Locken in einem Halter am Kinn: So dehnt sich der Bart, wenn man an ihm zieht. */
+function Beard({ holder }: { holder: Holder }) {
+  return (
+    <object3D ref={holder} position={BEARD_PIVOT}>
+      <object3D position={opposite(BEARD_PIVOT)}>
+        <Part part="locks" />
+        <Part part="beard" />
+      </object3D>
+    </object3D>
+  );
+}
+
 /** Was am Kopf sitzt. Es wippt und neigt sich mit ihm, auch beim Dösen. */
 export function WizardHead({ jelly, holders }: { jelly: Jelly; holders: WizardHolders }) {
   return createPortal(
     <>
       <Hat holder={holders.hat} />
       <Part part="hair" />
-      <Part part="locks" />
-      <Part part="beard" />
+      <Beard holder={holders.beard} />
       <Half part="brow" side={0} holder={holders.brows[0]} />
       <Half part="brow" side={1} holder={holders.brows[1]} />
       <Half part="mustache" side={0} holder={holders.mustache[0]} />

@@ -170,6 +170,14 @@
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
 }
+/* Über Hut und Bart greift die Hand zu. Eckiger als die Stupsfläche: Die Hutspitze sitzt in der Ecke. */
+.stage-wizard-tease {
+  border-radius: 18%;
+  cursor: grab;
+}
+.stage-wizard-tease:active {
+  cursor: grabbing;
+}
 .stage-wizard-poke:focus-visible {
   outline: 2px solid transparent;
   outline-offset: 2px;

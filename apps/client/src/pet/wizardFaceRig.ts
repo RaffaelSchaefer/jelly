@@ -167,14 +167,20 @@ function gestureFrame(gesture: WizardPose["gesture"], now: number): WizardGestur
   return releaseAt === undefined ? { key, elapsed, seconds } : { key, elapsed, seconds, releaseAt };
 }
 
+/** In diesen Stimmungen ist er gelassen. Ohne Hut ist er das nie. */
+const AT_EASE: ReadonlySet<WizardMood> = new Set(["neutral", "attentive"]);
+
 /**
- * Das Bild für `animateWizard` aus seiner Haltung.
+ * Das Bild für `animateWizard` aus seiner Haltung. Ohne Hut schaut er empört, wo er sonst gelassen
+ * wäre: So hält der Blick, auch wenn ein anderes Skript oder der Zeiger die Stimmung zurücksetzt.
  *
  * @param now - Uhr von `performance.now()`, auf der die Haltung ihre Zeiten führt.
  * @param time - Zeit der Szenenuhr in Sekunden.
  */
 export function wizardFrame(pose: WizardPose, now: number, time: number): WizardFrame {
-  const { gesture, mood, speaking, asleepSince } = pose;
+  const { gesture, speaking, asleepSince } = pose;
   const asleepFor = asleepSince === null ? null : (now - asleepSince) / 1000;
-  return { time, mood, speaking, asleepFor, gesture: gestureFrame(gesture, now) };
+  const hat = { off: pose.hat.off, since: (now - pose.hat.at) / 1000 };
+  const mood = hat.off && AT_EASE.has(pose.mood) ? "indignant" : pose.mood;
+  return { time, mood, speaking, asleepFor, hat, gesture: gestureFrame(gesture, now) };
 }

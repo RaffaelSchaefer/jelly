@@ -66,6 +66,7 @@ laufende LAN offen. Den Zauberladen zeigt `/shop.html`, mit `?optimized`, `?ruhi
 | `#shop-runen`   | die Zustände des Runenkreises              |
 | `#shop-anprobe` | die Anprobe in Schleife                    |
 | `#shop-zauber`  | der Kaufzauber in Schleife                 |
+| `#shop-nerven`  | der geklaute Hut kommt schon nach 9 s      |
 
 Ohne Hash bestätigt die Vorschau einen Kauf nach 250 ms.
 

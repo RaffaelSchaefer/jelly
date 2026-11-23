@@ -109,6 +109,7 @@ export const PREVIEW_SHOP_HASHES = [
   "#shop-runen",
   "#shop-anprobe",
   "#shop-zauber",
+  "#shop-nerven",
 ] as const;
 
 /** Ein Hash aus {@link PREVIEW_SHOP_HASHES}. */
@@ -125,8 +126,8 @@ function withMe(game: Game, patch: Partial<Me>): Game {
 }
 
 /**
- * Der Stand des Zauberladens je Hash. Uhrzeit, Dösen, Runen und Zauber der übrigen Hashes spielen
- * Zauberer und Bühne selbst, sie starten mit dem normalen Stand.
+ * Der Stand des Zauberladens je Hash. Uhrzeit, Dösen, Runen, Zauber und Nerven der übrigen Hashes
+ * spielen Zauberer und Bühne selbst, sie starten mit dem normalen Stand.
  */
 const SHOP_GAMES: Readonly<Record<string, (game: Game) => Game>> = {
   "#shop-pleite": (game) => withMe(game, { coins: 0 }),

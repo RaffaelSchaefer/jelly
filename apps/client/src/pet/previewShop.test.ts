@@ -43,6 +43,7 @@ describe("Stand des Zauberladens in der Vorschau", () => {
         "#shop-runen",
         "#shop-anprobe",
         "#shop-zauber",
+        "#shop-nerven",
       ].sort(),
     );
   });

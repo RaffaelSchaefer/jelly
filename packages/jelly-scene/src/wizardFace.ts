@@ -25,6 +25,8 @@ export const WIZARD_MOODS = [
   "asleep",
   "startled",
   "sheepish",
+  "indignant",
+  "hurt",
 ] as const;
 
 /** Eine seiner Stimmungen. */
@@ -50,6 +52,9 @@ const MOOD_FACES: Readonly<Record<WizardMood, MoodFace>> = {
   asleep: { lid: 1, face: { brows: { lift: 0.005, tilt: 0.1 }, mouth: "m" } },
   startled: { lid: 1.3, face: { brows: { lift: 0.05, tilt: 0.15 }, mouth: "o" } },
   sheepish: { lid: 0.8, face: { blush: 0.4, brows: { lift: 0.015, tilt: 0.35 } } },
+  // Empört: weite Augen unter zornigen Brauen. Gekränkt: die Lider sinken, der Mund hängt.
+  indignant: { lid: 1.2, face: { brows: { lift: -0.02, tilt: -0.45 }, mouth: "flat" } },
+  hurt: { lid: 0.7, face: { brows: { lift: 0.02, tilt: 0.45 }, mouth: "sad" } },
 };
 
 /** Schläfrig fallen ihm alle 3,5 s die Augen schwer zu, für 0,45 s. */

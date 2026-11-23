@@ -30,6 +30,7 @@ import {
   type ShopRng,
   type ShopSfx,
 } from "../../pet/shopScore";
+import { TEASE } from "../../pet/shopTimeline";
 import {
   bellsAt,
   bellsOn,
@@ -79,7 +80,9 @@ export type CueName =
   | "orbHum"
   | "spellBurst"
   | "whoosh"
-  | "impact";
+  | "impact"
+  | "tug"
+  | "snap";
 
 /** Wie ein Rezept gespielt wird. */
 export interface CueRun extends MomentRun {
@@ -221,6 +224,24 @@ function snort(run: CueRun): Sources {
   return burst(run.context, run.output, { ...shape, ...sweep, flutter: { hz: 40, depth: 0.85 } });
 }
 
+/** Hut oder Bart werden gezerrt: ein Ton wie ein Gummiband, der steigt, solange es sich dehnt. */
+function tug(run: CueRun): Sources {
+  const seconds = TEASE.stretch / 1000;
+  const shape = { at: run.at, gain: 1, attack: 0.8 * seconds, tau: 0.02, until: run.at + seconds };
+  const rise = { hz: 180 * run.jitter.filter, to: 360 * run.jitter.filter, glide: seconds };
+  return tone(run.context, run.output, { ...shape, ...rise, type: "triangle" });
+}
+
+/** Es schnalzt zurück: ein gezupfter Ton, der abfällt, und ein Klaps. */
+function snap(run: CueRun): Sources {
+  const twang = { at: run.at, gain: 1, attack: 0.003, tau: 0.06, hz: 520, to: 150, glide: 0.12 };
+  const slap = { at: run.at, gain: 0.6, attack: 0.002, tau: 0.015, from: 2400, q: 1.5 };
+  return [
+    ...tone(run.context, run.output, { ...twang, type: "triangle" }),
+    ...burst(run.context, run.output, { ...slap, filter: "bandpass", offset: run.rng() }),
+  ];
+}
+
 /** Der Zauber wird geworfen: Wusch vom Zauberer zum Kunden, Glocken folgen ihm. */
 function spellBurst(run: CueRun): Sources {
   const trail = bellsAt(run, trailBells(run.rng, 0.6), RITUAL_LEVELS.trail);
@@ -265,6 +286,8 @@ const RECIPES: Readonly<Record<CueName, Recipe>> = {
   glint: sfx("orb", 0.075, (run) => bellsOn(run, GLINT_BELLS)),
   hatTip: sfx("wizard", 0.034, (run) => bellsOn(run, HAT_TIP_BELLS)),
   snort: sfx("wizard", 0.44, snort),
+  tug: sfx("wizard", 0.087, tug),
+  snap: sfx("wizard", 0.13, snap),
   clink: sfx("tray", 1, coinClink),
   till: sfx("tray", 1, (run) => tillBell(run, 0)),
   orbHum: sfx("orb", 0.05, (run) => bellsOn(run, ORB_CHIME)),
@@ -309,6 +332,8 @@ export const SFX_CUES: Readonly<Record<ShopSfx, { cue: CueName; place: SoundPlac
   hatTip: { cue: "hatTip", place: "wizard" },
   glint: { cue: "glint", place: "orb" },
   snort: { cue: "snort", place: "wizard" },
+  tug: { cue: "tug", place: "wizard" },
+  snap: { cue: "snap", place: "wizard" },
 };
 
 /** Wie ein Rezept gespielt werden soll. */

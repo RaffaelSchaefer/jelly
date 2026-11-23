@@ -1,7 +1,8 @@
 /**
  * Was die Effekte aus den Skripten des Zauberers im Fenster zeigen: Er hebt eine Ware auf der Rolle
  * hervor (`data-wizard-highlight` für 1,6 s, dazu ein Glanz), die Kugel blitzt, sein Hut funkelt,
- * und die Börse glänzt, wenn er Münzen zählt.
+ * verpufft beim Klauen und kehrt in kreisenden Funken zurück, und die Börse glänzt, wenn er Münzen
+ * zählt.
  *
  * Kaufzauber und Fehlschlag spielt das Siegel selbst (`useSealRitual.ts`) im Takt des Kaufs, hier
  * haben sie nichts zu tun. Den Kern der Kugel lässt der Spieler aufflammen.
@@ -11,6 +12,7 @@
 
 import type { FxTarget } from "./fx/sparksEngine";
 
+import { TEASE } from "../pet/shopTimeline";
 import { type WizardEffect } from "../pet/wizardScripts";
 import { shopFx } from "./fx/sparksEngine";
 
@@ -51,6 +53,11 @@ function glintAt(effect: WizardEffect): FxTarget | null {
 /** Zeigt einen Effekt des Zauberers. Passt zu `onEffect` in `useWizardPlayer`. */
 export function showWizardEffect(effect: WizardEffect, itemId?: string) {
   if (effect === "highlightItem") return highlight(itemId);
+  // Die Funken der Anprobe kreisen auch um den Hut: bis er erscheint, dann stieben sie auseinander.
+  if (effect === "hatConjure") {
+    return shopFx.play({ kind: "swirl", at: "wizardHat", popMs: TEASE.conjure });
+  }
+  if (effect === "hatPuff") return shopFx.play({ kind: "puff", at: "wizardHat" });
   const at = glintAt(effect);
   if (at) shopFx.play({ kind: "glint", at });
 }
