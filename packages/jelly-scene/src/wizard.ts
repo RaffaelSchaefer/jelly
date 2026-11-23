@@ -7,9 +7,9 @@
  * Jedes Teil hat einen eigenen Anker, eine eigene Malschicht und Strichstärke
  * ({@link WIZARD_PARTS}). Die Glaskugel selbst malt ein Shader (`crystal.ts`).
  *
- * Gesten, Stimmung und schwere Lider legt `animateWizard` (`wizardGestures.ts`) über die
- * Grundanimation, die Augen folgen seinem Blick über `placeEyes`. Die Zahlen seiner Gesten ohne
- * Three.js stehen in `@jelly/scene/wizard-timing`.
+ * Gesten, Stimmung und schwere Lider legt `animateWizard` (`wizardGestures.ts`, beim Nerven
+ * `wizardTease.ts`) über die Grundanimation, die Augen folgen seinem Blick über `placeEyes`. Die
+ * Zahlen seiner Gesten ohne Three.js stehen in `@jelly/scene/wizard-timing`.
  *
  * @module
  */
@@ -30,6 +30,7 @@ export {
 export { EYE_GAZE, placeEyes } from "./face.ts";
 export {
   animateWizard,
+  type HatState,
   type WizardExtras,
   type WizardFrame,
   type WizardGestureFrame,
@@ -125,6 +126,21 @@ export const ORB_REST: readonly [number, number, number] = [1.68, 0, 0.75];
  * 0,12 hoch und 0,25 rad gekippt.
  */
 export const HAT_PIVOT: readonly [number, number, number] = [0, 0.99, 0.2];
+
+/**
+ * Drehpunkt des Barts in Koordinaten des Jellys, am Kinn unter dem Schnurrbart. Von dort dehnt er
+ * sich nach unten, wenn man an ihm zieht, und die Locken darunter mit ihm.
+ */
+export const BEARD_PIVOT: readonly [number, number, number] = [0, 0.48, 0.7];
+
+/**
+ * Wohin der geklaute Hut fliegt, in Koordinaten des Jellys ab seinem Drehpunkt: hinauf aus dem Bild
+ * und zum Kunden hin, dabei kippt er um `tilt` rad und schrumpft auf `scale`.
+ */
+export const HAT_FLIGHT = { rise: 1.5, drift: 0.7, tilt: -1.1, scale: 0.6 } as const;
+
+/** Wie weit sich der Bart höchstens dehnt und dabei schmaler wird, als Anteil seiner Größe. */
+export const BEARD_STRETCH = { long: 0.4, thin: 0.12 } as const;
 
 /** Die Teile je Name, einmal angefragt. Alle Zauberer teilen sie. */
 const PARTS = new Map<WizardPart, Promise<BufferGeometry>>();

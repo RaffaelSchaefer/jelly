@@ -12,6 +12,7 @@ import { COSMETIC_MODELS, loadModelParts } from "./cosmetic.ts";
 import wizardModel from "./cosmetics/wizard.glb?url&inline";
 import {
   animateWizard,
+  BEARD_PIVOT,
   HAT_PIVOT,
   loadWizardPart,
   placeEyes,
@@ -171,6 +172,11 @@ describe("Robe, Kugel und Zauberstab", () => {
   it("legt Kugel und Hut an ihre Plätze", () => {
     expect(ORB_REST).toEqual([1.68, 0, 0.75]);
     expect(HAT_PIVOT).toEqual([0, 0.99, 0.2]);
+  });
+
+  it("dehnt den Bart von seiner Oberkante aus", async () => {
+    const top = Math.max(...(await pointsOf("beard")).map((point) => point.y));
+    expect(BEARD_PIVOT[1]).toBeCloseTo(top, 1);
   });
 
   it("bringt Gesten und Blick gleich mit", () => {

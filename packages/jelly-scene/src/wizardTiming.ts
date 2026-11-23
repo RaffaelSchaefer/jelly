@@ -1,6 +1,6 @@
 /**
  * Die eigenen Gesten des Zauberers als reine Zahlen: Schlüssel, Dauer, der Takt seines Zaubers,
- * seiner Tipper beim Münzenzählen und seines Atems im Schlaf.
+ * seiner Tipper beim Münzenzählen, seines Atems im Schlaf und des Nervens an Hut und Bart.
  *
  * Ohne Three.js, damit der Shop sie im Hauptteil laden kann, bevor die Szene da ist. Bewegt werden
  * die Gesten in `wizardGestures.ts`. Sie stehen nicht in `EMOTE_GLYPHS`: Katalog des Servers, Bühne
@@ -26,6 +26,10 @@ export const WIZARD_GESTURE_KEYS = [
   "peek",
   "chuckle",
   "huff",
+  "guard",
+  "unhat",
+  "rehat",
+  "yank",
 ] as const;
 
 /** Eine seiner eigenen Gesten. */
@@ -48,6 +52,10 @@ export const WIZARD_GESTURE_SECONDS: Readonly<Record<WizardGestureKey, number>> 
   peek: 1.2,
   chuckle: 1.6,
   huff: 1.8,
+  guard: 1.6,
+  unhat: 1.4,
+  rehat: 2,
+  yank: 1.3,
 };
 
 /** Erkennt seine eigenen Gesten, auch unter beliebigen Zeichenketten. */
@@ -83,3 +91,16 @@ export function countTapTimes(seconds: number): number[] {
 
 /** Ein Atemzug im Schlaf in Sekunden. Schnarchen und Atmen laufen in diesem Takt. */
 export const SNORE_PERIOD_SECONDS = 4.2;
+
+/**
+ * Das Nerven in Sekunden: So lange fliegt der geklaute Hut davon (`snatch`), so lange zaubert er,
+ * bis der Hut wieder erscheint (`conjure`), so lange sinkt der Hut auf den Kopf (`land`), so lange
+ * dehnt sich der Bart (`stretch`) und so lange federt er nach dem Schnalzen nach (`snap`).
+ */
+export const TEASE_TIMING = {
+  snatch: 0.5,
+  conjure: 0.7,
+  land: 0.25,
+  stretch: 0.4,
+  snap: 0.5,
+} as const;

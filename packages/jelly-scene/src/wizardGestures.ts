@@ -1,6 +1,7 @@
 /**
  * Die eigenen Gesten des Zauberers und alles, was er Bild für Bild über die Grundanimation legt:
- * Gesten, Stimmung, schwere Lider, Schlaf, dazu Hut und Kugel als Zahlen für den Shop.
+ * Gesten, Stimmung, schwere Lider, Schlaf, dazu Hut, Bart und Kugel als Zahlen für den Shop. Die
+ * Gesten beim Nerven stehen in `wizardTease.ts`.
  *
  * Sticker malen über die gezeichneten Hände. Seine Hände zeigen sich deshalb nur, wo kein Sticker
  * liegt: seitlich neben Robe und Bart (|x| ≥ 1,05, y von −0,2 bis 1,3) oder knapp daneben in
@@ -25,6 +26,8 @@ import {
   type FaceContext,
   type WizardMood,
 } from "./wizardFace.ts";
+import { bump, type GestureOut, type Move, type WizardExtras } from "./wizardMove.ts";
+import { guard, hatAway, rehat, unhat, yank, type HatState } from "./wizardTease.ts";
 import {
   CAST_TIMING,
   countTapTimes,
@@ -53,49 +56,11 @@ export interface WizardFrame {
   asleepFor?: number | null;
   /** Spricht er? Dann formt die Stimme den Mund. */
   speaking: boolean;
+  /** Ob sein Hut fort ist. Ohne Angabe trägt er ihn. */
+  hat?: HatState | null;
 }
 
-/** Was der Shop außerhalb des Jellys bewegt. */
-export interface WizardExtras {
-  /** Wie weit der Hut über dem Kopf schwebt. */
-  hatLift: number;
-  /** Wie weit der Hut kippt, in rad. Positiv hebt er sich rechts. */
-  hatTilt: number;
-  /** Wie hoch die Glaskugel aus ihren Krallen steigt. */
-  orbLift: number;
-  /** Wie hell der Kern der Kugel glüht, 0 bis 1. */
-  orbGlow: number;
-  /** Wie weit er sich vorbeugt, in rad. Schon angewandt. */
-  lean: number;
-}
-
-/** Was eine Geste in diesem Bild bewirkt, über das Jelly hinaus. */
-interface GestureOut extends WizardExtras {
-  /** Wie tief er in den Schlaf sinkt, 0 bis 1. */
-  sink: number;
-  /** Wie weit ein Auge im Schlaf aufgeht. */
-  peek: number;
-  /** Beide Augen zu. */
-  closed: boolean;
-}
-
-/** Alles, was eine Geste in diesem Bild braucht. */
-interface Move {
-  jelly: Jelly;
-  strength: number;
-  /** Laufzeit in Sekunden. */
-  elapsed: number;
-  seconds: number;
-  releaseAt?: number;
-  /** Zeit für Schwingungen: bei reduzierter Bewegung der Moment, der die Geste zeigt. */
-  t: number;
-  /** 0 bei reduzierter Bewegung, sonst 1. */
-  moving: number;
-  /** Takt des Atems im Schlaf, in Sekunden. */
-  breath: number;
-  face: FaceContext;
-  out: GestureOut;
-}
+export type { HatState, WizardExtras };
 
 /**
  * Über der Kugel: Sie steht bei x 1,68, außerhalb des Kastens, in dem der Körper gezeichnet wird.
@@ -126,11 +91,6 @@ const OFFERING: Expression = { brows: { lift: 0.02, tilt: 0.05 } };
 const STROKING: Expression = { squeeze: 0.15, brows: { lift: 0.01, tilt: -0.1 } };
 const YAWNING: Expression = { eyes: "closed", mouth: "o", mouthScale: [1.1, 1.6] };
 const HUFFING: Expression = { ...EXPRESSIONS.angry, squeeze: 0.3, mouthScale: [0.8, 1] };
-
-/** Ein weicher Buckel über `[von, voll, sinkt, bis]`: 0 vor `von`, 1 von `voll` bis `sinkt`. */
-function bump(t: number, [from, peak, fall, to]: readonly [number, number, number, number]) {
-  return MathUtils.smoothstep(t, from, peak) * (1 - MathUtils.smoothstep(t, fall, to));
-}
 
 /** Hebt die Hand zum Gruß neben den Kopf und winkt gemächlich. */
 function hail({ jelly, strength, t, moving }: Move) {
@@ -350,10 +310,20 @@ const GESTURES: Record<WizardGestureKey, (move: Move) => void> = {
   peek,
   chuckle,
   huff,
+  guard,
+  unhat,
+  rehat,
+  yank,
 };
 
 /** Wie schnell eine Geste einsetzt, wenn nicht in 0,3 s. Ein Schreck kommt sofort. */
-const FADE_IN: Partial<Record<WizardGestureKey, number>> = { startle: 0.06, peek: 0.15 };
+const FADE_IN: Partial<Record<WizardGestureKey, number>> = {
+  startle: 0.06,
+  peek: 0.15,
+  guard: 0.08,
+  unhat: 0.06,
+  yank: 0.08,
+};
 
 /** Bei reduzierter Bewegung steht jede Geste in dem Moment, der sie zeigt, in Sekunden. */
 const SHOWN_AT: Partial<Record<WizardGestureKey, number>> = { tip: 0.9, yawn: 1.1, offer: 0.6 };
@@ -363,6 +333,7 @@ function restOut(): GestureOut {
   return {
     hatLift: 0,
     hatTilt: 0,
+    beardPull: 0,
     orbLift: 0,
     orbGlow: 0,
     lean: 0,
@@ -396,7 +367,7 @@ function sleepPose(jelly: Jelly, sink: number, out: GestureOut) {
 /**
  * Legt seine Geste, Stimmung und Lider über die frisch berechnete Grundpose: nach `animateJelly`,
  * jedes Bild. Was das Paket sonst nicht zurücksetzt (Tiefe und Vorbeugen der Wurzel), setzt es
- * selbst zurück, so sammelt sich nichts an. Liefert, was der Shop an Hut und Kugel bewegt.
+ * selbst zurück, so sammelt sich nichts an. Liefert, was der Shop an Hut, Bart und Kugel bewegt.
  *
  * @param reducedMotion - Ruhige, stehende Posen ohne Schwingen und Blinzeln.
  */
@@ -417,6 +388,7 @@ export function animateWizard(
   shapeEyes(jelly, { lid, closed: out.closed || asleep, peek: out.peek });
   sleepPose(jelly, Math.max(out.sink, sleepDepth(frame.mood, frame.asleepFor, reducedMotion)), out);
   jelly.root.rotation.x += out.lean;
-  const { hatLift, hatTilt, orbLift, orbGlow, lean } = out;
-  return { hatLift, hatTilt, orbLift, orbGlow, lean };
+  const { hatLift, hatTilt, beardPull, orbLift, orbGlow, lean } = out;
+  const away = hatAway(frame.hat, reducedMotion);
+  return { hatLift, hatTilt, hatAway: away, beardPull, orbLift, orbGlow, lean };
 }
