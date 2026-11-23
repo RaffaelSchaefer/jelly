@@ -123,6 +123,10 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   15 Minuten, Essen +15 XP, Getränk +10 XP, Event-Codes nach Vorgabe der Orga; je 100 XP ein Level
   und eine Münze für den Shop.
   Die App fragt nur beim Server, wenn ein Stupser wieder etwas bringt.
+- Ein Klick auf die Nase des Jellys ist ein Nasenstupser, ein Wisch mit gedrückter Maus oder dem Finger über
+  die obere Kopfhälfte streichelt es. Beide zählen beim Server als Stupser, das Streicheln einmal je Geste, und
+  haben eigene Bewegung, eigenen Laut und eigene Sprechblase. In der Browser-Vorschau reagieren Stupser,
+  Nasenstupser und Streicheln ohne Server und ohne XP.
 - Über den Emote-Tropfen rechts am Jelly lassen sich Winken, Tanzen, Jubeln, Lachen, Schlafen,
   Herz, Schulterzucken, Zeigen, Grübeln, Wütend, Traurig und Schüchtern auswählen. Die Hände haben
   drei Finger und einen Daumen und drehen sich mit der Geste. Das Gesicht wechselt dazu Augenform

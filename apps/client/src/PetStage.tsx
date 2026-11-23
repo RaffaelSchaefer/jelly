@@ -11,7 +11,6 @@ import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from "rea
 import type { ActiveEmote } from "./useEmotes";
 import type { PetGame } from "./usePet";
 
-import { desktop } from "./backend";
 import EmotePicker from "./EmotePicker";
 import Hatch, { useHatchWave } from "./Hatch";
 import LevelUp, { useCelebration } from "./LevelUp";
@@ -30,6 +29,7 @@ import SignPicker from "./SignPicker";
 import Studio from "./Studio";
 import { SpeechBubble } from "./ui";
 import { useJellyVoice, type ActiveVoice } from "./useJellyVoice";
+import { usePetTouch } from "./usePetTouch";
 
 /** Three.js erst laden, wenn die Bühne gebraucht wird. */
 const PetScene = lazy(() => import("./scene/PetScene"));
@@ -160,22 +160,26 @@ function PetVisual({
   onSlowDevice?: () => void;
 }) {
   const started = useSceneStart(game.ready || game.error !== "");
+  const { probe, handlers, petting, lean } = usePetTouch(game);
+  const { touched } = game;
   return (
     <button
       className="pet-touch"
       aria-label={`${me.name} anstupsen`}
       // Das Jelly antwortet selbst mit seiner Stimme.
       data-sound="none"
-      disabled={!desktop || !game.ready || game.busy || !game.game.me}
-      onClick={() => void game.interact("poke")}
+      // Auch in der Vorschau: Dort reagiert es ohne Server und ohne XP.
+      disabled={!game.ready || game.busy || !game.game.me}
+      {...handlers}
     >
       <Suspense fallback={WAKING_UP}>
         {started ? (
           <PetScene
             color={me.color}
             pulse={game.pulse}
+            touch={{ boopedAt: touched?.touch === "boop" ? touched.at : null, petting, lean }}
             {...{ emote, equipped, reducedMotion, rendering, frameLimit, sign, voiced }}
-            {...{ focus, anchors, onSlowDevice }}
+            {...{ focus, anchors, onSlowDevice, probe }}
           />
         ) : (
           WAKING_UP

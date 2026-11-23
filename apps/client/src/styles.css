@@ -79,7 +79,7 @@ html[data-surface='preview'] .pet-window { position: absolute; top: 50%; left: 5
 /* Die Sprechblase ist Glas aus dem Shader. Text und Schwanz stehen hier, der Hintergrund gilt nur, solange das Glas noch fehlt: ohne WebGL und im Design-System. */
 .speech-part { animation: speech-say 120ms ease-out both; }
 .speech-tail { position: absolute; left: calc(50% - 7px); top: calc(100% + 2px); width: 14px; height: 14px; border-radius: 50%; animation: speech-tail 3.1s ease-in-out infinite alternate; }
-.pet-touch { position: absolute; top: var(--canvas-top, 43px); left: 50%; width: var(--canvas-width, 396px); margin-left: calc(var(--canvas-width, 396px) / -2); height: var(--canvas-height, 315px); padding: 0; background: none; border: 0; opacity: 1 !important; cursor: pointer; z-index: 1; }
+.pet-touch { position: absolute; top: var(--canvas-top, 43px); left: 50%; width: var(--canvas-width, 396px); margin-left: calc(var(--canvas-width, 396px) / -2); height: var(--canvas-height, 315px); padding: 0; background: none; border: 0; opacity: 1 !important; cursor: pointer; z-index: 1; touch-action: none; }
 .pet-touch:disabled { cursor: default; pointer-events: none; }
 .ground-shadow { position: absolute; top: var(--feet, 299px); width: calc(140px * var(--pet-scale, 1)); height: calc(18px * var(--pet-scale, 1)); border-radius: 50%; background: #08141177; filter: blur(9px); }
 /* Partner emote: both jellies stand on the same shadow, it is never moved in 3D. The drops hang on the jelly and would circle it while it turns, an empty shape is skipped by the glass. */
