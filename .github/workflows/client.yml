@@ -5,6 +5,8 @@ on:
     paths:
       - "**"
       - "!apps/server/**"
+      # Die Website baut und veröffentlicht pages.yml.
+      - "!apps/site/**"
       - "!**.md"
       # propNames.test.ts in @jelly/stage liest diese Datei.
       - "apps/server/internal/rules/maps.go"
