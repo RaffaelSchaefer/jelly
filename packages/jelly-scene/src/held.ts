@@ -9,12 +9,13 @@ const BOARD_RANGE = { x: 0.2, minY: -0.62, maxY: -0.15, tilt: 0.22 };
 
 /**
  * Cosmetics, die an den Händen sitzen statt zwischen beiden, mit den Händen (0 links, 1 rechts):
- * Pfoten an jeder, der Schild an der linken. Die rechte bleibt so frei für Winken, Zeigen und
- * Grübeln. Ihr Modell ist eine Hand um den Ursprung.
+ * Pfoten an jeder, Schild und Ritternagel an der linken. Die rechte bleibt so frei für Winken,
+ * Zeigen und Grübeln. Ihr Modell ist eine Hand um den Ursprung.
  */
 const ON_HANDS: Readonly<Record<string, readonly number[]>> = {
   "cat-paws": [0, 1],
   "kite-shield": [0],
+  "nail-sword": [0],
 };
 
 /** `value` auf den Bereich von `min` bis `max` begrenzt. */
