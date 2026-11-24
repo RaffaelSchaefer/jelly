@@ -69,6 +69,11 @@ const PLAYER_REMOVED: &str = "player.removed";
 /// Ereignis, wenn die Orga die Regeln ändert. Es gilt allen, die Oberfläche liest die LAN neu.
 const RULES_CHANGED: &str = "rules.changed";
 
+/// Ereignis, wenn Funkelbarts Hut gestohlen wird oder zurückgeht. Es gilt allen: Jeder Shop zeigt den
+/// Zauberer mit oder ohne Hut, und das Pet des Trägers liest seinen Kopf neu. Karte und Shop bleiben
+/// dabei offen.
+const WIZARD_HAT_CHANGED: &str = "wizard_hat.changed";
+
 /// Ereignis, wenn jemand die eigene Aufforderung annimmt.
 const PARTNER_EMOTE: &str = "partner.emote";
 
@@ -126,7 +131,7 @@ fn closes_popouts(event: &ServerEvent, player_id: i64) -> bool {
 
 /// Ob `event` das Jelly von `player_id` betrifft und an die Oberfläche soll.
 fn is_own_event(event: &ServerEvent, player_id: i64) -> bool {
-    if event.kind == RULES_CHANGED {
+    if event.kind == RULES_CHANGED || event.kind == WIZARD_HAT_CHANGED {
         return true;
     }
     if event.kind == PLAYER_REMOVED {

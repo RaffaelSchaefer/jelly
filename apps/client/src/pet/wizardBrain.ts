@@ -9,15 +9,28 @@
  * kommt aus dem Startwert: Dieselben Ereignisse geben dieselben Skripte. Zeiten in Millisekunden.
  *
  * Was er tut, steht in `wizard.ts`, wie er döst und sich beschäftigt, in `wizardIdle.ts`, wie man
- * ihn nervt, in `wizardTease.ts`. Sein Gedächtnis steht in `wizardMind.ts`.
+ * ihn nervt, in `wizardTease.ts`. Sein Gedächtnis steht in `wizardMind.ts`, wann ein Skript
+ * beginnt, in `wizardAgenda.ts`.
  *
  * @module
  */
 
 import type { ShopItem } from "./shop";
+import type { ServerHat } from "./wizardHat";
 
 import { TEASE } from "./shopTimeline";
 import * as moment from "./wizard";
+import {
+  act,
+  activeRun,
+  admits,
+  heldBy,
+  lift,
+  offer,
+  QUEUE_MS,
+  start,
+  type Act,
+} from "./wizardAgenda";
 import * as rest from "./wizardIdle";
 import { copyMind, type WizardMind } from "./wizardMind";
 import {
@@ -34,24 +47,26 @@ import {
   type Attention,
 } from "./wizardPick";
 import {
-  mood,
-  scriptLength,
   unannounced,
-  type Priority,
-  type ScriptDraft,
   type ScriptKit,
   type WizardContext,
   type WizardEvent,
   type WizardLook,
   type WizardScript,
 } from "./wizardScripts";
-import { hatReturn, teaseReaction, type TeaseReaction, type TeaseTarget } from "./wizardTease";
+import {
+  hatReturn,
+  stealRefused,
+  syncServerHat,
+  teaseReaction,
+  type TeaseReaction,
+  type TeaseTarget,
+} from "./wizardTease";
 
 export { createWizardMind, type WizardMind } from "./wizardMind";
 
 /** Zeiten des Gehirns. */
 const BRAIN = {
-  queueMs: 4000,
   /** Eine Wahl so kurz nach der vorigen ist Blättern, ihr Satz kommt 700 ms später. */
   browseMs: 1200,
   browseLineMs: 700,
@@ -76,61 +91,8 @@ export interface WizardStep {
   look?: WizardLook;
   /** Der nächste Termin auf derselben Uhr wie `now`, `Infinity` für keinen. */
   nextTickAt: number;
-}
-
-/** Was ein Ereignis auslöst. */
-type Act = { script?: WizardScript; interrupt?: boolean; look?: WizardLook } | null;
-
-/** Das laufende Skript, `null` wenn keins mehr läuft. */
-function activeRun(m: WizardMind, now: number) {
-  return m.running && now < m.running.endsAt ? m.running : null;
-}
-
-/** Ob ein Skript vom Rang `rank` oder wichtiger gerade sein Wort hält. */
-function heldBy(m: WizardMind, now: number, rank: Priority) {
-  const run = activeRun(m, now);
-  return run !== null && run.priority <= rank && now < run.startedAt + run.holdMs;
-}
-
-/** Wer etwas Wichtiges zu tun hat, ist wach. Ohne eigene Stimmung öffnet er die Augen. */
-function awake(m: WizardMind, draft: ScriptDraft, now: number): ScriptDraft {
-  if (draft.priority > 2 || m.rest.activity === "attending") return draft;
-  rest.wakeUp(m.rest, now);
-  const opens = draft.cues.some((cue) => cue.kind === "mood" && cue.at === 0);
-  return opens ? draft : { ...draft, cues: [mood(0, "neutral"), ...draft.cues] };
-}
-
-/** Beginnt ein Skript. */
-function start(m: WizardMind, draft: ScriptDraft, now: number, interrupt: boolean): Act {
-  const script = { ...awake(m, draft, now), id: m.nextId };
-  m.nextId += 1;
-  const endsAt = now + scriptLength(script);
-  m.running = { ...script, startedAt: now, endsAt };
-  // Eine neue Handlung macht den aufgeschobenen Satz zur Wahl überflüssig.
-  if (script.priority <= 1 && script.topic !== "browse") m.pending = null;
-  if (!script.topic.startsWith("idle.") && Number.isFinite(endsAt)) {
-    m.rest.idleAt = endsAt + rest.IDLE_TIMING.firstMs;
-  }
-  return { script, interrupt };
-}
-
-/** Ob `draft` jetzt beginnen darf: `free` ohne laufendes Skript, `interrupt` über es hinweg. */
-function admits(m: WizardMind, draft: ScriptDraft, now: number) {
-  const run = activeRun(m, now);
-  if (!run) return "free";
-  const outranks =
-    draft.priority < run.priority || (draft.priority === run.priority && !draft.polite);
-  const released = outranks || now >= run.startedAt + run.holdMs;
-  return released && now >= run.startedAt + run.lockMs ? "interrupt" : null;
-}
-
-/** Bietet ein Skript an: Es beginnt, wartet im einen Platz oder entfällt. */
-function offer(m: WizardMind, draft: ScriptDraft | null, now: number): Act {
-  if (!draft) return null;
-  const admitted = admits(m, draft, now);
-  if (admitted) return start(m, draft, now, admitted === "interrupt");
-  if (draft.priority <= 2) m.queued = { draft, until: now + BRAIN.queueMs };
-  return null;
+  /** Er hat eben den Hut verloren: Der Shop fragt den Server, ob das Jelly ihn tragen darf. */
+  steal: boolean;
 }
 
 /** Merkt sich, dass `key` in diesem Fenster dran war. `false`, wenn es schon dran war. */
@@ -145,18 +107,6 @@ function findItem(m: WizardMind, id: string | null | undefined) {
   const known = (item: ShopItem) => item.cosmetic.id === id;
   const chosen = m.selections.map((entry) => entry.item).reverse();
   return (id && (m.ctx.items?.find(known) ?? chosen.find(known))) || null;
-}
-
-/** Eine Eingabe: Schläfrige Lider gehen auf. */
-function lift(m: WizardMind, now: number): Act {
-  return rest.sensePresence(m.rest, now) ? { look: { mood: "neutral" } } : null;
-}
-
-/** Eine Handlung der Kundschaft: Er ist wach und bietet das Skript an. */
-function act(m: WizardMind, now: number, draft: ScriptDraft): Act {
-  const look = lift(m, now);
-  const played = offer(m, draft, now);
-  return played ? { ...played, look: look?.look } : look;
 }
 
 /** Er wird geweckt und schreckt hoch. */
@@ -230,7 +180,22 @@ function tease(m: WizardMind, reaction: TeaseReaction, now: number): Act | false
   const off = reaction.tease.hatOff;
   const look = off === m.tease.hatOff ? undefined : { hatOff: off };
   m.tease = reaction.tease;
-  return { ...start(m, reaction.draft, now, admitted === "interrupt"), look };
+  return {
+    ...start(m, reaction.draft, now, admitted === "interrupt"),
+    look,
+    steal: reaction.steal,
+  };
+}
+
+/**
+ * Was der Stand über seinen Hut sagt. Anders als ein Griff gilt das immer, auch während ein Skript
+ * sein Wort hält: Nur was er dazu sagt, darf entfallen.
+ */
+function onHatServer(m: WizardMind, hat: ServerHat | null, now: number, kit: ScriptKit): Act {
+  const sync = syncServerHat(kit, m.tease, hat, { now, opening: !m.greeted });
+  m.tease = sync.tease;
+  const played = sync.draft ? offer(m, sync.draft, now) : null;
+  return sync.look ? { ...played, look: sync.look } : played;
 }
 
 /** Am Hut gezerrt oder am Bart gezogen. Im Schlaf schreckt er nur hoch. */
@@ -262,7 +227,7 @@ function onContext(m: WizardMind, patch: Partial<WizardContext>, now: number, ki
   // Erst die Münzen, dann was sie möglich machen.
   m.merge = null;
   const flushed = offer(m, moment.flushServer(kit, waiting), now);
-  m.queued = { draft, until: now + BRAIN.queueMs };
+  m.queued = { draft, until: now + QUEUE_MS };
   return flushed;
 }
 
@@ -434,6 +399,11 @@ const HANDLERS: { [K in WizardEvent["kind"]]: Handler<K> } = {
   },
   poke: (m, _, now, kit) => onPoke(m, now, kit),
   tease: (m, { target }, now, kit) => onTease(m, target, now, kit),
+  hatServer: (m, { hat }, now, kit) => onHatServer(m, hat, now, kit),
+  hatTaken: (m, _, now) => {
+    m.tease = stealRefused(m.tease, now);
+    return null;
+  },
   server: (m, { event }, now, kit) => {
     const reaction = moment.serverReaction(kit, event, m.merge, now);
     m.merge = reaction.merge;
@@ -450,6 +420,6 @@ export function wizardStep(mind: WizardMind, event: WizardEvent, now: number): W
   const m = copyMind(mind);
   const handle = HANDLERS[event.kind] as Handler<WizardEvent["kind"]>;
   const result = handle(m, event, now, createScriptKit(m));
-  const { script, interrupt = false, look } = result ?? {};
-  return { mind: m, script, interrupt, look, nextTickAt: nextTickAt(m) };
+  const { script, interrupt = false, look, steal = false } = result ?? {};
+  return { mind: m, script, interrupt, look, nextTickAt: nextTickAt(m), steal };
 }

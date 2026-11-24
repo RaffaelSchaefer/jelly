@@ -37,6 +37,14 @@ const STAGE_TIMEOUT: Duration = Duration::from_secs(5);
 /// lassen.
 const SHOP_TIMEOUT: Duration = Duration::from_secs(15);
 
+/// Fehlercode, wenn gerade ein anderes Jelly Funkelbarts Hut trägt.
+pub const WIZARD_HAT_TAKEN: &str = "wizard_hat_taken";
+
+/// Ob `error` heißt, dass ein anderes Jelly schneller war als [`Api::steal_wizard_hat`].
+pub fn is_wizard_hat_taken(error: &Error) -> bool {
+    matches!(error, Error::Server { code, .. } if code == WIZARD_HAT_TAKEN)
+}
+
 /// Fehlerkörper des Servers: `{ "error": { "code", "message" } }`.
 #[derive(Deserialize)]
 struct Problem {
@@ -353,6 +361,18 @@ impl Api {
     pub async fn purchase(&self, key: &str) -> Result<Purchased> {
         let request = self.request(reqwest::Method::POST, "/v1/purchases");
         Self::send(request.json(&json!({ "key": key })).timeout(SHOP_TIMEOUT)).await
+    }
+
+    /// `POST /v1/wizard-hat`: stiehlt Funkelbart den Hut für `wizard_hat_seconds`. Ein
+    /// ausgeblendetes Jelly bekommt den Stand ohne Hut zurück, wer ihn schon trägt, unverändert.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], auch nach 15 s ohne Antwort, [`Error::Unauthorized`] oder
+    /// [`Error::Server`], etwa [`WIZARD_HAT_TAKEN`], `no_active_lan` oder `not_joined`.
+    pub async fn steal_wizard_hat(&self) -> Result<Me> {
+        let request = self.request(reqwest::Method::POST, "/v1/wizard-hat");
+        Self::send(request.timeout(SHOP_TIMEOUT)).await
     }
 
     /// `POST /v1/partner-emotes`: fordert ein Jelly in der Nähe zu einem Partner-Emote auf.

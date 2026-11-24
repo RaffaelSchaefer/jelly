@@ -45,7 +45,9 @@ function longSlots(item: string): LineSlots {
     levelUps: "99 Aufstiege",
     level: "999",
     next: "1000",
-    remaining: "999",
+    // So lang wird die Zeit, bis der Hut zurückkommt, höchstens (`hatTimeWords`).
+    remaining: "59 Sekunden",
+    holder: LONG_NAME,
   };
 }
 

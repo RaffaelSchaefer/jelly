@@ -3,7 +3,7 @@
  * oder der Fokus berührt (`[data-item-id]`, `[data-gaze]`), Stupser (`[data-wizard-poke]`), Griffe
  * an Hut und Bart (`[data-wizard-tease]`), das gesperrte Siegel (`#shop-seal[aria-disabled=true]`),
  * ob jemand da ist (Zeiger, Klick, Taste, Mausrad), ob das Fenster zu sehen ist, Ereignisse vom
- * Server und was er über Laden, Kundschaft und Uhrzeit weiß.
+ * Server, wer seinen Hut trägt, und was er über Laden, Kundschaft und Uhrzeit weiß.
  *
  * Alle Hörer hängen einmal am Dokument und suchen ihr Ziel selbst, so braucht die Oberfläche keine
  * eigenen Rückrufe. In der Vorschau spielt `#shop-nacht` die Nacht.
@@ -20,6 +20,7 @@ import type { WizardContext, WizardEvent } from "../pet/wizardScripts";
 import { desktop } from "../backend";
 import { previewGiftEvents, previewShop } from "../pet/preview";
 import { type ShopItem } from "../pet/shop";
+import { serverHat } from "../pet/wizardHat";
 import { useServerEvents } from "../useGame";
 
 /** Was der Zauberer über den Laden erfährt, sobald der Shop es ihm gibt. */
@@ -31,6 +32,8 @@ export interface WizardWorld {
   /** Münzen je Level-Aufstieg. */
   perLevel: number;
   xpPerLevel: number;
+  /** `server_time - Date.now()`: So weit geht die Uhr des Servers vor. */
+  serverOffset: number;
 }
 
 /** Wie er Ereignisse bekommt. */
@@ -172,7 +175,7 @@ function isRegular(me: Me, items: readonly ShopItem[]) {
 }
 
 /** Was der Laden über Kundschaft und Waren weiß. */
-export function worldContext(world: WizardWorld): Partial<WizardContext> {
+export function worldContext(world: Omit<WizardWorld, "serverOffset">): Partial<WizardContext> {
   const { me, items } = world;
   return {
     name: me?.name ?? null,
@@ -198,6 +201,20 @@ function useKnowledge(dispatch: Dispatch, calm: boolean, world: WizardWorld) {
     const patch = worldContext({ me, items, open, perLevel, xpPerLevel });
     dispatch({ kind: "context", patch });
   }, [dispatch, me, items, open, perLevel, xpPerLevel]);
+}
+
+/**
+ * Sagt ihm bei jedem neuen Stand, wer seinen Hut trägt und wie lange noch. Nur ein anderer Träger
+ * oder eine andere Rückkehr zählt, ein Stand ohne Änderung schweigt.
+ */
+function useServerHat(dispatch: Dispatch, { me, serverOffset }: WizardWorld) {
+  const { holder_id: holder, ends_at: endsAt } = me?.wizard_hat ?? {};
+  const id = me?.id;
+  useEffect(() => {
+    if (!me) return;
+    dispatch({ kind: "hatServer", hat: serverHat(me, Date.now() + serverOffset) });
+    // Nur Träger und Rückkehr zählen: Der Abstand zur Uhr wackelt bei jedem Stand um Millisekunden.
+  }, [dispatch, id, holder, endsAt]);
 }
 
 /** Die Vorschau schickt mit `#shop-muenzen` kurz vor ihrem Aufstieg, was der Server melden würde. */
@@ -236,5 +253,6 @@ export function useWizardSenses(dispatch: Dispatch, calm: boolean, world: Wizard
   usePresence(dispatch);
   useVisibility(dispatch);
   useKnowledge(dispatch, calm, world);
+  useServerHat(dispatch, world);
   useServer(dispatch, world);
 }

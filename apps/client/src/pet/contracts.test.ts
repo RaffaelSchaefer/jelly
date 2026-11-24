@@ -51,7 +51,7 @@ import {
   WIZARD_TEMPO,
   type WizardCue,
 } from "./wizardScripts";
-import { freshTease, hatReturn, teaseReaction, TEASE_RULES } from "./wizardTease";
+import { freshTease, hatReturn, syncServerHat, teaseReaction, TEASE_RULES } from "./wizardTease";
 import { wizardTempo } from "./wizardVoice";
 
 describe("gestures", () => {
@@ -134,6 +134,11 @@ describe("teasing", () => {
       drafts.push(reaction.draft);
     }
     expect(state.fedUp).toBe(true);
+    // Dazu der Hut bei einem anderen Jelly: beim Griff, und wenn er ihn während des Tragens verliert.
+    const mo = { mine: false, name: "Mo", remainingMs: 60_000 };
+    const taken = syncServerHat(kit, state, mo, { now: 0, opening: false });
+    const vanished = syncServerHat(kit, freshTease(), mo, { now: 0, opening: false });
+    drafts.push(teaseReaction(kit, taken.tease, "hat", 0).draft, vanished.draft!);
     return [...drafts, hatReturn(kit, state).draft].flatMap((draft) => draft.cues);
   }
 
@@ -142,6 +147,12 @@ describe("teasing", () => {
     expect(TEASE.conjure).toBe(TEASE_TIMING.conjure * 1000);
     expect(TEASE.stretch).toBe(TEASE_TIMING.stretch * 1000);
     expect(TEASE.previewBack).toBeLessThan(TEASE.hatBack);
+    // Ein schnellerer Dieb lässt ihn nicht so lange warten wie ein Hut ohne Server.
+    expect(TEASE.taken).toBeLessThan(TEASE.hatBack);
+    expect(TEASE.taken).toBeGreaterThanOrEqual(TEASE.snatch);
+    // Was beim Server fast vorbei ist, zieht ihm den Hut nicht noch einmal weg.
+    expect(TEASE.ending).toBeLessThanOrEqual(TEASE.retry);
+    expect(TEASE.ending).toBeGreaterThan(0);
     const yelp = Math.max(...WIZARD_CLIP_NOTES.yelp.map((note) => note.at + note.duration));
     expect(yelp * 1000).toBeLessThanOrEqual(CLIP_MS.yelp);
   });

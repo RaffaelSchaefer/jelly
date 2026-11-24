@@ -159,3 +159,19 @@ fn changed_rules_reach_everyone() {
     let rules = event("rules.changed", None, json!({}));
     assert!(is_own_event(&rules, 7));
 }
+
+#[test]
+fn the_wizard_hat_reaches_everyone_and_keeps_map_and_shop_open() {
+    let payload = json!({ "holder_id": 8, "holder_name": "Mo", "ends_at": 1000, "worn": true });
+    let stolen = event(WIZARD_HAT_CHANGED, Some(8), payload);
+    for player_id in [7, 8, 9] {
+        assert!(is_own_event(&stolen, player_id));
+        assert!(!closes_popouts(&stolen, player_id));
+    }
+    let back = event(
+        WIZARD_HAT_CHANGED,
+        Some(8),
+        json!({ "holder_id": 8, "holder_name": "Mo", "ends_at": 1000, "worn": false }),
+    );
+    assert!(is_own_event(&back, 7));
+}

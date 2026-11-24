@@ -2,9 +2,10 @@
  * Stand, Katalog und Aktionen des Shop-Fensters.
  *
  * Es hört wie das Pet auf die Ereignisse zum eigenen Jelly und liest danach neu: Münzen kommen auch
- * von der Orga, und ein Kauf bringt Erfolge. In der Browser-Vorschau gibt es kein Backend. Kaufen
- * und Anlegen ändern dann nur den lokalen Stand, und Hashes wie `#shop-fehler` spielen den Server
- * (`pet/preview.ts`).
+ * von der Orga, und ein Kauf bringt Erfolge. Klaut das Jelly dem Zauberer den Hut, fragt es den
+ * Server, ob es ihn tragen darf. In der Browser-Vorschau gibt es kein Backend. Kaufen und Anlegen
+ * ändern dann nur den lokalen Stand, und Hashes wie `#shop-fehler` oder `#shop-nerven` spielen den
+ * Server (`pet/preview.ts`).
  *
  * @module
  */
@@ -15,12 +16,15 @@ import * as backend from "../backend";
 import { desktop } from "../backend";
 import {
   previewCoinGift,
+  previewHatBack,
+  previewHatStolen,
   previewSettings,
   previewShop,
   withEquipped,
   type CosmeticSlot,
   type Game,
   type ShopItem,
+  TEASE,
 } from "../pet";
 import {
   inRunningLan,
@@ -146,6 +150,38 @@ function usePurchase({ patchGame, run, setGame }: ShopData) {
   return { pulse, purchase };
 }
 
+/**
+ * Der Diebstahl in der Vorschau mit `#shop-nerven`: Das Jelly trägt den Hut, bis er wie beim Server
+ * von selbst zurückgeht.
+ */
+function previewSteal({ game, patchGame }: Pick<ShopData, "game" | "patchGame">) {
+  const head = game.me?.equipped.head;
+  patchGame((current) => previewHatStolen(current, Date.now() + TEASE.previewBack));
+  window.setTimeout(() => patchGame((current) => previewHatBack(current, head)), TEASE.previewBack);
+}
+
+/**
+ * Fragt den Server, ob das Jelly Funkelbarts Hut tragen darf. `true`, wenn ein anderes Jelly
+ * schneller war. Ohne LAN oder bei einem Fehler bleibt es still beim Nerven im Fenster, darum nicht
+ * über `run`: Das zeigte den Fehler an und ließe den Griff während eines Kaufs fallen.
+ */
+function useStealHat({ game, patchGame, setGame }: ShopData, open: boolean) {
+  return useCallback(async () => {
+    if (!desktop) {
+      if (PREVIEW.stealsHat) previewSteal({ game, patchGame });
+      return false;
+    }
+    if (!open) return false;
+    try {
+      const { taken, game } = await backend.stealWizardHat();
+      setGame(game);
+      return taken;
+    } catch {
+      return false;
+    }
+  }, [game, patchGame, open, setGame]);
+}
+
 /** Alles, was das Shop-Fenster zeigt und tut. */
 export function useShop() {
   const data = useShopData();
@@ -169,7 +205,8 @@ export function useShop() {
 
   // In der Vorschau zeigt erst `#shop-zu` den geschlossenen Laden.
   const open = desktop ? inRunningLan(game, ready) : game.lan.current !== null;
-  return { ...data, pulse, purchase, purchaseAndWear, equip, open };
+  const stealHat = useStealHat(data, open);
+  return { ...data, pulse, purchase, purchaseAndWear, equip, open, stealHat };
 }
 
 /** Alles, was {@link useShop} liefert. */

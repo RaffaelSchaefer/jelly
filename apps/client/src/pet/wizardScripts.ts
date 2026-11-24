@@ -16,6 +16,7 @@ import type { EmoteKey } from "@jelly/scene/emotes";
 import type { ShopItem } from "./shop";
 import type { PurchaseTimeline } from "./shopTimeline";
 import type { ServerEvent } from "./types";
+import type { ServerHat } from "./wizardHat";
 import type { LineSlots, LineTopic } from "./wizardLines";
 
 import { speechNotes, speechSyllables } from "./voice";
@@ -272,7 +273,10 @@ export interface ScriptKit {
   random(): number;
 }
 
-/** Ein Hinweis der Oberfläche oder vom Server an den Zauberer. */
+/**
+ * Ein Hinweis der Oberfläche oder vom Server an den Zauberer. `hatServer` sagt bei jedem Stand, wer
+ * seinen Hut trägt, `hatTaken`, dass beim Diebstahl ein anderes Jelly schneller war.
+ */
 export type WizardNotice =
   | { kind: "hover"; target: "item" | "seal" | "purse" | "wizard"; itemId?: string }
   | { kind: "unhover" }
@@ -286,7 +290,9 @@ export type WizardNotice =
   | { kind: "equipped"; item: ShopItem; worn: boolean }
   | { kind: "poke" }
   | { kind: "tease"; target: "hat" | "beard" }
-  | { kind: "server"; event: ServerEvent };
+  | { kind: "server"; event: ServerEvent }
+  | { kind: "hatServer"; hat: ServerHat | null }
+  | { kind: "hatTaken" };
 
 /** Alles, worauf sein Gehirn reagiert. `input` ist eine Eingabe, `strong` ein Klick oder eine Taste. */
 export type WizardEvent =
@@ -300,12 +306,14 @@ export type WizardEvent =
 
 /**
  * Ein Blick oder eine Stimmung ohne Skript, etwa zur Ware unter dem Zeiger. `hatOff` nimmt ihm den
- * Hut oder gibt ihn zurück: Das gilt sofort und überlebt jedes unterbrochene Skript.
+ * Hut oder gibt ihn zurück: Das gilt sofort und überlebt jedes unterbrochene Skript. Mit
+ * `hatInstant` ist der Hut ohne Flug schon weg, etwa wenn der Shop aufgeht.
  */
 export interface WizardLook {
   gaze?: GazeTarget;
   mood?: WizardMood;
   hatOff?: boolean;
+  hatInstant?: true;
 }
 
 /** Tempo je Sprechweise. */

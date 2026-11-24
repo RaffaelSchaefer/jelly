@@ -1,8 +1,8 @@
 /**
  * Schilder vor der Szene: „Geschlossen“ oben links, solange keine LAN läuft, das Schildchen „Zur
- * Probe“ unten rechts, solange das Jelly etwas zur Anprobe trägt (ohne Modell „Ohne Abbild“), und
- * die unsichtbaren Flächen über dem Zauberer: eine stupst ihn an, die über Hut und Bart nerven
- * ihn.
+ * Probe“ unten rechts, solange das Jelly etwas zur Anprobe trägt (ohne Modell „Ohne Abbild“), das
+ * Schildchen „Hut verliehen“ (`HatSign.tsx`), solange ein Jelly Funkelbarts Hut trägt, und die
+ * unsichtbaren Flächen über dem Zauberer: eine stupst ihn an, die über Hut und Bart nerven ihn.
  *
  * Stupsen und Nerven hört `shop/useWizardSenses.ts` über `[data-wizard-poke]` und
  * `[data-wizard-tease]`, darum haben die Knöpfe hier keinen eigenen Handler. Mit `data-gaze` schaut
@@ -14,7 +14,7 @@
 import { COSMETIC_MODEL_KEYS } from "@jelly/scene/cosmetic-keys";
 import { memo, useState, type CSSProperties } from "react";
 
-import type { Equipped } from "../pet";
+import type { Equipped, Me } from "../pet";
 
 import {
   cssPercent,
@@ -23,6 +23,7 @@ import {
   tryOnLabel,
   wizardRectStyle,
 } from "../pet/shopStage";
+import HatSign from "./HatSign";
 
 /** Wo man den Zauberer anstupst. */
 const POKE_STYLE: CSSProperties = {
@@ -82,17 +83,20 @@ export interface StageSignsProps {
   open: boolean;
   /** Was das Jelly zeigt, samt dem Teil zur Probe. */
   shown: Equipped;
-  /** Was es wirklich trägt. */
-  worn: Equipped;
+  /** Der Stand: was das Jelly wirklich trägt und wer den Hut des Zauberers hat. */
+  me: Me;
+  /** `server_time - Date.now()` aus `useGameState`. */
+  offset: number;
 }
 
 /** Schilder, Stupsfläche und die Flächen über Hut und Bart. */
-function StageSigns({ open, shown, worn }: StageSignsProps) {
-  const label = tryOnLabel(shown, worn, COSMETIC_MODEL_KEYS);
+function StageSigns({ open, shown, me, offset }: StageSignsProps) {
+  const label = tryOnLabel(shown, me.equipped, COSMETIC_MODEL_KEYS);
   const text = useTagText(label);
   return (
     <div className="stage-signs">
       {open ? null : CLOSED_SIGN}
+      <HatSign me={me} offset={offset} />
       <p className="stage-tag" aria-hidden="true" data-on={label ? "" : undefined}>
         <span className="tag-card">{text}</span>
       </p>

@@ -65,7 +65,9 @@ fn player_state_from_the_docs_parses_and_ignores_new_fields() {
       "xp": 3, "level": 1, "coins": 3, "total_xp": 3, "next_poke_at": 1795000900000,
       "reports": { "food_ready_at": 0, "drink_ready_at": 0, "reports_left": 8 },
       "sign": null, "follow": { "player_id": 2, "ends_at": 1795000900000 },
-      "trip": { "x": 12.5, "y": 40, "ends_at": 1795000300000 }, "lans_attended": 1,
+      "trip": { "x": 12.5, "y": 40, "ends_at": 1795000300000 },
+      "wizard_hat": { "holder_id": 1, "holder_name": "Glibber", "ends_at": 1795000300000 },
+      "lans_attended": 1,
       "badges": [{ "slug": "ucb-2026", "name": "UCB LAN 2026" }], "cosmetics": [],
       "achievements": [{ "key": "hatched", "title": "Frisch geschlüpft", "lan_slug": null,
         "earned_at": 1795000000000 }],
@@ -80,6 +82,9 @@ fn player_state_from_the_docs_parses_and_ignores_new_fields() {
     assert_eq!(me.follow.unwrap().ends_at, 1_795_000_900_000);
     assert_eq!(me.trip.unwrap().ends_at, 1_795_000_300_000);
     assert_eq!(me.coins, 3);
+    let hat = me.wizard_hat.unwrap();
+    assert_eq!((hat.holder_id, hat.holder_name.as_str()), (1, "Glibber"));
+    assert_eq!(hat.ends_at, 1_795_000_300_000);
 }
 
 #[test]
@@ -94,8 +99,40 @@ fn a_purchase_answer_parses_and_coins_default_to_zero() {
     let bought: Purchased = serde_json::from_value(body).unwrap();
     assert_eq!(bought.cosmetic_key, "beanie");
     assert_eq!(bought.coins_spent, 2);
-    // Ein Server vor API 1.20 kennt keine Münzen.
+    // Ein Server vor API 1.20 kennt keine Münzen, einer vor 1.39 keinen Hut des Zauberers.
     assert_eq!(bought.me.coins, 0);
+    assert!(bought.me.wizard_hat.is_none());
+}
+
+#[test]
+fn a_faster_thief_is_told_apart_from_other_refusals() {
+    let body = json!({ "error": { "code": WIZARD_HAT_TAKEN,
+        "message": "Funkelbarts Hut trägt gerade ein anderes Jelly." } })
+    .to_string();
+    assert!(is_wizard_hat_taken(&parse_error(
+        StatusCode::CONFLICT,
+        &body
+    )));
+    let closed = r#"{"error":{"code":"no_active_lan","message":"Gerade läuft keine LAN."}}"#;
+    assert!(!is_wizard_hat_taken(&parse_error(
+        StatusCode::CONFLICT,
+        closed
+    )));
+    assert!(!is_wizard_hat_taken(&Error::Unauthorized));
+}
+
+#[test]
+fn rules_without_the_wizard_hat_still_parse() {
+    let rules: Rules = serde_json::from_value(json!({
+        "near_distance": 6.0, "xp_per_level": 100, "coins_per_level": 1
+    }))
+    .unwrap();
+    assert_eq!(rules.wizard_hat_seconds, 0);
+    let newer: Rules = serde_json::from_value(json!({
+        "near_distance": 6.0, "xp_per_level": 100, "coins_per_level": 1, "wizard_hat_seconds": 300
+    }))
+    .unwrap();
+    assert_eq!(newer.wizard_hat_seconds, 300);
 }
 
 #[test]
