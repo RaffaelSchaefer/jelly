@@ -31,6 +31,8 @@ const (
 	// A jelly from the far end of the hall still waits this long in the queue.
 	snackWaitMillis = 5000
 	sidesPerJelly   = 2
+	// A trip this close to the point of a stack, in percent of the stage, means the stack.
+	stackPointReach = 1e-6
 )
 
 // routePoint is a point of a route with its absolute time.
@@ -181,7 +183,12 @@ func (planner *Planner) startPlan(now int64, walker *walker) {
 // can climb on arrival. Anywhere else it keeps its personal space.
 func (planner *Planner) findTripGoal(walker *walker) floorPoint {
 	trip := planner.frame.toFloorPoint(walker.plan.trip)
-	if slices.Contains(planner.stackPoints, walker.plan.trip) {
+	// The point comes back from an app, which may have rounded its last digit.
+	isStack := slices.ContainsFunc(planner.stackPoints, func(point Point) bool {
+		return math.Abs(point.X-walker.plan.trip.X) < stackPointReach &&
+			math.Abs(point.Y-walker.plan.trip.Y) < stackPointReach
+	})
+	if isStack {
 		return planner.floor.findNearestWalkable(trip)
 	}
 	return planner.findFreeSpot(walker, trip, planner.frame.listRoomRect())

@@ -23,7 +23,9 @@ func TestTripToAStackEndsOnItAndOtherTripsKeepTheirSpace(t *testing.T) {
 	roster.Players = append(roster.Players, climber)
 	planner := movement.NewPlanner()
 	planner.Advance(start, roster)
-	roster.Players[len(roster.Players)-1].Trip = &stack
+	// An app sends the point back, and its last digit may have been rounded on the way.
+	rounded := movement.Point{X: stack.X + 1e-9, Y: stack.Y - 1e-9}
+	roster.Players[len(roster.Players)-1].Trip = &rounded
 	visitor := movement.Player{ID: 30, Area: lounge, Home: beside, Trip: &beside}
 	roster.Players = append(roster.Players, visitor)
 	planner.Advance(start+1000, roster)
