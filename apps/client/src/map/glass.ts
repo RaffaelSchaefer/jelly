@@ -22,7 +22,7 @@ import {
 } from "three";
 
 import { PET_COLORS, shapeGrowth, stepPresence, type PetColor } from "../pet";
-import { createGlass, FULLSCREEN, readShapes } from "../scene/glassMaterial";
+import { createGlass, FULLSCREEN, readShapes, type GlassUniforms } from "../scene/glassMaterial";
 
 /**
  * Die Leiste steht im DOM zuerst und bleibt für sich, eine Kapsel mit ganz runden Enden. Alles
@@ -43,7 +43,12 @@ const INITIAL_COLOR: PetColor = "mint";
 /** Was die Seite am laufenden Glas ändern kann. */
 export interface GlassLayer {
   /** Das Glas trägt die Farbe des eigenen Jellys. */
-  setLook: (color: PetColor, reducedMotion: boolean) => void;
+  setLook: (color: PetColor) => void;
+  /**
+   * Ruhig steht das Glas still. Getrennt von der Farbe: Die Einstellung gilt auch ohne eigenes
+   * Jelly.
+   */
+  setReducedMotion: (reduced: boolean) => void;
   /** Dieselbe Bildrate wie der Rest der Karte. */
   setFrameLimit: (limit: FrameLimit) => void;
   /** Hält das Glas an und gibt seinen Grafikspeicher frei. */
@@ -85,6 +90,14 @@ function releaseCanvas(renderer: WebGLRenderer, canvas: HTMLCanvasElement) {
   renderer.dispose();
   renderer.forceContextLoss();
   canvas.replaceWith(canvas.cloneNode());
+}
+
+/** Färbt das Glas in der Farbe eines Jellys. */
+function tintGlass(uniforms: GlassUniforms, color: PetColor) {
+  const palette = PET_COLORS[color];
+  uniforms.uColor.value.set(palette.hex);
+  uniforms.uGlow.value.set(palette.glow);
+  uniforms.uInk.value.set(palette.outline);
 }
 
 /**
@@ -145,11 +158,8 @@ export function startGlass(canvas: HTMLCanvasElement, root: HTMLElement): GlassL
   frame = requestAnimationFrame(tick);
 
   return {
-    setLook: (color, reduced) => {
-      const palette = PET_COLORS[color];
-      uniforms.uColor.value.set(palette.hex);
-      uniforms.uGlow.value.set(palette.glow);
-      uniforms.uInk.value.set(palette.outline);
+    setLook: (color) => tintGlass(uniforms, color),
+    setReducedMotion: (reduced) => {
       reducedMotion = reduced;
     },
     setFrameLimit: pacer.setLimit,

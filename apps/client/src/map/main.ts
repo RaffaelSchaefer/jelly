@@ -82,10 +82,10 @@ function showMap(page: MapPage, hasOwn: boolean) {
 }
 
 /**
- * Übernimmt die Einstellungen des Geräts und sagt, ob die Karte ruhig bleibt. Sie gelten auch nach
- * einem Lesefehler, etwa ohne laufende LAN.
+ * Übernimmt die Einstellungen des Geräts. Sie gelten auch nach einem Lesefehler, etwa ohne laufende
+ * LAN.
  */
-function applySettings(page: MapPage): boolean {
+function applySettings(page: MapPage) {
   const { reducedMotion, optimizedRendering, frameLimit } = page.source.readOwn();
   const reduced = reducedMotion ?? OS_REDUCED_MOTION.matches;
   document.documentElement.toggleAttribute("data-reduced-motion", reduced);
@@ -93,7 +93,7 @@ function applySettings(page: MapPage): boolean {
   page.view?.setFrameLimit(frameLimit);
   applyButtonLook(page, optimizedRendering);
   page.glass?.setFrameLimit(frameLimit);
-  return reduced;
+  page.glass?.setReducedMotion(reduced);
 }
 
 /** Übernimmt, was ein neuer Stand für die Seite bedeutet. */
@@ -103,8 +103,8 @@ function applyState(page: MapPage, state: StageState) {
   page.players = state.players;
   page.clockOffset = state.server_time - Date.now();
   applyAway(page, own, trip);
-  const reduced = applySettings(page);
-  if (own) page.glass?.setLook(knownPetColor(own.color), reduced);
+  applySettings(page);
+  if (own) page.glass?.setLook(knownPetColor(own.color));
   page.notice.setNote(state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "");
   page.notice.setReadProblem("");
   showMap(page, own !== undefined);
