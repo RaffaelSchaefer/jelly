@@ -8,7 +8,7 @@ import {
   createWalker,
   findMovePosition,
   findSnackRunners,
-  findStackLevel,
+  findArrival,
   isOnTheWay,
   keepNewerMove,
   stepWalker,
@@ -81,10 +81,9 @@ test("a walking jelly looks where it goes and hops, a standing one looks at the 
   assert.ok(Math.abs(walker.yaw - toViewer) < 0.01, "looks at the camera");
 });
 
-test("a jelly climbs its stack only after it has arrived", () => {
-  const climbing = { ...move, kind: "stack", stack_level: 2 };
-  assert.equal(findStackLevel(climbing, 2000), 0);
-  assert.equal(findStackLevel(climbing, 4000), 2);
+test("a move arrives at the time of its last point", () => {
+  assert.equal(findArrival(move), 4000);
+  assert.equal(findArrival({ ...move, points: [] }), 1000);
 });
 
 test("a jelly is on its way until its trip to the goal has ended", () => {

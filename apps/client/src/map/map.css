@@ -75,6 +75,14 @@ html[data-glass] #dock .tool svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 #partner-menu[hidden], #jelly-menu[hidden] { display: none; }
 .follow-leave, #jelly-follow[data-target] .follow-join { display: none; }
 #jelly-follow[data-target] .follow-leave { display: block; }
+/* Der Stapel-Knopf zeigt, was er tut: beginnen, draufklettern oder absteigen. `.icon-pill` hebt sonst `hidden` auf. */
+#jelly-stack[hidden] { display: none; }
+.stack-join, .stack-down, #jelly-stack[data-join] .stack-start, #own-stack[data-on-stack] .stack-start { display: none; }
+#jelly-stack[data-join] .stack-join, #own-stack[data-on-stack] .stack-down { display: block; }
+/* Am eigenen Jelly steht er unter den Gesten, mit Symbol vor dem Text. */
+#own-stack { display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+#own-stack svg { flex: none; width: 17px; height: 17px; margin-left: -0.2rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+html[data-glass] #own-stack svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 /* Oben in der Mitte: Dort liegen keine Fensterknöpfe, und die Leiste bleibt frei. */
 #partner-bar { position: absolute; top: 12px; left: 50%; z-index: 3; display: flex; align-items: center; gap: 6px; translate: -50% 0; white-space: nowrap; }
 #partner-bar[hidden] { display: none; }

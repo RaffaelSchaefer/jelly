@@ -157,6 +157,10 @@ func (server *apiServer) advanceMovement(ctx context.Context) {
 	if err != nil && ctx.Err() == nil {
 		server.Logger.WarnContext(ctx, "finish expired", "error", err)
 	}
+	err = server.Store.StartScheduledNews(ctx, now)
+	if err != nil && ctx.Err() == nil {
+		server.Logger.WarnContext(ctx, "start scheduled news", "error", err)
+	}
 	server.refreshMovement(ctx, now)
 }
 
@@ -244,6 +248,10 @@ func buildGathering(gathering *store.Gathering) *movement.Gathering {
 	planned := movement.Gathering{Kind: gathering.Kind, WinnerID: 0}
 	if gathering.WinnerID != nil {
 		planned.WinnerID = *gathering.WinnerID
+	}
+	// The presenter of the news stands where a winner would, the others watch.
+	if gathering.PresenterID != nil {
+		planned.WinnerID = *gathering.PresenterID
 	}
 	return &planned
 }

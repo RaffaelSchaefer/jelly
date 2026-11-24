@@ -24,9 +24,11 @@ import { createPlayerPicker } from "./playerPicker.ts";
 
 const SECONDS_PER_MINUTE = 60;
 const KIND_CEREMONY = "ceremony";
+const KIND_NEWS = "news";
 
 /** Names the kinds of gatherings. */
 function nameGathering(kind: string): string {
+  if (kind === KIND_NEWS) return "Jelly-News";
   return kind === KIND_CEREMONY ? "Siegerehrung" : "Essens-Event";
 }
 
@@ -65,6 +67,7 @@ function createStartForm(lan: LANSummary, onFailure: FailureHandler, reload: () 
   const kind = createSelect("gathering-kind", [
     ["food", "Essens-Event: alle Jellies gehen zur Theke"],
     [KIND_CEREMONY, "Siegerehrung: alle schauen zu, der Sieger steht vorne"],
+    [KIND_NEWS, "Jelly-News: ein Jelly stellt die letzte Stunde vor"],
   ]);
   const minutes = createField({
     id: "gathering-minutes",

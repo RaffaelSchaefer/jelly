@@ -95,6 +95,7 @@ func listPublicRuleLimits(public PublicRules) []RuleLimit {
 		secondsLimit("highlight_seconds", public.HighlightSeconds, 1),
 		secondsLimit("highlight_cooldown", public.HighlightCooldownSeconds, 0),
 		secondsLimit("wizard_hat_seconds", public.WizardHatSeconds, 1),
+		secondsLimit("news_seconds", public.NewsSeconds, 1),
 		{"room_width", public.RoomWidthMeters, minRoomMeters, maxRoomMeters},
 		{"room_depth", public.RoomDepthMeters, minRoomMeters, maxRoomMeters},
 		{"jelly_width", public.JellyWidthMeters, minJellyMeters, maxJellyMeters},

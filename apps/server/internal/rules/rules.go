@@ -48,6 +48,7 @@ const (
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
 	defaultWizardHatSeconds      = 300
+	defaultNewsSeconds           = 90
 	defaultRoomWidthMeters       = 22.0
 	defaultRoomDepthMeters       = 16.1
 	defaultJellyWidthMeters      = 0.5
@@ -134,6 +135,8 @@ type PublicRules struct {
 	HighlightCooldownSeconds int64 `json:"highlight_cooldown"`
 	// WizardHatSeconds is how long a jelly wears the hat it stole from the wizard in the shop.
 	WizardHatSeconds int64 `json:"wizard_hat_seconds"`
+	// NewsSeconds is how long the Jelly-News last when their point in the program has no end.
+	NewsSeconds int64 `json:"news_seconds"`
 	// RoomWidthMeters is the room from left to right in meters, the size of the real hall.
 	RoomWidthMeters float64 `json:"room_width"`
 	// RoomDepthMeters is the room from back to front in meters.
@@ -170,6 +173,7 @@ func DefaultRules() Rules {
 		HighlightSeconds:         defaultHighlightSeconds,
 		HighlightCooldownSeconds: defaultHighlightCooldown,
 		WizardHatSeconds:         defaultWizardHatSeconds,
+		NewsSeconds:              defaultNewsSeconds,
 		RoomWidthMeters:          defaultRoomWidthMeters,
 		RoomDepthMeters:          defaultRoomDepthMeters,
 		JellyWidthMeters:         defaultJellyWidthMeters,
@@ -183,6 +187,14 @@ func DefaultRules() Rules {
 // end up in 1970, and a LAN that never ends would block every later one, which overlaps it.
 func IsLANPeriodValid(startsAt, endsAt int64) bool {
 	return startsAt >= earliestLANStart && startsAt < endsAt && endsAt-startsAt <= maxLANMillis
+}
+
+// StopsRunningLAN reports whether a new period ends a LAN that runs now, or moves its start into
+// the future. Both cut every jelly off at once, so the orga has to mean it.
+func StopsRunningLAN(startsAt, endsAt, newStartsAt, newEndsAt, now int64) bool {
+	isRunning := startsAt <= now && now < endsAt
+	keepsRunning := newStartsAt <= now && now < newEndsAt
+	return isRunning && !keepsRunning
 }
 
 // IsEventCodeValid reports whether a code gives a sensible amount of XP for a time that fits a LAN.

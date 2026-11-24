@@ -319,3 +319,25 @@ func TestAStolenWizardHatLastsItsSeconds(t *testing.T) {
 		t.Fatalf("ValidateRules() = %v, want ErrInvalidRules", err)
 	}
 }
+
+func TestStopsRunningLAN(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name               string
+		newStarts, newEnds int64
+		now                int64
+		want               bool
+	}{
+		{"end moved later", 0, 300, 50, false},
+		{"end moved into the past", 0, 40, 50, true},
+		{"start moved into the future", 60, 300, 50, true},
+		{"not running yet", 0, 10, -5, false},
+		{"already over", 0, 10, 200, false},
+	}
+	for _, testCase := range cases {
+		got := rules.StopsRunningLAN(0, 100, testCase.newStarts, testCase.newEnds, testCase.now)
+		if got != testCase.want {
+			t.Errorf("%s: got %v, want %v", testCase.name, got, testCase.want)
+		}
+	}
+}

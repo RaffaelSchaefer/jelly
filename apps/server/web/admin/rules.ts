@@ -143,6 +143,12 @@ function listStageRules(): RuleText[] {
       unit: "count",
       hint: "0 heißt: ohne Grenze.",
     },
+    {
+      key: "news_seconds",
+      label: "Dauer der Jelly-News",
+      unit: "seconds",
+      hint: "Gilt, wenn der News-Punkt im Programm kein Ende hat.",
+    },
   ];
 }
 

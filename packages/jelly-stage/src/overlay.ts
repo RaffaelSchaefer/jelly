@@ -73,7 +73,8 @@ export function measureAnchors(
   return spots.map((spot) => {
     const feet = toScreen(spot.feet);
     const head = toScreen(spot.head);
-    return { player: spot.player, x: feet.x, y: feet.y, headX: head.x, height: feet.y - head.y };
+    const height = feet.y - head.y;
+    return { player: spot.player, x: feet.x, y: feet.y, headX: head.x, height, tier: spot.tier };
   });
 }
 

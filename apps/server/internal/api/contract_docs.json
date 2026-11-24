@@ -67,7 +67,7 @@
         "ends_at": "End in Unix milliseconds, or null: then the point lasts until the next one starts.",
         "title": "Short title, at most 80 characters.",
         "detail": "Game, dish or note, at most 200 characters, or null.",
-        "kind": "`orga`, `food`, `yoga`, `tournament` or `together`. Other values can be added in any version and are drawn neutrally."
+        "kind": "`orga`, `food`, `yoga`, `tournament`, `together` or `news`. A `news` point starts the Jelly-News on the stage once it begins, for its own time or `news_seconds`. Other values can be added in any version and are drawn neutrally."
       }
     },
     "Catalog": {
@@ -166,9 +166,34 @@
     "Gathering": {
       "description": "Sends all jellies of a LAN somewhere for a while, started by the orga. Nothing pauses: a trip, following or a stack runs on in the background and goes on afterwards if its time is not over yet.",
       "fields": {
-        "kind": "`food` sends the jellies to the zones of kind `queue`. `ceremony` sends them to `spectators` and the winner to `winner`. Treat new values as nothing to show.",
+        "kind": "`food` sends the jellies to the zones of kind `queue`. `ceremony` sends them to `spectators` and the winner to `winner`. `news` sends them to `spectators` and the presenter to `winner`, who presents `news`. Treat new values as nothing to show.",
         "winner_id": "The winner of a ceremony, who grows on the stage. Null without one.",
-        "ends_at": "When it ends and the jellies walk back."
+        "ends_at": "When it ends and the jellies walk back.",
+        "presenter_id": "The jelly that presents the news, picked by the server among the present ones. Null for other kinds or when nobody is there.",
+        "news": "What the presenter of `news` presents from the last hour. Null for other kinds."
+      }
+    },
+    "News": {
+      "description": "The Jelly-News: what visible jellies did during the last hour. A part without news is null or empty, news without any part do not start.",
+      "fields": {
+        "top_xp": "The jelly with the most XP in the hour, or null.",
+        "achievements": "Achievements earned in the hour, newest first, at most 5.",
+        "tallest_stack": "The jellies of the tallest stack of the hour, from the bottom to the top. Empty without a stack of at least two.",
+        "next_item": "The next point of the program that is not news itself, or null."
+      }
+    },
+    "NewsAchievement": {
+      "description": "An achievement a jelly earned, for the news.",
+      "fields": {
+        "player_id": "The jelly that earned it.",
+        "key": "The achievement, out of `achievements` in `GET /v1/catalog`."
+      }
+    },
+    "NewsXP": {
+      "description": "The jelly that earned the most XP, for the news.",
+      "fields": {
+        "player_id": "The jelly.",
+        "xp": "The XP it earned in the hour."
       }
     },
     "HighlightBody": {
@@ -228,7 +253,7 @@
       "description": "One walk of a jelly, planned by the server so all screens show the same. Between two points the jelly walks straight, after the last one it stands there. A newer move of the same jelly replaces this one and starts where the jelly is at its `start_at`.",
       "fields": {
         "player_id": "The jelly that walks.",
-        "kind": "Why it walks: `wander`, `follow`, `trip`, `snack`, `stack`, `food` or `ceremony`. Treat new values like `wander`.",
+        "kind": "Why it walks: `wander`, `follow`, `trip`, `snack`, `stack`, `food`, `ceremony` or `news`. Treat new values like `wander`.",
         "start_at": "When the walk starts. New walks start about one second in the future, so they reach every screen in time.",
         "points": "The way to walk. A single point means the jelly stands there.",
         "stack_level": "How many jellies stand below this one, once it arrived at the last point. Above 0 only on a stack."
@@ -460,6 +485,7 @@
         "highlight_seconds": "How long a highlighted jelly lights up.",
         "highlight_cooldown": "Time between two highlights of one player.",
         "wizard_hat_seconds": "How long a jelly wears the hat it stole from the wizard in the shop.",
+        "news_seconds": "How long the Jelly-News last when their point in the program has no end.",
         "room_width": "Real width of the hall in meters, from left to right.",
         "room_depth": "Real depth of the hall in meters, from back to front.",
         "jelly_width": "Real width of a jelly in meters."
@@ -656,7 +682,7 @@
       "type": "stack.changed",
       "meaning": "A stack was started, changed or ended, also when its time ran out.",
       "player": "the player, null when its time ran out",
-      "payload": "The stack, only `{\"id\"}` after climbing down or when it ended"
+      "payload": "The whole stack while it stands, also after someone climbed down. Only `{\"id\"}` once it is gone"
     },
     {
       "type": "highlight",

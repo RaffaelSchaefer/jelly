@@ -13,7 +13,7 @@ func TestEveryRollPicksABotActionByItsWeight(t *testing.T) {
 	}
 	want := map[string]int{
 		"emote": 30, "sign": 15, "poke": 20, "food": 5, "drink": 5, "trip": 15, "follow": 10,
-		"stack": 5,
+		"stack": 30,
 	}
 	for action, weight := range want {
 		if counts[action] != weight {

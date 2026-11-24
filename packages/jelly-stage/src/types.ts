@@ -163,6 +163,11 @@ export interface EventPayload {
   target_id?: number;
   ends_at?: number;
   cosmetic_key?: string;
+  /** The stack of `stack.changed`. A stack that is gone has only its `id` left. */
+  id?: number;
+  x?: number;
+  y?: number;
+  member_ids?: number[];
 }
 
 /** The fixed lists of `GET /v1/catalog` the stage needs for its texts. */

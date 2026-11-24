@@ -31,6 +31,8 @@ const (
 	// A jelly from the far end of the hall still waits this long in the queue.
 	snackWaitMillis = 5000
 	sidesPerJelly   = 2
+	// A trip this close to the point of a stack, in percent of the stage, means the stack.
+	stackPointReach = 1e-6
 )
 
 // routePoint is a point of a route with its absolute time.
@@ -153,15 +155,14 @@ func (planner *Planner) findPlan(now int64, player Player) walkPlan {
 
 // startPlan sends a jelly on its way after its plan changed.
 func (planner *Planner) startPlan(now int64, walker *walker) {
-	room := planner.frame.listRoomRect()
 	var goal floorPoint
 	switch walker.plan.kind {
 	case KindSnack:
 		goal = planner.findGatherSpot(now, walker, planner.zones[rules.AreaKindQueue])
-	case KindFood, KindCeremony:
+	case KindFood, KindCeremony, KindNews:
 		goal = planner.findGatherSpot(now, walker, planner.findGatherZones(walker.playerID))
 	case KindTrip:
-		goal = planner.findFreeSpot(walker, planner.frame.toFloorPoint(walker.plan.trip), room)
+		goal = planner.findTripGoal(walker)
 	case KindFollow:
 		goal = planner.findFollowGoal(walker)
 	case KindStack:
@@ -176,6 +177,21 @@ func (planner *Planner) startPlan(now int64, walker *walker) {
 	if walker.plan.kind == KindWander {
 		walker.nextWanderAt += walker.findArrival() - now
 	}
+}
+
+// findTripGoal returns where a trip ends. At the point of a stack, the jelly walks onto it, so it
+// can climb on arrival. Anywhere else it keeps its personal space.
+func (planner *Planner) findTripGoal(walker *walker) floorPoint {
+	trip := planner.frame.toFloorPoint(walker.plan.trip)
+	// The point comes back from an app, which may have rounded its last digit.
+	isStack := slices.ContainsFunc(planner.stackPoints, func(point Point) bool {
+		return math.Abs(point.X-walker.plan.trip.X) < stackPointReach &&
+			math.Abs(point.Y-walker.plan.trip.Y) < stackPointReach
+	})
+	if isStack {
+		return planner.floor.findNearestWalkable(trip)
+	}
+	return planner.findFreeSpot(walker, trip, planner.frame.listRoomRect())
 }
 
 // startWalk plans the way to a goal and publishes it. The jelly goes on walking its old route
@@ -267,8 +283,8 @@ func (planner *Planner) findFollowGoal(walker *walker) floorPoint {
 	return planner.findFreeSpot(walker, beside, planner.frame.listRoomRect())
 }
 
-// findGatherZones returns where a jelly goes during the running gathering. At a ceremony, the
-// winner goes to the winner zone if there is one.
+// findGatherZones returns where a jelly goes during the running gathering. At a ceremony or the
+// news, the winner or presenter goes to the winner zone if there is one.
 func (planner *Planner) findGatherZones(playerID int64) []floorRect {
 	if planner.gathering.Kind == KindFood {
 		return planner.zones[rules.AreaKindQueue]

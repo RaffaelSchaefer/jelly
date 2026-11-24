@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Equipped, Follow};
+use super::{Equipped, Follow, Me};
 
 /// Ein Bereich der Raumkarte aus `GET /v1/stage`, in Prozent der Bühne. `x`, `y`, `width` und
 /// `height` sagen, wo er ohne Drehung stünde.
@@ -134,6 +134,15 @@ pub struct Stack {
     pub ends_at: i64,
     /// Die Jellies von unten nach oben.
     pub member_ids: Vec<i64>,
+}
+
+/// Antwort von `POST /v1/stacks` und `POST /v1/stacks/members`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct StackAnswer {
+    /// Der Stapel nach dem Klettern, das eigene Jelly ganz oben.
+    pub stack: Stack,
+    /// Neuer Stand.
+    pub me: Me,
 }
 
 /// Antwort von `GET /v1/stage`.

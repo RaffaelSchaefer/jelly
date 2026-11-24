@@ -18,6 +18,8 @@ const (
 	// All jellies gather. Their other plans go on afterwards, if their time is not over.
 	KindFood     = "food"
 	KindCeremony = "ceremony"
+	// KindNews walks like a ceremony: the presenter to the winner zone, the others to watch.
+	KindNews = "news"
 )
 
 const (
@@ -114,7 +116,9 @@ type Planner struct {
 	// zones holds the zones jellies go to by their kind, shrunk so they stay inside.
 	zones     map[string][]floorRect
 	gathering *Gathering
-	walkers   map[int64]*walker
+	// stackPoints are the points of the running stacks, where trips end on the stack.
+	stackPoints []Point
+	walkers     map[int64]*walker
 	// journal holds the newest moves. The move at index i has the number firstNumber + i.
 	journal     []Move
 	firstNumber int64
@@ -152,6 +156,7 @@ func (planner *Planner) Advance(now int64, roster Roster) {
 	planner.syncRoom(roster.Areas, newFloorFrame(roster.Room))
 	planner.walkSpeed = roster.WalkSpeed / planner.frame.metersPerUnit
 	planner.gathering = roster.Gathering
+	planner.stackPoints = listStackPoints(roster.Players)
 	planner.syncWalkers(now, roster.Players)
 	for _, player := range roster.Players {
 		planner.updateWalker(now, player)
@@ -307,10 +312,8 @@ func (planner *Planner) addWalker(now int64, player Player) {
 	case player.LastSpot != nil:
 		spot = planner.floor.findNearestWalkable(planner.frame.toFloorPoint(*player.LastSpot))
 	case player.Trip != nil:
-		spot = planner.findFreeSpot(
-			walker, planner.frame.toFloorPoint(*player.Trip), planner.frame.listRoomRect(),
-		)
 		walker.plan = walkPlan{kind: KindTrip, trip: *player.Trip}
+		spot = planner.findTripGoal(walker)
 	}
 	walker.setRoute(planner.frame, walker.plan.kind, now, []routePoint{{floorPoint: spot, at: now}})
 	walker.nextWanderAt = now + planner.drawPause()
@@ -328,6 +331,17 @@ func (planner *Planner) placeWalker(walker *walker, player Player) {
 		walker.bounds,
 	)
 	walker.isPlaced = true
+}
+
+// listStackPoints returns the points of all stacks that jellies stand on.
+func listStackPoints(players []Player) []Point {
+	points := []Point{}
+	for _, player := range players {
+		if player.Stack != nil && !slices.Contains(points, player.Stack.Point) {
+			points = append(points, player.Stack.Point)
+		}
+	}
+	return points
 }
 
 // publish notes a new move for the streams.

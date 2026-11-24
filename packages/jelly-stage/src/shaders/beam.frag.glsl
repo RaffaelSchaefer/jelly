@@ -21,7 +21,7 @@ void main() {
     float around = atan(vAround.y, vAround.x) / 6.28318;
     float bands = 0.8 + 0.2 * sin(around * 44.0 + vHeight * 9.0 + uTime * 0.7);
     float dust = findDust(vec2(around * 26.0, vHeight * 46.0 - uTime * 1.4)) * volume;
-    float fade = pow(1.0 - vHeight, 0.85) * (1.0 - smoothstep(0.6, 1.0, vHeight));
+    float fade = pow(max(0.0, 1.0 - vHeight), 0.85) * (1.0 - smoothstep(0.6, 1.0, vHeight));
     alpha = alpha * bands * fade + 0.6 * dust * fade * fade;
     color = mix(color, uCore, dust);
   #endif

@@ -4,7 +4,6 @@ import { test } from "node:test";
 import type { StageMove, StagePlayer } from "./types.ts";
 
 import {
-  findLevels,
   findWinner,
   findPositions,
   listHighlighted,
@@ -47,12 +46,6 @@ test("a jelly with a move plays it, one without stands at home", () => {
   const positions = findPositions([makePlayer(1), makePlayer(2)], new Map([[1, move]]), 3000, room);
   assert.deepEqual(positions.get(1), toFloorPoint({ x: 40, y: 30 }, room));
   assert.deepEqual(positions.get(2), toFloorPoint({ x: 10, y: 20 }, room));
-});
-
-test("a jelly reaches its height on a stack only when it arrives", () => {
-  const moves = new Map([[1, move]]);
-  assert.equal(findLevels(moves, 1500).get(1), 0);
-  assert.equal(findLevels(moves, 2000).get(1), 2);
 });
 
 test("moves of jellies that left are forgotten", () => {

@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.39.0**
+Aktuelle Version: **1.41.0**
 
 ## Versionen
 
@@ -27,7 +27,10 @@ Aktuelle Version: **1.39.0**
 
 | Version | Änderung |
 | ------- | -------- |
-| 1.39.0  | Funkelbarts Hut: `POST /wizard-hat` stiehlt ihn für `wizard_hat_seconds` (Standard 300), je LAN trägt ihn ein Jelly. `wizard_hat` im Stand, `wizard-hat` (Zauberhut, `head`, `unlock: none`) in `equipped`, Ereignis `wizard_hat.changed`, Fehler `409 wizard_hat_taken`, geheimes Achievement `hat-thief` |
+| 1.41.0  | Funkelbarts Hut: `POST /wizard-hat` stiehlt ihn für `wizard_hat_seconds` (Standard 300), je LAN trägt ihn ein Jelly. `wizard_hat` im Stand, `wizard-hat` (Zauberhut, `head`, `unlock: none`) in `equipped`, Ereignis `wizard_hat.changed`, Fehler `409 wizard_hat_taken`, geheimes Achievement `hat-thief` |
+| 1.40.0  | Ein Ausflug (`POST /trips/goto`) genau zum Punkt eines laufenden Stapels endet auf dem Stapel statt an der freien Stelle daneben, so klappt `POST /stacks/members` bei der Ankunft auch im Gedränge. Bots laufen zu einem Stapel, klettern bei der Ankunft und bauen Türme bis fünf Jellies |
+| 1.39.0  | Jelly-News: Programmpunkte der Art `news` starten das `gathering` `news` mit `presenter_id` und `news` (`top_xp`, `achievements`, `tallest_stack`, `next_item` der letzten Stunde). Regel `news_seconds`, von Hand über `POST /admin/api/lans/{id}/gathering` mit `kind: news`. Wege kennen `kind: news` |
+| 1.38.1  | Fehlerbehebungen: Wer auf den Stapel klettert, dessen Spitze er schon ist, bekommt ihn unverändert zurück statt `500`. Steigt jemand ab und der Stapel steht weiter, nennt `stack.changed` den ganzen Stapel, nur ein Stapel, der weg ist, kommt als `{"id"}`. `PATCH /admin/api/lans/{id}` beendet eine laufende LAN nur mit `stop_running`, sonst `409 lan_running` |
 | 1.38.0  | Neues Cosmetic im Shop, dauerhaft und einfärbbar (`colorable`): `bfg` (BFG, `hands`) für 10 Münzen. Die Farbe aus `cosmetic_colors` färbt ihr Plasma. „Ausverkauft“ verlangt damit 32 Shop-Cosmetics |
 | 1.37.0  | Zwei neue Cosmetics im Shop, beide dauerhaft und nicht einfärbbar: `hollow-helmet` (Hohlhelm, `head`) für 4 Münzen und `nail-sword` (Ritternagel, `hands`) für 3. „Ausverkauft“ verlangt damit 31 Shop-Cosmetics |
 | 1.36.0  | `headset-neutral` (Headset schlicht) ist einfärbbar (`colorable`) und nimmt wie `headset` eine Farbe aus `cosmetic_colors` |
@@ -135,6 +138,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
 | 404    | `purchase_not_found`                      | Dieses Cosmetic hat der Spieler nicht gekauft |
 | 409    | `name_taken`, `slug_taken`, `lan_overlap`, `lan_has_players` | Steht im Konflikt mit Vorhandenem |
+| 409    | `lan_running`                             | Die Änderung beendet eine laufende LAN, ohne dass `stop_running` das bestätigt |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
 | 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |
@@ -165,7 +169,8 @@ und ist ebenfalls nach dem Start der LAN fest. Ein Kauf senkt kein Level.
 `GET /lans/current/schedule` liefert das Programm derselben LAN, deren Regeln `GET /lans/current` nennt, ohne Konto
 lesbar. Ohne LAN ist `items` leer. Ein Punkt hat `starts_at` und optional `ends_at` in Unix-Millisekunden, `title` (bis
 80 Zeichen), optional `detail` (Spiel, Gericht, Hinweis, bis 200 Zeichen) und `kind`: `orga`, `food`, `yoga`,
-`tournament` oder `together`. Weitere Arten können dazukommen und sind neutral zu zeigen. Ohne `ends_at` dauert ein
+`tournament`, `together` oder `news`. Weitere Arten können dazukommen und sind neutral zu zeigen. Ein Punkt `news`
+startet die [Jelly-News](#jelly-news) auf der Bühne. Ohne `ends_at` dauert ein
 Punkt bis zum nächsten, die Länge des letzten und Erinnerungen bestimmt die App.
 
 Die Orga pflegt den Plan mit `PUT /admin/api/lans/{id}/schedule` und `{"items":[…]}`, bis 128 KiB und 300 Punkte. Der
@@ -338,12 +343,15 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 
 - `POST /stacks` beginnt einen Stapel an der eigenen Stelle, `POST /stacks/members` mit `{"stack_id"}` klettert oben
   auf einen Stapel in der Nähe, sonst `409 too_far`. Beide antworten mit `{"stack","me"}`.
+- Ein Ausflug (`POST /trips/goto`) genau zu `x` und `y` eines laufenden Stapels endet nicht an der freien Stelle daneben,
+  sondern auf dem Stapel, so klappt `POST /stacks/members` bei der Ankunft.
 - `DELETE /stacks/current` steigt ab, die Jellies darüber rutschen nach. Ausflug und Folgen beenden den Stapelplatz,
   und wer klettert, beendet Ausflug und Folgen.
 - Laufende Stapel stehen als `stacks` in `GET /stage`, `member_ids` geht von unten nach oben. Nach `stack_seconds`
   fällt ein Stapel auseinander, ohne `stack_max_members` ist er unbegrenzt, mit gesetztem Wert folgt darüber `409 stack_full`. Ist er weg, folgt
-  `404 stack_not_found`. Jede Änderung meldet `stack.changed`.
-- `level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
+  `404 stack_not_found`. Jede Änderung meldet `stack.changed` mit dem ganzen Stapel, nur ein Stapel, der weg ist, kommt als
+  `{"id"}`. Wer schon oben auf einem Stapel steht und noch einmal klettert, bekommt ihn unverändert zurück.
+- `stack_level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
 - `POST /highlights` mit `{"player_id"}` lässt ein Jelly für `highlight_seconds` aufleuchten, auch das eigene. Das Ereignis
   nennt `cosmetic_key`, die Aura `highlight-aura` ersetzt so lange die getragene. Freischalten kann sie niemand.
   Danach folgt das nächste erst nach `highlight_cooldown`, sonst `409 highlight_cooldown`.
@@ -427,6 +435,22 @@ mit `kind`, `winner_id` und `ends_at`, Änderungen meldet `gathering.changed`.
   weiter, wenn seine Zeit noch nicht um ist. Die Endzeit steht in der Datenbank, ein Neustart ändert nichts.
 - Ein reguläres Ende sendet kein Ereignis, also zählt `ends_at`.
 
+### Jelly-News
+
+Die News stellen auf der Bühne vor, was in der letzten Stunde passiert ist. Sie sind ein `gathering` der Art `news`: Alle
+gehen zu `spectators`, der Vorleser `presenter_id` zu `winner`. `winner_id` bleibt dabei `null`.
+
+- Den Vorleser wählt der Server zufällig unter den anwesenden, sichtbaren Jellies, möglichst eines, das die News nicht
+  nennen. Ist niemand da, ist `presenter_id` `null`.
+- `news` nennt `top_xp` (`{"player_id","xp"}`, die meisten XP), `achievements` (`[{"player_id","key"}]`, höchstens 5, neueste
+  zuerst), `tallest_stack` (Jellies des höchsten Stapels mit mindestens zwei, von unten nach oben) und `next_item` (der nächste
+  Punkt im Programm, der keine News ist). Versteckte Spieler zählen nicht. Ein leerer Teil ist `null` oder `[]`.
+- Ein Programmpunkt `news` startet sie einmal, sobald er beginnt. Sie laufen bis zu seinem `ends_at`, ohne Ende
+  `news_seconds` lang. Läuft gerade ein anderes `gathering`, warten sie, solange der Punkt noch nicht vorbei ist. Haben die
+  News nichts zu berichten, fallen sie aus.
+- Die Orga kann sie mit `POST /admin/api/lans/{id}/gathering` und `{"kind":"news","seconds"}` jederzeit starten, dann auch mit
+  wenig Inhalt.
+
 ### Wege
 
 Der Server plant, wo die Jellies laufen. Bühne und Apps spielen die Wege nur ab, so zeigen alle Bildschirme
@@ -438,7 +462,7 @@ dasselbe. `moves` nennt je Jelly den aktuellen Weg, neue Wege kommen als Nachric
   geradeaus, nach dem letzten steht es dort. Ein einzelner Punkt heißt: Es steht.
 - Ein neuer Weg desselben Jellys ersetzt den alten. Er beginnt dort, wo das Jelly zu seinem `start_at` ist.
 - `kind` nennt den Grund: `wander` (bummelt um seinen Platz oder geht dorthin zurück), `follow`, `trip`, `snack`, `stack`,
-  `food` und `ceremony`.
+  `food`, `ceremony` und `news`.
   Weitere Werte können dazukommen und sind wie `wander` zu behandeln.
 - Ein Weg dauert seine Länge geteilt durch die Regel `walk_speed`, in Metern pro Sekunde. Der Server plant in der echten
   Halle (`room_width` × `room_depth`), Abstände zwischen Jellies wachsen mit `jelly_width`.
@@ -543,7 +567,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |
 | `DELETE /admin/api/players/{id}`                 |                                           |
 | `GET`, `POST /admin/api/lans`                    | `{"slug","name","timezone","join_code","starts_at","ends_at"}` |
-| `PATCH /admin/api/lans/{id}`                     | `{"name","starts_at","ends_at"}`, alle optional. Der Kurzname bleibt fest |
+| `PATCH /admin/api/lans/{id}`                     | `{"name","starts_at","ends_at","stop_running"}`, alle optional. Der Kurzname bleibt fest. Endet eine laufende LAN dadurch oder beginnt sie erst später, braucht es `"stop_running": true`, sonst `409 lan_running` |
 | `DELETE /admin/api/lans/{id}`                    | Nur ohne Spieler, sonst `409 lan_has_players`. Zonen und Codes verschwinden mit |
 | `PATCH /admin/api/lans/{id}/rules`               | Ändert nur die genannten Regeln, siehe unten |
 | `PUT /admin/api/lans/{id}/rules`                 | **Ersetzt alle Regeln**, siehe unten      |
@@ -555,7 +579,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET`, `PUT /admin/api/lans/{id}/schedule`       | `{"items"}`, `PUT` ersetzt den ganzen Zeitplan, siehe [Zeitplan](#zeitplan) |
 | `GET /admin/api/lans/{id}/areas`                 | Antwort: `{"areas","assignments","sizes"}`, `sizes` nennt `width_m` und `height_m` je Zone |
 | `POST /admin/api/lans/{id}/areas`                | `{"x","y","width","height","rotation","kind","name","blocks","prop"}` |
-| `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food` oder `ceremony`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony` |
+| `POST /admin/api/lans/{id}/gathering`            | `{"kind","seconds","winner_id"}`, `food`, `ceremony` oder `news`, höchstens 6 Stunden, ersetzt ein laufendes. `winner_id` nur bei `ceremony`, den Vorleser der `news` wählt der Server |
 | `GET`, `POST /admin/api/lans/{id}/bots`          | Antwort: `{"bots","auto_count"}`. `POST` mit `{"count"}` legt bis zu 100 Bots an, siehe unten |
 | `PUT /admin/api/bots/auto`                       | `{"count"}`: so viele Bots der laufenden LAN spielen selbst, `0` stoppt sie |
 | `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp`, `redeem` mit `"code"` oder `purchase` |
@@ -580,11 +604,14 @@ normale Spieler und halten sich an dieselben Regeln: Abklingzeiten, Grenzen und 
 lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Server `400 not_a_bot`.
 
 - **Von Hand:** `POST /admin/api/bots/{id}/actions` lässt einen Bot eine Aktion ausführen. Emote, Schild, Ziel eines
-  Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf einen laufenden Stapel in der Nähe oder
-  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler,
+  Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf den höchsten laufenden Stapel mit weniger
+  als fünf Jellies, ohne einen solchen beginnt der Bot einen, wo er steht. Ist der Stapel zu weit weg, macht der Bot einen
+  Ausflug dorthin und klettert, sobald er nah genug ist, das aber nur, solange automatische Bots laufen. Auf einem Stapel
+  bleibt `stack` ohne Wirkung. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler,
   und `purchase` kauft ein bezahlbares Cosmetic, das der Bot noch nicht hat.
 - **Automatisch:** Die ersten `auto_count` Bots der laufenden LAN handeln im Takt der Bewegung, jeder etwa alle 20
-  Sekunden. Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
+  Sekunden. Wer auf einem Stapel steht, macht keinen Ausflug und folgt niemandem, bis der Stapel auseinanderfällt.
+  Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
   loslaufen.
 
 ### Regeln ändern
@@ -624,6 +651,7 @@ Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, 
 | `highlight_seconds`      | 1 bis 2592000    | So lange leuchtet ein hervorgehobenes Jelly                 |
 | `highlight_cooldown`     | 0 bis 2592000    | Zeit zwischen zwei Hervorhebungen, 0 schaltet sie ab        |
 | `wizard_hat_seconds`     | 1 bis 2592000    | So lange trägt ein Jelly Funkelbarts gestohlenen Hut        |
+| `news_seconds`           | 1 bis 2592000    | So lange laufen Jelly-News ohne eigenes Ende im Programm    |
 | `room_width`             | 1 bis 1000       | Breite der echten Halle in Metern                           |
 | `room_depth`             | 1 bis 1000       | Tiefe der echten Halle in Metern                            |
 | `jelly_width`            | 0,05 bis 10      | Breite eines Jellies in Metern                              |

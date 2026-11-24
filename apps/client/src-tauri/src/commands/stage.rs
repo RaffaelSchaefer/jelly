@@ -76,6 +76,76 @@ pub async fn highlight_player(
     Ok(session.game())
 }
 
+/// Fehlercode, wenn ein Stapel weiter weg steht als `near_distance`.
+const TOO_FAR: &str = "too_far";
+
+/// Macht aus `too_far` ein `None`. Die Oberfläche bekommt Fehler nur als Text und könnte ihn sonst
+/// nicht erkennen. Die Karte lässt das Jelly dann erst hinlaufen und versucht es bei der Ankunft
+/// noch einmal.
+///
+/// # Fehler
+///
+/// Jeder andere Fehler aus `result`.
+fn unless_too_far<T>(result: Result<T>) -> Result<Option<T>> {
+    match result {
+        Ok(value) => Ok(Some(value)),
+        Err(Error::Server { code, .. }) if code == TOO_FAR => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+/// Beginnt einen Stapel, wo das Jelly steht. Es steht unten, Ausflug und Folgen enden.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler.
+#[tauri::command]
+pub async fn start_stack(app: AppHandle, state: State<'_, GameState>) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let answer = session.api.start_stack().await?;
+    session.set_me(answer.me);
+    Ok(session.game())
+}
+
+/// Lässt das Jelly oben auf einen Stapel klettern. `None`, solange es dafür zu weit weg steht.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa `stack_full` oder `stack_not_found`, nicht aber
+/// `too_far`.
+#[tauri::command]
+pub async fn join_stack(
+    app: AppHandle,
+    state: State<'_, GameState>,
+    stack_id: i64,
+) -> Result<Option<Game>> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let Some(answer) = unless_too_far(session.api.join_stack(stack_id).await)? else {
+        return Ok(None);
+    };
+    session.set_me(answer.me);
+    Ok(Some(session.game()))
+}
+
+/// Lässt das Jelly vom Stapel steigen. Ohne Stapel ändert sich nichts.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler.
+#[tauri::command]
+pub async fn leave_stack(app: AppHandle, state: State<'_, GameState>) -> Result<Game> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let me = session.api.leave_stack().await?;
+    session.set_me(me);
+    Ok(session.game())
+}
+
 /// Liest, was die Karte zeigt. Öffnet keine Sitzung, das Laden gehört dem Pet-Fenster.
 ///
 /// # Fehler
@@ -128,4 +198,31 @@ pub async fn open_map(app: AppHandle) -> Result<()> {
 #[tauri::command]
 pub async fn open_shop(app: AppHandle) -> Result<()> {
     popout::open(&app, popout::SHOP)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Ein Fehler des Servers mit `code`.
+    fn refused(code: &str) -> Result<()> {
+        Err(Error::Server {
+            code: code.into(),
+            message: "Nein.".into(),
+        })
+    }
+
+    #[test]
+    fn only_too_far_turns_into_none() {
+        assert!(matches!(unless_too_far(refused(TOO_FAR)), Ok(None)));
+        assert!(matches!(unless_too_far(Ok(())), Ok(Some(()))));
+        assert!(matches!(
+            unless_too_far(refused("stack_full")),
+            Err(Error::Server { code, .. }) if code == "stack_full"
+        ));
+        assert!(matches!(
+            unless_too_far::<()>(Err(Error::NotRegistered)),
+            Err(Error::NotRegistered)
+        ));
+    }
 }

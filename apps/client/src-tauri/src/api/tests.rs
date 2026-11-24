@@ -295,6 +295,23 @@ fn a_refused_follow_keeps_the_server_message() {
 }
 
 #[test]
+fn a_stack_answer_brings_the_stack_and_the_player_state() {
+    let body = r#"{
+      "stack": { "id": 4, "x": 10, "y": 20, "ends_at": 1795000120000, "member_ids": [2, 1] },
+      "me": {
+        "server_time": 1, "last_event_id": 2, "id": 1, "name": "Glibber", "color": "mint",
+        "equipped": {}, "hidden": false, "lan": null, "xp": 0, "level": 1, "total_xp": 0,
+        "next_poke_at": null, "reports": null, "sign": null, "follow": null,
+        "trip": null, "lans_attended": 0, "badges": [], "cosmetics": [],
+        "achievements": [], "awards": []
+      }
+    }"#;
+    let answer: StackAnswer = serde_json::from_str(body).unwrap();
+    assert_eq!(answer.stack.member_ids, [2, 1]);
+    assert_eq!(answer.me.id, 1);
+}
+
+#[test]
 fn a_highlight_too_soon_keeps_the_server_message() {
     let message = "Warte kurz bis zum nächsten Hervorheben.";
     let body = json!({ "error": { "code": "highlight_cooldown", "message": message } }).to_string();
