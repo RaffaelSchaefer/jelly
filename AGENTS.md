@@ -73,10 +73,10 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Karte (`src/map/stacks.ts`), am fremden Jelly `#jelly-stack`, am eigenen `#own-stack` unter den Gesten. Steht das
   Jelly zu weit weg, läuft es erst hin und handelt bei der Ankunft (`page.stackPlan`), jede andere Bewegung verwirft
   das. `join_stack` antwortet bei `too_far` mit `null` (`unless_too_far` in `commands/stage.rs`), denn Fehler kommen
-  in der Oberfläche nur als Text an. `stack.changed` trägt den ganzen Stapel nur, wenn jemand hinaufklettert. Nach
-  dem Absteigen kommt nur `{"id"}` mit dem Jelly, das ging, beim Zerfall `{"id"}` ohne Jelly. Die Bühne rechnet
-  daraus den Stand (`packages/jelly-stage/src/stackEvents.ts`), `OwnStack` in `src-tauri/src/events.rs` merkt sich
-  den eigenen Stapel, damit das Pet auch das Absteigen anderer und den Zerfall hört (`src/useStack.ts`,
+  in der Oberfläche nur als Text an. `stack.changed` trägt den ganzen Stapel, solange er steht. Ist er weg, kommt nur
+  `{"id"}`, mit dem Jelly, das als letztes abstieg, oder ohne, wenn seine Zeit um ist. Die Bühne rechnet daraus den
+  Stand (`packages/jelly-stage/src/stackEvents.ts`), `OwnStack` in `src-tauri/src/events.rs` merkt sich den eigenen
+  Stapel, damit das Pet auch das Ende des Stapels hört (`src/useStack.ts`,
   `src/pet/stack.ts`). In der Browser-Vorschau steht ein Turm aus drei Jellies (`src/map/previewStacks.ts`), er
   zerfällt nach 60 Sekunden.
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`

@@ -82,19 +82,18 @@ const STACK_CHANGED: &str = "stack.changed";
 
 /// Der Stapel, auf dem das eigene Jelly steht, soweit dieser Stream es mitbekommen hat.
 ///
-/// Die Jellies eines Stapels nennt `stack.changed` nur, wenn jemand hinaufklettert. Nach dem
-/// Absteigen und beim Zerfall trägt es nur `{"id"}`, mit dem Absteigenden als `player_id`, beim
-/// Zerfall ohne. Ob das den eigenen Stapel trifft, weiß nur, wer ihn sich gemerkt hat. Der Stand
-/// lebt nur im Stream: Ein neuer (nach [`EventStream::stop`] oder einer Antwort außer `200`)
-/// beginnt ohne. Steht das Jelly dann schon oben, erfährt das Pet vom Absteigen anderer und vom
-/// Zerfall erst wieder, nachdem jemand hinaufgeklettert ist.
+/// Ein Stapel, der weiter steht, kommt in `stack.changed` ganz. Einer, der weg ist, trägt nur
+/// `{"id"}`: Ob das den eigenen Stapel trifft, weiß nur, wer ihn sich gemerkt hat. Der Stand lebt
+/// nur im Stream: Ein neuer (nach [`EventStream::stop`] oder einer Antwort außer `200`) beginnt
+/// ohne. Steht das Jelly dann schon oben, erfährt das Pet vom Ende des Stapels erst wieder, nachdem
+/// sich an ihm etwas geändert hat.
 #[derive(Debug, Default)]
 struct OwnStack(Option<i64>);
 
 impl OwnStack {
     /// Ob `event` den Stapel von `player_id` betrifft und ans Pet soll: Das Jelly steht darin,
     /// hat selbst etwas geändert, oder es ist der gemerkte Stapel. Merkt sich den Stapel oder
-    /// vergisst ihn, sobald das Jelly nicht mehr darauf steht.
+    /// vergisst ihn, sobald das Jelly nicht mehr darauf steht oder der Stapel weg ist.
     fn track(&mut self, event: &ServerEvent, player_id: i64) -> bool {
         if event.kind != STACK_CHANGED {
             return false;
@@ -110,12 +109,8 @@ impl OwnStack {
         if self.0 != Some(stack_id) {
             return event.player_id == Some(player_id);
         }
-        // Nur `{"id"}` von einem anderen: Es ist abgestiegen, das eigene Jelly steht noch oben.
-        let someone_else_left =
-            members.is_none() && event.player_id.is_some_and(|id| id != player_id);
-        if !someone_else_left {
-            self.0 = None;
-        }
+        // Der gemerkte Stapel ohne das Jelly, oder er ist weg.
+        self.0 = None;
         true
     }
 }

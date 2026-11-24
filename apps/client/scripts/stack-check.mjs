@@ -133,8 +133,8 @@ const PLAYS = {
     const leaver = members[1];
     if (leaver === undefined) return;
     members = members.filter((id) => id !== leaver);
-    // Wie der Server: Nach dem Absteigen kommt nur die ID, mit dem Jelly, das gegangen ist.
-    send("stack.changed", leaver, { id: STACK_ID });
+    // Wie der Server: Ein Stapel, der weiter steht, kommt ganz, mit dem Jelly, das gegangen ist.
+    sendStack(leaver);
     listener?.onMove(walk(leaver, 0, SPOT, { to: { x: SPOT.x, y: SPOT.y + 9 }, kind: "wander" }));
     members.forEach((id, level) => listener?.onMove(walk(id, level, SPOT)));
   },

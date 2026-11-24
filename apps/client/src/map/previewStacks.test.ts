@@ -53,7 +53,7 @@ describe("createStackPreview", () => {
     ]);
   });
 
-  it("lets those above a leaver slide one level down and names only the stack", () => {
+  it("lets those above a leaver slide one level down and names the stack that stands on", () => {
     const { stacks, moves, events } = setUp();
     moves.length = 0;
     stacks.drop(3);
@@ -61,7 +61,9 @@ describe("createStackPreview", () => {
     expect(moves).toEqual([
       expect.objectContaining({ player_id: 6, kind: "stack", stack_level: 1 }),
     ]);
-    expect(events.map((event) => event.payload)).toEqual([{ id: 1 }]);
+    expect(events.map((event) => [event.player_id, event.payload])).toEqual([
+      [3, expect.objectContaining({ id: 1, member_ids: [4, 6] })],
+    ]);
   });
 
   it("falls apart after its time and sends everyone home on the floor", () => {

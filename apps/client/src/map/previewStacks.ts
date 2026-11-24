@@ -1,8 +1,9 @@
 /**
  * Stapel in der Browser-Vorschau, wie sonst beim Server: ein Turm aus drei Jellies nahe dem
  * eigenen, beginnen, draufklettern und absteigen, dazu `stack.changed` und Wege der Art `stack` mit
- * ihrer Höhe. Wie beim Server nennt `stack.changed` nach Absteigen und Zerfall nur die ID. Ein
- * Stapel zerfällt hier nach einer Minute statt nach zwei. Die Desktop-App lädt diese Datei nie.
+ * ihrer Höhe. Wie beim Server nennt `stack.changed` einen Stapel, der weg ist, nur mit seiner ID.
+ * Ein Stapel zerfällt hier nach einer Minute statt nach zwei. Die Desktop-App lädt diese Datei
+ * nie.
  *
  * @module
  */
@@ -63,8 +64,9 @@ function measureMeters(from: StagePoint, to: StagePoint) {
 }
 
 /**
- * Ein `stack.changed`, wie es sonst im Stream kommt: der ganze Stapel, wenn `playerId` geklettert
- * ist, nur die ID, wenn es abgestiegen ist, und ohne Jelly, wenn der Stapel zerfallen ist.
+ * Ein `stack.changed`, wie es sonst im Stream kommt: der ganze Stapel, solange er steht, nur seine
+ * ID, wenn er weg ist. Dann mit dem Jelly, das als letztes abstieg, oder ohne, wenn er zerfallen
+ * ist.
  */
 function changed(payload: StageEvent["payload"], playerId: number | null): StageEvent {
   return { id: 0, type: "stack.changed", player_id: playerId, payload, created_at: Date.now() };
@@ -154,8 +156,9 @@ function drop(store: StackStore, playerId: number) {
   store.standing.delete(playerId);
   const above = stack.member_ids.splice(stack.member_ids.indexOf(playerId)).slice(1);
   for (const id of above) put(store, id, stack);
-  if (stack.member_ids.length === 0) store.stacks.splice(store.stacks.indexOf(stack), 1);
-  store.send.event(changed({ id: stack.id }, playerId));
+  const isGone = stack.member_ids.length === 0;
+  if (isGone) store.stacks.splice(store.stacks.indexOf(stack), 1);
+  store.send.event(changed(isGone ? { id: stack.id } : copyStack(stack), playerId));
 }
 
 /** Beginnt einen Stapel, wo das eigene Jelly steht. Das beendet Ausflug und Dazustellen. */

@@ -5,7 +5,7 @@ import { stackChange, type ServerEvent, type StackPlace } from ".";
 /** Das eigene Jelly. */
 const OWN = 7;
 
-/** Ein `stack.changed` von `by`, mit Jellies nach dem Hinaufklettern oder nur mit der ID. */
+/** Ein `stack.changed` von `by`: der Stapel, der weiter steht, oder nur die ID, wenn er weg ist. */
 function changed(by: number | null, memberIds?: number[]): ServerEvent {
   const payload = memberIds
     ? { id: 4, x: 10, y: 20, ends_at: 1000, member_ids: memberIds }
@@ -41,13 +41,13 @@ describe("the own stack", () => {
   });
 
   it("slides down when someone below it leaves", () => {
-    const change = stackChange(on(8, OWN, 9), changed(8), OWN);
+    const change = stackChange(on(8, OWN, 9), changed(8, [OWN, 9]), OWN);
     expect(change.place).toEqual(on(OWN, 9));
     expect(change.message).toBe("Hoppla, ich rutsch ein Stück runter.");
   });
 
   it("stays quiet when someone above it leaves", () => {
-    expect(stackChange(on(8, OWN, 9), changed(9), OWN)).toEqual({
+    expect(stackChange(on(8, OWN, 9), changed(9, [8, OWN]), OWN)).toEqual({
       place: on(8, OWN),
       message: null,
       climbed: false,
@@ -55,11 +55,19 @@ describe("the own stack", () => {
   });
 
   it("is back on the floor after climbing down or walking away", () => {
-    expect(stackChange(on(8, OWN), changed(OWN), OWN)).toEqual({
+    expect(stackChange(on(8, OWN), changed(OWN, [8]), OWN)).toEqual({
       place: null,
       message: "Ich kletter wieder runter.",
       climbed: false,
     });
+  });
+
+  it("is back on the floor after climbing down as the last one", () => {
+    expect(stackChange(on(OWN), changed(OWN), OWN).message).toBe("Ich kletter wieder runter.");
+  });
+
+  it("stays quiet when climbing its own top again", () => {
+    expect(stackChange(on(8, OWN), changed(OWN, [8, OWN]), OWN).message).toBeNull();
   });
 
   it("falls with the tower when its time is over", () => {
@@ -80,12 +88,7 @@ describe("what is no news to the jelly", () => {
     });
     expect(stackChange(null, changed(null), OWN).message).toBeNull();
     const elsewhere: StackPlace = { id: 5, memberIds: [OWN] };
-    expect(stackChange(elsewhere, changed(8), OWN).place).toBe(elsewhere);
-  });
-
-  it("ignores someone it never saw leaving", () => {
-    const place = on(OWN, 9);
-    expect(stackChange(place, changed(8), OWN)).toEqual({ place, message: null, climbed: false });
+    expect(stackChange(elsewhere, changed(8, [8]), OWN).place).toBe(elsewhere);
   });
 
   it("ignores other events", () => {

@@ -160,7 +160,7 @@ fn changed_rules_reach_everyone() {
     assert!(is_own_event(&rules, 7));
 }
 
-/// Ein Stapel nach dem Hinaufklettern von `by`.
+/// Ein Stapel, der weiter steht, nachdem `by` hinauf- oder abgestiegen ist.
 fn climbed(by: i64, members: &[i64]) -> ServerEvent {
     event(
         STACK_CHANGED,
@@ -169,7 +169,7 @@ fn climbed(by: i64, members: &[i64]) -> ServerEvent {
     )
 }
 
-/// Ein Stapel, von dem `by` abgestiegen ist, oder ohne `by` auseinandergefallen.
+/// Ein Stapel, der weg ist: `by` stieg als letztes ab, oder ohne `by` ist seine Zeit um.
 fn left(by: Option<i64>) -> ServerEvent {
     event(STACK_CHANGED, by, json!({ "id": 4 }))
 }
@@ -179,14 +179,11 @@ fn the_own_stack_reaches_the_pet_until_the_jelly_is_off_it() {
     let mut own = OwnStack::default();
     assert!(own.track(&climbed(7, &[7]), 7), "selbst begonnen");
     assert!(own.track(&climbed(8, &[7, 8]), 7), "jemand klettert drauf");
-    assert!(own.track(&left(Some(8)), 7), "jemand steigt ab");
+    assert!(own.track(&climbed(8, &[7]), 7), "jemand steigt ab");
+    assert!(own.track(&climbed(9, &[7, 9]), 7), "wieder jemand drauf");
+    assert!(own.track(&climbed(7, &[9]), 7), "selbst abgestiegen");
     assert!(
-        own.track(&climbed(9, &[7, 9]), 7),
-        "das Jelly steht noch oben"
-    );
-    assert!(own.track(&left(Some(7)), 7), "selbst abgestiegen");
-    assert!(
-        !own.track(&left(Some(9)), 7),
+        !own.track(&climbed(9, &[]), 7) && !own.track(&left(Some(9)), 7),
         "danach ist es ein fremder Stapel"
     );
 }

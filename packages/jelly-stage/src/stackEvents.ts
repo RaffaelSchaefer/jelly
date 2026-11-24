@@ -5,27 +5,21 @@
  * @module
  */
 
-import type { StageEvent, StageStack } from "./types.ts";
+import type { EventPayload, StageStack } from "./types.ts";
 
 /** The event of a stack that changed or fell apart. */
 export const STACK_CHANGED = "stack.changed";
 
 /**
- * Returns the stacks after a `stack.changed`. When a jelly climbs on, the event carries the whole
- * stack, which replaces its older self. Otherwise it carries only the ID: with a player, that jelly
- * climbed down and the rest stands on. Without one, the time of the stack is over and it is gone.
+ * Returns the stacks after a `stack.changed`. A stack that still stands comes whole and replaces its
+ * older self. One that is gone, because its time is over or the last jelly climbed down, comes with
+ * its ID only.
  */
-export function applyStackChange(stacks: StageStack[], event: StageEvent): StageStack[] {
-  const { id, x, y, ends_at, member_ids } = event.payload;
+export function applyStackChange(stacks: StageStack[], payload: EventPayload): StageStack[] {
+  const { id, x, y, ends_at, member_ids } = payload;
   const others = stacks.filter((stack) => stack.id !== id);
-  if (id !== undefined && x !== undefined && y !== undefined && ends_at && member_ids) {
-    return [...others, { id, x, y, ends_at, member_ids }];
-  }
-  const known = stacks.find((stack) => stack.id === id);
-  const left = known?.member_ids.filter((memberId) => memberId !== event.player_id) ?? [];
-  // The server names no player with 0 or null.
-  if (!known || !event.player_id || left.length === 0) {
+  if (id === undefined || x === undefined || y === undefined || !ends_at || !member_ids) {
     return others;
   }
-  return [...others, { ...known, member_ids: left }];
+  return [...others, { id, x, y, ends_at, member_ids }];
 }

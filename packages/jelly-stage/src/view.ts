@@ -184,7 +184,7 @@ function handleEvent(memory: StageMemory, event: StageEvent): void {
     return;
   }
   if (event.type === STACK_CHANGED && memory.state) {
-    const stacks = applyStackChange(memory.state.stacks, event);
+    const stacks = applyStackChange(memory.state.stacks, event.payload);
     memory.state = { ...memory.state, stacks };
   }
   const now = Date.now();
