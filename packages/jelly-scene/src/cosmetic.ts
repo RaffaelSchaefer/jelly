@@ -32,6 +32,7 @@ import bandana from "./cosmetics/bandana.glb?url&inline";
 import batWings from "./cosmetics/bat-wings.glb?url&inline";
 import beanie from "./cosmetics/beanie.glb?url&inline";
 import bellCollar from "./cosmetics/bell-collar.glb?url&inline";
+import bfg from "./cosmetics/bfg.glb?url&inline";
 import catEars from "./cosmetics/cat-ears.glb?url&inline";
 import catPaws from "./cosmetics/cat-paws.glb?url&inline";
 import catTail from "./cosmetics/cat-tail.glb?url&inline";
@@ -80,6 +81,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   "bat-wings": batWings,
   beanie,
   "bell-collar": bellCollar,
+  bfg,
   "cat-ears": catEars,
   "cat-paws": catPaws,
   "cat-tail": catTail,
@@ -120,11 +122,15 @@ export const COSMETIC_OUTLINE = 0.035;
  * Abweichende Looks je Schlüssel. Piercings und Schnurrhaare sind kaum dicker als die Outline, mit
  * ihr läge um jedes Teil ein dunkler Fleck wie ein Schatten. Katzenohren und -schwanz liegen hinter
  * dem Jelly: Die Ohren wachsen so hinter dem Kopf hervor, der Schwanz steht nicht vor den Händen.
- * Der Oktopus sitzt schräg oben am Kopf und wackelt um seinen Sitz, so bleibt er dort: gestaucht
+ * Die BFG ebenso, dort entscheidet die echte Tiefe: Die Hand liegt vor dem Griff, das hintere Ende
+ * verschwindet im Jelly. Solange das Jelly sie hält, zeichnet die App auch, was es am Körper trägt,
+ * dahinter (`WornCosmetics` in `Character.tsx`), sonst malten sich etwa Flügel über die BFG. Der
+ * Oktopus sitzt schräg oben am Kopf und wackelt um seinen Sitz, so bleibt er dort: gestaucht
  * entlang seiner eigenen Höhe, die wie in `build_octopus.py` um `TILT` geneigt ist. Seine Arme
  * wedeln ab dem Rand seines Kopfes, dessen Mitte und Radius ebenfalls von dort stammen.
  */
 const COSMETIC_LOOKS: Readonly<Record<string, CosmeticLook>> = {
+  bfg: { behind: true },
   "cat-ears": { behind: true },
   "cyber-cat-ears": { behind: true },
   "cat-tail": { behind: true },

@@ -15,6 +15,7 @@ export const COSMETIC_MODEL_KEYS: readonly string[] = [
   "bat-wings",
   "beanie",
   "bell-collar",
+  "bfg",
   "cat-ears",
   "cat-paws",
   "cat-tail",

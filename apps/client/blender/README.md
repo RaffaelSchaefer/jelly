@@ -19,7 +19,7 @@ This writes `blender/cosmetics.blend` with:
   `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`, `goose`, `bandana`,
   `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings`, `bat-wings`, `chicken`, `piercings`, `ogre-ears`,
   `kamina-glasses`, `cat-ears`, `cyber-cat-ears`, `cat-whiskers`, `kitten`, `yarn-ball`, `cat-paws`, `cat-tail`,
-  `nasal-helmet`, `kite-shield`, `octopus`, `hollow-helmet`, `nail-sword`). The collection name is the id.
+  `nasal-helmet`, `kite-shield`, `octopus`, `hollow-helmet`, `nail-sword`, `bfg`). The collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -46,7 +46,7 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    shows outside: a part in front of glass must be an open sheet facing the front, without back or
    edge, or its outline inks a line round it (the glasses' glints). A custom property `neon` (0–1)
    makes it shine by itself: no shading and no gloss, its colour stays as bright and saturated as
-   modelled, even where a scene dims its light (the cyber cat ears' panel uses 1). A darker shade
+   modelled, even where a scene dims its light (the cyber cat ears' panel and the BFG's plasma use 1). A darker shade
    of the same colour round it, also neon, reads as its glow.
 4. Use **Shade Smooth**. The outline is the mesh pushed out along its normals, so hard edges crack open.
 5. Cosmetics are drawn on top of the head like a sticker. Parts that would be hidden behind the head
@@ -54,6 +54,10 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
    cosmetic with `behind` in `COSMETIC_LOOKS` (cosmetic.ts) is drawn behind the pet instead, so the
    pet and its ink edge cover it: the cat ears grow out from behind the head that way. Near the
    head's outline such a part stays behind z 0.2, where that ink lies, or it shows in front of it.
+   The BFG uses it to sit in real depth: it points at the camera, the left hand shows in front of
+   its grip and its far end vanishes in the pet. `build_bfg.py` meshes every part in the gun's own
+   frame and turns it into place, and checks through the app's camera that nothing covers the
+   left hand or the face and nothing leaves the pet window.
 6. Head and face cosmetics (slot `Kopf`, `Gesicht`) bob with the head. Cosmetics for the hands (slot
    `Hände`) sit between `hand_left` and `hand_right` of the reference pet, and `src/scene/HandHeld.tsx`
    moves them with the hands. What the pet wears on its hands instead (the cat paws on each, the
