@@ -7,13 +7,16 @@
  */
 
 import {
+  BOARD_HOLD,
   boardPose,
   createCosmetic,
   disposeCosmetic,
   HAND,
   handsOf,
   hasCosmeticModel,
+  holdRest,
   type CosmeticLook,
+  type Hold,
   type Jelly,
 } from "@jelly/scene";
 import { Object3D, type BufferGeometry } from "three";
@@ -82,13 +85,19 @@ export function holdsModel(player: StagePlayer): boolean {
   return Boolean(key && hasCosmeticModel(key));
 }
 
-/** Moves the holders after the hands, once per frame after the jelly was animated. */
-export function followHands({ jelly, held, paws }: Wearer): void {
+/**
+ * Moves the holders after the hands, once per frame after the jelly was animated. `hold` says how
+ * the hands hold what they hold (`holdOf` from `@jelly/scene`): where they rest, the model is built
+ * around that, and how far it follows them.
+ */
+export function followHands({ jelly, held, heldModel, paws }: Wearer, hold: Hold = BOARD_HOLD): void {
   const [left, right] = jelly.hands;
   if (!left || !right) return;
-  const pose = boardPose(left.position, right.position);
+  const pose = boardPose(left.position, right.position, hold);
+  const rest = holdRest(hold);
   held.position.set(pose.x, pose.y, 0);
-  held.rotation.z = pose.tilt;
+  held.rotation.z = pose.tilt - rest.tilt;
+  heldModel.position.set(-rest.x, -rest.y, 0);
   jelly.hands.forEach((hand, index) => {
     const paw = paws[index];
     if (!paw) return;

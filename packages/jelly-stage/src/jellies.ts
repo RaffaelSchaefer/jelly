@@ -13,6 +13,7 @@ import {
   createMotion,
   disposeJelly,
   HEAD,
+  holdOf,
   loadCosmetic,
   pulseCosmetics,
   type Jelly,
@@ -250,15 +251,19 @@ function updateJelly(shown: StageJelly, frame: JellyFrame): void {
   group.position.set(walker.position.x, bottom, walker.position.z);
   group.rotation.set(walk.lean, walker.yaw + motion.turn, motion.tilt, "YXZ");
   shown.shadowScale = shown.scale * (1 - SHADOW_SHRINK * Math.min(1, lift / JELLY_HEIGHT));
+  // On a snack run it carries the snack like a board; a held cosmetic the way that one wants.
+  const visiting = frame.visitors.has(shown.player.id);
+  const hold = holdOf(shown.player.equipped.hands?.key);
   animateJelly(shown.jelly, shown.motion, {
     time: frame.time + shown.timeOffset,
     rawDelta: frame.seconds,
     pulse: shown.pulse,
     reducedMotion: frame.reducedMotion,
-    holding: frame.visitors.has(shown.player.id) || holdsModel(shown.player),
+    holding: visiting || holdsModel(shown.player),
+    hold: visiting ? undefined : hold,
     emote: findEmote(frame.effects, shown.player.id, frame.now),
   });
-  followHands(shown.wearer);
+  followHands(shown.wearer, hold);
   pulseCosmetics(shown.jelly.root, frame.time + shown.timeOffset, frame.reducedMotion);
 }
 
