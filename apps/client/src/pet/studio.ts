@@ -74,7 +74,10 @@ export interface StudioItem {
  * „Nichts“ gilt, solange hier nichts angelegt ist.
  */
 function cosmeticRows(slot: Cosmetic["slot"], me: Me, catalog: Catalog): StudioItem[] {
-  const parts = COSMETICS.filter((item) => item.slot === slot && isUnlocked(item.id, me));
+  // Der geliehene Zauberhut ist nie freigeschaltet, steht aber da, solange das Jelly ihn trägt.
+  const parts = COSMETICS.filter(
+    (item) => item.slot === slot && (isUnlocked(item.id, me) || me.equipped[slot]?.key === item.id),
+  );
   const worn = parts.some((item) => item.id === me.equipped[slot]?.key);
   const name = parts.length > 0 ? "Nichts" : "Noch nichts da";
   return [
