@@ -69,6 +69,7 @@ const (
 	priceOctopus       = 4
 	priceHollowHelmet  = 4
 	priceNailSword     = 3
+	priceBFG           = 10
 )
 
 // Cosmetic is one item. It unlocks through a purchase, an event, or only through an award.
@@ -218,6 +219,10 @@ func ListCosmetics() []Cosmetic {
 		{
 			Key: "nail-sword", Name: "Ritternagel", Scope: ScopePermanent, Slot: SlotHands,
 			Unlock: UnlockShop, Price: priceNailSword,
+		},
+		{
+			Key: "bfg", Name: "BFG", Scope: ScopePermanent, Slot: SlotHands,
+			Colorable: true, Unlock: UnlockShop, Price: priceBFG,
 		},
 		{
 			Key: "golden-cup", Name: "Goldener Pokal", Scope: ScopePermanent, Slot: SlotHands,
