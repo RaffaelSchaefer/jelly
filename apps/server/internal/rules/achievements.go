@@ -41,6 +41,7 @@ const (
 	AchievementConga           = "conga"
 	AchievementLighthouse      = "lighthouse"
 	AchievementLighthouseLight = "lighthouse-light"
+	AchievementHatThief        = "hat-thief"
 )
 
 // Keys of the shop achievements, which the purchase metrics decide.

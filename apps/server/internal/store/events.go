@@ -35,10 +35,12 @@ const (
 	EventScheduleChanged   = "schedule.changed"
 	EventPartnerEmote      = "partner.emote"
 	EventPartnerInvite     = "partner_emote.updated"
+	EventWizardHatChanged  = "wizard_hat.changed"
 	maxEventsPerQueryRows  = 200
 )
 
-// Event is one entry of the stream. The payload holds IDs and keys, never names.
+// Event is one entry of the stream. The payload holds IDs and keys, never names, except the holder
+// of `wizard_hat.changed`, whose event goes away with the account.
 type Event struct {
 	ID        int64           `json:"id"`
 	Type      string          `json:"type"`
@@ -51,6 +53,7 @@ type Event struct {
 func listGlobalEventTypes() []string {
 	return []string{
 		EventRulesChanged, EventStageChanged, EventGatheringChanged, EventScheduleChanged,
+		EventWizardHatChanged,
 	}
 }
 

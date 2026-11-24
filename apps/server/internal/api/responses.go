@@ -207,6 +207,10 @@ func listCosmeticErrors() []knownError {
 		{store.ErrPurchaseNotFound, problem{
 			http.StatusNotFound, "purchase_not_found", "Dieses Cosmetic hast du nicht gekauft.",
 		}},
+		{store.ErrWizardHatTaken, problem{
+			http.StatusConflict, "wizard_hat_taken",
+			"Funkelbarts Hut trägt gerade ein anderes Jelly.",
+		}},
 	}
 }
 

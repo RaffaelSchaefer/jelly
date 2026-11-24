@@ -27,6 +27,10 @@ var (
 // it.
 const CosmeticHighlightAura = "highlight-aura"
 
+// CosmeticWizardHat is what a jelly wears for a while after stealing it from the wizard in the
+// shop. Nobody unlocks it.
+const CosmeticWizardHat = "wizard-hat"
+
 // Scope says how long something earned stays. Changing one catalog value changes the behavior.
 type Scope string
 
@@ -267,6 +271,11 @@ func ListCosmetics() []Cosmetic {
 		// Highlighting shows it for a moment. An admin can still give it away as a prize for fun.
 		{
 			Key: CosmeticHighlightAura, Name: "Leuchtaura", Scope: ScopePermanent, Slot: SlotAura,
+			Unlock: UnlockNone,
+		},
+		// The thief of the wizard hat wears it for a while, one jelly per LAN at a time.
+		{
+			Key: CosmeticWizardHat, Name: "Zauberhut", Scope: ScopeLAN, Slot: SlotHead,
 			Unlock: UnlockNone,
 		},
 	}

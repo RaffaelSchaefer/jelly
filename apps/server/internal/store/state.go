@@ -63,6 +63,7 @@ type PlayerState struct {
 	Sign         *string             `json:"sign"`
 	Follow       *Follow             `json:"follow"`
 	Trip         *Trip               `json:"trip"`
+	WizardHat    *WizardHat          `json:"wizard_hat"`
 	LANsAttended int                 `json:"lans_attended"`
 	Badges       []Badge             `json:"badges"`
 	Cosmetics    []string            `json:"cosmetics"`
@@ -191,6 +192,10 @@ func loadProgress(ctx context.Context, database querier, state *PlayerState, now
 		state.Sign = &row.sign.String
 	}
 	state.Trip = row.trip.findRunningTrip(now)
+	err = addWizardHat(ctx, database, state, row.lanID, now)
+	if err != nil {
+		return err
+	}
 	return loadActiveTimers(ctx, database, state, row, now)
 }
 

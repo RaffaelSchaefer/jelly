@@ -167,6 +167,12 @@ function listGesturesRules(): RuleText[] {
       unit: "seconds",
       hint: "0 schaltet ihn ab.",
     },
+    {
+      key: "wizard_hat_seconds",
+      label: "Dauer von Funkelbarts Hut",
+      unit: "seconds",
+      hint: "So lange trägt ein Jelly den im Shop gestohlenen Hut.",
+    },
   ];
 }
 

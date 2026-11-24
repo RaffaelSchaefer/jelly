@@ -126,6 +126,7 @@ func (server *apiServer) addContractRoutes(contract huma.API) {
 	server.addActionRoutes(contract)
 	server.addPartnerRoutes(contract)
 	server.addShopRoutes(contract)
+	server.addWizardHatRoutes(contract)
 	server.addStageRoutes(contract)
 	server.addStackRoutes(contract)
 }

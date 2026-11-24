@@ -16,6 +16,7 @@
     "listPartnerEmotes": "Lets an app bring back its popups after a restart.",
     "getStage": "Takes a player secret or the stage key. Afterwards open the stream with `since` set to `last_event_id`. `moves` holds the current walk of each jelly.",
     "endTrip": "Ends a trip or following at once, and the jelly walks back to its place.",
+    "stealWizardHat": "Puts the hat of the wizard Funkelbart from the shop on the jelly for `wizard_hat_seconds`. One jelly of the LAN wears it at a time: while another one does, it answers `409 wizard_hat_taken`. Taking it again while wearing it changes nothing and does not make it last longer. The first theft earns the secret achievement `hat-thief`. `equipped.head` shows `wizard-hat` meanwhile, the own choice for the head stays stored and comes back afterwards. A hidden jelly cannot take it, the answer then shows `wizard_hat` unchanged. Can answer `no_active_lan` and `not_joined`.",
     "purchaseCosmetic": "Buys a cosmetic from the catalog with the coins of the running LAN. Can answer `unknown_cosmetic`, `not_for_sale`, `already_owned`, `not_enough_coins`, `no_active_lan` and `not_joined`. The purchase unlocks the cosmetic but does not put it on."
   },
   "parameters": {
@@ -147,7 +148,7 @@
       }
     },
     "Event": {
-      "description": "One entry of the event log. It holds IDs and keys, never names.",
+      "description": "One entry of the event log. It holds IDs and keys, never names, except `holder_name` of `wizard_hat.changed`.",
       "fields": {
         "id": "Rising number of the event, the `since` of a later reconnect.",
         "type": "What happened. The stream route lists all types, unknown ones are ignored.",
@@ -308,6 +309,7 @@
         "sign": "Key of the raised sign, or null.",
         "follow": "The jelly this one follows, or null. The server can end following by itself, so always read it from here.",
         "trip": "The running trip, or null.",
+        "wizard_hat": "Who wears the hat of the wizard in the running LAN, or null while it is free and outside an active LAN. The server gives it back by itself, so always read it from here.",
         "lans_attended": "How many LANs the player was active at.",
         "badges": "One badge for each attended LAN.",
         "cosmetics": "Keys of all cosmetics this player may wear.",
@@ -457,6 +459,7 @@
         "stack_max_members": "How many jellies fit on one stack, 0 means no limit.",
         "highlight_seconds": "How long a highlighted jelly lights up.",
         "highlight_cooldown": "Time between two highlights of one player.",
+        "wizard_hat_seconds": "How long a jelly wears the hat it stole from the wizard in the shop.",
         "room_width": "Real width of the hall in meters, from left to right.",
         "room_depth": "Real depth of the hall in meters, from back to front.",
         "jelly_width": "Real width of a jelly in meters."
@@ -510,6 +513,14 @@
       "fields": {
         "x": "Percent of the stage width.",
         "y": "Percent of the stage height."
+      }
+    },
+    "WizardHat": {
+      "description": "The hat of the wizard in the shop while a jelly of the LAN wears it, on its head as `wizard-hat`.",
+      "fields": {
+        "holder_id": "The jelly that wears it.",
+        "holder_name": "The name of that jelly.",
+        "ends_at": "When the hat goes back to the wizard and others can take it."
       }
     },
     "Trip": {
@@ -676,6 +687,12 @@
       "meaning": "A gathering started or ended, also when its time ran out.",
       "player": "null",
       "payload": "The `Gathering`, null when it ended"
+    },
+    {
+      "type": "wizard_hat.changed",
+      "meaning": "A jelly stole the hat of the wizard (`worn` true), or its time ran out and it is free again (`worn` false). It goes to every app, so read `wizard_hat` and `equipped` again.",
+      "player": "the holder",
+      "payload": "`{\"holder_id\",\"holder_name\",\"ends_at\",\"worn\"}`"
     },
     {
       "type": "move",

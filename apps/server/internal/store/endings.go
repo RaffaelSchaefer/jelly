@@ -18,12 +18,13 @@ type expiredThings struct {
 	follows     []int64
 	stacks      []int64
 	isGathering bool
+	isWizardHat bool
 }
 
 // isEmpty says whether there is nothing to do, which is nearly always the case.
 func (expired expiredThings) isEmpty() bool {
 	return len(expired.trips) == 0 && len(expired.follows) == 0 && len(expired.stacks) == 0 &&
-		!expired.isGathering
+		!expired.isGathering && !expired.isWizardHat
 }
 
 // FinishExpired clears what ended by itself and announces it, so that a client needs no timers. It
@@ -79,7 +80,14 @@ func loadExpired(
 	const selectExpiredGatheringSQL = `SELECT lan_id FROM gatherings
 		WHERE lan_id = ? AND ends_at <= ?`
 	gatherings, err := listIDs(ctx, database, selectExpiredGatheringSQL, lan.id, now)
+	if err != nil {
+		return expired, err
+	}
 	expired.isGathering = len(gatherings) > 0
+	const selectExpiredWizardHatSQL = `SELECT lan_id FROM wizard_hats
+		WHERE lan_id = ? AND ends_at <= ?`
+	wizardHats, err := listIDs(ctx, database, selectExpiredWizardHatSQL, lan.id, now)
+	expired.isWizardHat = len(wizardHats) > 0
 	return expired, err
 }
 
@@ -128,10 +136,16 @@ func finishAll(ctx context.Context, action actionContext, expired expiredThings)
 			return err
 		}
 	}
-	if !expired.isGathering {
+	if expired.isGathering {
+		err := finishGathering(ctx, action)
+		if err != nil {
+			return err
+		}
+	}
+	if !expired.isWizardHat {
 		return nil
 	}
-	return finishGathering(ctx, action)
+	return finishWizardHat(ctx, action)
 }
 
 // finishForPlayer runs an ending as the jelly it belongs to, so a hidden jelly stays quiet.
