@@ -15,6 +15,8 @@ const (
 	ScheduleKindYoga       = "yoga"
 	ScheduleKindTournament = "tournament"
 	ScheduleKindTogether   = "together"
+	// ScheduleKindNews starts the Jelly-News on the stage when the point begins.
+	ScheduleKindNews = "news"
 )
 
 const (
@@ -41,7 +43,7 @@ type ScheduleItem struct {
 func ListScheduleKinds() []string {
 	return []string{
 		ScheduleKindOrga, ScheduleKindFood, ScheduleKindYoga, ScheduleKindTournament,
-		ScheduleKindTogether,
+		ScheduleKindTogether, ScheduleKindNews,
 	}
 }
 

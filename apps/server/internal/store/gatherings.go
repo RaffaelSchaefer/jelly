@@ -24,9 +24,13 @@ type Gathering struct {
 	Kind     string `json:"kind"`
 	WinnerID *int64 `json:"winner_id"`
 	EndsAt   int64  `json:"ends_at"`
+	// PresenterID is the jelly that presents the news, nil for other kinds or an empty hall.
+	PresenterID *int64 `json:"presenter_id"`
+	// News is what the presenter of `news` presents, otherwise nil.
+	News *News `json:"news"`
 }
 
-// NewGathering is what an admin starts. Only a ceremony has a winner.
+// NewGathering is what an admin starts. Only a ceremony has a winner, news pick their presenter.
 type NewGathering struct {
 	Kind     string `json:"kind"`
 	Seconds  int64  `json:"seconds"`
@@ -42,9 +46,16 @@ func (store *Store) StartGathering(
 	}
 	started := Gathering{
 		Kind: gathering.Kind, WinnerID: gathering.WinnerID,
-		EndsAt: now + gathering.Seconds*millisPerSecond,
+		EndsAt: now + gathering.Seconds*millisPerSecond, PresenterID: nil, News: nil,
 	}
 	err := store.runInTransaction(ctx, func(transaction *sql.Tx) error {
+		if started.Kind == GatheringNews {
+			news, workErr := prepareLANNews(ctx, transaction, lanID, now)
+			if workErr != nil {
+				return workErr
+			}
+			started.PresenterID, started.News = news.PresenterID, news.News
+		}
 		workErr := writeGathering(ctx, transaction, lanID, started, now)
 		if workErr != nil {
 			return workErr
@@ -61,10 +72,12 @@ func (store *Store) StartGathering(
 	return started, nil
 }
 
-// isValidGathering checks the kind, the time and that only a ceremony has a winner.
+// isValidGathering checks the kind, the time and that only a ceremony names its winner.
 func isValidGathering(gathering NewGathering) bool {
-	isKnownKind := slices.Contains([]string{GatheringFood, GatheringCeremony}, gathering.Kind)
-	hasWrongWinner := gathering.Kind == GatheringFood && gathering.WinnerID != nil
+	isKnownKind := slices.Contains(
+		[]string{GatheringFood, GatheringCeremony, GatheringNews}, gathering.Kind,
+	)
+	hasWrongWinner := gathering.Kind != GatheringCeremony && gathering.WinnerID != nil
 	isTimeValid := gathering.Seconds > 0 && gathering.Seconds <= maxGatheringSeconds
 	return isKnownKind && !hasWrongWinner && isTimeValid
 }
@@ -79,10 +92,15 @@ func writeGathering(
 			return err
 		}
 	}
+	newsJSON, err := encodeNews(gathering.News)
+	if err != nil {
+		return err
+	}
 	const replaceGatheringSQL = `INSERT OR REPLACE INTO gatherings
-		(lan_id, kind, winner_id, starts_at, ends_at) VALUES (?, ?, ?, ?, ?)`
-	_, err := transaction.ExecContext(ctx, replaceGatheringSQL,
-		lanID, gathering.Kind, gathering.WinnerID, now, gathering.EndsAt)
+		(lan_id, kind, winner_id, starts_at, ends_at, presenter_id, news)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`
+	_, err = transaction.ExecContext(ctx, replaceGatheringSQL, lanID, gathering.Kind,
+		gathering.WinnerID, now, gathering.EndsAt, gathering.PresenterID, newsJSON)
 	if err != nil && strings.Contains(err.Error(), "FOREIGN KEY") {
 		return ErrLANNotFound
 	}
@@ -128,10 +146,12 @@ func loadRunningGathering(
 ) (*Gathering, error) {
 	var gathering Gathering
 	var winnerID sql.NullInt64
-	const selectGatheringSQL = `SELECT kind, winner_id, ends_at FROM gatherings
-		WHERE lan_id = ? AND ends_at > ?`
+	var presenterID sql.NullInt64
+	var newsJSON sql.NullString
+	const selectGatheringSQL = `SELECT kind, winner_id, ends_at, presenter_id, news
+		FROM gatherings WHERE lan_id = ? AND ends_at > ?`
 	err := database.QueryRowContext(ctx, selectGatheringSQL, lanID, now).
-		Scan(&gathering.Kind, &winnerID, &gathering.EndsAt)
+		Scan(&gathering.Kind, &winnerID, &gathering.EndsAt, &presenterID, &newsJSON)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil //nolint:nilnil // No gathering is a normal state, not an error.
 	}
@@ -140,6 +160,13 @@ func loadRunningGathering(
 	}
 	if winnerID.Valid {
 		gathering.WinnerID = &winnerID.Int64
+	}
+	if presenterID.Valid {
+		gathering.PresenterID = &presenterID.Int64
+	}
+	gathering.News, err = decodeNews(newsJSON)
+	if err != nil {
+		return nil, err
 	}
 	return &gathering, nil
 }

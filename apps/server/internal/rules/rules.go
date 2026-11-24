@@ -47,6 +47,7 @@ const (
 	defaultStackSeconds          = 120
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
+	defaultNewsSeconds           = 90
 	defaultRoomWidthMeters       = 22.0
 	defaultRoomDepthMeters       = 16.1
 	defaultJellyWidthMeters      = 0.5
@@ -131,6 +132,8 @@ type PublicRules struct {
 	HighlightSeconds int64 `json:"highlight_seconds"`
 	// HighlightCooldownSeconds is the time between two highlights of one player.
 	HighlightCooldownSeconds int64 `json:"highlight_cooldown"`
+	// NewsSeconds is how long the Jelly-News last when their point in the program has no end.
+	NewsSeconds int64 `json:"news_seconds"`
 	// RoomWidthMeters is the room from left to right in meters, the size of the real hall.
 	RoomWidthMeters float64 `json:"room_width"`
 	// RoomDepthMeters is the room from back to front in meters.
@@ -166,6 +169,7 @@ func DefaultRules() Rules {
 		StackMaxMembers:          NoStackLimit,
 		HighlightSeconds:         defaultHighlightSeconds,
 		HighlightCooldownSeconds: defaultHighlightCooldown,
+		NewsSeconds:              defaultNewsSeconds,
 		RoomWidthMeters:          defaultRoomWidthMeters,
 		RoomDepthMeters:          defaultRoomDepthMeters,
 		JellyWidthMeters:         defaultJellyWidthMeters,
