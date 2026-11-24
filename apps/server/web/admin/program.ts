@@ -22,6 +22,7 @@ function listProgramKinds(): [kind: string, text: string][] {
     ["yoga", "Yoga"],
     ["tournament", "Turnier"],
     ["together", "Gemeinsam"],
+    ["news", "Jelly-News auf der Bühne"],
   ];
 }
 
