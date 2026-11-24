@@ -130,6 +130,8 @@ export interface LANChanges {
   name?: string;
   starts_at?: number;
   ends_at?: number;
+  /** Confirms a change that ends the LAN while it runs. */
+  stop_running?: boolean;
 }
 
 /** Corrects the name or period of a LAN. */

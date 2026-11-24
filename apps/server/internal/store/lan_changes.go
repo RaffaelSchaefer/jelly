@@ -16,6 +16,8 @@ type LANChanges struct {
 	Name     *string `json:"name"`
 	StartsAt *int64  `json:"starts_at"`
 	EndsAt   *int64  `json:"ends_at"`
+	// StopRunning confirms a change that ends a LAN while it runs.
+	StopRunning bool `json:"stop_running"`
 }
 
 // lanPeriod is the part of a LAN that an admin can correct.
@@ -37,6 +39,12 @@ func (store *Store) UpdateLAN(
 		updated := applyLANChanges(current, changes)
 		if updated.name == "" || !rules.IsLANPeriodValid(updated.startsAt, updated.endsAt) {
 			return ErrInvalidInput
+		}
+		stops := rules.StopsRunningLAN(
+			current.startsAt, current.endsAt, updated.startsAt, updated.endsAt, now,
+		)
+		if stops && !changes.StopRunning {
+			return ErrLANRunning
 		}
 		err = requireFreePeriod(ctx, transaction, updated.startsAt, updated.endsAt, lanID)
 		if err != nil {
