@@ -9,14 +9,19 @@ import {
   Color,
   CustomBlending,
   DynamicDrawUsage,
+  Euler,
   InstancedMesh,
+  Matrix4,
   Mesh,
   OneFactor,
   OneMinusSrcAlphaFactor,
   PlaneGeometry,
+  Quaternion,
   ShaderMaterial,
   SrcAlphaFactor,
   Vector2,
+  Vector3,
+  type Object3D,
 } from "three";
 
 import fragmentShader from "./shaders/shadow.frag.glsl?raw";
@@ -36,6 +41,11 @@ export const FLOOR_BLENDING = {
   blendDstAlpha: OneMinusSrcAlphaFactor,
   depthWrite: false,
 };
+
+/** Shadows lie flat on the floor. */
+const SHADOW_TURN = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0));
+/** Reused for every shadow of a crowd, so placing them allocates nothing. */
+const SCRATCH = { matrix: new Matrix4(), position: new Vector3(), scale: new Vector3() };
 
 /** Size and look of a shadow, in jelly units. */
 export interface ShadowShape {
@@ -112,4 +122,54 @@ export function disposeShadow(shadow: Mesh): void {
   shadow.geometry.dispose();
   (shadow.material as ShaderMaterial).dispose();
   if (shadow instanceof InstancedMesh) shadow.dispose();
+}
+
+/** Shadows of many things of one shape, in one mesh that is replaced when it gets too small. */
+export interface ShadowCrowd {
+  root: Object3D;
+  shape: ShadowShape;
+  mesh: InstancedMesh;
+}
+
+/** Where one shadow of a crowd lies, and its size relative to the shape. */
+export interface ShadowSpot {
+  x: number;
+  y: number;
+  z: number;
+  scale: number;
+}
+
+/** Creates room for `capacity` shadows under `root`. */
+export function createShadowCrowd(
+  root: Object3D,
+  shape: ShadowShape,
+  capacity: number,
+): ShadowCrowd {
+  const mesh = createShadowInstances(shape, capacity);
+  root.add(mesh);
+  return { root, shape, mesh };
+}
+
+/** Lays one shadow flat on the floor for each item, where `find` puts it. */
+export function placeShadowCrowd<Item>(
+  crowd: ShadowCrowd,
+  items: Item[],
+  find: (item: Item, spot: ShadowSpot) => void,
+): void {
+  if (items.length > crowd.mesh.instanceMatrix.count) {
+    crowd.root.remove(crowd.mesh);
+    disposeShadow(crowd.mesh);
+    crowd.mesh = createShadowInstances(crowd.shape, 2 * items.length);
+    crowd.root.add(crowd.mesh);
+  }
+  const { matrix, position, scale } = SCRATCH;
+  const spot: ShadowSpot = { x: 0, y: 0, z: 0, scale: 1 };
+  items.forEach((item, index) => {
+    find(item, spot);
+    position.set(spot.x, spot.y, spot.z);
+    scale.setScalar(spot.scale);
+    crowd.mesh.setMatrixAt(index, matrix.compose(position, SHADOW_TURN, scale));
+  });
+  crowd.mesh.count = items.length;
+  crowd.mesh.instanceMatrix.needsUpdate = true;
 }

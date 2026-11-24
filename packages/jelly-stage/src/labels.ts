@@ -37,6 +37,14 @@ const MIN_MARKER_PIXELS = 6;
 /** A marker is this much longer than half its width. */
 const MARKER_STRETCH = 1.4;
 const MARKER_EDGE_PIXELS = 2;
+/**
+ * A jelly in a tower writes beside itself, where nothing of the tower is: its name to the right, its
+ * sign to the left, level with its face. This far from its middle, as shares of its height.
+ */
+const ASIDE_SHARE = 0.62;
+const ASIDE_LEVEL_SHARE = 0.55;
+/** Room between a marker beside a jelly and its name, in pixels. */
+const ASIDE_GAP_PIXELS = 3;
 
 /** Colors of a text or marker. */
 interface TextColors {
@@ -54,6 +62,8 @@ export interface LabelAnchor {
   headX: number;
   /** Height of the jelly from feet to the top of its head. */
   height: number;
+  /** Which level of a tower it sits on, 0 at the bottom. Missing outside a tower. */
+  tier?: number;
 }
 
 /** Jellies whose names show in any crowd, besides those in a beam of light. The big stage has none. */
@@ -90,7 +100,7 @@ export function drawLabels(context: CanvasRenderingContext2D, scene: LabelScene)
   const taken: TextBox[] = [];
   const marked = listMarked(scene);
   for (const anchor of marked) {
-    drawMarkedName(context, anchor, scene.marks.ownId === anchor.player.id, taken);
+    drawMarkedName(context, anchor, scene.marks, taken);
   }
   for (const anchor of [...scene.anchors].reverse()) {
     if (!marked.includes(anchor)) {
@@ -159,14 +169,53 @@ function useFont(context: CanvasRenderingContext2D, pixels: number, weight = "60
   return size;
 }
 
+/** Returns the sides of a jelly in a tower and the height of its face, where its texts go. */
+function findAside(anchor: LabelAnchor) {
+  const middle = (anchor.x + anchor.headX) / 2;
+  const reach = anchor.height * ASIDE_SHARE;
+  return {
+    left: middle - reach,
+    right: middle + reach,
+    y: anchor.y - anchor.height * ASIDE_LEVEL_SHARE,
+  };
+}
+
+/** Returns the size of a marker: half its width and its length. */
+function measureMarker(anchor: LabelAnchor) {
+  const size = Math.max(MIN_MARKER_PIXELS, anchor.height * MARKER_SHARE);
+  return { size, length: size * MARKER_STRETCH };
+}
+
+/**
+ * Returns the box of a name: below the jelly, or beside it in a tower, where the jelly below and
+ * the one on top cannot cover it. A marker beside it comes first.
+ */
+function placeName(anchor: LabelAnchor, size: number, width: number, isMarked: boolean): TextBox {
+  if (anchor.tier === undefined) {
+    return {
+      x: anchor.x - width / 2,
+      y: anchor.y + anchor.height * NAME_GAP_SHARE,
+      width,
+      height: size,
+    };
+  }
+  const aside = findAside(anchor);
+  const marker = isMarked ? measureMarker(anchor).length + ASIDE_GAP_PIXELS : 0;
+  return { x: aside.right + marker, y: aside.y - size / 2, width, height: size };
+}
+
+/** Returns the middle of a box, where its text is written. */
+function findMiddle(box: TextBox) {
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
 /** Writes name and level below a jelly, if there is room. */
 function drawName(context: CanvasRenderingContext2D, anchor: LabelAnchor, taken: TextBox[]): void {
   const size = useFont(context, anchor.height * NAME_FONT_SHARE);
   const text = `${anchor.player.name} · ${anchor.player.level}`;
-  const width = context.measureText(text).width + OUTLINE_PIXELS;
-  const nameY = anchor.y + anchor.height * NAME_GAP_SHARE + size / 2;
-  if (claimBox(taken, { x: anchor.x - width / 2, y: nameY - size / 2, width, height: size })) {
-    writeOutlined(context, text, { x: anchor.x, y: nameY });
+  const box = placeName(anchor, size, context.measureText(text).width + OUTLINE_PIXELS, false);
+  if (claimBox(taken, box)) {
+    writeOutlined(context, text, findMiddle(box));
   }
 }
 
@@ -177,24 +226,19 @@ function drawName(context: CanvasRenderingContext2D, anchor: LabelAnchor, taken:
 function drawMarkedName(
   context: CanvasRenderingContext2D,
   anchor: LabelAnchor,
-  isOwn: boolean,
+  marks: LabelMarks,
   taken: TextBox[],
 ): void {
   const pixels = anchor.height * NAME_FONT_SHARE * MARKED_NAME_SCALE;
   const size = useFont(context, pixels, MARKED_NAME_WEIGHT);
   const text = `${anchor.player.name} · ${anchor.player.level}`;
   const width = context.measureText(text).width + OUTLINE_PIXELS;
-  const box = {
-    x: anchor.x - width / 2,
-    y: anchor.y + anchor.height * NAME_GAP_SHARE,
-    width,
-    height: size,
-  };
+  const box = placeName(anchor, size, width, hasMarker(anchor, marks));
   while (!claimBox(taken, box)) {
     box.y += size;
   }
-  const colors = isOwn ? findOwnColors(anchor.player) : PLAIN_TEXT;
-  writeOutlined(context, text, { x: anchor.x, y: box.y + size / 2 }, colors);
+  const colors = marks.ownId === anchor.player.id ? findOwnColors(anchor.player) : PLAIN_TEXT;
+  writeOutlined(context, text, findMiddle(box), colors);
 }
 
 /** Returns where the sign of a jelly hangs and how high it is, with its font set. */
@@ -204,6 +248,16 @@ function placeSign(context: CanvasRenderingContext2D, anchor: LabelAnchor) {
   return { boxHeight, centerY: anchor.y - anchor.height * (1 + SIGN_GAP_SHARE) - boxHeight / 2 };
 }
 
+/** Returns the box of a sign `width` wide: over the head, or left of a jelly in a tower. */
+function placeSignBox(context: CanvasRenderingContext2D, anchor: LabelAnchor, width: number) {
+  const { boxHeight, centerY } = placeSign(context, anchor);
+  if (anchor.tier === undefined) {
+    return { x: anchor.x - width / 2, y: centerY - boxHeight / 2, width, height: boxHeight };
+  }
+  const aside = findAside(anchor);
+  return { x: aside.left - width, y: aside.y - boxHeight / 2, width, height: boxHeight };
+}
+
 /** Paints a sign over the head, if there is room. */
 function drawSign(
   context: CanvasRenderingContext2D,
@@ -211,9 +265,8 @@ function drawSign(
   anchor: LabelAnchor,
   taken: TextBox[],
 ): void {
-  const { boxHeight, centerY } = placeSign(context, anchor);
-  const width = context.measureText(label).width + 2 * SIGN_PADDING;
-  const box = { x: anchor.x - width / 2, y: centerY - boxHeight / 2, width, height: boxHeight };
+  useFont(context, anchor.height * SIGN_FONT_SHARE);
+  const box = placeSignBox(context, anchor, context.measureText(label).width + 2 * SIGN_PADDING);
   if (!claimBox(taken, box)) {
     return;
   }
@@ -221,38 +274,59 @@ function drawSign(
   context.strokeStyle = SIGN_EDGE;
   context.lineWidth = 1;
   context.beginPath();
-  context.roundRect(anchor.x - width / 2, centerY - boxHeight / 2, width, boxHeight, SIGN_RADIUS);
+  context.roundRect(box.x, box.y, box.width, box.height, SIGN_RADIUS);
   context.fill();
   context.stroke();
   context.fillStyle = SIGN_TEXT;
-  context.fillText(label, anchor.x, centerY);
+  const middle = findMiddle(box);
+  context.fillText(label, middle.x, middle.y);
+}
+
+/** Reports whether a jelly gets a marker: the own one and the one it stands next to. */
+function hasMarker(anchor: LabelAnchor, marks: LabelMarks): boolean {
+  return marks.ownId === anchor.player.id || marks.targetId === anchor.player.id;
 }
 
 /** Points at the own jelly and the one it stands next to. */
 function drawMarkers(context: CanvasRenderingContext2D, scene: LabelScene): void {
   for (const anchor of scene.anchors) {
-    const isOwn = scene.marks.ownId === anchor.player.id;
-    if (isOwn || scene.marks.targetId === anchor.player.id) {
+    if (hasMarker(anchor, scene.marks)) {
+      const isOwn = scene.marks.ownId === anchor.player.id;
       drawMarker(context, anchor, isOwn ? findOwnColors(anchor.player) : PLAIN_TEXT, scene);
     }
   }
 }
 
-/** Paints a triangle pointing down at a jelly, above its sign if it holds one. */
+/**
+ * Traces a triangle pointing at a jelly: down from above its head and sign, or, in a tower, from
+ * its side toward its face, before its name.
+ */
+function traceMarker(context: CanvasRenderingContext2D, anchor: LabelAnchor, scene: LabelScene) {
+  const { size, length } = measureMarker(anchor);
+  context.beginPath();
+  if (anchor.tier !== undefined) {
+    const { right, y } = findAside(anchor);
+    context.moveTo(right, y);
+    context.lineTo(right + length, y - size);
+    context.lineTo(right + length, y + size);
+    return;
+  }
+  const { boxHeight, centerY } = placeSign(context, anchor);
+  const hasSign = scene.signLabels.has(anchor.player.sign ?? "");
+  const tipY = hasSign ? centerY - boxHeight / 2 - SIGN_PADDING : centerY + boxHeight / 2;
+  context.moveTo(anchor.x, tipY);
+  context.lineTo(anchor.x - size, tipY - length);
+  context.lineTo(anchor.x + size, tipY - length);
+}
+
+/** Paints a triangle pointing at a jelly. */
 function drawMarker(
   context: CanvasRenderingContext2D,
   anchor: LabelAnchor,
   colors: TextColors,
   scene: LabelScene,
 ): void {
-  const { boxHeight, centerY } = placeSign(context, anchor);
-  const hasSign = scene.signLabels.has(anchor.player.sign ?? "");
-  const tipY = hasSign ? centerY - boxHeight / 2 - SIGN_PADDING : centerY + boxHeight / 2;
-  const size = Math.max(MIN_MARKER_PIXELS, anchor.height * MARKER_SHARE);
-  context.beginPath();
-  context.moveTo(anchor.x, tipY);
-  context.lineTo(anchor.x - size, tipY - size * MARKER_STRETCH);
-  context.lineTo(anchor.x + size, tipY - size * MARKER_STRETCH);
+  traceMarker(context, anchor, scene);
   context.closePath();
   context.fillStyle = colors.fill;
   context.strokeStyle = colors.edge;
@@ -260,6 +334,16 @@ function drawMarker(
   context.lineJoin = "round";
   context.stroke();
   context.fill();
+}
+
+/**
+ * Returns where bubbles and rising texts of a jelly start: over its head, or, in a tower, where the
+ * jelly on top is, left of its face, so they rise beside the tower.
+ */
+function placeEffect(anchor: LabelAnchor, size: number) {
+  if (anchor.tier === undefined) return { x: anchor.x, y: anchor.y - anchor.height };
+  const aside = findAside(anchor);
+  return { x: aside.left - size / 2, y: aside.y + size / 2 };
 }
 
 /** Paints bubbles and rising texts over their jellies. */
@@ -271,15 +355,16 @@ function drawEffects(context: CanvasRenderingContext2D, scene: LabelScene): void
       continue;
     }
     const progress = (scene.now - effect.startedAt) / (effect.endsAt - effect.startedAt);
-    const headY = anchor.y - anchor.height;
     context.globalAlpha = Math.min(1, 2 * (1 - progress));
     if (effect.kind === "bubble") {
       const size = useFont(context, anchor.height * BUBBLE_FONT_SHARE);
-      context.fillText(effect.glyph, anchor.x, headY - size);
+      const spot = placeEffect(anchor, size);
+      context.fillText(effect.glyph, spot.x, spot.y - size);
     } else {
-      useFont(context, anchor.height * TOAST_FONT_SHARE, "700");
-      const riseY = headY - progress * anchor.height * TOAST_RISE_SHARE;
-      writeOutlined(context, effect.text, { x: anchor.x, y: riseY });
+      const size = useFont(context, anchor.height * TOAST_FONT_SHARE, "700");
+      const spot = placeEffect(anchor, size);
+      const riseY = spot.y - progress * anchor.height * TOAST_RISE_SHARE;
+      writeOutlined(context, effect.text, { x: spot.x, y: riseY });
     }
     context.globalAlpha = 1;
   }

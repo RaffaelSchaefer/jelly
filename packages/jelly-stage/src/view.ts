@@ -33,7 +33,7 @@ import { NO_INSETS, type StageInsets } from "./insets.ts";
 import { createJellyCast, pulseJelly, syncJellies, updateJellies } from "./jellies.ts";
 import { bendToLens, LENS_RANGE } from "./lens.ts";
 import { applyLens, createLensPass, type LensPass } from "./lensPass.ts";
-import { findLevels, findPositions, findWinner, listHighlighted, pruneMoves } from "./moves.ts";
+import { findPositions, findWinner, listHighlighted, pruneMoves } from "./moves.ts";
 import {
   isOwnAt,
   locateJelly,
@@ -184,7 +184,7 @@ function handleEvent(memory: StageMemory, event: StageEvent): void {
     return;
   }
   if (event.type === STACK_CHANGED && memory.state) {
-    const stacks = applyStackChange(memory.state.stacks, event.payload);
+    const stacks = applyStackChange(memory.state.stacks, event);
     memory.state = { ...memory.state, stacks };
   }
   const now = Date.now();
@@ -260,7 +260,7 @@ function moveJellies(memory: StageMemory, seconds: number, now: number): JellySp
   memory.highlighted = highlight ? listHighlighted(positions, ownId, highlight, size) : new Set();
   const spots = updateJellies(memory.cast, {
     positions,
-    levels: findLevels(memory.moves, serverTime),
+    moves: memory.moves,
     stacks: memory.state?.stacks ?? [],
     serverTime,
     viewer: findViewer(memory.stage.camera),

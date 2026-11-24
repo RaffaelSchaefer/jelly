@@ -163,7 +163,7 @@ export interface EventPayload {
   target_id?: number;
   ends_at?: number;
   cosmetic_key?: string;
-  /** The stack of `stack.changed`. A stack that fell apart has only its `id` left. */
+  /** The stack of `stack.changed`. After someone climbed down or it fell apart, only its `id`. */
   id?: number;
   x?: number;
   y?: number;
