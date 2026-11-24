@@ -18,6 +18,8 @@ const (
 	// All jellies gather. Their other plans go on afterwards, if their time is not over.
 	KindFood     = "food"
 	KindCeremony = "ceremony"
+	// KindNews walks like a ceremony: the presenter to the winner zone, the others to watch.
+	KindNews = "news"
 )
 
 const (

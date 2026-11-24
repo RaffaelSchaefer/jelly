@@ -159,7 +159,7 @@ func (planner *Planner) startPlan(now int64, walker *walker) {
 	switch walker.plan.kind {
 	case KindSnack:
 		goal = planner.findGatherSpot(now, walker, planner.zones[rules.AreaKindQueue])
-	case KindFood, KindCeremony:
+	case KindFood, KindCeremony, KindNews:
 		goal = planner.findGatherSpot(now, walker, planner.findGatherZones(walker.playerID))
 	case KindTrip:
 		goal = planner.findTripGoal(walker)
@@ -283,8 +283,8 @@ func (planner *Planner) findFollowGoal(walker *walker) floorPoint {
 	return planner.findFreeSpot(walker, beside, planner.frame.listRoomRect())
 }
 
-// findGatherZones returns where a jelly goes during the running gathering. At a ceremony, the
-// winner goes to the winner zone if there is one.
+// findGatherZones returns where a jelly goes during the running gathering. At a ceremony or the
+// news, the winner or presenter goes to the winner zone if there is one.
 func (planner *Planner) findGatherZones(playerID int64) []floorRect {
 	if planner.gathering.Kind == KindFood {
 		return planner.zones[rules.AreaKindQueue]
