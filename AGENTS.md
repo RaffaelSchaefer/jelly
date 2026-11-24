@@ -69,6 +69,16 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (`src/usePartnerEmote.ts`, `src/panels/PartnerInvitePopup.tsx`). Das andere Jelly erfährt davon per
   `partner_emote.updated`, die Annahme erreicht den Auffordernden per `partner.emote`. Beide Ereignisse schließen
   Karte und Shop (`closes_popouts` in `src-tauri/src/events.rs`).
+- Stapel (`POST /v1/stacks`, `POST /v1/stacks/members`, `DELETE /v1/stacks/current`): Die Knöpfe stehen auf der
+  Karte (`src/map/stacks.ts`), am fremden Jelly `#jelly-stack`, am eigenen `#own-stack` unter den Gesten. Steht das
+  Jelly zu weit weg, läuft es erst hin und handelt bei der Ankunft (`page.stackPlan`), jede andere Bewegung verwirft
+  das. `join_stack` antwortet bei `too_far` mit `null` (`unless_too_far` in `commands/stage.rs`), denn Fehler kommen
+  in der Oberfläche nur als Text an. `stack.changed` trägt den ganzen Stapel, solange er steht. Ist er weg, kommt nur
+  `{"id"}`, mit dem Jelly, das als letztes abstieg, oder ohne, wenn seine Zeit um ist. Die Bühne rechnet daraus den
+  Stand (`packages/jelly-stage/src/stackEvents.ts`), `OwnStack` in `src-tauri/src/events.rs` merkt sich den eigenen
+  Stapel, damit das Pet auch das Ende des Stapels hört (`src/useStack.ts`,
+  `src/pet/stack.ts`). In der Browser-Vorschau steht ein Turm aus drei Jellies (`src/map/previewStacks.ts`), er
+  zerfällt nach 60 Sekunden.
 - `src/voice.ts` (Synthesizer), `src/useJellyVoice.ts`, `src/pet/voice.ts` und `src/pet/voiceClips.ts`
   (Noten, reine Logik): die Stimme des Jellys. Tonhöhe und Tempo je Geste stehen in `EMOTE_MOODS`
   (`packages/jelly-scene/src/emotes.ts`), Bewegung und Laut teilen sich das Tempo. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
@@ -108,11 +118,19 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Seite mit Knöpfen verdeckt). Über dem Bild: `overlay.ts` (Texte, Hinweise, Treffer), `edgeHints.ts`
   (Hinweise am Rand), `hoverRing.ts` (Ring unter dem Jelly unter dem Zeiger). Ohne Aufrufe der Seite, wie
   auf dem Beamer, zeigt die Kamera die ganze Halle. Der Rest ist der Raum.
+- Türme auf der Bühne: `stacking.ts` rechnet je Bild, wie jedes Jelly eines Stapels steht (rein, ohne three),
+  mit `towers.ts` (Höhen, Schwanken, Welle nach einer Landung), `leaping.ts` (Sprung, Fall, Stauchen) und
+  `fling.ts` (Wurf beim Zerfall). `jellies.ts` wendet die Haltung nur an. `roomMarks.ts` hält alle Marken im
+  Raum zusammen, darunter `stackRings.ts` (Ring mit der Restzeit um jeden Stapel) und `lighthouse.ts`
+  (kreisender Lichtkegel, solange die Spitze eines Turms hervorgehoben ist), beide rechnen in `stackMarks.ts`.
+  Im Turm stehen Namen rechts und Schilder links neben dem Jelly (`labels.ts`). Mit weniger Bewegung gibt es
+  nur das weiche Heben. Ansehen ohne Server: `/scripts/stack-check.html?members=4&zoom=8&play=climb,light,leave,decay`
+  in der Browser-Vorschau, die Parameter stehen im Kopf von `apps/client/scripts/stack-check.mjs`.
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
   `page.ts` (Stand der Seite), `commands.ts` (Aktionen mit Bestätigung und Kameraflug), `dock.ts` (Leiste
   unten), `zoom.ts` (Mausrad, Ziehen, Tasten), `notice.ts` (Statuszeile),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
-  `actions.ts` (Fenster am fremden Jelly), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/PopoutDrops.tsx`: die Glas-Tropfen am Jelly,
+  `actions.ts` (Fenster am fremden Jelly), `stacks.ts` (Stapel-Knöpfe und der Weg zum Stapel), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/PopoutDrops.tsx`: die Glas-Tropfen am Jelly,
   die Karte und Shop öffnen.
 - `shop.html`, `src/shop/`: der Shop als Zauberladen im eigenen Fenster, mit React. `Shop.tsx` (Rahmen, Wahl, Klang),
   `ShopHeader.tsx` und `ShopPurse.tsx` (Messingschild, Lederbörse), `ShopStage.tsx` (Bühne: DOM-Ebenen `StageBackdrop`,
@@ -239,6 +257,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   jeweils auch mit `?optimized` und `?ruhig`, ohne Scrollen.
 - **Schriften** liegen als Datei bei (`src/fonts/`, mit Lizenz) und nie als `data:`: Die CSP lädt Schriften nur von
   `'self'`, `vite.config.ts` legt `.woff2` deshalb nie inline.
+- **Neuer Knopf mit Glas auf der Karte:** Das Glas zählt jedes `data-liquid`-Element der Reihe nach, bis
+  `LAYOUT.maxShapes` in `src/map/glass.ts`. Was darüber liegt, bleibt ohne Glas.
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.
   Das Paket spricht nicht mit dem Netz: Jeder Nutzer bringt seine `StageSource` mit, die App holt
   alles über Rust. Was nur die Karte braucht (Markierungen, Treffer), bleibt auf dem Beamer aus.

@@ -37,6 +37,7 @@ export * from "./shopTimeline";
 export * from "./signs";
 export * from "./sparks";
 export * from "./spring";
+export * from "./stack";
 export * from "./stage";
 export * from "./studio";
 export * from "./types";

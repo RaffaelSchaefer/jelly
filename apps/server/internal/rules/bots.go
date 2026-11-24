@@ -30,7 +30,7 @@ func listBotChoices() []botChoice {
 		weightReport   = 5
 		weightTrip     = 15
 		weightFollow   = 10
-		weightStack    = 5
+		weightStack    = 30
 		weightPurchase = 5
 	)
 	return []botChoice{

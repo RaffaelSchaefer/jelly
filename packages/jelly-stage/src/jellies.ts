@@ -19,10 +19,10 @@ import {
   type Jelly,
   type Motion,
 } from "@jelly/scene";
-import { Euler, Group, Matrix4, Object3D, Quaternion, Vector3, type InstancedMesh } from "three";
+import { Group, Object3D } from "three";
 
-import type { StageEffect } from "./effects.ts";
-import type { StagePlayer } from "./types.ts";
+import type { MotionPose, StageEffect } from "./effects.ts";
+import type { StageMove, StagePlayer, StageStack } from "./types.ts";
 import type { FloorPoint, ScenePoint } from "./world.ts";
 
 import { findEmote, findMotionPose } from "./effects.ts";
@@ -37,7 +37,16 @@ import {
 } from "./held.ts";
 import { findPalette } from "./palette.ts";
 import { calculateRandomValue } from "./random.ts";
-import { createShadowInstances, disposeShadow, SHADOW_HEIGHT } from "./shadow.ts";
+import { createShadowCrowd, placeShadowCrowd, SHADOW_HEIGHT, type ShadowCrowd } from "./shadow.ts";
+import {
+  beginStacking,
+  createStacking,
+  forgetPerch,
+  STANDING,
+  stepPerch,
+  type PerchPose,
+  type Stacking,
+} from "./stacking.ts";
 import {
   calculateWalkPose,
   createWalker,
@@ -62,19 +71,19 @@ const JELLY_SHADOW = {
 };
 /** A jumping jelly casts a smaller shadow. */
 const SHADOW_SHRINK = 0.3;
-/** Shadows lie flat on the floor. */
-const SHADOW_TURN = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0));
 /** Room for this many shadows at first. More jellies get a larger mesh. */
 const SHADOW_CAPACITY = 64;
 /** The draw order of the farthest jelly. Every nearer one draws one step later. */
 export const FIRST_JELLY_ORDER = 1;
-/** How high one jelly on a stack stands over the one below: they squeeze together a bit. */
-const STACK_STEP = JELLY_HEIGHT * 0.7;
+/** Within a tower the higher jelly draws later: it sits on the one below and overhangs its head. */
+const TIER_ORDER = 0.001;
 /** How fast a jelly steps up onto the stage or down from it, per second. */
 const STEP_RATE = 10;
 /** The winner of a ceremony grows to this size, and this fast per second. */
 const WINNER_SCALE = 1.8;
 const GROW_RATE = 2;
+/** Higher than this over its floor a jelly is in the air or on a tower. */
+const STEP_LIFT = 0.05;
 /** With reduced motion a jelly glides along its move, without hopping or leaning. */
 const STILL_WALK: WalkPose = { lift: 0, lean: 0 };
 
@@ -92,6 +101,10 @@ interface StageJelly {
   shadowScale: number;
   /** How high the floor under the jelly is, eased so it steps up instead of jumping. */
   elevation: number;
+  /** How it stands in a tower, null when it has nothing to do with one. */
+  perch: PerchPose | null;
+  /** Distance to the camera for the draw order. A tower sorts as one, by its foot. */
+  depth: number;
   /** Size of the jelly, 1 usually and larger for the winner of a ceremony. */
   scale: number;
   wearer: Wearer;
@@ -103,7 +116,8 @@ export interface JellyCast {
   root: Object3D;
   jellies: Map<number, StageJelly>;
   /** One shadow per jelly, all drawn in one call. */
-  shadows: InstancedMesh;
+  shadows: ShadowCrowd;
+  stacking: Stacking;
 }
 
 /** What {@link updateJellies} needs for a frame. */
@@ -119,8 +133,12 @@ export interface JellyFrame {
   platforms: Placement[];
   /** The winner of a running ceremony, who grows on the stage. */
   winnerId: number | null;
-  /** How many jellies stand below each jelly, by player ID. */
-  levels: Map<number, number>;
+  /** The newest move of each jelly, by player ID. Stack moves tell how high it sits. */
+  moves: ReadonlyMap<number, StageMove>;
+  /** The running stacks, as fresh as the last `stack.changed`. */
+  stacks: StageStack[];
+  /** Server time of this frame in milliseconds, as `ends_at` of a stack counts. */
+  serverTime: number;
   /** Seconds since the last frame and since the page opened. */
   seconds: number;
   time: number;
@@ -132,16 +150,18 @@ export interface JellyFrame {
 /** Where a jelly is, for the texts over it. */
 export interface JellySpot {
   player: StagePlayer;
+  /** Under the body, also up in a swaying tower or thrown out of one. */
   feet: ScenePoint;
   head: ScenePoint;
+  /** Which level of a standing tower it sits on, 0 at the bottom. Missing outside a tower. */
+  tier?: number;
 }
 
 /** Creates an empty cast. Its root belongs into the scene. */
 export function createJellyCast(): JellyCast {
   const root = new Object3D();
-  const shadows = createShadowInstances(JELLY_SHADOW, SHADOW_CAPACITY);
-  root.add(shadows);
-  return { root, jellies: new Map(), shadows };
+  const shadows = createShadowCrowd(root, JELLY_SHADOW, SHADOW_CAPACITY);
+  return { root, jellies: new Map(), shadows, stacking: createStacking(JELLY_HEIGHT) };
 }
 
 export { findPalette };
@@ -162,6 +182,8 @@ function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): v
     walker: createWalker(position),
     shadowScale: 1,
     elevation: 0,
+    perch: null,
+    depth: 0,
     scale: 1,
     wearer: createWearer(jelly),
     worn: new Map(),
@@ -174,6 +196,7 @@ function removeJelly(cast: JellyCast, shown: StageJelly): void {
   shown.worn.clear();
   disposeJelly(shown.jelly);
   cast.jellies.delete(shown.player.id);
+  forgetPerch(cast.stacking, shown.player.id);
 }
 
 /** Dresses a jelly in what its player wears, without building the jelly again. */
@@ -226,33 +249,53 @@ export function pulseJelly(cast: JellyCast, playerId: number): void {
   if (shown) shown.pulse += 1;
 }
 
+/** Puts a jelly where its walk, its effects and its tower put it, squashed as its tower wants. */
+function placeJelly(
+  shown: StageJelly,
+  pose: Readonly<PerchPose>,
+  walk: WalkPose,
+  motion: MotionPose,
+) {
+  const { group, walker } = shown;
+  // Squashed jellies keep their volume and their feet on the ground.
+  const tall = shown.scale * pose.stretch;
+  const wide = shown.scale / Math.sqrt(pose.stretch);
+  group.scale.set(wide, tall, wide);
+  const lift = walk.lift + motion.lift * JELLY_HEIGHT;
+  const bottom = shown.elevation + pose.rise - BODY_BOTTOM * tall + lift;
+  const { x, z } = walker.position;
+  group.position.set(x + pose.offsetX + pose.swayX, bottom, z + pose.offsetZ + pose.swayZ);
+  const yaw = walker.yaw + motion.turn + pose.spin;
+  // The tower leans in the room, so its lean is turned into the frame of the turned jelly.
+  const forward = pose.leanX * Math.sin(yaw) + pose.leanZ * Math.cos(yaw);
+  const right = pose.leanX * Math.cos(yaw) - pose.leanZ * Math.sin(yaw);
+  group.rotation.set(walk.lean + forward + pose.flip, yaw, motion.tilt - right, "YXZ");
+  const hop = 1 - SHADOW_SHRINK * Math.min(1, lift / JELLY_HEIGHT);
+  shown.shadowScale = shown.scale * pose.shadow * hop;
+}
+
 /** Walks, poses and animates one jelly. */
-function updateJelly(shown: StageJelly, frame: JellyFrame): void {
-  const { walker, group } = shown;
+function updateJelly(cast: JellyCast, shown: StageJelly, frame: JellyFrame): void {
+  const { walker } = shown;
+  const playerId = shown.player.id;
   stepWalker(walker, {
-    target: frame.positions.get(shown.player.id) ?? walker.position,
+    target: frame.positions.get(playerId) ?? walker.position,
     viewer: frame.viewer,
     seconds: frame.seconds,
   });
-  const level = frame.levels.get(shown.player.id) ?? 0;
-  const floor = findFloorHeight(walker.position, frame.platforms) + level * STACK_STEP;
+  const floor = findFloorHeight(walker.position, frame.platforms);
   shown.elevation += (floor - shown.elevation) * (1 - Math.exp(-STEP_RATE * frame.seconds));
-  const walk = frame.reducedMotion ? STILL_WALK : calculateWalkPose(walker);
-  const motion = findMotionPose(
-    frame.reducedMotion ? [] : frame.effects,
-    shown.player.id,
-    frame.now,
-  );
-  const lift = walk.lift + motion.lift * JELLY_HEIGHT;
-  const wantedScale = frame.winnerId === shown.player.id ? WINNER_SCALE : 1;
+  shown.perch = stepPerch(cast.stacking, playerId, frame.moves.get(playerId), walker.position);
+  const pose = shown.perch ?? STANDING;
+  // In the air or on a tower it does not hop along its move.
+  const isPerched = frame.reducedMotion || pose.rise > STEP_LIFT;
+  const walk = isPerched ? STILL_WALK : calculateWalkPose(walker);
+  const motion = findMotionPose(frame.reducedMotion ? [] : frame.effects, playerId, frame.now);
+  const wantedScale = frame.winnerId === playerId ? WINNER_SCALE : 1;
   shown.scale += (wantedScale - shown.scale) * (1 - Math.exp(-GROW_RATE * frame.seconds));
-  group.scale.setScalar(shown.scale);
-  const bottom = shown.elevation - BODY_BOTTOM * shown.scale + lift;
-  group.position.set(walker.position.x, bottom, walker.position.z);
-  group.rotation.set(walk.lean, walker.yaw + motion.turn, motion.tilt, "YXZ");
-  shown.shadowScale = shown.scale * (1 - SHADOW_SHRINK * Math.min(1, lift / JELLY_HEIGHT));
+  placeJelly(shown, pose, walk, motion);
   // On a snack run it carries the snack like a board; a held cosmetic the way that one wants.
-  const visiting = frame.visitors.has(shown.player.id);
+  const visiting = frame.visitors.has(playerId);
   const hold = holdOf(shown.player.equipped.hands?.key);
   animateJelly(shown.jelly, shown.motion, {
     time: frame.time + shown.timeOffset,
@@ -261,55 +304,68 @@ function updateJelly(shown: StageJelly, frame: JellyFrame): void {
     reducedMotion: frame.reducedMotion,
     holding: visiting || holdsModel(shown.player),
     hold: visiting ? undefined : hold,
-    emote: findEmote(frame.effects, shown.player.id, frame.now),
+    emote: findEmote(frame.effects, playerId, frame.now),
   });
   followHands(shown.wearer, hold);
   pulseCosmetics(shown.jelly.root, frame.time + shown.timeOffset, frame.reducedMotion);
 }
 
-/** Puts every shadow under its jelly. A mesh that got too small is replaced by a larger one. */
+/** Puts every shadow on the floor under its jelly, never on the jelly below it in a tower. */
 function placeShadows(cast: JellyCast, shownJellies: StageJelly[]): void {
-  if (shownJellies.length > cast.shadows.instanceMatrix.count) {
-    cast.root.remove(cast.shadows);
-    disposeShadow(cast.shadows);
-    cast.shadows = createShadowInstances(JELLY_SHADOW, 2 * shownJellies.length);
-    cast.root.add(cast.shadows);
-  }
-  const matrix = new Matrix4();
-  const position = new Vector3();
-  const scale = new Vector3();
-  shownJellies.forEach((shown, index) => {
-    const { x, z } = shown.walker.position;
-    position.set(x, SHADOW_HEIGHT + shown.elevation, z);
-    scale.setScalar(shown.shadowScale);
-    cast.shadows.setMatrixAt(index, matrix.compose(position, SHADOW_TURN, scale));
+  placeShadowCrowd(cast.shadows, shownJellies, (shown, spot) => {
+    const { offsetX, offsetZ } = shown.perch ?? STANDING;
+    spot.x = shown.walker.position.x + offsetX;
+    spot.y = SHADOW_HEIGHT + shown.elevation;
+    spot.z = shown.walker.position.z + offsetZ;
+    spot.scale = shown.shadowScale;
   });
-  cast.shadows.count = shownJellies.length;
-  cast.shadows.instanceMatrix.needsUpdate = true;
+}
+
+/** Measures how far a jelly is from the camera. A tower counts at its foot, its top draws last. */
+function measureDepth(shown: StageJelly, camera: ScenePoint): number {
+  const { group, walker } = shown;
+  const tier = shown.perch?.tier;
+  if (tier === undefined) {
+    const { x, y, z } = group.position;
+    return Math.hypot(x - camera.x, y - camera.y, z - camera.z);
+  }
+  const { x, z } = walker.position;
+  const middle = shown.elevation - BODY_BOTTOM * shown.scale;
+  return Math.hypot(x - camera.x, middle - camera.y, z - camera.z) - tier * TIER_ORDER;
+}
+
+/** Returns where a jelly is, for texts, rings and the camera. */
+function locateSpot(shown: StageJelly): JellySpot {
+  const { group, walker } = shown;
+  const pose = shown.perch ?? STANDING;
+  const up = (JELLY_HEIGHT + BODY_BOTTOM) * group.scale.y;
+  const feet = {
+    x: walker.position.x + pose.offsetX + pose.swayX,
+    y: shown.elevation + pose.rise,
+    z: walker.position.z + pose.offsetZ + pose.swayZ,
+  };
+  const head = {
+    x: group.position.x + pose.leanX * up,
+    y: group.position.y + up,
+    z: group.position.z + pose.leanZ * up,
+  };
+  return { player: shown.player, feet, head, tier: pose.tier };
 }
 
 /** Moves every jelly for one frame and returns where they are, from back to front. */
 export function updateJellies(cast: JellyCast, frame: JellyFrame): JellySpot[] {
+  const { time, serverTime, seconds, reducedMotion } = frame;
+  beginStacking(cast.stacking, frame.stacks, { time, serverTime, seconds, reducedMotion });
   const shownJellies = [...cast.jellies.values()];
   for (const shown of shownJellies) {
-    updateJelly(shown, frame);
+    updateJelly(cast, shown, frame);
+    shown.depth = measureDepth(shown, frame.camera);
   }
   placeShadows(cast, shownJellies);
-  const distanceOf = (shown: StageJelly) =>
-    Math.hypot(
-      shown.group.position.x - frame.camera.x,
-      shown.group.position.y - frame.camera.y,
-      shown.group.position.z - frame.camera.z,
-    );
-  shownJellies.sort((first, second) => distanceOf(second) - distanceOf(first));
+  shownJellies.sort((first, second) => second.depth - first.depth);
   return shownJellies.map((shown, rank) => {
     // Each jelly draws completely before the next nearer one, so it blends over those behind.
     shown.group.renderOrder = FIRST_JELLY_ORDER + rank;
-    const { x, z } = shown.walker.position;
-    return {
-      player: shown.player,
-      feet: { x, y: shown.elevation, z },
-      head: { x, y: shown.group.position.y + (JELLY_HEIGHT + BODY_BOTTOM) * shown.scale, z },
-    };
+    return locateSpot(shown);
   });
 }

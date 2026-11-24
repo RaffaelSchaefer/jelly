@@ -7,7 +7,7 @@
 import type { StageGathering, StageMove, StagePlayer } from "./types.ts";
 import type { FloorPoint, RoomSize } from "./world.ts";
 
-import { findMovePosition, findStackLevel } from "./walking.ts";
+import { findMovePosition } from "./walking.ts";
 import { measureServerDistance, toFloorPoint } from "./world.ts";
 
 /** Below this a ring that goes away counts as gone. */
@@ -36,15 +36,6 @@ export function findPositions(
     );
   }
   return positions;
-}
-
-/** Returns how many jellies stand below each jelly right now. */
-export function findLevels(moves: Map<number, StageMove>, serverTime: number): Map<number, number> {
-  const levels = new Map<number, number>();
-  for (const move of moves.values()) {
-    levels.set(move.player_id, findStackLevel(move, serverTime));
-  }
-  return levels;
 }
 
 /** Returns the winner of a running ceremony, who grows on the stage. It ends without an event. */

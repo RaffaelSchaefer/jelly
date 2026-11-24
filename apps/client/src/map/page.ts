@@ -17,6 +17,18 @@ import type { MapSource } from "./source";
 /** Ein Jelly, dessen Namen die Karte nicht kennt. */
 export const TEXT_UNKNOWN_JELLY = "dem Jelly";
 
+/** Auf welchen Weg ein Stapel-Plan wartet (`stacks.ts`). Alle Zeiten in Serverzeit. */
+export interface StackWalk {
+  /** Die Art des Wegs, `trip` oder `follow`. */
+  moveKind: string;
+  /** Erst ein Weg ab dann zählt. */
+  since: number;
+  clickedAt: number;
+}
+
+/** Was das eigene Jelly tut, sobald es angekommen ist: klettern oder beginnen. */
+export type StackPlan = StackWalk & ({ kind: "join"; stackId: number } | { kind: "start" });
+
 /** Die Seite und was sich auf ihr ändert. */
 export interface MapPage {
   source: MapSource;
@@ -46,6 +58,8 @@ export interface MapPage {
   pendingTrip: ReturnType<typeof setTimeout> | undefined;
   /** Der erste Stand ist da: Die Karte ist eingeblendet und eingeflogen. */
   isShown: boolean;
+  /** Was das Jelly am Stapel tun soll, sobald es angekommen ist (`stacks.ts`). */
+  stackPlan: StackPlan | null;
 }
 
 /** Der Name eines Jellys vom letzten Lesen. */

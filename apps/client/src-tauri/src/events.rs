@@ -1,10 +1,11 @@
 //! Leitet Ereignisse und Wege aus `GET /v1/stage/events` an die Oberfläche weiter.
 //!
 //! Der Stream ist für alle Spieler gleich. Zum Pet gehen nur Ereignisse zum eigenen Jelly durch, als
-//! Tauri-Ereignis [`EVENT_NAME`]. Die Oberfläche lädt danach den Stand neu, denn Ereignisse tragen
-//! keine Namen und keinen vollständigen Stand. Nach `player.removed` lehnt der Server das Secret dabei
-//! ab, und die Oberfläche fragt nach einem neuen Code. Die Karte hört als [`STAGE_EVENT_NAME`] alles,
-//! dazu als [`STAGE_MOVE_NAME`] die Wege. [`STREAM_RESET_NAME`] geht an beide.
+//! Tauri-Ereignis [`EVENT_NAME`], beim Stapel auch die der anderen darauf ([`OwnStack`]). Die
+//! Oberfläche lädt danach den Stand neu, denn Ereignisse tragen keine Namen und keinen vollständigen
+//! Stand. Nach `player.removed` lehnt der Server das Secret dabei ab, und die Oberfläche fragt nach
+//! einem neuen Code. Die Karte hört als [`STAGE_EVENT_NAME`] alles, dazu als [`STAGE_MOVE_NAME`] die
+//! Wege. [`STREAM_RESET_NAME`] geht an beide.
 
 use futures_util::StreamExt;
 use reqwest::StatusCode;
@@ -48,7 +49,7 @@ const RESET_MESSAGE: &str = "reset";
 /// `payload.partner_id`. Nur er braucht es: Der Annehmende hat die Geste schon aus seiner Antwort.
 /// `trip.changed` kommt durch: Die Karte startet den Ausflug, das Pet sagt etwas dazu. Beide melden
 /// auch das Ende, wenn die Zeit abläuft, die App braucht dafür keine Uhr.
-/// `stack.changed` bleibt draußen, das Pet zeigt Stapel noch nicht.
+/// `stack.changed` fehlt hier: Ob es zum eigenen Jelly gehört, entscheidet [`OwnStack`].
 /// `coins.gained` und `cosmetic.purchased` kommen durch: Pet und Shop lesen danach ihre Münzen neu.
 const OWN_EVENTS: [&str; 10] = [
     "xp.gained",
@@ -75,6 +76,44 @@ const PARTNER_EMOTE: &str = "partner.emote";
 /// Ereignis, wenn sich eine Aufforderung ändert. Es zählt für beide Seiten, `player_id` nennt nur,
 /// wer gehandelt hat.
 const PARTNER_INVITE: &str = "partner_emote.updated";
+
+/// Ereignis, wenn jemand auf einen Stapel klettert, absteigt oder der Stapel auseinanderfällt.
+const STACK_CHANGED: &str = "stack.changed";
+
+/// Der Stapel, auf dem das eigene Jelly steht, soweit dieser Stream es mitbekommen hat.
+///
+/// Ein Stapel, der weiter steht, kommt in `stack.changed` ganz. Einer, der weg ist, trägt nur
+/// `{"id"}`: Ob das den eigenen Stapel trifft, weiß nur, wer ihn sich gemerkt hat. Der Stand lebt
+/// nur im Stream: Ein neuer (nach [`EventStream::stop`] oder einer Antwort außer `200`) beginnt
+/// ohne. Steht das Jelly dann schon oben, erfährt das Pet vom Ende des Stapels erst wieder, nachdem
+/// sich an ihm etwas geändert hat.
+#[derive(Debug, Default)]
+struct OwnStack(Option<i64>);
+
+impl OwnStack {
+    /// Ob `event` den Stapel von `player_id` betrifft und ans Pet soll: Das Jelly steht darin,
+    /// hat selbst etwas geändert, oder es ist der gemerkte Stapel. Merkt sich den Stapel oder
+    /// vergisst ihn, sobald das Jelly nicht mehr darauf steht oder der Stapel weg ist.
+    fn track(&mut self, event: &ServerEvent, player_id: i64) -> bool {
+        if event.kind != STACK_CHANGED {
+            return false;
+        }
+        let Some(stack_id) = event.payload.get("id").and_then(Value::as_i64) else {
+            return false;
+        };
+        let members = event.payload.get("member_ids").and_then(Value::as_array);
+        if members.is_some_and(|ids| ids.iter().any(|id| id.as_i64() == Some(player_id))) {
+            self.0 = Some(stack_id);
+            return true;
+        }
+        if self.0 != Some(stack_id) {
+            return event.player_id == Some(player_id);
+        }
+        // Der gemerkte Stapel ohne das Jelly, oder er ist weg.
+        self.0 = None;
+        true
+    }
+}
 
 /// Was eine Nachricht des Streams bedeutet.
 #[derive(Debug)]
@@ -192,10 +231,11 @@ pub(crate) fn emit_to_ui<T: Serialize + Clone>(app: &AppHandle, name: &str, payl
 
 /// Reicht eine Nachricht weiter: eigene Ereignisse ans Pet, alle Ereignisse und Wege an die Karte,
 /// falls sie offen ist.
-fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64) {
+fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64, own_stack: &mut OwnStack) {
     match message {
         StreamMessage::Event(event) => {
-            if is_own_event(&event, player_id) {
+            // Erst der Stapel: Er muss jedes `stack.changed` sehen, um sich den eigenen zu merken.
+            if own_stack.track(&event, player_id) || is_own_event(&event, player_id) {
                 emit_to_ui(app, EVENT_NAME, &event);
             }
             if popout::is_open(app, popout::MAP) {
@@ -217,12 +257,13 @@ fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64) {
 
 /// Liest den Stream, bis der Server das Secret ablehnt.
 async fn forward(app: AppHandle, mut source: EventSource, player_id: i64) {
+    let mut own_stack = OwnStack::default();
     while let Some(item) = source.next().await {
         match item {
             Ok(Event::Open) => {}
             Ok(Event::Message(message)) => {
                 let parsed = parse_message(&message.event, &message.data);
-                dispatch(&app, parsed, player_id);
+                dispatch(&app, parsed, player_id, &mut own_stack);
             }
             // Nach `401` hilft kein neuer Versuch. Die nächste Aktion zeigt den Fehler an.
             Err(StreamError::InvalidStatusCode(StatusCode::UNAUTHORIZED, _)) => source.close(),

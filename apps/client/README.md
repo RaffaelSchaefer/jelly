@@ -158,10 +158,10 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
   dieselbe 3D-Bühne wie auf dem Beamer (`@jelly/stage`, Daten aus `GET /v1/stage`). Wo die Jellies laufen,
   plant der Server, die Karte spielt seine Wege nur ab (`moves`, Nachricht `move` im Stream). Das eigene Jelly trägt seine
   Farbe im Namen und eine Markierung über dem Kopf, sein Ziel eine weiße. Unter dem Zeiger zeigt jedes
-  Jelly seinen Namen, auch im Gedränge. Ein Klick auf ein fremdes Jelly öffnet daneben ein Fenster mit zwei Symbolen:
+  Jelly seinen Namen, auch im Gedränge. Ein Klick auf ein fremdes Jelly öffnet daneben ein Fenster mit drei Symbolen:
   „Dazustellen“ lässt das eigene Jelly dorthin laufen (`POST /v1/trips/follow`), beim Ziel steht dort
   „Weggehen“. „Hervorheben“ stellt das Jelly auf allen Bühnen in eine Säule aus Licht mit Halo und Lichtfleck am Boden
-  (`POST /v1/highlights`), ist es dafür zu früh, steht die Meldung des Servers in der Statuszeile. „Mich hervorheben“ in der Leiste unten macht dasselbe mit dem eigenen Jelly, „Jelly suchen“ findet jedes andere per Namen, ohne dass man es erst in der Halle entdecken muss. Jeder Spieler leuchtet in seinem eigenen Farbton, berechnet aus seiner ID, so sieht man auch bei mehreren Lichtern, von wem welches kommt. Der Name des Jellys im Licht bleibt auch im Gedränge sichtbar. Ein Klick
+  (`POST /v1/highlights`), ist es dafür zu früh, steht die Meldung des Servers in der Statuszeile. „Mich hervorheben“ in der Leiste unten macht dasselbe mit dem eigenen Jelly, „Jelly suchen“ findet jedes andere per Namen, ohne dass man es erst in der Halle entdecken muss. Jeder Spieler leuchtet in seinem eigenen Farbton, berechnet aus seiner ID, so sieht man auch bei mehreren Lichtern, von wem welches kommt. Der Name des Jellys im Licht bleibt auch im Gedränge sichtbar. Das dritte Symbol stapelt: Steht das Jelly auf einem Stapel, klettert das eigene mit „Draufklettern“ oben drauf (`POST /v1/stacks/members`). Ist der Stapel zu weit weg, läuft es erst als Ausflug hin und klettert bei der Ankunft. Steht das Jelly allein, stellt sich das eigene mit „Stapel starten“ dazu und beginnt dort seinen eigenen Stapel (`POST /v1/stacks`), der andere klettert selbst. Im Fenster am eigenen Jelly steht unter den Partner-Emotes „Stapel starten“ oder „Absteigen“ (`DELETE /v1/stacks/current`). Um jeden Stapel liegt ein Ring, der mit seiner Restzeit abläuft. Wer klettert, springt auf die Spitze, der Turm schwankt, und am Ende purzeln alle herunter. Wird die Spitze eines Turms hervorgehoben, kreist von dort ein Lichtkegel durch die Halle. Ein Klick
   auf den freien Boden schickt das eigene Jelly auf einen Ausflug dorthin (`POST /v1/trips/goto`), ein
   Kristall mit Ring markiert das Ziel, bis es angekommen ist. Der
   Knopf „Weggehen“ (× in der Leiste) beendet Dazustellen und Ausflug (`DELETE /v1/trips/current`). Das Pet sagt zu beidem
@@ -249,6 +249,7 @@ src/
   useGame.ts          Hooks: Stand halten, Aufrufe, Server-Ereignisse, Lebenszeichen
   useSigns.ts         Hook: Schild heben und senken
   useFollow.ts        Hook: was das Pet vom Dazustellen auf der Karte mitbekommt
+  useStack.ts         Hook: was das Pet von seinem Stapel mitbekommt
   usePartnerEmote.ts  Hook: auf Aufforderungen antworten und das Duett zeigen
   useStagePopover.ts  Hook: Auswahlen am Jelly schließen, Fokus halten
   useSchedule.ts      Hook: Zeitplan der LAN, Erinnerung kurz vor jedem Punkt
@@ -429,8 +430,6 @@ beide Körper-Shader wirklich, schaltet im laufenden Betrieb zwischen den Modi u
    Hunger-/Durstsimulation.
 5. **Rest der API 1.14:** Der Server kann mehr, als die App schon nutzt. Offen sind:
    - `GET /v1/players` und `GET /v1/players/{id}`: Liste und Profil anderer Jellies.
-   - `POST /v1/stacks`, `POST /v1/stacks/members`, `DELETE /v1/stacks/current`: Stapel. Die Bühne zeigt sie
-     schon, im Pet fehlen Knöpfe und `stack.changed`.
    - `GET /v1/partner-emotes`: offene Aufforderungen nach einem Neustart wiederherstellen. Bis dahin gehen
      sie mit der App verloren und laufen beim Server aus.
    - Farbwahl für `colorable` Cosmetics aus `cosmetic_colors`, dazu das Einfärben der Modelle.

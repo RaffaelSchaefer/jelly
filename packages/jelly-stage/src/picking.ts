@@ -13,6 +13,12 @@ const BODY_RADIUS_SHARE = 0.5;
 const AXIS_SHARE = 0.5;
 /** Jellies at the back of a small window stay hittable. */
 const MIN_RADIUS_PIXELS = 8;
+/**
+ * A jelly up in a tower sits on the head of the one below. Its round lower end would reach over the
+ * face of that one, so it ends where its belly ends on screen, this share of its height below its
+ * feet, seen from the camera of the stage. Below that the visible jelly is the one below.
+ */
+const PERCHED_BOTTOM_SHARE = 0.28;
 
 /** Returns how far a point is from the line between two others. */
 function measureToSegment(point: ScreenPoint, start: ScreenPoint, end: ScreenPoint): number {
@@ -35,6 +41,8 @@ function isOnJelly(anchor: LabelAnchor, point: ScreenPoint): boolean {
     y: anchor.y - anchor.height * AXIS_SHARE,
   };
   const radius = Math.max(MIN_RADIUS_PIXELS, anchor.height * BODY_RADIUS_SHARE);
+  const isPerched = (anchor.tier ?? 0) > 0;
+  if (isPerched && point.y > anchor.y + anchor.height * PERCHED_BOTTOM_SHARE) return false;
   return measureToSegment(point, feet, top) <= radius;
 }
 

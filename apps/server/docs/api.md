@@ -27,6 +27,7 @@ Aktuelle Version: **1.39.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.40.0  | Ein Ausflug (`POST /trips/goto`) genau zum Punkt eines laufenden Stapels endet auf dem Stapel statt an der freien Stelle daneben, so klappt `POST /stacks/members` bei der Ankunft auch im Gedränge. Bots laufen zu einem Stapel, klettern bei der Ankunft und bauen Türme bis fünf Jellies |
 | 1.39.0  | Jelly-News: Programmpunkte der Art `news` starten das `gathering` `news` mit `presenter_id` und `news` (`top_xp`, `achievements`, `tallest_stack`, `next_item` der letzten Stunde). Regel `news_seconds`, von Hand über `POST /admin/api/lans/{id}/gathering` mit `kind: news`. Wege kennen `kind: news` |
 | 1.38.1  | Fehlerbehebungen: Wer auf den Stapel klettert, dessen Spitze er schon ist, bekommt ihn unverändert zurück statt `500`. Steigt jemand ab und der Stapel steht weiter, nennt `stack.changed` den ganzen Stapel, nur ein Stapel, der weg ist, kommt als `{"id"}`. `PATCH /admin/api/lans/{id}` beendet eine laufende LAN nur mit `stop_running`, sonst `409 lan_running` |
 | 1.38.0  | Neues Cosmetic im Shop, dauerhaft und einfärbbar (`colorable`): `bfg` (BFG, `hands`) für 10 Münzen. Die Farbe aus `cosmetic_colors` färbt ihr Plasma. „Ausverkauft“ verlangt damit 32 Shop-Cosmetics |
@@ -338,6 +339,8 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 
 - `POST /stacks` beginnt einen Stapel an der eigenen Stelle, `POST /stacks/members` mit `{"stack_id"}` klettert oben
   auf einen Stapel in der Nähe, sonst `409 too_far`. Beide antworten mit `{"stack","me"}`.
+- Ein Ausflug (`POST /trips/goto`) genau zu `x` und `y` eines laufenden Stapels endet nicht an der freien Stelle daneben,
+  sondern auf dem Stapel, so klappt `POST /stacks/members` bei der Ankunft.
 - `DELETE /stacks/current` steigt ab, die Jellies darüber rutschen nach. Ausflug und Folgen beenden den Stapelplatz,
   und wer klettert, beendet Ausflug und Folgen.
 - Laufende Stapel stehen als `stacks` in `GET /stage`, `member_ids` geht von unten nach oben. Nach `stack_seconds`
@@ -582,11 +585,14 @@ normale Spieler und halten sich an dieselben Regeln: Abklingzeiten, Grenzen und 
 lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Server `400 not_a_bot`.
 
 - **Von Hand:** `POST /admin/api/bots/{id}/actions` lässt einen Bot eine Aktion ausführen. Emote, Schild, Ziel eines
-  Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf einen laufenden Stapel in der Nähe oder
-  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler,
+  Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf den höchsten laufenden Stapel mit weniger
+  als fünf Jellies, ohne einen solchen beginnt der Bot einen, wo er steht. Ist der Stapel zu weit weg, macht der Bot einen
+  Ausflug dorthin und klettert, sobald er nah genug ist, das aber nur, solange automatische Bots laufen. Auf einem Stapel
+  bleibt `stack` ohne Wirkung. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler,
   und `purchase` kauft ein bezahlbares Cosmetic, das der Bot noch nicht hat.
 - **Automatisch:** Die ersten `auto_count` Bots der laufenden LAN handeln im Takt der Bewegung, jeder etwa alle 20
-  Sekunden. Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
+  Sekunden. Wer auf einem Stapel steht, macht keinen Ausflug und folgt niemandem, bis der Stapel auseinanderfällt.
+  Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
   loslaufen.
 
 ### Regeln ändern
