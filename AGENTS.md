@@ -148,7 +148,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `wizardTease.ts`, `wizardMove.ts`, `wizardFace.ts`, `crystal.ts` und `wizardTiming.ts` (`@jelly/scene/wizard-timing`,
   ohne three). Ein `wizard.glb` mit
   14 Teilen aus `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS` und nicht im Katalog. Nur sein Hut ist
-  auch das Cosmetic `wizard-hat` (`build_wizard_hat.py`, dieselbe Geometrie, der Kegel knickt früher um), das der Server je LAN einem
+  auch das Cosmetic `wizard-hat` (`build_wizard_hat.py`, dieselbe Geometrie in voller Höhe, die Spitze darf in die Sprechblase ragen), das der Server je LAN einem
   Jelly für ein paar Minuten leiht. Sein Verstand
   steht rein in `src/pet/`: `wizardBrain.ts` (wann), `wizardAgenda.ts` (Vorrang, Warten), `wizardMind.ts`
   (Gedächtnis), `wizardTease.ts` und `wizardHat.ts` (Nerven, Hut beim Server), `wizard.ts` und `wizardIdle.ts`
