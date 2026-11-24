@@ -2,7 +2,8 @@
 
 Only the wizard in the app's shop wears these parts. They are not in the server's catalog, so the
 app's `COSMETICS` and `COSMETIC_MODELS` leave them out; the shop loads them through
-`@jelly/scene/wizard`, which splits the file by the custom property `part` of every object.
+`@jelly/scene/wizard`, which splits the file by the custom property `part` of every object. His hat
+alone is also the cosmetic `wizard-hat`: `build_wizard_hat.py` builds it from `build_hat`.
 
     blender blender/cosmetics.blend --background --python blender/build_wizard.py -- [flags]
 
@@ -12,7 +13,7 @@ app's `COSMETICS` and `COSMETIC_MODELS` leave them out; the shop loads them thro
     --preview PATH  render the shop camera with the app's paint layers into PATH (PNG)
 
 Every run rebuilds the collection from the numbers below and removes the v1 collections
-(`wizard-hat`, `wizard-face`, `wizard-orb`); without `--save` the .blend on disk stays as it was.
+(`wizard-face`, `wizard-orb`); without `--save` the .blend on disk stays as it was.
 All geometry is written in Three.js coordinates (y up, +z front) and converted once in
 `shapes.to_blender`. Head and body parts sit on the reference pet. The orb parts are modelled
 around the ball's rest centre (the origin) and the wand in the frame of the right hand; the shop
@@ -57,7 +58,8 @@ from shapes import (  # noqa: E402
 )
 
 COLLECTION = "wizard"
-V1_COLLECTIONS = ("wizard-hat", "wizard-face", "wizard-orb")
+# `wizard-hat` was a v1 collection too; that name now belongs to the cosmetic from build_wizard_hat.py.
+V1_COLLECTIONS = ("wizard-face", "wizard-orb")
 SCRIPTS = ("build_wizard.py", "shapes.py", "preview.py")
 
 # Mirrors WIZARD_PARTS in packages/jelly-scene/src/wizard.ts: part -> (anchor, paint layer).
@@ -519,4 +521,6 @@ def main():
         sys.exit(1)
 
 
-main()
+# build_wizard_hat.py imports the hat from here, without building the whole wizard.
+if __name__ == "__main__":
+    main()

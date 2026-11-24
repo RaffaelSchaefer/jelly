@@ -35,6 +35,7 @@ const (
 	EventScheduleChanged   = "schedule.changed"
 	EventPartnerEmote      = "partner.emote"
 	EventPartnerInvite     = "partner_emote.updated"
+	EventWizardHatChanged  = "wizard_hat.changed"
 	maxEventsPerQueryRows  = 200
 )
 
@@ -51,6 +52,7 @@ type Event struct {
 func listGlobalEventTypes() []string {
 	return []string{
 		EventRulesChanged, EventStageChanged, EventGatheringChanged, EventScheduleChanged,
+		EventWizardHatChanged,
 	}
 }
 

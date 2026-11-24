@@ -52,10 +52,10 @@ function tryOn(me: Me, item: ShopItem | null): Equipped {
 /** Was der Zauberer über den Laden weiß. */
 function useWorld(shop: ShopControls, me: Me, items: readonly ShopItem[]): WizardWorld {
   const { coins_per_level: perLevel, xp_per_level: xpPerLevel } = shop.game.lan.rules;
-  const { open } = shop;
+  const { open, offset: serverOffset } = shop;
   return useMemo(
-    () => ({ me, items, open, perLevel, xpPerLevel }),
-    [me, items, open, perLevel, xpPerLevel],
+    () => ({ me, items, open, perLevel, xpPerLevel, serverOffset }),
+    [me, items, open, perLevel, xpPerLevel, serverOffset],
   );
 }
 
@@ -75,7 +75,7 @@ function ShopBody({ shop, me, ritual }: { shop: ShopControls; me: Me; ritual: Ri
   const [keep, setKeep] = useState<string | null>(null);
   const selected = items.find((item) => item.cosmetic.id === chosen) ?? null;
   const equipped = useMemo(() => tryOn(me, selected), [me, selected]);
-  const wizard = useWizard(shop.game.settings, useWorld(shop, me, items));
+  const wizard = useWizard(shop.game.settings, useWorld(shop, me, items), shop.stealHat);
   const { notice } = wizard;
   const { cues, director } = useStageCues();
   useShopMoments({ selected, me, notice, director });

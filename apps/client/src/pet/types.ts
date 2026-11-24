@@ -99,6 +99,8 @@ export interface Rules {
   xp_per_level: number;
   /** Münzen je Level-Aufstieg für den Shop. */
   coins_per_level: number;
+  /** So viele Sekunden trägt ein Jelly Funkelbarts gestohlenen Hut. */
+  wizard_hat_seconds: number;
 }
 
 /** Welche LAN läuft und welche kommt (`GET /v1/lans/current`). */
@@ -121,6 +123,14 @@ export interface EarnedAchievement {
   /** Bei Rekord-Erfolgen der beste Wert. */
   best?: number | null;
   record_unit?: string | null;
+}
+
+/** Wer Funkelbarts Hut trägt und bis wann (`WizardHat`). Das Ende meldet `wizard_hat.changed`. */
+export interface WizardHat {
+  holder_id: number;
+  holder_name: string;
+  /** Wann der Hut von selbst zurückgeht, als Server-Zeit. */
+  ends_at: number;
 }
 
 /** Stand eines Spielers vom Server (`PlayerState`). */
@@ -148,6 +158,11 @@ export interface Me {
   /** Wem das Jelly nachläuft. Das Ende meldet `follow.changed`, auch wenn die Zeit abläuft. */
   follow: StageFollow | null;
   trip: StageTrip | null;
+  /**
+   * Wer Funkelbarts Hut trägt, sonst `null`. Solange es das eigene Jelly ist, steht `wizard-hat`
+   * als `head` in `equipped`.
+   */
+  wizard_hat: WizardHat | null;
   lans_attended: number;
   badges: { slug: string; name: string }[];
   /** Cosmetics, die der Spieler tragen darf. */

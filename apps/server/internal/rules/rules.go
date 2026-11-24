@@ -47,6 +47,7 @@ const (
 	defaultStackSeconds          = 120
 	defaultHighlightSeconds      = 10
 	defaultHighlightCooldown     = 30
+	defaultWizardHatSeconds      = 300
 	defaultNewsSeconds           = 90
 	defaultRoomWidthMeters       = 22.0
 	defaultRoomDepthMeters       = 16.1
@@ -132,6 +133,8 @@ type PublicRules struct {
 	HighlightSeconds int64 `json:"highlight_seconds"`
 	// HighlightCooldownSeconds is the time between two highlights of one player.
 	HighlightCooldownSeconds int64 `json:"highlight_cooldown"`
+	// WizardHatSeconds is how long a jelly wears the hat it stole from the wizard in the shop.
+	WizardHatSeconds int64 `json:"wizard_hat_seconds"`
 	// NewsSeconds is how long the Jelly-News last when their point in the program has no end.
 	NewsSeconds int64 `json:"news_seconds"`
 	// RoomWidthMeters is the room from left to right in meters, the size of the real hall.
@@ -169,6 +172,7 @@ func DefaultRules() Rules {
 		StackMaxMembers:          NoStackLimit,
 		HighlightSeconds:         defaultHighlightSeconds,
 		HighlightCooldownSeconds: defaultHighlightCooldown,
+		WizardHatSeconds:         defaultWizardHatSeconds,
 		NewsSeconds:              defaultNewsSeconds,
 		RoomWidthMeters:          defaultRoomWidthMeters,
 		RoomDepthMeters:          defaultRoomDepthMeters,
@@ -277,6 +281,11 @@ func IsStackFull(gameRules Rules, members int) bool {
 // CalculateHighlightEnd returns when a highlight started now goes out.
 func CalculateHighlightEnd(gameRules Rules, now int64) int64 {
 	return now + gameRules.HighlightSeconds*millisPerSecond
+}
+
+// CalculateWizardHatEnd returns when a wizard hat stolen now goes back to the wizard.
+func CalculateWizardHatEnd(gameRules Rules, now int64) int64 {
+	return now + gameRules.WizardHatSeconds*millisPerSecond
 }
 
 // IsHighlightAllowed reports whether a player may highlight again. `lastAt` is 0 without one.

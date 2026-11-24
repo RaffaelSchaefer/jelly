@@ -4,7 +4,8 @@
  * Fenster geschieht. Ein einziger Zeitgeber wartet auf den nächsten Termin des Gehirns.
  *
  * Die Oberfläche meldet sich mit Hinweisen (`notice`). Er spricht mit seiner alten Stimme über den
- * Klang des Ladens (`shopSound.voiceRoute`), der das Ambiente unter seinen Sätzen duckt. Seine
+ * Klang des Ladens (`shopSound.voiceRoute`), der das Ambiente unter seinen Sätzen duckt. Verliert
+ * er seinen Hut, fragt der Laden den Server, ob das Jelly ihn tragen darf (`stealHat`). Seine
  * Geräusche spielt `shopSound`, seine Effekte `shopFx` und die Rolle (`wizardEffects.ts`). Er grüßt
  * 350 ms nachdem die Szene steht, spätestens 2,5 s nachdem die Daten da sind, und auch im
  * StrictMode nur einmal. In der Vorschau döst er mit `#shop-doesen` schon nach 4 s und schläft nach
@@ -117,10 +118,26 @@ function useVoiceSettings({ sound }: Settings) {
 }
 
 /**
+ * Fragt den Server, ob das Jelly den Hut tragen darf. `true`, wenn ein anderes Jelly schneller war.
+ * Ohne Server, ohne LAN oder bei einem Fehler `false`: Dann bleibt das Nerven im Fenster.
+ */
+export type StealHat = () => Promise<boolean>;
+
+/** Hält den jüngsten Rückruf, ohne dass `dispatch` sich ändert. */
+function useLatest<T>(value: T) {
+  const latest = useRef(value);
+  useEffect(() => {
+    latest.current = value;
+  }, [value]);
+  return latest;
+}
+
+/**
  * Das Gehirn mit seinem einen Zeitgeber. `dispatch` ist stabil und nimmt jedes Ereignis, auch den
  * fälligen Termin.
  */
-function useMind({ play, look }: Pick<WizardPlayer, "play" | "look">) {
+function useMind({ play, look }: Pick<WizardPlayer, "play" | "look">, stealHat: StealHat) {
+  const steal = useLatest(stealHat);
   const mind = useRef<WizardMind | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const nextAt = useRef(Infinity);
@@ -132,13 +149,14 @@ function useMind({ play, look }: Pick<WizardPlayer, "play" | "look">) {
       mind.current = result.mind;
       if (result.look) look(result.look);
       if (result.script) play(result.script, result.interrupt, now);
+      if (result.steal) void steal.current().then((taken) => taken && step({ kind: "hatTaken" }));
       nextAt.current = result.nextTickAt;
       window.clearTimeout(timer.current);
       if (!Number.isFinite(result.nextTickAt)) return;
       const wait = Math.min(TICK.maxMs, Math.max(TICK.minMs, result.nextTickAt - now));
       timer.current = window.setTimeout(() => step({ kind: "tick" }), wait);
     },
-    [play, look],
+    [play, look, steal],
   );
   useEffect(() => {
     // Nach dem Probe-Abbau im StrictMode wartet der Termin von vorher wieder.
@@ -169,8 +187,13 @@ function useDozingSound(dozing: boolean) {
  * Der Zauberer: was er sagt und tut, wie er dasteht und was die Kundschaft dazu macht.
  *
  * @param world - Was der Laden über Kundschaft und Waren weiß.
+ * @param stealHat - Fragt den Server, wenn er seinen Hut verliert.
  */
-export function useWizard(settings: Settings, world: WizardWorld): WizardControls {
+export function useWizard(
+  settings: Settings,
+  world: WizardWorld,
+  stealHat: StealHat,
+): WizardControls {
   const soundOn = useVoiceSettings(settings);
   const player = useWizardPlayer({
     voice,
@@ -178,7 +201,7 @@ export function useWizard(settings: Settings, world: WizardWorld): WizardControl
     onSfx: (sound) => void shopSound.sfx(sound),
     onEffect: showWizardEffect,
   });
-  const { dispatch } = useMind(player);
+  const { dispatch } = useMind(player, stealHat);
   const onSceneReady = useGreeting(dispatch, Boolean(world.me));
   useWizardSenses(dispatch, settings.reducedMotion ?? OS_REDUCED_MOTION, world);
   const notice = useCallback((next: WizardNotice) => dispatch(next), [dispatch]);

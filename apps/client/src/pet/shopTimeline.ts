@@ -100,6 +100,10 @@ export const CHARGE = { lateHold: 250 } as const;
  * schnalzt er zurück. `settle` nach einem Satz beruhigt sich sein Gesicht. Der Hut bleibt `hatBack`
  * fort, nach der gekränkten Antwort nur noch `sulk`. Hält den Zauberer etwas auf, versucht er es
  * alle `retry` wieder. In der Vorschau kommt der Hut mit `#shop-nerven` schon nach `previewBack`.
+ *
+ * Mit Server trägt ihn das Jelly, solange der Server sagt (`wizard_hat_seconds`), und `sulk` kürzt
+ * nichts. War ein anderes Jelly schneller und nennt der Stand keinen Träger, kommt der Hut nach
+ * `taken` zurück. Bleiben dem Hut beim Server weniger als `ending`, gilt er schon als zurück.
  */
 export const TEASE = {
   snatch: 500,
@@ -110,6 +114,8 @@ export const TEASE = {
   sulk: 3000,
   retry: 1000,
   previewBack: 9000,
+  taken: 1500,
+  ending: 1000,
 } as const;
 
 /** Ein Moment auf der Bühne: anprobieren, kaufen, anlegen oder ablegen. */

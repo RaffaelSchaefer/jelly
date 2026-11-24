@@ -114,6 +114,18 @@
   color: var(--parchment-shade, #dcc493);
   font: italic 500 clamp(8.5px, calc(var(--u) * 0.135), 11.5px) / 1.15 var(--book, Georgia, serif);
 }
+/* Wo sonst sein Hut sitzt: still, nur der Text zählt herunter. */
+.stage-hat-sign {
+  position: absolute;
+  translate: -50% 0;
+  width: max-content;
+  text-align: center;
+}
+.stage-hat-sign em {
+  font-size: clamp(9px, calc(var(--u) * 0.15), 13px);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
 @keyframes sign-sway {
   from {
     rotate: -1.5deg;

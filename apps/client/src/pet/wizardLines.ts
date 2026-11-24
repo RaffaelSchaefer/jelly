@@ -5,8 +5,9 @@
  * `wizardPick.ts`.
  *
  * Platzhalter in geschweiften Klammern: `{name}`, `{item}`, `{missing}`, `{coins}`, `{gained}`,
- * `{perLevel}`, `{levelUps}`, `{level}`, `{next}` und `{remaining}`. Kein Satz wird länger als 60
- * Zeichen, auch mit einem Namen aus 24 Zeichen. Jeder Anlass hat eine Fassung ohne Platzhalter mit
+ * `{perLevel}`, `{levelUps}`, `{level}`, `{next}`, `{remaining}` und `{holder}`. Kein Satz wird
+ * länger als 60 Zeichen, auch mit Namen aus 24 Zeichen für Kundschaft und Träger des Huts und der
+ * längsten Zeit, die er bis zur Rückkehr nennt. Jeder Anlass hat eine Fassung ohne Platzhalter mit
  * höchstens 40 Zeichen. Allgemeine Sätze kommen ohne Artikel vor `{item}` aus, Artikel stehen nur
  * in den Sätzen zu einem bestimmten Teil. Rabatte verspricht er nie: Die Preise macht der Server.
  *
@@ -44,7 +45,10 @@ export interface LineSlots {
   levelUps?: string;
   level?: string;
   next?: string;
+  /** Was noch fehlt: XP bis zum Level oder die Zeit, bis der Hut zurückkommt. */
   remaining?: string;
+  /** Wer seinen Hut trägt. */
+  holder?: string;
 }
 
 /** Eine Fassung. Mit Gewicht kommt sie seltener (unter 1) oder öfter (über 1) dran. */
@@ -234,6 +238,11 @@ export const WIZARD_LINES = {
     "Erst der Hut, dann der Bart. Hast du kein Herz?",
     "Kein Hut, kein Bartfrieden. Ich bin gekränkt.",
     "Jetzt bin ich aber gekränkt.",
+  ],
+  "tease.taken": [
+    "Meinen Hut hat {holder}! Noch {remaining}.",
+    "{holder} hat meinen Hut. Noch {remaining}!",
+    "Den hat schon ein anderes Jelly!",
   ],
   "tease.bald": ["Der Hut ist doch schon weg!", "Hier oben gibt es nichts mehr zu holen."],
   "tease.back": [

@@ -86,6 +86,11 @@ func listSocialAchievements() []Achievement {
 			Scope:       ScopeLAN, Metric: MetricGrantedDirectly, Goal: 1,
 		},
 		{
+			Key: AchievementHatThief, Title: "Langfinger",
+			Description: "Du hast Funkelbart den Hut geklaut.",
+			Scope:       ScopeLAN, Secret: true, Metric: MetricGrantedDirectly, Goal: 1,
+		},
+		{
 			Key: "matching", Title: "Partnerlook", Description: "Zufall? Wohl kaum.",
 			Scope: ScopeLAN, Secret: true, Metric: MetricSameColor, Goal: 1,
 		},

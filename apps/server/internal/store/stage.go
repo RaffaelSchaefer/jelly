@@ -97,7 +97,7 @@ func (store *Store) LoadStageState(ctx context.Context, now int64) (StageState, 
 	if err != nil {
 		return StageState{}, err
 	}
-	equipped, err := loadEquippedInLAN(queryCtx, store.readDB, lan.id)
+	equipped, err := loadEquippedInLAN(queryCtx, store.readDB, lan.id, now)
 	if err != nil {
 		return StageState{}, err
 	}

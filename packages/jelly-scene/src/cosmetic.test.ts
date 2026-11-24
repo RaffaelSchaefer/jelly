@@ -32,6 +32,12 @@ import { COSMETIC_MODEL_KEYS } from "./cosmeticKeys.ts";
 /** Oberkante des Sichtbereichs, darüber liegt die Sprechblase (`apps/client/blender/README.md`). */
 const BUBBLE_Y = 1.6;
 
+/**
+ * Der Zauberhut behält die Höhe des Zauberers: Lieber reicht die Spitze in die Blase, als dass er
+ * gestaucht wirkt.
+ */
+const ABOVE_BUBBLE = new Set(["wizard-hat"]);
+
 /** Lädt ein Modell, das es geben muss. */
 async function loadModel(key: string) {
   const model = await loadCosmetic(key);
@@ -60,7 +66,9 @@ describe("Cosmetic-Modelle", () => {
     expect(model.getAttribute("aGlass").count).toBe(count);
     expect(model.getAttribute("aNeon").count).toBe(count);
     model.computeBoundingBox();
-    expect(model.boundingBox!.max.y + COSMETIC_OUTLINE).toBeLessThan(BUBBLE_Y);
+    if (!ABOVE_BUBBLE.has(key)) {
+      expect(model.boundingBox!.max.y + COSMETIC_OUTLINE).toBeLessThan(BUBBLE_Y);
+    }
   });
 
   it("merkt sich jedes Teil mit eigener Farbe und eigenem y-Bereich", async () => {

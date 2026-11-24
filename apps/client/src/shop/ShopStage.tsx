@@ -113,7 +113,7 @@ export default function ShopStage({
       </div>
       <StageCounter />
       <StageAir />
-      <StageSigns open={shop.open} shown={show.equipped} worn={me.equipped} />
+      <StageSigns open={shop.open} shown={show.equipped} me={me} offset={shop.offset} />
       <StageBubble said={wizard.said} />
       <ShopFx
         frameLimit={settings.frameLimit}

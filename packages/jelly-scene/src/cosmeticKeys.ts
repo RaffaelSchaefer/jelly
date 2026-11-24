@@ -46,5 +46,6 @@ export const COSMETIC_MODEL_KEYS: readonly string[] = [
   "schnoerbi-mask",
   "snail-shell",
   "sprout",
+  "wizard-hat",
   "yarn-ball",
 ];

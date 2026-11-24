@@ -20,6 +20,7 @@ function listTestRules(): GameRules {
     highlight_cooldown: 0,
     emote_cooldown: 0,
     partner_invite_seconds: 30,
+    wizard_hat_seconds: 30,
   };
 }
 
@@ -53,7 +54,8 @@ export function createTestRulesPanel(lan: LANSummary, actions: LANActions): HTML
     createElement(
       "p",
       "hint",
-      "Kurze Testzeiten verkürzen Ausflug, Folgen, Stapel, Theke und Hervorheben auf Sekunden und " +
+      "Kurze Testzeiten verkürzen Ausflug, Folgen, Stapel, Theke, Hervorheben und Funkelbarts Hut " +
+        "auf Sekunden und " +
         "schalten Abklingzeiten ab. Zurücksetzen stellt alle Regeln auf die Standardwerte, auch " +
         "eigene Einstellungen.",
     ),

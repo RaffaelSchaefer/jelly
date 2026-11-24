@@ -141,7 +141,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   die Börse `purse.ts`, das Siegel `sealCeremony.ts`, der Brief `shopLore.ts`. In der Browser-Vorschau neben `/#join`:
   `/shop.html` mit `?optimized`, `?ruhig`, `?fps=30` und `#shop-pleite`, `#shop-reich`, `#shop-alles`, `#shop-zu`,
   `#shop-leer`, `#shop-laden`, `#shop-fehler`, `#shop-langsam`, `#shop-muenzen`, `#shop-nacht`, `#shop-doesen`,
-  `#shop-runen`, `#shop-anprobe`, `#shop-zauber` und `#shop-nerven` (`PREVIEW_SHOP_HASHES` in `src/pet/preview.ts`). Münzen gibt es je
+  `#shop-runen`, `#shop-anprobe`, `#shop-zauber`, `#shop-nerven` und `#shop-hutlos` (`PREVIEW_SHOP_HASHES` in `src/pet/preview.ts`). Münzen gibt es je
   Level-Aufstieg (`coins_per_level`), gekauft wird mit `POST /v1/purchases`. Der Aufstieg (`src/LevelUp.tsx`) zeigt die
   Münzen und führt zum Shop. Wie die Karte vertritt der Shop das Pet, solange er offen ist.
 - Bühne und Takt des Ladens: Kamera, Plätze und benannte Punkte stehen in `src/pet/shopStage.ts`, DOM und WebGL rechnen
@@ -165,17 +165,26 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (Gesten, Blick, Brauen, Schnurrbart, Kugel). Im Paket `wizard.ts` (`@jelly/scene/wizard`), `wizardGestures.ts`,
   `wizardTease.ts`, `wizardMove.ts`, `wizardFace.ts`, `crystal.ts` und `wizardTiming.ts` (`@jelly/scene/wizard-timing`,
   ohne three). Ein `wizard.glb` mit
-  14 Teilen aus `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS` und nicht im Katalog. Sein Verstand
-  steht rein in `src/pet/`: `wizardBrain.ts` (wann), `wizardMind.ts` (Gedächtnis), `wizard.ts` und `wizardIdle.ts`
+  14 Teilen aus `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS` und nicht im Katalog. Nur sein Hut ist
+  auch das Cosmetic `wizard-hat` (`build_wizard_hat.py`, dieselbe Geometrie in voller Höhe, die Spitze darf in die Sprechblase ragen), das der Server je LAN einem
+  Jelly für ein paar Minuten leiht. Sein Verstand
+  steht rein in `src/pet/`: `wizardBrain.ts` (wann), `wizardAgenda.ts` (Vorrang, Warten), `wizardMind.ts`
+  (Gedächtnis), `wizardTease.ts` und `wizardHat.ts` (Nerven, Hut beim Server), `wizard.ts` und `wizardIdle.ts`
   (Skripte), `wizardScripts.ts`
   (Typen, Takt), `wizardPick.ts`, `wizardLines.ts` (Sätze), `wizardVoice.ts`, `wizardClips.ts`, `voiceTimbre.ts`,
   `wizardFaceRig.ts`. Abgespielt in `src/shop/useWizard.ts`, `useWizardPlayer.ts`, `useWizardSenses.ts` und
   `wizardEffects.ts`. `src/pet/contracts.test.ts` hält Paket, Verstand, Bühne und Klang beieinander.
 - Den Zauberer nerven: Klicks auf Hut und Bart treffen zwei Knöpfe in `src/shop/StageSigns.tsx` (`data-wizard-tease`,
   Flächen `TEASE_SPOTS` in `src/pet/shopStage.ts`). `src/pet/wizardTease.ts` zählt: drei Abwehren, dann ist der Hut
-  weg, danach drei Züge am Bart sind „genug genervt“ (`fedUp`). Der Stand lebt nur im Fenster, gemeldet wird nichts.
-  Der Hut ist ein Stand der Haltung (`WizardPose.hat`), keine Geste. Zeiten in `TEASE` (`src/pet/shopTimeline.ts`)
-  und `TEASE_TIMING` im Paket. In der Browser-Vorschau kommt der Hut mit `/shop.html#shop-nerven` schneller zurück.
+  weg, danach drei Züge am Bart sind „genug genervt“ (`fedUp`). Der Stand lebt im Fenster, nur der geklaute Hut geht
+  an den Server (`POST /v1/wizard-hat`, Befehl `steal_wizard_hat`, `useStealHat` in `src/shop/useShop.ts`): Dann trägt
+  ihn das Jelly `wizard_hat_seconds` lang, und `me.wizard_hat` bestimmt die Rückkehr (`src/pet/wizardHat.ts`,
+  `syncServerHat`). Trägt ihn ein anderes Jelly, steht der Zauberer ohne Hut da, das Schild `src/shop/HatSign.tsx` zählt
+  herunter. `wizard_hat.changed` geht an alle Fenster, schließt aber nichts. Ohne LAN oder Netz bleibt alles im Fenster.
+  Der Hut ist ein Stand der Haltung (`WizardPose.hat`), keine Geste. Hut und Server ändert nur das Gehirn
+  (`wizardBrain.ts`, Ereignisse `hatServer` und `hatTaken`). Zeiten in `TEASE` (`src/pet/shopTimeline.ts`) und
+  `TEASE_TIMING` im Paket. In der Browser-Vorschau klaut `/shop.html#shop-nerven` den Hut wie mit Server und gibt ihn
+  schneller zurück, mit `#shop-hutlos` trägt ihn gerade Mo.
 - Updates der App: `src-tauri/src/commands/update.rs` (`tauri-plugin-updater`, Liste `latest.json` am Release auf
   GitHub, Fortschritt per `Channel`), `src/useUpdate.ts`, `src/UpdateNotice.tsx`, `src/UpdateBanner.tsx` (Rakete als
   SVG in der Jelly-Farbe) und `src/update.css` (Karte über dem Dock, für die Bühne Panel `update`, in der

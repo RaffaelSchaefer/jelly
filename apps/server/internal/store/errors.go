@@ -88,6 +88,8 @@ var (
 	ErrInvalidInviteAnswer = errors.New("invalid invite answer")
 	// ErrLANFull reports that a LAN reached its player limit.
 	ErrLANFull = errors.New("LAN is full")
+	// ErrWizardHatTaken reports that another jelly wears the hat of the wizard right now.
+	ErrWizardHatTaken = errors.New("wizard hat is taken")
 	// ErrInvalidInput reports admin input that is empty or inconsistent.
 	ErrInvalidInput = errors.New("invalid input")
 )

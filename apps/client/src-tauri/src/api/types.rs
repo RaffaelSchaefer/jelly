@@ -41,6 +41,9 @@ pub struct Rules {
     /// Münzen je Level-Aufstieg für den Shop. Ältere Server kennen keinen Shop.
     #[serde(default)]
     pub coins_per_level: i64,
+    /// So viele Sekunden trägt ein Jelly Funkelbarts gestohlenen Hut. Ältere Server kennen ihn nicht.
+    #[serde(default)]
+    pub wizard_hat_seconds: i64,
 }
 
 /// Antwort von `GET /v1/lans/current`.
@@ -142,6 +145,17 @@ pub struct Follow {
     pub ends_at: i64,
 }
 
+/// Wer Funkelbarts Hut gerade trägt und bis wann (`WizardHat`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WizardHat {
+    /// Das Jelly, das ihn trägt.
+    pub holder_id: i64,
+    /// Sein Name, zur Anzeige im Shop.
+    pub holder_name: String,
+    /// Wann der Hut von selbst zurückgeht, als Server-Zeit. `wizard_hat.changed` meldet auch das.
+    pub ends_at: i64,
+}
+
 /// Stand eines Spielers (`PlayerState`), wie `GET /v1/players/me` und die meisten Aktionen ihn
 /// liefern.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -183,6 +197,9 @@ pub struct Me {
     /// Laufender Ausflug.
     #[serde(default)]
     pub trip: Option<Trip>,
+    /// Wer Funkelbarts Hut trägt, `None` ohne Träger oder außerhalb einer laufenden LAN.
+    #[serde(default)]
+    pub wizard_hat: Option<WizardHat>,
     /// Anzahl besuchter LANs.
     pub lans_attended: i64,
     /// Ein Abzeichen je besuchter LAN.

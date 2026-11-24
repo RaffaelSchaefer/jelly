@@ -119,7 +119,7 @@ func removeLockedCosmetics(
 	})
 }
 
-// loadEquipped returns what one player wears by slot.
+// loadEquipped returns what one player chose to wear by slot, without the hat of the wizard.
 func loadEquipped(
 	ctx context.Context, database querier, playerID int64,
 ) (map[string]EquippedCosmetic, error) {
@@ -140,8 +140,27 @@ func loadEquipped(
 	return map[string]EquippedCosmetic{}, nil
 }
 
-// loadEquippedInLAN returns what all players of a LAN wear, by player and slot.
+// loadEquippedInLAN returns what all players of a LAN wear, by player and slot, with the hat of
+// the wizard on its holder.
 func loadEquippedInLAN(
+	ctx context.Context, database querier, lanID, now int64,
+) (map[int64]map[string]EquippedCosmetic, error) {
+	equipped, err := loadStoredEquippedInLAN(ctx, database, lanID)
+	if err != nil {
+		return nil, err
+	}
+	hat, err := loadRunningWizardHat(ctx, database, lanID, now)
+	if err != nil {
+		return nil, err
+	}
+	if hat != nil {
+		equipped[hat.HolderID] = wearWizardHat(equipped[hat.HolderID])
+	}
+	return equipped, nil
+}
+
+// loadStoredEquippedInLAN returns what the players of a LAN chose to wear themselves.
+func loadStoredEquippedInLAN(
 	ctx context.Context, database querier, lanID int64,
 ) (map[int64]map[string]EquippedCosmetic, error) {
 	const selectLANEquippedSQL = `SELECT c.player_id, c.slot, c.cosmetic_key, c.color

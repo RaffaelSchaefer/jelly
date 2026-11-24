@@ -12,7 +12,7 @@ use serde_json::Value;
 use tauri::{AppHandle, State};
 
 use crate::{
-    api::{AccessBody, Api, EquipBody, Profile},
+    api::{is_wizard_hat_taken, AccessBody, Api, EquipBody, Profile},
     error::{Error, Result},
     events,
     pet::{poke_due, Action, Color, Settings},
@@ -54,6 +54,16 @@ pub struct RedeemResult {
 pub struct AccessResult {
     /// Ob das Konto den Sitz des Codes bekommen hat. Sonst weist die Orga den Platz von Hand zu.
     seat_assigned: bool,
+    /// Neuer Stand.
+    game: Game,
+}
+
+/// Ergebnis von [`steal_wizard_hat`].
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WizardHatResult {
+    /// Ob ein anderes Jelly schneller war (`wizard_hat_taken`). Dann nennt `game` den Träger.
+    taken: bool,
     /// Neuer Stand.
     game: Game,
 }
@@ -302,6 +312,37 @@ pub async fn purchase_cosmetic(
     let answer = session.api.purchase(&key).await?;
     session.set_me(answer.me);
     Ok(session.game())
+}
+
+/// Stiehlt Funkelbart im Shop den Hut. War ein anderes Jelly schneller, ist das kein Fehler: Der
+/// Stand wird neu gelesen und nennt den Träger, `taken` sagt es dem Shop.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler, etwa `no_active_lan` oder `not_joined`.
+#[tauri::command]
+pub async fn steal_wizard_hat(
+    app: AppHandle,
+    state: State<'_, GameState>,
+) -> Result<WizardHatResult> {
+    let mut slot = state.0.lock().await;
+    let session = session(&app, &mut slot).await?;
+    session.registered()?;
+    let taken = match session.api.steal_wizard_hat().await {
+        Ok(me) => {
+            session.set_me(me);
+            false
+        }
+        Err(error) if is_wizard_hat_taken(&error) => {
+            session.refresh(&app).await?;
+            true
+        }
+        Err(error) => return Err(error),
+    };
+    Ok(WizardHatResult {
+        taken,
+        game: session.game(),
+    })
 }
 
 /// Übernimmt Größe und Bewegung. Bleibt auf dem Gerät.

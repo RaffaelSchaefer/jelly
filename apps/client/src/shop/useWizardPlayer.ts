@@ -199,12 +199,14 @@ const gestureCue: CueHandler<"gesture"> = (hands, cue, time) => {
 
 /**
  * Ein Blick, eine Stimmung oder der Hut. Wer einschläft, schläft ab jetzt im Takt seines Atems. Der
- * Hut geht oder kommt ab jetzt, wie lange das dauert, weiß die Szene.
+ * Hut geht oder kommt ab jetzt, wie lange das dauert, weiß die Szene. Mit `hatInstant` ist er schon
+ * fort, ohne Flug.
  */
 function lookAt(hands: Hands, look: WizardLook, at: number) {
   const pose = hands.pose.current;
   if (look.gaze) pose.gaze = look.gaze;
-  if (look.hatOff !== undefined) pose.hat = { off: look.hatOff, at };
+  if (look.hatOff !== undefined)
+    pose.hat = { off: look.hatOff, at: look.hatInstant ? -Infinity : at };
   if (look.mood) {
     if (look.mood !== "asleep") pose.asleepSince = null;
     else if (pose.mood !== "asleep") pose.asleepSince = at;

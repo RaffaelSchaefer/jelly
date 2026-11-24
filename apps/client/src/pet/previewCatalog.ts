@@ -290,6 +290,15 @@ export const PREVIEW_CATALOG: Catalog = {
     { ...WARE, key: "nail-sword", name: "Ritternagel", slot: "hands", price: 3, colorable: false },
     // Die große Plasmakanone, das Plasma in der Farbe des Trägers.
     { ...WARE, key: "bfg", name: "BFG", slot: "hands", price: 10 },
+    // Der Hut des Zauberers, nur geliehen.
+    {
+      key: "wizard-hat",
+      name: "Zauberhut",
+      scope: "lan",
+      slot: "head",
+      colorable: false,
+      unlock: "none",
+    },
   ],
   cosmetic_slots: [
     { key: "head", label: "Kopf" },

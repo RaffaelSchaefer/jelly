@@ -151,6 +151,16 @@ export const equipCosmetic = (slot: CosmeticSlot, key: string | null, color?: st
 /** Kauft ein Cosmetic aus dem Shop, ohne es anzulegen (`purchase_cosmetic`). */
 export const purchaseCosmetic = (key: string) => invoke<Game>("purchase_cosmetic", { key });
 
+/** Ergebnis des Griffs nach Funkelbarts Hut. */
+export interface WizardHatResult {
+  /** Ein anderes Jelly war schneller. Dann nennt `game` den Träger. */
+  taken: boolean;
+  game: Game;
+}
+
+/** Stiehlt Funkelbart im Shop den Hut (`steal_wizard_hat`). */
+export const stealWizardHat = () => invoke<WizardHatResult>("steal_wizard_hat");
+
 /** Übernimmt Größe und Bewegung, nur auf diesem Gerät (`update_settings`). */
 export const updateSettings = (settings: Settings) => invoke<Game>("update_settings", { settings });
 

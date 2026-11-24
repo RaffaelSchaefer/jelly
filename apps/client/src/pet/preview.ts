@@ -3,28 +3,38 @@
  *
  * `PREVIEW_CATALOG` ist ein Auszug aus `GET /v1/catalog`, `PREVIEW_ME` ein Spieler auf Level 3 mit
  * drei Münzen. Hashes wie `#join` oder `#shop-pleite` holen andere Zustände in den Browser, die
- * Abfragen `?optimized`, `?ruhig` und `?fps=30` andere Einstellungen.
+ * Abfragen `?optimized`, `?ruhig` und `?fps=30` andere Einstellungen. Mit `#shop-nerven` spielt die
+ * Vorschau den Diebstahl von Funkelbarts Hut, mit `#shop-hutlos` trägt ihn gerade Mo.
  *
  * @module
  */
 
+import { withEquipped } from "./cosmetics";
 import { FRAME_RATE } from "./frameRate";
 import { PREVIEW_CATALOG } from "./previewCatalog";
 import {
   PET_SIZE,
   VOLUME,
+  type Equipped,
   type Game,
   type Me,
   type PetColor,
   type Rules,
   type ServerEvent,
   type Settings,
+  type WizardHat,
 } from "./types";
+import { WIZARD_HAT_KEY } from "./wizardHat";
 
 export { PREVIEW_CATALOG };
 
 /** Die Standardregeln des Servers, soweit die App sie kennt. */
-export const PREVIEW_RULES: Rules = { near_distance: 6, xp_per_level: 100, coins_per_level: 1 };
+export const PREVIEW_RULES: Rules = {
+  near_distance: 6,
+  xp_per_level: 100,
+  coins_per_level: 1,
+  wizard_hat_seconds: 300,
+};
 
 /** Ein Spieler auf Level 3, mitten in einer laufenden LAN. */
 export const PREVIEW_ME: Me = {
@@ -45,6 +55,7 @@ export const PREVIEW_ME: Me = {
   sign: null,
   follow: null,
   trip: null,
+  wizard_hat: null,
   lans_attended: 1,
   badges: [],
   cosmetics: ["headset", "headset-neutral", "beanie"],
@@ -110,6 +121,7 @@ export const PREVIEW_SHOP_HASHES = [
   "#shop-anprobe",
   "#shop-zauber",
   "#shop-nerven",
+  "#shop-hutlos",
 ] as const;
 
 /** Ein Hash aus {@link PREVIEW_SHOP_HASHES}. */
@@ -119,6 +131,14 @@ export type PreviewShopHash = (typeof PREVIEW_SHOP_HASHES)[number];
 const SHOP_KEYS = PREVIEW_CATALOG.cosmetics
   .filter((entry) => entry.unlock === "shop")
   .map((entry) => entry.key);
+
+/** So lange trägt Mo in `#shop-hutlos` den Hut noch, wenn der Laden aufgeht. */
+const PREVIEW_HAT_MS = 4 * 60_000;
+
+/** Funkelbarts Hut bei einem anderen Jelly, bis `ends_at` in der Uhr des Geräts. */
+function foreignHat(): WizardHat {
+  return { holder_id: 7, holder_name: "Mo", ends_at: Date.now() + PREVIEW_HAT_MS };
+}
 
 /** Der Stand mit geändertem Jelly. */
 function withMe(game: Game, patch: Partial<Me>): Game {
@@ -138,6 +158,7 @@ const SHOP_GAMES: Readonly<Record<string, (game: Game) => Game>> = {
     lan: { ...game.lan, current: null, joined: null },
   }),
   "#shop-leer": (game) => ({ ...game, me: null }),
+  "#shop-hutlos": (game) => withMe(game, { wizard_hat: foreignHat() }),
 };
 
 /**
@@ -188,6 +209,8 @@ export interface PreviewShop {
   purchaseError: string | null;
   /** Nach so vielen Millisekunden kommen eine Münze und ein Level dazu, `null` nie. */
   giftMs: number | null;
+  /** Ob der geklaute Hut wie beim Server auf den Kopf des Jellys geht. */
+  stealsHat: boolean;
 }
 
 /** So verhält sich der Laden ohne Hash: Ein Kauf braucht eine Viertelsekunde. */
@@ -196,6 +219,7 @@ const PREVIEW_SHOP: PreviewShop = {
   purchaseMs: 250,
   purchaseError: null,
   giftMs: null,
+  stealsHat: false,
 };
 
 /** Was ein Hash daran ändert. */
@@ -204,6 +228,7 @@ const SHOP_BEHAVIOUR: Readonly<Record<string, Partial<PreviewShop>>> = {
   "#shop-fehler": { purchaseMs: 400, purchaseError: "Der Server hat den Kauf abgelehnt." },
   "#shop-langsam": { purchaseMs: 2000 },
   "#shop-muenzen": { giftMs: 5000 },
+  "#shop-nerven": { stealsHat: true },
 };
 
 /** Wie sich der Zauberladen in der Vorschau mit `hash` verhält. */
@@ -251,4 +276,25 @@ export function previewCoinGift(game: Game): Game {
   if (!me) return game;
   const coins = me.coins + game.lan.rules.coins_per_level;
   return { ...game, me: { ...me, coins, level: me.level + 1 } };
+}
+
+/**
+ * Der Diebstahl in der Vorschau (`#shop-nerven`): Das Jelly trägt den Hut bis `endsAt` in der Uhr
+ * des Geräts, wie es der Server über `equipped` zeigt.
+ */
+export function previewHatStolen(game: Game, endsAt: number): Game {
+  const { me } = game;
+  if (!me) return game;
+  const wizard_hat = { holder_id: me.id, holder_name: me.name, ends_at: endsAt };
+  return withMe(game, { wizard_hat, equipped: withEquipped(me.equipped, "head", WIZARD_HAT_KEY) });
+}
+
+/** Der Hut geht in der Vorschau zurück, und das Jelly trägt wieder `head` wie zuvor. */
+export function previewHatBack(game: Game, head?: Equipped[string]): Game {
+  const { me } = game;
+  if (!me) return game;
+  const back = (key: string | null) =>
+    withEquipped(me.equipped, "head", key, head?.color ?? undefined);
+  const equipped = me.equipped.head?.key === WIZARD_HAT_KEY ? back(head?.key ?? null) : me.equipped;
+  return withMe(game, { wizard_hat: null, equipped });
 }

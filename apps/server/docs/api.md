@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.39.0**
+Aktuelle Version: **1.41.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.39.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.41.0  | Funkelbarts Hut: `POST /wizard-hat` stiehlt ihn für `wizard_hat_seconds` (Standard 300), je LAN trägt ihn ein Jelly. `wizard_hat` im Stand, `wizard-hat` (Zauberhut, `head`, `unlock: none`) in `equipped`, Ereignis `wizard_hat.changed`, Fehler `409 wizard_hat_taken`, geheimes Achievement `hat-thief` |
 | 1.40.0  | Ein Ausflug (`POST /trips/goto`) genau zum Punkt eines laufenden Stapels endet auf dem Stapel statt an der freien Stelle daneben, so klappt `POST /stacks/members` bei der Ankunft auch im Gedränge. Bots laufen zu einem Stapel, klettern bei der Ankunft und bauen Türme bis fünf Jellies |
 | 1.39.0  | Jelly-News: Programmpunkte der Art `news` starten das `gathering` `news` mit `presenter_id` und `news` (`top_xp`, `achievements`, `tallest_stack`, `next_item` der letzten Stunde). Regel `news_seconds`, von Hand über `POST /admin/api/lans/{id}/gathering` mit `kind: news`. Wege kennen `kind: news` |
 | 1.38.1  | Fehlerbehebungen: Wer auf den Stapel klettert, dessen Spitze er schon ist, bekommt ihn unverändert zurück statt `500`. Steigt jemand ab und der Stapel steht weiter, nennt `stack.changed` den ganzen Stapel, nur ein Stapel, der weg ist, kommt als `{"id"}`. `PATCH /admin/api/lans/{id}` beendet eine laufende LAN nur mit `stop_running`, sonst `409 lan_running` |
@@ -146,6 +147,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 409    | `emote_cooldown`, `report_cooldown`       | Zu früh wiederholt                        |
 | 409    | `report_limit`      | Limit erreicht, später erneut versuchen   |
 | 409    | `stack_full`, `too_far`                   | Stapel voll, oder die Jellies stehen zu weit auseinander |
+| 409    | `wizard_hat_taken`                        | Funkelbarts Hut trägt gerade ein anderes Jelly |
 | 409    | `partner_emote_open`, `partner_emote_closed` | Aufforderung läuft schon oder ist vorbei |
 | 409    | `area_not_assignable`                     | In diesem Bereich kann kein Jelly stehen  |
 | 429    | `rate_limited`                            | Zu viele Versuche                         |
@@ -199,6 +201,7 @@ kommt `schedule.changed`.
   "sign": null,
   "trip": null,
   "follow": { "player_id": 7, "ends_at": 1795001800000 },
+  "wizard_hat": null,
   "lans_attended": 1,
   "badges": [{ "slug": "ucb-2026", "name": "UCB LAN 2026" }],
   "cosmetics": [],
@@ -211,7 +214,7 @@ kommt `schedule.changed`.
   `GET /lans/current`. `xp` und `level` gelten für diese LAN, `total_xp` über alle LANs.
 - `coins` sind die Münzen für den Shop. Jeder Level-Aufstieg zahlt `coins_per_level`, sie gelten
   je LAN und sind außerhalb einer aktiven LAN `0`.
-- `next_poke_at`, `reports`, `sign`, `trip` und `follow` sind außerhalb einer aktiven LAN `null`.
+- `next_poke_at`, `reports`, `sign`, `trip`, `follow` und `wizard_hat` sind außerhalb einer aktiven LAN `null`.
 - `server_time` gilt für Countdowns statt der Uhr des Geräts. `food_ready_at` und `drink_ready_at`
   sind 0, wenn noch nichts gemeldet wurde.
 - `cosmetics` sind die Schlüssel, die der Spieler tragen darf. Wie man einen Eintrag bekommt, sagt `unlock` im Katalog:
@@ -281,6 +284,7 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `POST /highlights`        | `{"player_id"}`                            | Stand                          |
 | `POST /trips/follow`      | `{"player_id"}`                            | Stand                          |
 | `DELETE /trips/current`   |                                            | Stand                          |
+| `POST /wizard-hat`        |                                            | Stand, siehe [Funkelbarts Hut](#funkelbarts-hut) |
 
 Ein neues Secret gibt es nur in der Antwort von `POST /auth/redeem` und `POST /auth/recover`. `GET /catalog` liefert `colors`,
 `emotes`, `partner_emotes`, `signs`, `cosmetics`, `cosmetic_slots`, `cosmetic_colors` und `achievements`, geheime Achievements fehlen dort.
@@ -353,6 +357,19 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
   Danach folgt das nächste erst nach `highlight_cooldown`, sonst `409 highlight_cooldown`.
 - Wird die Spitze eines Stapels mit mindestens zwei Jellies hervorgehoben, bekommen alle darauf `lighthouse` und die
   Spitze zusätzlich `lighthouse-light`.
+
+### Funkelbarts Hut
+
+- Im Shop lässt sich dem Zauberer der Hut stehlen. `POST /wizard-hat` ohne Körper setzt ihn dem Jelly für
+  `wizard_hat_seconds` auf. Je LAN trägt ihn höchstens ein Jelly, trägt ihn gerade ein anderes, folgt
+  `409 wizard_hat_taken`. Wer ihn schon trägt, bekommt den Stand ohne Änderung, die Zeit verlängert sich nicht.
+- `wizard_hat` im Stand nennt `{"holder_id","holder_name","ends_at"}` oder `null`, solange ihn niemand trägt.
+- Solange es ihn trägt, steht `wizard-hat` als `head` in `equipped`, im Stand, im Profil und auf der Bühne. Das eigene
+  Cosmetic für den Kopf bleibt gespeichert und ist danach wieder da. Freischalten lässt sich `wizard-hat` nicht, ohne
+  Preis der Orga antwortet `PUT /cosmetics/equipped` mit `409 cosmetic_locked`.
+- Den Diebstahl und das Ende meldet `wizard_hat.changed` an alle Apps. Nach `wizard_hat_seconds` geht der Hut von selbst
+  zurück. Ein ausgeblendetes Jelly kann ihn nicht nehmen, und trägt ihn eines, gilt der Hut als frei.
+- Der erste Diebstahl einer LAN bringt das geheime Achievement `hat-thief` (Langfinger).
 
 ## Bühne
 
@@ -465,7 +482,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 - **Themen:** `?topics=events`, `?topics=moves` oder `?topics=events,moves` wählen aus, ohne Angabe kommt beides.
 - **Nur Eigenes:** `?topics=own` ist für die App ohne offene Karte. Sie bekommt dann nur Ereignisse, deren `player_id`
   sie selbst ist, solche, die sie im Payload nennen (`player_id` bei `player.removed`, `partner_id` und `from_id` bei
-  Partner-Emotes), und die für alle: `rules.changed`, `stage.changed`, `gathering.changed`, `schedule.changed`. Ausgelassene Ereignisse
+  Partner-Emotes), und die für alle: `rules.changed`, `stage.changed`, `gathering.changed`, `schedule.changed`, `wizard_hat.changed`. Ausgelassene Ereignisse
   rücken `Last-Event-ID` trotzdem weiter, über eine Nachricht nur mit `id`. Eine Bühne bekommt auf `own`
   `400 invalid_request`. Die Karte öffnet weiter den vollen Stream.
   Unbekannte Themen ergeben `400 invalid_request`.
@@ -497,6 +514,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `rules.changed`                                   | Regeln geändert, `GET /lans/current` neu lesen |
 | `schedule.changed`                                | Zeitplan geändert, `GET /lans/current/schedule` neu lesen |
 | `gathering.changed`                               | Essens-Event oder Siegerehrung, Stand neu laden |
+| `wizard_hat.changed`                              | Funkelbarts Hut gestohlen oder zurück, Stand neu laden |
 
 Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` hängt vom Typ ab:
 
@@ -520,8 +538,9 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 | `highlight`                                       | Spieler     | `{"target_id","ends_at","cosmetic_key"}` |
 | `stage.changed`, `rules.changed`, `schedule.changed` | `null`   | `{}`                              |
 | `gathering.changed`                               | `null`      | Das Gathering, `null` am Ende     |
+| `wizard_hat.changed`                              | Träger      | `{"holder_id","ends_at","worn"}`, `worn` ist `false` am Ende |
 
-Ausflug, Folgen, Stapel und Gathering melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
+Ausflug, Folgen, Stapel, Gathering und Funkelbarts Hut melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
 Sekunde. Eine App braucht dafür keine eigenen Timer. Das Bild bleibt schon vorher überall gleich, weil alle Wege vom Server kommen.
 
 `source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`. Ein Level-Aufstieg zahlt
@@ -631,6 +650,7 @@ Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, 
 | `stack_max_members`      | 0 bis 1000       | Jellies pro Stapel, 0 heißt ohne Grenze                     |
 | `highlight_seconds`      | 1 bis 2592000    | So lange leuchtet ein hervorgehobenes Jelly                 |
 | `highlight_cooldown`     | 0 bis 2592000    | Zeit zwischen zwei Hervorhebungen, 0 schaltet sie ab        |
+| `wizard_hat_seconds`     | 1 bis 2592000    | So lange trägt ein Jelly Funkelbarts gestohlenen Hut        |
 | `news_seconds`           | 1 bis 2592000    | So lange laufen Jelly-News ohne eigenes Ende im Programm    |
 | `room_width`             | 1 bis 1000       | Breite der echten Halle in Metern                           |
 | `room_depth`             | 1 bis 1000       | Tiefe der echten Halle in Metern                            |

@@ -28,7 +28,8 @@ export interface Cosmetic {
 
 /**
  * Alle Cosmetics, die die App darstellen kann. `golden-cup` gibt es nur als Auszeichnung,
- * `party-hat` und `bat-wings` über Event-Codes.
+ * `party-hat` und `bat-wings` über Event-Codes. `wizard-hat` leiht der Server für ein paar Minuten
+ * dem Jelly, das ihn dem Zauberer im Shop geklaut hat.
  */
 export const COSMETICS: Cosmetic[] = [
   { id: "headset", name: "Headset", slot: "head", icon: "teddyheadset" },
@@ -48,6 +49,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: "nasal-helmet", name: "Nasalhelm", slot: "head", icon: "helmet" },
   { id: "octopus", name: "Chibi-Oktopus", slot: "head", icon: "octopus" },
   { id: "hollow-helmet", name: "Hohlhelm", slot: "head", icon: "horns" },
+  { id: "wizard-hat", name: "Zauberhut", slot: "head", icon: "partyhat" },
   { id: "cat-whiskers", name: "Schnurrhaare", slot: "face", icon: "whiskers" },
   { id: "long-schnoerbi", name: "Long Schnörbi", slot: "hands", icon: "plush" },
   { id: "goose", name: "Kuschelgans", slot: "hands", icon: "goose" },

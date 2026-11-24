@@ -21,6 +21,7 @@ import type { WizardControls } from "./useWizard";
 
 import { hasLook, tryOnSound, wareSpot } from "../pet/shopRitual";
 import { nextMoment, TRY_ON, type StageChoice } from "../pet/shopTimeline";
+import { WIZARD_HAT_KEY } from "../pet/wizardHat";
 import { shopFx } from "./fx/sparksEngine";
 import { shopSound } from "./sound/shopSound";
 
@@ -77,6 +78,8 @@ export function useShopMoments(options: MomentOptions) {
   const { chosenId } = choice;
   useEffect(() => {
     const now = choiceOf(latest.current.selected, latest.current.me);
+    // Den Hut des Zauberers setzt der Server auf und nimmt ihn wieder ab: kein Anlegen, kein Ablegen.
+    if (now.equippedKey === WIZARD_HAT_KEY) now.equippedKey = last.current.equippedKey;
     const moment = nextMoment(last.current, now);
     const before = last.current.chosenId;
     last.current = now;

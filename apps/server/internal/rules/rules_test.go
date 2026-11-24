@@ -309,6 +309,17 @@ func TestHomeSpotsFillTheirAreaEvenly(t *testing.T) {
 	}
 }
 
+func TestAStolenWizardHatLastsItsSeconds(t *testing.T) {
+	gameRules := loadContractCases(t).Rules
+	if got := rules.CalculateWizardHatEnd(gameRules, 1_000); got != 301_000 {
+		t.Fatalf("CalculateWizardHatEnd() = %d, want 301000", got)
+	}
+	gameRules.WizardHatSeconds = 0
+	if err := rules.ValidateRules(gameRules); !errors.Is(err, rules.ErrInvalidRules) {
+		t.Fatalf("ValidateRules() = %v, want ErrInvalidRules", err)
+	}
+}
+
 func TestStopsRunningLAN(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
