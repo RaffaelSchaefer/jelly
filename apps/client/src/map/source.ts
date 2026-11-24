@@ -7,13 +7,14 @@
 
 import type { StageEvent, StageMove, StagePoint, StageSource, StreamListener } from "@jelly/stage";
 
-import type { CatalogEntry, PartnerInvite } from "../pet";
+import type { CatalogEntry, PartnerInvite, Settings } from "../pet";
 
 import * as backend from "../backend";
 import { FRAME_RATE, PREVIEW_RULES } from "../pet";
 
 /** Das eigene Jelly, die Einstellungen und die Regeln, die die Karte betreffen. */
-type MapOwn = Omit<backend.MapState, "ownId" | "stage"> & { id: number | null };
+type MapOwn = Omit<backend.MapState, "ownId" | "stage"> &
+  Pick<Settings, "reducedMotion" | "optimizedRendering" | "frameLimit"> & { id: number | null };
 
 /** Bis zum ersten Lesen: noch kein Jelly, Einstellungen und Regeln stehen auf ihrem Standard. */
 const UNREAD_OWN: MapOwn = {
@@ -68,13 +69,24 @@ export async function createDesktopSource(): Promise<MapSource> {
   });
   // Vor dem ersten Lesen gibt es nichts zurückzusetzen: Das Lesen holt ohnehin den neuen Stand.
   await backend.onStreamReset(() => listener?.onReset());
+  // Die Einstellungen liegen auf dem Gerät. Sie kommen vor allem an, was am Server scheitern kann:
+  // Ohne laufende LAN antwortet die Bühne mit `409`, die Karte bliebe sonst bei Glas und Standard.
+  const readSettings = async () => {
+    const { reducedMotion, optimizedRendering, frameLimit } = await backend.getSettings();
+    own = { ...own, reducedMotion, optimizedRendering, frameLimit };
+  };
   return {
     readState: async () => {
-      const { ownId, stage, ...settings } = await backend.getMapState();
-      own = { id: ownId, ...settings };
+      await readSettings();
+      const { ownId, stage, ...rest } = await backend.getMapState();
+      own = { ...own, id: ownId, ...rest };
       return stage;
     },
-    readCatalog: backend.getCatalog,
+    // Die Bühne liest den Katalog zuerst. Scheitert schon er, gelten die Einstellungen trotzdem.
+    readCatalog: async () => {
+      await readSettings();
+      return backend.getCatalog();
+    },
     subscribe: (firstEventId, next) => {
       listener = next;
       for (const event of early.splice(0)) {
