@@ -124,18 +124,20 @@ func (testFixture *fixture) hide(player stackPlayer) {
 	)
 }
 
-// Scenario 1: the player already stands on the stack, which is the only one there.
-func TestClimbingYourOwnSingleStackKeepsAConsistentState(t *testing.T) {
-	t.Skip("finding 0: JoinStack on the only stack you stand on: addStackMember removes you, " +
-		"deletes the now empty stack, the INSERT into it breaks the foreign key, " +
-		"the answer is 500 internal, not a clean 200 or 409. " +
-		"Without Skip the test fails.")
+// Scenario 1, finding 0: climbing the stack you already top, here alone on it, changes nothing.
+// Before the fix, leaving first deleted the stack and the answer was 500.
+func TestClimbingTheStackYouTopChangesNothing(t *testing.T) {
 	testFixture := newFixture(t)
 	players := testFixture.registerStackPlayers("A", "B")
 	stackID := testFixture.stackIDOf(players[0])
+	before := len(testFixture.stackEvents())
 	response := testFixture.climb(players[0], stackID)
-	if response.status >= http.StatusInternalServerError {
+	if response.status != http.StatusOK {
 		t.Fatalf("climbing your own stack: %d %s", response.status, response.body)
+	}
+	if testFixture.membersOf(players[0], stackID) == nil ||
+		len(testFixture.stackEvents()) != before {
+		t.Fatalf("climbing the stack you top must change nothing: %v", testFixture.stackEvents())
 	}
 	// Whatever the answer is, no empty stack stands afterwards.
 	stacks := testFixture.readStage(players[1].token).Stacks
@@ -203,12 +205,9 @@ func TestMiddleJellyLeavesAndTheOthersSlideDown(t *testing.T) {
 	}
 }
 
-// Scenario 2 and 4: the event after a jelly in the middle left carries only the ID, like the one
-// for a stack that is gone. A client cannot tell the two apart without reading the stage again.
-func TestStackChangedAfterLeavingDoesNotTellWhetherTheStackIsGone(t *testing.T) {
-	t.Skip("finding 1: `stack.changed` is `{\"id\"}` both when the stack is gone and when only " +
-		"one member left, a client that treats it as removal drops a standing stack. " +
-		"Without Skip the test fails.")
+// Scenario 2 and 4, finding 1: after a jelly in the middle left, the event carries the whole
+// stack. Only a stack that is gone is announced by its ID alone.
+func TestLeavingAStandingStackAnnouncesItWhole(t *testing.T) {
 	testFixture := newFixture(t)
 	players := testFixture.registerStackPlayers("A", "B", "C")
 	stackID := testFixture.stackIDOf(players[0])

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -75,6 +76,12 @@ func (store *Store) JoinStack(ctx context.Context, join StackJoin) (StackAnswer,
 			if workErr != nil {
 				return workErr
 			}
+			// Climbing a stack you already top changes nothing. Example: alone on your own stack,
+			// leaving first would delete the stack you want to climb.
+			if slices.Index(stack.MemberIDs, action.playerID) == len(stack.MemberIDs)-1 {
+				answer.Stack = stack
+				return nil
+			}
 			if rules.IsStackFull(action.lan.gameRules, len(stack.MemberIDs)) {
 				return ErrStackFull
 			}
@@ -144,12 +151,16 @@ func removeStackMember(ctx context.Context, action actionContext) error {
 	if err != nil {
 		return fmt.Errorf("delete empty stack: %w", err)
 	}
-	return appendVisibleEvent(
-		ctx,
-		action,
-		EventStackChanged,
-		map[string]int64{payloadStackID: stackID},
-	)
+	// Only a stack that is gone is announced by its id, one that still stands comes whole.
+	stack, err := loadRunningStack(ctx, action, stackID)
+	if errors.Is(err, ErrStackNotFound) {
+		return appendVisibleEvent(ctx, action, EventStackChanged,
+			map[string]int64{payloadStackID: stackID})
+	}
+	if err != nil {
+		return err
+	}
+	return appendVisibleEvent(ctx, action, EventStackChanged, stack)
 }
 
 // loadRunningStack returns a stack of this LAN whose time is not over.
