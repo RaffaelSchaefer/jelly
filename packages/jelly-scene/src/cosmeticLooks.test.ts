@@ -35,20 +35,22 @@ async function loadModel(key: string) {
 }
 
 describe("Neon", () => {
-  it("leuchtet nur an den Cyber-Katzenohren, dort aber nicht überall", async () => {
+  it("leuchtet an den Cyber-Katzenohren und im Plasma der BFG, dort aber nicht überall", async () => {
     const neon = async (key: string) =>
       Array.from((await loadModel(key)).getAttribute("aNeon").array);
-    const ears = await neon("cyber-cat-ears");
-    expect(ears.some((value) => value === 1)).toBe(true);
-    expect(ears.some((value) => value === 0)).toBe(true);
+    for (const key of ["cyber-cat-ears", "bfg"]) {
+      const glowing = await neon(key);
+      expect(glowing.some((value) => value === 1)).toBe(true);
+      expect(glowing.some((value) => value === 0)).toBe(true);
+    }
     expect((await neon("cat-ears")).every((value) => value === 0)).toBe(true);
   });
 });
 
 describe("hinter dem Jelly", () => {
-  it("legt Katzenohren und -schwanz hinter das Jelly, sonst nichts", () => {
+  it("legt Katzenohren, -schwanz und die BFG hinter das Jelly, sonst nichts", () => {
     const behind = Object.keys(COSMETIC_MODELS).filter((key) => cosmeticLook(key).behind);
-    expect(behind.sort()).toEqual(["cat-ears", "cat-tail", "cyber-cat-ears"]);
+    expect(behind.sort()).toEqual(["bfg", "cat-ears", "cat-tail", "cyber-cat-ears"]);
   });
 
   it("zeichnet es vor allen Stickern und löscht die Tiefe nicht", async () => {

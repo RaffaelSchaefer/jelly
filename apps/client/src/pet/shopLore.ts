@@ -131,6 +131,10 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Aus einem Königreich tief unter der Erde. Innen hohl, außen tapfer, und kein Wort zu viel.",
     article: "den",
   },
+  bfg: {
+    lore: "Rip & Tear, until it is done.",
+    article: "die",
+  },
   "nail-sword": {
     lore: "Kein Schwert, ein Nagel. Alt und etwas stumpf, trifft aber jeden Nagel auf den Kopf.",
     article: "den",

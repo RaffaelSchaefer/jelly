@@ -52,6 +52,7 @@ COSMETICS = [
     ("octopus", "Kopf"),
     ("hollow-helmet", "Kopf"),
     ("nail-sword", "Hände"),
+    ("bfg", "Hände"),
 ]
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"

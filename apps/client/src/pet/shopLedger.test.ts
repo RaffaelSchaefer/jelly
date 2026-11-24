@@ -73,6 +73,7 @@ const FROM_THREE = [
   "mini-backpack",
   "fairy-wings",
   "crown",
+  "bfg",
 ];
 
 /** Was der Spieler der Vorschau noch nicht hat, nach Preis und dann nach Namen. */

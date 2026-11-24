@@ -50,13 +50,21 @@ const CLARITY = 0.3;
 /**
  * Alles, was das Jelly erreichen kann: weit ausgestreckte Hände, der wippende Kopf, die Outline.
  * Dahinter in derselben Geometrie derselbe Kasten ohne die Hände: Meist sind sie eingezogen, und
- * jedes Pixel des Kastens kostet einen Raymarch, auch wo nur Hintergrund ist. Alle Jellies teilen
+ * jedes Pixel des Kastens kostet einen Raymarch, auch wo nur Hintergrund ist. Zuletzt einer, der
+ * weiter nach vorn reicht, für eine Hand weit vor dem Bauch wie unter der BFG. Alle Jellies teilen
  * sich diese Geometrie.
  */
 const BOUNDS = mergeGeometries([
   new BoxGeometry(3.3, 2.7, 1.9).translate(0, 0.16, 0.13),
   new BoxGeometry(2.0, 2.7, 1.7).translate(0, 0.16, 0.03),
+  new BoxGeometry(3.3, 2.7, 2.6).translate(0, 0.16, 0.48),
 ])!;
+
+/**
+ * Weiter vorn ragt eine Hand samt Federn aus dem Kasten mit Händen, dessen Vorderseite bei z 1,08
+ * liegt.
+ */
+const FORWARD_HAND_Z = 0.84;
 
 /** Indizes eines Kastens: sechs Seiten aus je zwei Dreiecken. */
 const BOX_INDICES = 36;
@@ -69,7 +77,20 @@ const BOX_INDICES = 36;
 export const BODY_DRAW_RANGES = {
   withHands: { start: 0, count: BOX_INDICES },
   withoutHands: { start: BOX_INDICES, count: BOX_INDICES },
+  forward: { start: 2 * BOX_INDICES, count: BOX_INDICES },
 } as const;
+
+/** Der kleinste Kasten, der alle sichtbaren Hände fasst. */
+function drawRangeFor(hands: Object3D[]) {
+  let range: (typeof BODY_DRAW_RANGES)[keyof typeof BODY_DRAW_RANGES] =
+    BODY_DRAW_RANGES.withoutHands;
+  for (const hand of hands) {
+    if (!hand.visible) continue;
+    if (hand.position.z > FORWARD_HAND_Z) return BODY_DRAW_RANGES.forward;
+    range = BODY_DRAW_RANGES.withHands;
+  }
+  return range;
+}
 
 /** Die Teile, deren Lage der Shader pro Bild übernimmt. Sie liegen neben dem Körper im Jelly. */
 export interface BodyParts {
@@ -178,9 +199,7 @@ export function createJellyBody(
   const mesh = new Mesh(BOUNDS, material);
   const drawingBuffer = new Vector2();
   mesh.onBeforeRender = (renderer, _scene, camera) => {
-    const { start, count } = parts.hands.some((hand) => hand.visible)
-      ? BODY_DRAW_RANGES.withHands
-      : BODY_DRAW_RANGES.withoutHands;
+    const { start, count } = drawRangeFor(parts.hands);
     // Gleich danach zeichnet der Renderer genau diesen Ausschnitt der geteilten Geometrie.
     BOUNDS.setDrawRange(start, count);
     updateUniforms({ mesh, uniforms, renderer, camera, parts, drawingBuffer });

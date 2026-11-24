@@ -5,7 +5,7 @@ A generator (`build_party_hat.py`, `build_hood.py`, `build_crown.py`, `build_gol
 `build_chicken.py`, `build_piercings.py`, `build_ogre_ears.py`, `build_kamina_glasses.py`,
 `build_cat_ears.py`, `build_cyber_cat_ears.py`, `build_cat_whiskers.py`, `build_kitten.py`,
 `build_yarn_ball.py`, `build_cat_paws.py`, `build_nasal_helmet.py`, `build_kite_shield.py`,
-`build_octopus.py`, `build_hollow_helmet.py`, `build_nail_sword.py` and the body cosmetics `build_bandana.py`, `build_bell_collar.py`, `build_knit_scarf.py`,
+`build_octopus.py`, `build_hollow_helmet.py`, `build_nail_sword.py`, `build_bfg.py` and the body cosmetics `build_bandana.py`, `build_bell_collar.py`, `build_knit_scarf.py`,
 `build_snail_shell.py`, `build_mini_backpack.py`, `build_fairy_wings.py`, `build_bat_wings.py`,
 `build_cat_tail.py`) holds only its numbers and a `build(collection)` and ends with
 `generator.run(...)`:

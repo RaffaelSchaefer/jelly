@@ -19,6 +19,7 @@ import { animateBody, animateFace, animateHands, startFrame, type Motion } from 
 import { createJellyBody, type JellyQuality } from "./body.ts";
 import { animateEmote } from "./emoteAnimation.ts";
 import { createFace, type Face } from "./face.ts";
+import { BOARD_HOLD, type Hold } from "./held.ts";
 import { HAND, HEAD } from "./jellyGeometry.ts";
 import { animateMouth, type MouthFrame } from "./mouthShapes.ts";
 import { animateTouch, type TouchFrame } from "./touch.ts";
@@ -57,6 +58,8 @@ export interface JellyFrameInput {
   reducedMotion: boolean;
   /** Hält er gerade etwas? Dann bleiben die Hände draußen. */
   holding: boolean;
+  /** Wie er es hält, ohne Angabe wie eine Tafel ({@link BOARD_HOLD}). */
+  hold?: Hold;
   /** Aktuelle Geste, mit Laufzeit in Sekunden. Ohne Wert gilt die normale Pose. */
   emote?: EmoteFrame;
   /** Was der Mund gerade formt. Ohne Wert lächelt das Jelly. */
@@ -100,7 +103,7 @@ export function animateJelly(jelly: Jelly, motion: Motion, input: JellyFrameInpu
   const frame = startFrame(motion, input);
   animateBody(jelly.root, jelly.head, frame);
   animateFace(jelly.face, motion, frame);
-  animateHands(jelly, motion, frame, input.holding);
+  animateHands(jelly, motion, frame, input.holding ? (input.hold ?? BOARD_HOLD) : null);
   if (input.touch) animateTouch(jelly, motion, input.touch, frame);
   if (input.emote) animateEmote(jelly, input.emote, input.reducedMotion);
   animateMouth(jelly, input.mouth);

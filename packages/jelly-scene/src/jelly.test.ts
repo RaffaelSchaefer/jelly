@@ -132,5 +132,8 @@ test("the body draws its box with hands in the very frame the hands come out", (
   const geometry = body.geometry;
   expect(draw()).toEqual(BODY_DRAW_RANGES.withHands);
   expect(body.geometry).toBe(geometry);
-  expect(geometry.index?.count).toBe(2 * BODY_DRAW_RANGES.withHands.count);
+  expect(geometry.index?.count).toBe(3 * BODY_DRAW_RANGES.withHands.count);
+  // Eine Hand weit vor dem Bauch, wie unter der BFG, braucht den tieferen Kasten.
+  jelly.hands[1]!.position.z = 1.48;
+  expect(draw()).toEqual(BODY_DRAW_RANGES.forward);
 });

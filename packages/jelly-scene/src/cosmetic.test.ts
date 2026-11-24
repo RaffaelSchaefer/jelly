@@ -147,6 +147,7 @@ const COLORABLE = new Set([
   "cat-tail",
   "kite-shield",
   "octopus",
+  "bfg",
 ]);
 
 describe("Farbe des Trägers", () => {

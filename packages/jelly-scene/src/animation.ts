@@ -17,8 +17,9 @@ import {
 } from "three";
 
 import type { EyeShape } from "./eyeShapes.ts";
+import type { Hold, HoldSpot } from "./held.ts";
 
-import { GRIP, HAND, HEAD } from "./jellyGeometry.ts";
+import { HAND, HEAD } from "./jellyGeometry.ts";
 
 /** Wie lange die Hände nach einem Stupser oder einer Aktion draußen bleiben, in Sekunden. */
 const HANDS_OUT_SECONDS = 1.6;
@@ -192,41 +193,48 @@ export interface HandParts {
   curls: Vector3[];
 }
 
-/** Ruhepose einer Hand: seitlich draußen, oder an der Kante der Tafel, wenn er etwas hält. */
-function placeHand(hand: Object3D, side: number, frame: Frame, holding: boolean) {
+/**
+ * Ruhepose der Hand `index` (0 links, 1 rechts): seitlich draußen, oder wo `hold` sie hinlegt, wenn
+ * er etwas hält.
+ */
+function placeHand(hand: Object3D, index: number, frame: Frame, hold: Hold | null) {
+  const side = index === 0 ? -1 : 1;
   const out = Math.min(hand.scale.x, 1.2);
-  const spot = holding ? GRIP : HAND;
+  const spot: HoldSpot = hold?.hands[index] ?? { x: side * HAND.x, y: HAND.y, z: HAND.z };
   const float = Math.sin(frame.time * 2.2 + side * 1.7) * 0.045 * frame.motion;
   // Sie kommen seitlich aus dem Körper und fliegen beim Stupsen jubelnd nach oben.
   hand.position.set(
-    side * (MathUtils.lerp(0.6, spot.x, out) + frame.bounce * 0.14),
+    MathUtils.lerp(side * 0.6, spot.x, out) + side * frame.bounce * 0.14,
     spot.y + (float + frame.bounce * 0.55) * Math.min(out, 1),
     spot.z,
   );
-  if (holding) hand.rotation.set(GRIP_TURN[0], side * GRIP_TURN[1], side * GRIP_TURN[2]);
+  if (hold) {
+    const [x, y, z] = spot.turn ?? [GRIP_TURN[0], side * GRIP_TURN[1], side * GRIP_TURN[2]];
+    hand.rotation.set(x, y, z);
+  }
   // Beim Stupsen reißt er die Finger mit hoch.
   else hand.rotation.set(0, 0, side * (REST_ROLL + frame.bounce * 1.2));
 }
 
 /**
  * Die Hände kommen nur heraus, wenn er sie braucht: als Reaktion auf einen Stupser oder eine
- * Aktion, oder wenn er etwas hält (`holding`). Jedes Bild setzt auch Drehung und Finger neu, damit
- * sich keine Geste ansammelt.
+ * Aktion, oder wenn er etwas hält, so wie `hold` es vorgibt. Jedes Bild setzt auch Drehung und
+ * Finger neu, damit sich keine Geste ansammelt.
  */
 export function animateHands(
   { hands, curls }: HandParts,
   s: Motion,
   frame: Frame,
-  holding: boolean,
+  hold: Hold | null,
 ) {
-  const wanted = holding || frame.time - s.pokedAt < HANDS_OUT_SECONDS ? 1 : 0;
+  const wanted = hold || frame.time - s.pokedAt < HANDS_OUT_SECONDS ? 1 : 0;
   springHands(s, wanted, frame);
   const out = Math.max(0, s.hands);
   hands.forEach((hand, index) => {
     // Auch versteckte Hände zurücksetzen: Eine Emote-Geste kann sie gleich wieder hervorholen.
     hand.visible = out > 0.02;
     hand.scale.setScalar(out);
-    placeHand(hand, index === 0 ? -1 : 1, frame, holding);
-    curls[index]?.set(holding ? GRIP_CURL : 0, holding ? GRIP_CURL : 0, 0);
+    placeHand(hand, index, frame, hold);
+    curls[index]?.set(hold ? GRIP_CURL : 0, hold ? GRIP_CURL : 0, 0);
   });
 }

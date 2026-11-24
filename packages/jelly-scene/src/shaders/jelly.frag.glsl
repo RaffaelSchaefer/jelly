@@ -29,6 +29,9 @@ uniform float uClarity;
 varying vec3 vObj;
 
 const float OUTLINE = 0.035;
+// So weit muss der Körper hinter einer Hand liegen, damit sie vor ihm eine Outline bekommt: weiter,
+// als die beiden verschmelzen.
+const float HAND_GAP = 0.15;
 
 // <scene-light>
 // Licht der Szene (sceneLight.ts), in jelly.frag.glsl und toon.frag.glsl Zeichen für Zeichen gleich.
@@ -214,9 +217,15 @@ void main() {
   vec3 rd = normalize(vObj - uCamObj);
   vec3 ro = vObj;
   float t = 0.0, minD = 1e5, tMin = 0.0;
+  // Wie nah der Strahl unterwegs an einer Hand vorbeikommt, für ihre Outline vor dem Körper.
+  float minHand = 1e5, tHand = 0.0;
   bool hit = false;
   for (int i = 0; i < MARCH_STEPS; i++) {
-    float d = map(ro + rd * t);
+    vec3 at = ro + rd * t;
+    float hands = sdHands(at, 0.1);
+    // Dasselbe wie map(at), nur bleiben die Hände getrennt.
+    float d = smin(smin(sdBody(at), sdHead(at), 0.15), hands, 0.1);
+    if (hands < minHand) { minHand = hands; tHand = t; }
     if (d < minD) { minD = d; tMin = t; }
     if (d < 0.0005) { hit = true; break; }
     t += d;
@@ -274,6 +283,16 @@ void main() {
     color = mix(color, uInk, ink);
     alpha = mix(alpha, 1.0, ink);
     surface = p;
+    // Eine Hand vor dem Körper: Wo der Strahl knapp an ihr vorbei weit dahinter auf den Körper trifft,
+    // liegt ihre Outline, in ihrer Tiefe.
+    if (t - tHand > HAND_GAP && sdHands(p, 0.1) > OUTLINE) {
+      vec3 edge = ro + rd * tHand;
+      float px = uPixel * distance(edge, uCamObj);
+      float handInk = 1.0 - smoothstep(OUTLINE - px, OUTLINE + px, minHand);
+      color = mix(color, uInk, handInk);
+      alpha = mix(alpha, 1.0, handInk);
+      if (handInk > 0.5) surface = edge;
+    }
   } else {
     // Strahlen, die knapp vorbeigehen, zeichnen die Outline um die ganze Silhouette.
     surface = ro + rd * tMin;

@@ -11,10 +11,12 @@ import type { Group } from "three";
 
 import {
   animateJelly,
+  cosmeticLook,
   createJelly,
   createMotion,
   disposeJelly,
   hasCosmeticModel,
+  holdOf,
   isEmoteKey,
   handsOf,
   isWornOnHands,
@@ -141,7 +143,9 @@ const HELD_LAYER = 1;
 /**
  * Was das Jelly trägt. Muss in seiner Wurzel liegen: Kopf- und Gesichts-Cosmetics wippen mit dem
  * Kopf, die für die Hände folgen ihnen (Pfoten und Schild ihrer Hand einzeln), der Rest bleibt beim
- * Körper. Hält es eine Tafel, legt es das Gehaltene so lange beiseite.
+ * Körper. Hält es eine Tafel, legt es das Gehaltene so lange beiseite. Hält es etwas mit echter
+ * Tiefe wie die BFG, liegt auch der Körper-Schmuck mit echter Tiefe dahinter, sonst malten sich
+ * etwa Flügel oder Schal als Sticker darüber.
  */
 function WornCosmetics({
   jelly,
@@ -155,24 +159,42 @@ function WornCosmetics({
   handsFree: boolean;
 }) {
   const held = worn.find((item) => item.slot === "hands");
-  const draw = (slots: CosmeticSlot[], layer?: number, onHands = false) =>
+  const deep = Boolean(held && cosmeticLook(held.id).behind);
+  const draw = (slots: CosmeticSlot[], layer?: number, onHands = false, behind = false) =>
     worn
       .filter((item) => slots.includes(item.slot) && isWornOnHands(item.id) === onHands)
       .map((item) => (
-        <Cosmetic key={item.id} id={item.id} ink={ink} layer={layer} tint={item.color} />
+        <Cosmetic
+          key={item.id}
+          id={item.id}
+          ink={ink}
+          layer={layer}
+          tint={item.color}
+          behind={behind}
+        />
       ));
   return (
     <>
       {createPortal(draw(["head", "face"]), jelly.faceAnchor)}
-      <HandHeld jelly={jelly} visible={handsFree}>
+      <HandHeld jelly={jelly} hold={holdOf(held?.id)} visible={handsFree}>
         {draw(["hands"], HELD_LAYER)}
       </HandHeld>
       <HandWorn jelly={jelly} hands={handsOf(held?.id ?? "")} visible={handsFree}>
         {draw(["hands"], HELD_LAYER, true)}
       </HandWorn>
-      {draw(["body", "aura"])}
+      {draw(["body", "aura"], undefined, false, deep)}
     </>
   );
+}
+
+/**
+ * Ob das Jelly etwas hält und wie: eine Tafel immer an ihren Kanten, Gehaltenes so, wie es das
+ * will. Ohne Modell zeigt ein Cosmetic nichts, dann hielte das Jelly leere Hände hin.
+ */
+function holdingOf(worn: ReturnType<typeof wornCosmetics>, sign: boolean) {
+  const held = worn.find((item) => item.slot === "hands");
+  const holdsModel = Boolean(held && hasCosmeticModel(held.id));
+  return { holding: sign || holdsModel, hold: sign ? undefined : holdOf(held?.id) };
 }
 
 /** Eigenschaften des Pets in der Szene. */
@@ -219,9 +241,7 @@ export default function Character({
   touch,
 }: CharacterProps) {
   const worn = wornCosmetics(equipped);
-  // Ohne Modell zeigt ein Cosmetic nichts, dann hielte das Jelly leere Hände hin.
-  const holdsModel = worn.some((item) => item.slot === "hands" && hasCosmeticModel(item.id));
-  const holding = Boolean(sign) || holdsModel;
+  const { holding, hold } = holdingOf(worn, Boolean(sign));
   const palette = custom ?? PET_COLORS[color];
   const jelly = useMemo(() => createJelly(palette, quality), [palette, quality]);
   const motion = useRef(createMotion(pulse));
@@ -249,6 +269,7 @@ export default function Character({
       pulse,
       reducedMotion,
       holding,
+      hold,
       emote:
         emote && isEmoteKey(emote.key)
           ? {
