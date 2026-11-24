@@ -147,7 +147,9 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (Gesten, Blick, Brauen, Schnurrbart, Kugel). Im Paket `wizard.ts` (`@jelly/scene/wizard`), `wizardGestures.ts`,
   `wizardTease.ts`, `wizardMove.ts`, `wizardFace.ts`, `crystal.ts` und `wizardTiming.ts` (`@jelly/scene/wizard-timing`,
   ohne three). Ein `wizard.glb` mit
-  14 Teilen aus `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS` und nicht im Katalog. Sein Verstand
+  14 Teilen aus `apps/client/blender/build_wizard.py`, nicht in `COSMETIC_MODELS` und nicht im Katalog. Nur sein Hut ist
+  auch das Cosmetic `wizard-hat` (`build_wizard_hat.py`, dieselbe Geometrie, gestaucht), das der Server je LAN einem
+  Jelly für ein paar Minuten leiht. Sein Verstand
   steht rein in `src/pet/`: `wizardBrain.ts` (wann), `wizardMind.ts` (Gedächtnis), `wizard.ts` und `wizardIdle.ts`
   (Skripte), `wizardScripts.ts`
   (Typen, Takt), `wizardPick.ts`, `wizardLines.ts` (Sätze), `wizardVoice.ts`, `wizardClips.ts`, `voiceTimbre.ts`,

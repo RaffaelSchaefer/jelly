@@ -193,7 +193,9 @@ describe("Farben", () => {
     expect(WIZARD_CRYSTAL).toMatchObject({ radius: 0.21, layer: 1, outline: 0.025 });
   });
 
-  it("bleibt außerhalb von Katalog, Karte und Beamer", () => {
-    expect(Object.keys(COSMETIC_MODELS).filter((key) => key.startsWith("wizard"))).toEqual([]);
+  it("bleibt außerhalb von Katalog, Karte und Beamer, nur sein Hut ist ein Cosmetic", () => {
+    expect(Object.keys(COSMETIC_MODELS).filter((key) => key.startsWith("wizard"))).toEqual([
+      "wizard-hat",
+    ]);
   });
 });

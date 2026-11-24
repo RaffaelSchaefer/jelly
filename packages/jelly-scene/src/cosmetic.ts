@@ -63,6 +63,7 @@ import pixelGlasses from "./cosmetics/pixel-glasses.glb?url&inline";
 import schnoerbiMask from "./cosmetics/schnoerbi-mask.glb?url&inline";
 import snailShell from "./cosmetics/snail-shell.glb?url&inline";
 import sprout from "./cosmetics/sprout.glb?url&inline";
+import wizardHat from "./cosmetics/wizard-hat.glb?url&inline";
 import yarnBall from "./cosmetics/yarn-ball.glb?url&inline";
 import outlineFragmentShader from "./shaders/outline.frag.glsl?raw";
 import outlineVertexShader from "./shaders/outline.vert.glsl?raw";
@@ -112,6 +113,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   "schnoerbi-mask": schnoerbiMask,
   "snail-shell": snailShell,
   sprout,
+  "wizard-hat": wizardHat,
   "yarn-ball": yarnBall,
 };
 

@@ -19,7 +19,7 @@ This writes `blender/cosmetics.blend` with:
   `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`, `goose`, `bandana`,
   `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings`, `bat-wings`, `chicken`, `piercings`, `ogre-ears`,
   `kamina-glasses`, `cat-ears`, `cyber-cat-ears`, `cat-whiskers`, `kitten`, `yarn-ball`, `cat-paws`, `cat-tail`,
-  `nasal-helmet`, `kite-shield`, `octopus`, `hollow-helmet`, `nail-sword`, `bfg`). The collection name is the id.
+  `nasal-helmet`, `kite-shield`, `octopus`, `hollow-helmet`, `nail-sword`, `bfg`, `wizard-hat`). The collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -110,14 +110,14 @@ preview in `preview.py`. Change the numbers in `build_wizard.py` and run
 blender blender/cosmetics.blend --background --python blender/build_wizard.py -- --save --export
 ```
 
-Every run rebuilds the collection from the numbers and removes the v1 collections (`wizard-hat`,
-`wizard-face`, `wizard-orb`). Without `--save` the `.blend` on disk stays as it was. The flags can be
+Every run rebuilds the collection from the numbers and removes the v1 collections (`wizard-face`,
+`wizard-orb`). Without `--save` the `.blend` on disk stays as it was. The flags can be
 combined:
 
 | Flag                | What it does                                                                                                                                                                                                                             |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--save`            | Stores the collection in `cosmetics.blend`, with `build_wizard.py`, `shapes.py` and `preview.py` as text blocks.                                                                                                                         |
-| `--export`          | Writes only `packages/jelly-scene/src/cosmetics/wizard.glb` (with `export_extras`) and deletes the v1 files `wizard-hat.glb`, `wizard-face.glb` and `wizard-orb.glb`.                                                                    |
+| `--export`          | Writes only `packages/jelly-scene/src/cosmetics/wizard.glb` (with `export_extras`) and deletes the v1 files `wizard-face.glb` and `wizard-orb.glb`.                                                                                      |
 | `--check`           | Prints a JSON report after the marker `CHECK`: vertices and bytes of the GLB as the app loads it (exported to a temporary folder unless `--export` ran), the budget, per-part bounds and any problems. Exits 1 when a rule below breaks. |
 | `--preview out.png` | Renders the shop camera (1440×600, Workbench with object outline) into `out.png`. Never saves the `.blend`.                                                                                                                              |
 
@@ -177,6 +177,16 @@ along −z with a vertical field of view of 24°, the orb at its rest spot (1.68
 in the hand of the pointing pose. Stand-ins show what the app draws itself: the lidded eyes, the
 mouth, the crystal ball and a brown counter (top at y −0.32 from z 0.55 to 1.08, its front below,
 right end at x 2.35). It stacks one pass per layer like the app paints: pet, layer 0 to 4, counter.
+
+His hat alone is also a cosmetic, `wizard-hat`, which the server lends for a few minutes to the
+jelly that stole it in the shop. `build_wizard_hat.py` takes `build_hat` as it is, wizard materials
+and all, and only reshapes it round `HAT_PIVOT` to fit below the speech bubble: narrower brim,
+lower cone. As a cosmetic it is one paint layer, so the trim no longer gets its own ink rim. Run it
+after changing the hat:
+
+```bash
+blender blender/cosmetics.blend --background --python blender/build_wizard_hat.py -- --save --export
+```
 
 ## When the pet changes
 

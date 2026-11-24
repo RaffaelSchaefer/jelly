@@ -2,9 +2,10 @@
  * Funkelbart, der Zauberer im Shop der App: seine Farben, seine Teile und seine Kristallkugel.
  *
  * Nur er trägt die Teile. Sie stehen deshalb nicht in `COSMETIC_MODELS`, das auch Karte und Beamer
- * ausliefern, und nicht im Katalog des Servers. Alle liegen in einer Datei, die
- * `apps/client/blender/build_wizard.py` baut, und {@link loadWizardPart} holt jedes einzeln heraus:
- * Jedes Teil hat einen eigenen Anker, eine eigene Malschicht und Strichstärke
+ * ausliefern, und nicht im Katalog des Servers. Nur seinen Hut gibt es zusätzlich als Cosmetic
+ * `wizard-hat`, aus derselben Geometrie, aber in eigener Datei. Alle Teile liegen in einer Datei,
+ * die `apps/client/blender/build_wizard.py` baut, und {@link loadWizardPart} holt jedes einzeln
+ * heraus: Jedes Teil hat einen eigenen Anker, eine eigene Malschicht und Strichstärke
  * ({@link WIZARD_PARTS}). Die Glaskugel selbst malt ein Shader (`crystal.ts`).
  *
  * Gesten, Stimmung und schwere Lider legt `animateWizard` (`wizardGestures.ts`, beim Nerven
