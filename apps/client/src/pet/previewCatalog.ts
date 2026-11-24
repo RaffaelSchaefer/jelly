@@ -288,6 +288,8 @@ export const PREVIEW_CATALOG: Catalog = {
     // Der kleine Ritter aus der Tiefe.
     { ...WARE, key: "hollow-helmet", name: "Hohlhelm", slot: "head", price: 4, colorable: false },
     { ...WARE, key: "nail-sword", name: "Ritternagel", slot: "hands", price: 3, colorable: false },
+    // Die große Plasmakanone, das Plasma in der Farbe des Trägers.
+    { ...WARE, key: "bfg", name: "BFG", slot: "hands", price: 10 },
   ],
   cosmetic_slots: [
     { key: "head", label: "Kopf" },

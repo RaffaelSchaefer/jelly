@@ -213,8 +213,15 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   seiner Malschicht, erst die Füllung, dann die Outline (`glassOrder` in `cosmetic.ts`), sonst schiene ihre Tinte
   durch. Teile davor brauchen dann eine Fläche ohne Rückseite und Kante, sonst bekommen sie eine Innenlinie.
   Was hinter dem Jelly liegen soll, bekommt `behind` in `COSMETIC_LOOKS`: Es löscht die Tiefe nicht, Körper, Kopf und
-  Hände verdecken es. So wachsen die Katzenohren hinter dem Kopf hervor, und der Katzenschwanz steht nicht vor den Händen. Was an den Händen sitzt wie die Pfoten,
-  steht in `ON_HANDS` (`packages/jelly-scene/src/held.ts`) mit seinen Händen: ein Modell um den Ursprung, an jeder dieser Hände gezeichnet (`HandWorn` in der App, `held.ts` auf der Bühne). Schild und Ritternagel sitzen nur an der linken, die rechte bleibt frei für Winken, Zeigen und Grübeln. Was pulsieren soll wie der Oktopus,
+  Hände verdecken es. So wachsen die Katzenohren hinter dem Kopf hervor, der Katzenschwanz steht nicht vor den Händen, und die
+  BFG zeigt nach vorn: Die linke Hand liegt vor ihrem Griff, ihr hinteres Ende verschwindet im Jelly. Solange das Jelly so etwas
+  hält, zeichnet `WornCosmetics` (`Character.tsx`) auch den Körper-Schmuck (Flügel, Rucksack, Schal) mit echter Tiefe dahinter. Was an den Händen sitzt wie die Pfoten,
+  steht in `ON_HANDS` (`packages/jelly-scene/src/held.ts`) mit seinen Händen: ein Modell um den Ursprung, an jeder dieser Hände gezeichnet (`HandWorn` in der App, `held.ts` auf der Bühne). Schild und Ritternagel sitzen nur an der linken, die rechte bleibt frei für Winken, Zeigen und Grübeln.
+  Wie die Hände etwas zwischen sich halten, steht in `HOLDS` (ebenda): wo sie in Ruhe liegen und wie weit das Gehaltene
+  ihnen folgt (`boardPose`), ohne Eintrag wie eine Tafel (`BOARD_HOLD`). Die rechte Hand packt die BFG an der Unterkante ihrer Seite,
+  und die BFG bleibt bei Gesten und Stupsern fast stehen, unter dem Gesicht. Liegt eine Hand weiter vorn als z 0,84, zeichnet
+  der Körper einen tieferen Kasten (`BOUNDS` in `body.ts`), sonst fiele sie aus dem Raymarching. Vor dem Körper bekommt
+  eine Hand ihre eigene Outline (`HAND_GAP` in `jelly.frag.glsl`). Was pulsieren soll wie der Oktopus,
   bekommt `pulse` in `COSMETIC_LOOKS` (Punkt, Stärke, Takt, Schaukeln, Neigung), was mit Armen wedeln soll, `wave` (Punkt, Abstand, Länge, Ausschlag, Takt):
   `pulseCosmetics` (`cosmeticPulse.ts`) staucht, streckt und schaukelt es je Bild wie Wackelpudding und gibt dem Wedeln den Takt, in der App aus `Character.tsx`,
   auf der Bühne aus `jellies.ts`, bei reduzierter Bewegung nicht. Das Wedeln rechnet `waved` in `toon.vert.glsl` und `outline.vert.glsl`,

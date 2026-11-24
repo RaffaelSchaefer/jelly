@@ -57,6 +57,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: "cat-paws", name: "Samtpfoten", slot: "hands", icon: "paw" },
   { id: "kite-shield", name: "Normannenschild", slot: "hands", icon: "shield" },
   { id: "nail-sword", name: "Ritternagel", slot: "hands", icon: "sword" },
+  { id: "bfg", name: "BFG", slot: "hands", icon: "blaster" },
   { id: "golden-cup", name: "Goldener Pokal", slot: "hands", icon: "trophy" },
   { id: "bandana", name: "Halstuch", slot: "body", icon: "bandana" },
   { id: "bell-collar", name: "Glöckchen-Halsband", slot: "body", icon: "bell" },

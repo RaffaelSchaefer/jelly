@@ -118,15 +118,25 @@ interface CosmeticProps {
   layer?: number;
   /** Die gewählte Farbe, ohne sie sieht es aus wie modelliert. */
   tint?: string | null;
+  /** Hinter dem Jelly mit echter Tiefe, auch wenn sein Look es nicht verlangt. */
+  behind?: boolean;
 }
 
 /**
  * Das Cosmetic `id` mit Outline in `ink` in der Malschicht `layer` und in der Farbe `tint`, falls
  * ein Modell existiert.
  */
-export default function Cosmetic({ id, ink, layer, tint }: CosmeticProps) {
+export default function Cosmetic({ id, ink, layer, tint, behind }: CosmeticProps) {
   if (!hasCosmeticModel(id)) return null;
+  const look = cosmeticLook(id);
   return (
-    <Sticker model={loadCosmetic(id)} ink={ink} layer={layer} {...cosmeticLook(id)} tint={tint} />
+    <Sticker
+      model={loadCosmetic(id)}
+      ink={ink}
+      layer={layer}
+      {...look}
+      tint={tint}
+      behind={behind || look.behind}
+    />
   );
 }

@@ -18,6 +18,43 @@ import {
   wornCosmetics,
 } from ".";
 
+/** Die Waren der Vorschau mit 3 Münzen: Zustand und was fehlt, die günstigsten zuerst. */
+const AT_THREE_COINS = [
+  ["headset", "owned", 0],
+  ["headset-neutral", "owned", 0],
+  ["beanie", "owned", 0],
+  ["sprout", "affordable", 0],
+  ["bandana", "affordable", 0],
+  ["bell-collar", "affordable", 0],
+  ["cat-whiskers", "affordable", 0],
+  ["yarn-ball", "affordable", 0],
+  ["pixel-glasses", "affordable", 0],
+  ["schnoerbi-mask", "affordable", 0],
+  ["knit-scarf", "affordable", 0],
+  ["snail-shell", "affordable", 0],
+  ["piercings", "affordable", 0],
+  ["ogre-ears", "affordable", 0],
+  ["kamina-glasses", "affordable", 0],
+  ["cat-ears", "affordable", 0],
+  ["cat-paws", "affordable", 0],
+  ["cat-tail", "affordable", 0],
+  ["nasal-helmet", "affordable", 0],
+  ["kite-shield", "affordable", 0],
+  ["nail-sword", "affordable", 0],
+  ["hood", "short", 1],
+  ["long-schnoerbi", "short", 1],
+  ["goose", "short", 1],
+  ["mini-backpack", "short", 1],
+  ["chicken", "short", 1],
+  ["cyber-cat-ears", "short", 1],
+  ["kitten", "short", 1],
+  ["octopus", "short", 1],
+  ["hollow-helmet", "short", 1],
+  ["crown", "short", 3],
+  ["fairy-wings", "short", 3],
+  ["bfg", "short", 7],
+];
+
 describe("shop", () => {
   const states = (coins: number, cosmetics = PREVIEW_ME.cosmetics) =>
     shopItems(PREVIEW_CATALOG, { ...PREVIEW_ME, coins, cosmetics }).map((item) => [
@@ -27,40 +64,7 @@ describe("shop", () => {
     ]);
 
   it("lists what it can draw, cheapest first, and leaves out events and awards", () => {
-    expect(states(3)).toEqual([
-      ["headset", "owned", 0],
-      ["headset-neutral", "owned", 0],
-      ["beanie", "owned", 0],
-      ["sprout", "affordable", 0],
-      ["bandana", "affordable", 0],
-      ["bell-collar", "affordable", 0],
-      ["cat-whiskers", "affordable", 0],
-      ["yarn-ball", "affordable", 0],
-      ["pixel-glasses", "affordable", 0],
-      ["schnoerbi-mask", "affordable", 0],
-      ["knit-scarf", "affordable", 0],
-      ["snail-shell", "affordable", 0],
-      ["piercings", "affordable", 0],
-      ["ogre-ears", "affordable", 0],
-      ["kamina-glasses", "affordable", 0],
-      ["cat-ears", "affordable", 0],
-      ["cat-paws", "affordable", 0],
-      ["cat-tail", "affordable", 0],
-      ["nasal-helmet", "affordable", 0],
-      ["kite-shield", "affordable", 0],
-      ["nail-sword", "affordable", 0],
-      ["hood", "short", 1],
-      ["long-schnoerbi", "short", 1],
-      ["goose", "short", 1],
-      ["mini-backpack", "short", 1],
-      ["chicken", "short", 1],
-      ["cyber-cat-ears", "short", 1],
-      ["kitten", "short", 1],
-      ["octopus", "short", 1],
-      ["hollow-helmet", "short", 1],
-      ["crown", "short", 3],
-      ["fairy-wings", "short", 3],
-    ]);
+    expect(states(3)).toEqual(AT_THREE_COINS);
   });
   it("counts an awarded part as owned, the server would not sell it", () => {
     expect(states(0, ["crown"]).find(([id]) => id === "crown")).toEqual(["crown", "owned", 0]);

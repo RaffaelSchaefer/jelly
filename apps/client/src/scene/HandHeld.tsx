@@ -7,37 +7,41 @@
 
 import type { Object3D } from "three";
 
-import { boardPose, HAND, type Jelly } from "@jelly/scene";
+import { boardPose, holdRest, type Hold, type Jelly } from "@jelly/scene";
 import { useFrame } from "@react-three/fiber";
 import { useRef, type ReactNode } from "react";
 
 /**
  * Muss in der Wurzel des Jellys liegen: Es liest die Lage der Hände im selben Koordinatensystem.
- * Modelle entstehen um die Hände in Ruhe. Der innere Versatz hebt die Lage auf, die sie dort haben,
- * so bleibt ein Modell an seinem Platz und dreht sich nur um die Mitte zwischen ihnen.
+ * Modelle entstehen um die Hände in Ruhe, so wie `hold` sie hinlegt. Der innere Versatz hebt die
+ * Mitte zwischen ihnen dort auf, so bleibt ein Modell an seinem Platz und dreht sich nur um sie.
  */
 export default function HandHeld({
   jelly,
+  hold,
   visible = true,
   children,
 }: {
   jelly: Jelly;
+  /** Wie die Hände es halten (`holdOf` aus `@jelly/scene`). */
+  hold: Hold;
   /** Ausgeblendet bleibt das Modell geladen, etwa solange die Hände eine Tafel halten. */
   visible?: boolean;
   children: ReactNode;
 }) {
   const holder = useRef<Object3D>(null);
+  const rest = holdRest(hold);
 
   useFrame(() => {
     if (!holder.current) return;
-    const pose = boardPose(jelly.hands[0]!.position, jelly.hands[1]!.position);
+    const pose = boardPose(jelly.hands[0]!.position, jelly.hands[1]!.position, hold);
     holder.current.position.set(pose.x, pose.y, 0);
-    holder.current.rotation.z = pose.tilt;
+    holder.current.rotation.z = pose.tilt - rest.tilt;
   });
 
   return (
     <object3D ref={holder} visible={visible}>
-      <object3D position={[0, -HAND.y, 0]}>{children}</object3D>
+      <object3D position={[-rest.x, -rest.y, 0]}>{children}</object3D>
     </object3D>
   );
 }

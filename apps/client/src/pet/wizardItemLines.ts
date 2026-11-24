@@ -208,6 +208,17 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Schlag dich wacker, {name}!"],
     hover: ["Vorsicht, spitz! Na gut, ein bisschen stumpf."],
   },
+  bfg: {
+    offer: [
+      "Rip & Tear! Ähm, ich meine: sehr fein verarbeitet.",
+      "Argent-Plasma in der Kammer, in deiner Farbe.",
+      "Die BFG. Knietief in Dämonen? Damit nicht mehr.",
+    ],
+    short: ["Zehn Münzen. Auch der Slayer musste mal sparen."],
+    worn: ["The only thing they fear is you, {name}."],
+    bought: ["Rip & Tear, {name}! Nur nicht im Laden."],
+    hover: ["Big Fluffy Gun. Steht jedenfalls so im Handbuch."],
+  },
   "cat-tail": {
     offer: ["Ein Katzenschwanz! Er wedelt von allein.", "Flauschig, mit heller Spitze."],
     short: ["Für den Schwanz fehlt noch etwas Gold."],
