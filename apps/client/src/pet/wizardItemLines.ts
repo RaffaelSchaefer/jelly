@@ -188,6 +188,26 @@ export const ITEM_LINES: Readonly<Record<string, Record<ItemLineKind, readonly s
     bought: ["Er bleibt bei dir, {name}!"],
     hover: ["Nicht kitzeln, sonst kringelt er sich."],
   },
+  "hollow-helmet": {
+    offer: [
+      "Ein Hohlhelm! Aus einem Reich tief unter der Erde.",
+      "Zwei Hörner, kein Wort. Sehr geheimnisvoll.",
+    ],
+    short: ["Für den Hohlhelm fehlt noch Gold. Geo nehme ich nicht."],
+    worn: ["Du siehst aus wie ein kleiner Wanderer aus der Tiefe."],
+    bought: ["Hörner hoch, {name}! Die Tiefe ruft."],
+    hover: ["Klopf mal drauf. Hohl, wie versprochen."],
+  },
+  "nail-sword": {
+    offer: [
+      "Ein Ritternagel! Klein, aber er sticht.",
+      "Kein Schwert, ein Nagel. Er nimmt das ernst.",
+    ],
+    short: ["Für den Nagel fehlt noch ein Goldstück."],
+    worn: ["Klinge gesenkt, Blick nach vorn. Sehr ritterlich!"],
+    bought: ["Schlag dich wacker, {name}!"],
+    hover: ["Vorsicht, spitz! Na gut, ein bisschen stumpf."],
+  },
   "cat-tail": {
     offer: ["Ein Katzenschwanz! Er wedelt von allein.", "Flauschig, mit heller Spitze."],
     short: ["Für den Schwanz fehlt noch etwas Gold."],
