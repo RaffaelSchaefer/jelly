@@ -235,8 +235,10 @@ export function beginStacking(stacking: Stacking, stacks: StageStack[], clock: S
  * that a jump lands it on top just when its move arrives.
  */
 function chooseLevel(stacking: Stacking, perch: Perch, move: StageMove | undefined): number {
-  if (!move || move.stack_level === 0) return 0;
   const { serverTime, reducedMotion } = stacking.clock;
+  // The server plans every move a moment ahead. Until it starts, a jelly of the tower keeps its level.
+  if (move && perch.tower && serverTime < move.start_at) return perch.level;
+  if (!move || move.stack_level === 0) return 0;
   const arrival = findArrival(move);
   if (serverTime >= arrival) return move.stack_level;
   if (reducedMotion) return 0;

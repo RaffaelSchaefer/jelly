@@ -170,6 +170,24 @@ test("when one below leaves, the jellies above drop and bounce, it hops off", ()
   assert.ok(riseOf(stage, 2) < 0.01, "and lands on the floor");
 });
 
+test("the jellies above a leaver wait on their level until their new move starts", () => {
+  const { stage } = buildTower(4);
+  // The server plans every move a second ahead.
+  const startAt = stage.now() + 1000;
+  stage.moves.set(2, stackMove(2, 0, startAt, 2000));
+  stage.moves.set(3, stackMove(3, 1, startAt));
+  stage.moves.set(4, stackMove(4, 2, startAt));
+  stage.setStacks([stackOf([1, 3, 4])]);
+  const heights: number[] = [];
+  for (let frame = 0; frame < 150; frame++) {
+    stage.step([1, 2, 3, 4]);
+    heights.push(riseOf(stage, 3));
+  }
+  assert.ok(heights[30]! > 1.5 * STEP, "still up while the move has not started");
+  assert.ok(Math.min(...heights) > 0.5 * STEP, "never falls to the floor on the way");
+  assert.ok(heights.at(-1)! < 1.2 * STEP, "and ends one level lower");
+});
+
 test("a falling tower throws its upper jellies with a spin, the bottom one pops back", () => {
   const { stage, ids } = buildTower(4);
   ids.forEach((id) => stage.moves.set(id, stackMove(id, 0, stage.now(), 3000)));

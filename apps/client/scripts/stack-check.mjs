@@ -44,6 +44,8 @@ const FILM_AT = Number(PARAMS.get("filmAt") ?? AFTER_MS - 100);
 const SPOT = { x: 50, y: 50 };
 const STACK_ID = 1;
 const WALK_MS = 1500;
+/** So weit plant der Server jeden Weg voraus (`moveLeadMillis`). */
+const LEAD_MS = 1000;
 const HIGHLIGHT_MS = 10_000;
 /** Die ersten IDs gehören dem Turm von unten nach oben, dann kommt der Kletterer. */
 const CLIMBER_ID = MEMBERS + 1;
@@ -92,12 +94,15 @@ let eventId = 0;
 /** Die Kamera fliegt nur beim ersten Stand zum Turm, danach gehört sie dem Betrachter. */
 let isFramed = false;
 
-/** Ein Weg, der jetzt beginnt. Ohne `to` bleibt das Jelly stehen, wie nach einem Nachrutschen. */
-function walk(playerId, level, from, { to = from, kind = "stack" } = {}) {
+/**
+ * Ein Weg, der wie beim Server eine Sekunde nach dem Ereignis beginnt. Ohne `to` bleibt das Jelly
+ * stehen, wie nach einem Nachrutschen. Wege im ersten Stand (`lead` 0) haben längst begonnen.
+ */
+function walk(playerId, level, from, { to = from, kind = "stack", lead = LEAD_MS } = {}) {
   return {
     player_id: playerId,
     kind,
-    start_at: Date.now(),
+    start_at: Date.now() + lead,
     stack_level: level,
     points: [
       { ...from, t: 0 },
@@ -180,7 +185,7 @@ const source = {
       room: { width: 100, height: 100, unit: "percent", ...DEMO_HALL },
       areas: [],
       players,
-      moves: members.map((id, level) => walk(id, level, SPOT)),
+      moves: members.map((id, level) => walk(id, level, SPOT, { lead: 0 })),
       stacks:
         members.length === 0
           ? []
