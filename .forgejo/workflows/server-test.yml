@@ -1,0 +1,62 @@
+name: Server Tests
+
+# Forgejo only, like server-image.yml. Runs lint and tests of apps/server on every push to main
+# that touches the server or the packages its stage bundles. The runner has room for one or two
+# jobs, so a feature branch is tested by hand before its merge: `fj actions dispatch` or the button
+# on the forge.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/server/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".forgejo/workflows/server-test.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: docker
+    defaults:
+      run:
+        working-directory: apps/server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The runner has no cache server, so every run starts cold and a cache step only waits.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/server/go.mod
+          cache: false
+
+      # A release binary instead of `go run`, which would compile the linter on every run.
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" v2.15.0
+
+      # The stage page bundles three.js and the packages, as in the Dockerfile.
+      - name: Install packages
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --filter @jelly/server...
+
+      - name: Build pages
+        run: go generate ./internal/web
+
+      - name: Lint
+        run: |
+          golangci-lint run
+          pnpm exec oxlint --deny-warnings web
+
+      - name: Check types
+        run: pnpm check-types
+
+      # The race detector needs cgo, which the runner image brings with gcc.
+      - name: Test
+        run: go test -race -count=1 ./...
