@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.38.0**
+Aktuelle Version: **1.38.1**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.38.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.38.1  | Fehlerbehebungen: Wer auf den Stapel klettert, dessen Spitze er schon ist, bekommt ihn unverändert zurück statt `500`. Steigt jemand ab und der Stapel steht weiter, nennt `stack.changed` den ganzen Stapel, nur ein Stapel, der weg ist, kommt als `{"id"}`. `PATCH /admin/api/lans/{id}` beendet eine laufende LAN nur mit `stop_running`, sonst `409 lan_running` |
 | 1.38.0  | Neues Cosmetic im Shop, dauerhaft und einfärbbar (`colorable`): `bfg` (BFG, `hands`) für 10 Münzen. Die Farbe aus `cosmetic_colors` färbt ihr Plasma. „Ausverkauft“ verlangt damit 32 Shop-Cosmetics |
 | 1.37.0  | Zwei neue Cosmetics im Shop, beide dauerhaft und nicht einfärbbar: `hollow-helmet` (Hohlhelm, `head`) für 4 Münzen und `nail-sword` (Ritternagel, `hands`) für 3. „Ausverkauft“ verlangt damit 31 Shop-Cosmetics |
 | 1.36.0  | `headset-neutral` (Headset schlicht) ist einfärbbar (`colorable`) und nimmt wie `headset` eine Farbe aus `cosmetic_colors` |
@@ -134,6 +135,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 404    | `not_found`                               | Weg unter `/v1` gibt es nicht oder nicht mit dieser Methode |
 | 404    | `purchase_not_found`                      | Dieses Cosmetic hat der Spieler nicht gekauft |
 | 409    | `name_taken`, `slug_taken`, `lan_overlap`, `lan_has_players` | Steht im Konflikt mit Vorhandenem |
+| 409    | `lan_running`                             | Die Änderung beendet eine laufende LAN, ohne dass `stop_running` das bestätigt |
 | 409    | `no_active_lan`, `not_joined`             | Gerade keine LAN oder keine Teilnahme     |
 | 409    | `lan_full`                                | Die LAN hat ihr Spieler-Limit erreicht    |
 | 409    | `code_redeemed`, `cosmetic_locked`        | Code schon benutzt oder Cosmetic noch nicht frei |
@@ -338,8 +340,9 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
   und wer klettert, beendet Ausflug und Folgen.
 - Laufende Stapel stehen als `stacks` in `GET /stage`, `member_ids` geht von unten nach oben. Nach `stack_seconds`
   fällt ein Stapel auseinander, ohne `stack_max_members` ist er unbegrenzt, mit gesetztem Wert folgt darüber `409 stack_full`. Ist er weg, folgt
-  `404 stack_not_found`. Jede Änderung meldet `stack.changed`.
-- `level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
+  `404 stack_not_found`. Jede Änderung meldet `stack.changed` mit dem ganzen Stapel, nur ein Stapel, der weg ist, kommt als
+  `{"id"}`. Wer schon oben auf einem Stapel steht und noch einmal klettert, bekommt ihn unverändert zurück.
+- `stack_level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
 - `POST /highlights` mit `{"player_id"}` lässt ein Jelly für `highlight_seconds` aufleuchten, auch das eigene. Das Ereignis
   nennt `cosmetic_key`, die Aura `highlight-aura` ersetzt so lange die getragene. Freischalten kann sie niemand.
   Danach folgt das nächste erst nach `highlight_cooldown`, sonst `409 highlight_cooldown`.
@@ -524,7 +527,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |
 | `DELETE /admin/api/players/{id}`                 |                                           |
 | `GET`, `POST /admin/api/lans`                    | `{"slug","name","timezone","join_code","starts_at","ends_at"}` |
-| `PATCH /admin/api/lans/{id}`                     | `{"name","starts_at","ends_at"}`, alle optional. Der Kurzname bleibt fest |
+| `PATCH /admin/api/lans/{id}`                     | `{"name","starts_at","ends_at","stop_running"}`, alle optional. Der Kurzname bleibt fest. Endet eine laufende LAN dadurch oder beginnt sie erst später, braucht es `"stop_running": true`, sonst `409 lan_running` |
 | `DELETE /admin/api/lans/{id}`                    | Nur ohne Spieler, sonst `409 lan_has_players`. Zonen und Codes verschwinden mit |
 | `PATCH /admin/api/lans/{id}/rules`               | Ändert nur die genannten Regeln, siehe unten |
 | `PUT /admin/api/lans/{id}/rules`                 | **Ersetzt alle Regeln**, siehe unten      |
