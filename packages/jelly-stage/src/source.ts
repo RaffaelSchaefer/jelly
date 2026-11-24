@@ -19,6 +19,8 @@ export const STATE_EVENTS = [
   "stage.changed",
   "stack.changed",
   "gathering.changed",
+  // Who wears the wizard's hat shows in `equipped`.
+  "wizard_hat.changed",
 ];
 
 /** Events that only trigger animations. */
