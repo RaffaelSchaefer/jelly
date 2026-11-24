@@ -13,7 +13,7 @@ use tauri::{AppHandle, State};
 
 use crate::{
     api::{AccessBody, Api, EquipBody, Profile},
-    error::Result,
+    error::{Error, Result},
     events,
     pet::{poke_due, Action, Color, Settings},
 };
@@ -315,6 +315,19 @@ pub async fn update_settings(
     let session = session(&app, &mut slot).await?;
     session.store.set_settings(settings)?;
     Ok(session.game())
+}
+
+/// Liest die Einstellungen des Geräts. Ohne Netz und ohne eine Sitzung zu öffnen: So bekommt die
+/// Karte sie auch, wenn der Server nicht antwortet oder keine LAN läuft.
+///
+/// # Fehler
+///
+/// [`Error::NotRegistered`] ohne geladene Sitzung.
+#[tauri::command]
+pub async fn get_settings(state: State<'_, GameState>) -> Result<Settings> {
+    let slot = state.0.lock().await;
+    let session = slot.as_ref().ok_or(Error::NotRegistered)?;
+    Ok(session.store.local.settings)
 }
 
 /// Meldet, dass die App noch läuft. Gibt keine XP und hält das Jelly auf der Bühne.
