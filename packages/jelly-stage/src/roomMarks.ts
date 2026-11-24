@@ -1,6 +1,7 @@
 /**
  * The marks in the room that follow the jellies: the light on highlighted ones, the rings of choice,
- * the ring under the pointer and the pointer at the own goal.
+ * the ring under the pointer, the pointer at the own goal, the ring with the time left around every
+ * stack and the lighthouse on a highlighted tower.
  *
  * @module
  */
@@ -16,7 +17,9 @@ import type { Placement } from "./zones.ts";
 import { createBeams, updateBeams, type StageBeams } from "./beams.ts";
 import { createChoiceRings, updateChoiceRings, type ChoiceRings } from "./choiceRings.ts";
 import { createHoverRing, updateHoverRing, type HoverRing } from "./hoverRing.ts";
+import { createLighthouses, updateLighthouses, type Lighthouses } from "./lighthouse.ts";
 import { createPointer, updatePointer, type StagePointer } from "./pointer.ts";
+import { createStackRings, updateStackRings, type StackRings } from "./stackRings.ts";
 
 /** Everything that marks jellies and places in the room. */
 export interface RoomMarks {
@@ -24,6 +27,8 @@ export interface RoomMarks {
   choiceRings: ChoiceRings;
   goalPointer: StagePointer;
   hoverRing: HoverRing;
+  lighthouses: Lighthouses;
+  stackRings: StackRings;
 }
 
 /** What {@link updateRoomMarks} needs for a frame. */
@@ -59,15 +64,42 @@ export function createRoomMarks(scene: Scene): RoomMarks {
     choiceRings: createChoiceRings(),
     goalPointer: createPointer(),
     hoverRing: createHoverRing(),
+    lighthouses: createLighthouses(),
+    stackRings: createStackRings(),
   };
-  scene.add(marks.beams.root, marks.choiceRings.root, marks.goalPointer.root, marks.hoverRing.mesh);
+  scene.add(
+    marks.beams.root,
+    marks.choiceRings.root,
+    marks.goalPointer.root,
+    marks.hoverRing.mesh,
+    marks.lighthouses.root,
+    marks.stackRings.mesh,
+  );
   return marks;
 }
 
-/** Moves the light on highlighted jellies, the rings of choice and the pointer at the own goal. */
+/** Moves the light on highlighted jellies and towers, all rings and the pointer at the own goal. */
 export function updateRoomMarks(marks: RoomMarks, frame: RoomMarksFrame): void {
-  const { spots, effects, platforms, seconds, now, reducedMotion } = frame;
-  updateBeams(marks.beams, { spots, effects, platforms, now });
+  const { spots, effects, stacks, platforms, room, serverTime, seconds, now, reducedMotion } =
+    frame;
+  updateBeams(marks.beams, { spots, effects, stacks, platforms, now });
+  updateLighthouses(marks.lighthouses, {
+    spots,
+    effects,
+    stacks,
+    platforms,
+    room,
+    now,
+    reducedMotion,
+  });
+  updateStackRings(marks.stackRings, {
+    stacks,
+    platforms,
+    room,
+    serverTime,
+    seconds,
+    reducedMotion,
+  });
   updateChoiceRings(marks.choiceRings, { spots, lit: frame.lit, seconds, reducedMotion });
   const spot = spots.find((candidate) => candidate.player.id === frame.hoveredId);
   updateHoverRing(marks.hoverRing, { spot, seconds, reducedMotion });
@@ -77,8 +109,8 @@ export function updateRoomMarks(marks: RoomMarks, frame: RoomMarksFrame): void {
     move: own && frame.moves.get(own.id),
     color: own?.color ?? "",
     platforms,
-    room: frame.room,
-    serverTime: frame.serverTime,
+    room,
+    serverTime,
     seconds,
     reducedMotion,
   });

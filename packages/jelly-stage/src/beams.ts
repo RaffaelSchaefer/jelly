@@ -24,6 +24,7 @@ import {
 
 import type { StageEffect } from "./effects.ts";
 import type { JellySpot } from "./jellies.ts";
+import type { StageStack } from "./types.ts";
 
 import { calculateSpotlightPresence } from "./effects.ts";
 import { FIRST_JELLY_ORDER, JELLY_HEIGHT } from "./jellies.ts";
@@ -53,7 +54,7 @@ const BEFORE_JELLY = 0.5;
 const MOST_BEAMS = 16;
 
 /** Clock, brightness and colors of one light, shared by its beam, halo and pool. */
-interface LightUniforms {
+export interface LightUniforms {
   uTime: { value: number };
   uPresence: { value: number };
   uCore: { value: Color };
@@ -86,6 +87,8 @@ export interface BeamFrame {
   /** Sorted from back to front, the order the jellies are drawn in. */
   spots: JellySpot[];
   effects: StageEffect[];
+  /** The running stacks: a beam on one of them draws before the whole tower. */
+  stacks: StageStack[];
   /** The stage platforms, where the floor is raised. */
   platforms: Placement[];
   /** Local time in milliseconds, as used by the effects. */
@@ -93,7 +96,7 @@ export interface BeamFrame {
 }
 
 /** Creates a mesh of soft light. It blends, but draws in the order of the jellies. */
-function createLightMesh(
+export function createLightMesh(
   geometry: BufferGeometry,
   light: LightUniforms,
   look: { defines: Record<string, string>; side: Side },
@@ -174,6 +177,20 @@ export function createBeams(): StageBeams {
   return { root, beams };
 }
 
+/**
+ * Returns the rank in the drawing order the light of the jelly at `rank` draws before. On a stack
+ * that is the farthest jelly of the tower, or the beam would cover the jellies below the lit one.
+ */
+function findFirstRank(frame: BeamFrame, rank: number): number {
+  const playerId = frame.spots[rank]?.player.id ?? -1;
+  const stack = frame.stacks.find((candidate) => candidate.member_ids.includes(playerId));
+  if (!stack) return rank;
+  const ranks = frame.spots.flatMap((spot, index) =>
+    stack.member_ids.includes(spot.player.id) ? [index] : [],
+  );
+  return Math.min(rank, ...ranks);
+}
+
 /** Puts one light on the jelly at `rank` in the drawing order. */
 function placeBeam(beam: Beam, frame: BeamFrame, rank: number): void {
   const spot = frame.spots[rank];
@@ -181,7 +198,7 @@ function placeBeam(beam: Beam, frame: BeamFrame, rank: number): void {
   const { x, y, z } = spot.feet;
   const floor = findFloorHeight(spot.feet, frame.platforms);
   beam.group.visible = true;
-  beam.group.renderOrder = FIRST_JELLY_ORDER + rank - BEFORE_JELLY;
+  beam.group.renderOrder = FIRST_JELLY_ORDER + findFirstRank(frame, rank) - BEFORE_JELLY;
   beam.group.position.set(x, floor, z);
   beam.halo.position.y = y - floor + JELLY_HEIGHT / 2;
   beam.pool.visible = true;
@@ -189,8 +206,8 @@ function placeBeam(beam: Beam, frame: BeamFrame, rank: number): void {
 }
 
 /** Gives a light the color of the player who asked for it. */
-function paintBeam(beam: Beam, hue: number): void {
-  const { uCore, uEdge } = beam.light;
+export function paintLight(light: LightUniforms, hue: number): void {
+  const { uCore, uEdge } = light;
   uCore.value.setHSL(hue, LIGHT_SATURATION, CORE_LIGHTNESS, SRGBColorSpace);
   uEdge.value.setHSL(hue, LIGHT_SATURATION, EDGE_LIGHTNESS, SRGBColorSpace);
 }
@@ -204,7 +221,7 @@ export function updateBeams(lights: StageBeams, frame: BeamFrame): void {
     const rank = frame.spots.findIndex((spot) => spot.player.id === effect.playerId);
     if (rank < 0) continue;
     placeBeam(beam, frame, rank);
-    paintBeam(beam, effect.hue);
+    paintLight(beam.light, effect.hue);
     beam.light.uPresence.value = calculateSpotlightPresence(effect, frame.now);
     count += 1;
   }
