@@ -90,7 +90,10 @@ export function holdsModel(player: StagePlayer): boolean {
  * the hands hold what they hold (`holdOf` from `@jelly/scene`): where they rest, the model is built
  * around that, and how far it follows them.
  */
-export function followHands({ jelly, held, heldModel, paws }: Wearer, hold: Hold = BOARD_HOLD): void {
+export function followHands(
+  { jelly, held, heldModel, paws }: Wearer,
+  hold: Hold = BOARD_HOLD,
+): void {
   const [left, right] = jelly.hands;
   if (!left || !right) return;
   const pose = boardPose(left.position, right.position, hold);
