@@ -11,6 +11,31 @@ import type { LANActions } from "./lanContext.ts";
 
 const TEXT_FILL_ALL = "Bitte gib Name, Beginn und Ende an.";
 const TEXT_END_AFTER_START = "Das Ende muss nach dem Beginn liegen.";
+const TEXT_CONFIRM_STOP =
+  "Die LAN läuft gerade und wäre damit für alle vorbei. Speichere noch einmal, um das zu bestätigen.";
+
+/** Says whether a LAN runs now but would not after the change. */
+function stopsRunningLAN(lan: LANSummary, startsAt: number, endsAt: number, now: number): boolean {
+  const isRunning = lan.starts_at <= now && now < lan.ends_at;
+  return isRunning && !(startsAt <= now && now < endsAt);
+}
+
+/**
+ * A typo in the period must not end a running LAN, so ending it takes a second save. Any new input
+ * needs its own confirmation.
+ */
+function createStopGuard(form: HTMLFormElement, showBad: (text: string) => void) {
+  let isConfirmed = false;
+  form.addEventListener("input", () => {
+    isConfirmed = false;
+  });
+  return (stops: boolean): boolean => {
+    if (!stops || isConfirmed) return true;
+    isConfirmed = true;
+    showBad(TEXT_CONFIRM_STOP);
+    return false;
+  };
+}
 
 /** Creates the panel with the current values filled in. */
 export function createLANEditForm(lan: LANSummary, actions: LANActions): HTMLElement {
@@ -40,6 +65,7 @@ export function createLANEditForm(lan: LANSummary, actions: LANActions): HTMLEle
     message.root,
     createElement("div", "actions", save),
   );
+  const mayStop = createStopGuard(form, message.showBad);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const changes = {
@@ -55,8 +81,12 @@ export function createLANEditForm(lan: LANSummary, actions: LANActions): HTMLEle
       message.showBad(TEXT_END_AFTER_START);
       return;
     }
+    const stops = stopsRunningLAN(lan, changes.starts_at, changes.ends_at, Date.now());
+    if (!mayStop(stops)) {
+      return;
+    }
     save.disabled = true;
-    updateLAN(lan.id, changes)
+    updateLAN(lan.id, { ...changes, stop_running: stops })
       .then(actions.onChanged)
       .catch((error: unknown) => {
         save.disabled = false;
