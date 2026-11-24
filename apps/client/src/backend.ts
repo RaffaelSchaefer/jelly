@@ -93,6 +93,15 @@ export const goTo = (x: number, y: number) => invoke<Game>("go_to", { x, y });
 /** Lässt ein Jelly aufleuchten (`highlight_player`). */
 export const highlightPlayer = (playerId: number) => invoke<Game>("highlight_player", { playerId });
 
+/** Beginnt einen Stapel an der eigenen Stelle (`start_stack`). */
+export const startStack = () => invoke<Game>("start_stack");
+
+/** Klettert oben auf einen Stapel (`join_stack`). `null` heißt: noch zu weit weg. */
+export const joinStack = (stackId: number) => invoke<Game | null>("join_stack", { stackId });
+
+/** Steigt vom Stapel ab (`leave_stack`). */
+export const leaveStack = () => invoke<Game>("leave_stack");
+
 /** Liest, wer gerade auf der Bühne steht (`get_stage`). */
 export const getStage = () => invoke<Stage>("get_stage");
 

@@ -22,7 +22,7 @@ import {
 import { Euler, Group, Matrix4, Object3D, Quaternion, Vector3, type InstancedMesh } from "three";
 
 import type { StageEffect } from "./effects.ts";
-import type { StagePlayer } from "./types.ts";
+import type { StagePlayer, StageStack } from "./types.ts";
 import type { FloorPoint, ScenePoint } from "./world.ts";
 
 import { findEmote, findMotionPose } from "./effects.ts";
@@ -121,6 +121,10 @@ export interface JellyFrame {
   winnerId: number | null;
   /** How many jellies stand below each jelly, by player ID. */
   levels: Map<number, number>;
+  /** The running stacks, as fresh as the last `stack.changed`. */
+  stacks: StageStack[];
+  /** Server time of this frame in milliseconds, as `ends_at` of a stack counts. */
+  serverTime: number;
   /** Seconds since the last frame and since the page opened. */
   seconds: number;
   time: number;
