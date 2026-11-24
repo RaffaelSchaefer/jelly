@@ -40,7 +40,16 @@ export {
   type DuetRole,
 } from "./partnerEmotes.ts";
 export { JELLY_COLORS, type JellyColor, type JellyPalette } from "./colors.ts";
-export { boardPose, handsOf, isWornOnHands } from "./held.ts";
+export {
+  BOARD_HOLD,
+  boardPose,
+  handsOf,
+  holdOf,
+  holdRest,
+  isWornOnHands,
+  type Hold,
+  type HoldSpot,
+} from "./held.ts";
 export { BODY_BOTTOM, GRIP, HAND, HEAD } from "./jellyGeometry.ts";
 export { MOUTH_SHAPE_NAMES, type MouthFrame, type MouthShape } from "./mouthShapes.ts";
 export type { JellyQuality } from "./body.ts";

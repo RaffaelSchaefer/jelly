@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { boardPose, handsOf, isWornOnHands } from "./held.ts";
+import { BOARD_HOLD, boardPose, handsOf, holdOf, holdRest, isWornOnHands } from "./held.ts";
 
 describe("boardPose", () => {
   it("rests between the hands", () => {
@@ -18,6 +18,39 @@ describe("boardPose", () => {
     expect(waving.y).toBe(-0.15);
     expect(waving.tilt).toBe(0.22);
     expect(boardPose({ x: -0.85, y: 1 }, { x: 0.85, y: 1 }).y).toBe(-0.15);
+  });
+});
+
+describe("holdOf", () => {
+  it("holds everything like a board, the BFG with its right hand at the front", () => {
+    expect(holdOf("goose")).toBe(BOARD_HOLD);
+    expect(holdOf()).toBe(BOARD_HOLD);
+    expect(holdOf("constructor")).toBe(BOARD_HOLD);
+    expect(holdOf("bfg").hands[0]).toEqual(BOARD_HOLD.hands[0]);
+    expect(holdOf("bfg").hands[1].z).toBeGreaterThan(BOARD_HOLD.hands[1].z);
+  });
+
+  it("keeps the BFG nearly still and never lifts it towards the face", () => {
+    const bfg = holdOf("bfg");
+    const rest = holdRest(bfg);
+    const [left, right] = bfg.hands;
+    expect(boardPose(left, right, bfg).y).toBeCloseTo(rest.y);
+    for (const hands of [
+      [left, { x: 1.05, y: 0.8 }],
+      [
+        { x: -0.85, y: 1 },
+        { x: 0.85, y: 1 },
+      ],
+      [
+        { x: -1.2, y: -1 },
+        { x: 0.6, y: -1 },
+      ],
+    ] as const) {
+      const pose = boardPose(hands[0], hands[1], bfg);
+      expect(pose.y).toBeLessThanOrEqual(rest.y);
+      expect(Math.abs(pose.x - rest.x)).toBeLessThanOrEqual(0.03 + 1e-9);
+      expect(Math.abs(pose.tilt - rest.tilt)).toBeLessThanOrEqual(0.03 + 1e-9);
+    }
   });
 });
 
