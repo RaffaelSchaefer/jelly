@@ -83,6 +83,7 @@ pub fn run() {
             commands::equip_cosmetic,
             commands::purchase_cosmetic,
             commands::update_settings,
+            commands::get_settings,
             commands::presence,
             commands::update::check_update,
             commands::update::install_update

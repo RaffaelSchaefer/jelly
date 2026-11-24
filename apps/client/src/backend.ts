@@ -96,13 +96,9 @@ export const highlightPlayer = (playerId: number) => invoke<Game>("highlight_pla
 /** Liest, wer gerade auf der Bühne steht (`get_stage`). */
 export const getStage = () => invoke<Stage>("get_stage");
 
-/** Was die Karte bei jedem Lesen bekommt (Rust: `MapState`). */
+/** Was die Karte bei jedem Lesen vom Server bekommt (Rust: `MapState`). */
 export interface MapState {
   ownId: number;
-  /** `null` folgt dem Betriebssystem. */
-  reducedMotion: boolean | null;
-  optimizedRendering: boolean;
-  frameLimit: number | null;
   /** Regel `near_distance` der LAN, in Jelly-Einheiten. */
   nearDistance: number;
   /** Der laufende Ausflug des eigenen Jellys. */
@@ -148,6 +144,9 @@ export const purchaseCosmetic = (key: string) => invoke<Game>("purchase_cosmetic
 
 /** Übernimmt Größe und Bewegung, nur auf diesem Gerät (`update_settings`). */
 export const updateSettings = (settings: Settings) => invoke<Game>("update_settings", { settings });
+
+/** Liest die Einstellungen des Geräts, ohne Netz (`get_settings`). */
+export const getSettings = () => invoke<Settings>("get_settings");
 
 /** Meldet, dass die App noch läuft (`presence`). */
 export const presence = () => invoke<Game>("presence");
