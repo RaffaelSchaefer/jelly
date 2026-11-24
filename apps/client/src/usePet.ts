@@ -42,6 +42,7 @@ import {
 } from "./useGame";
 import { usePartnerEmote, usePlayPartner } from "./usePartnerEmote";
 import { useSigns } from "./useSigns";
+import { useStack } from "./useStack";
 
 /** Mindestabstand zwischen zwei Stupsern in Millisekunden, damit Tastenhämmern nichts verstopft. */
 const POKE_INTERVAL_MS = 1000;
@@ -305,6 +306,7 @@ export function usePet(onLevelUp: () => void) {
   const emotes = useEmotes(state, account, ready);
   const signs = useSigns(state, account, ready, hopAndSay);
   useFollow(state, ready, hopAndSay);
+  useStack(state, ready, hopAndSay, setMessage);
   // Ohne Hüpfer: Er stapelte sich mit dem Duett und holte die Hände heraus.
   const playPartner = usePlayPartner(emotes.showEmote, setMessage);
   const partner = usePartnerEmote(state, account, ready, { play: playPartner, say: setMessage });

@@ -302,6 +302,36 @@ impl Api {
         Self::send(self.request(reqwest::Method::DELETE, "/v1/trips/current")).await
     }
 
+    /// `POST /v1/stacks`: beginnt einen Stapel an der Stelle des eigenen Jellys, es steht unten.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
+    pub async fn start_stack(&self) -> Result<StackAnswer> {
+        Self::send(self.request(reqwest::Method::POST, "/v1/stacks")).await
+    }
+
+    /// `POST /v1/stacks/members`: das Jelly klettert oben auf einen Stapel in der Nähe.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`], etwa `too_far`,
+    /// `stack_full` oder `stack_not_found`.
+    pub async fn join_stack(&self, stack_id: i64) -> Result<StackAnswer> {
+        self.post("/v1/stacks/members", &json!({ "stack_id": stack_id }))
+            .await
+    }
+
+    /// `DELETE /v1/stacks/current`: das Jelly steigt ab, die Jellies darüber rutschen nach. Liefert
+    /// den neuen Stand.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`], [`Error::Unauthorized`] oder [`Error::Server`].
+    pub async fn leave_stack(&self) -> Result<Me> {
+        Self::send(self.request(reqwest::Method::DELETE, "/v1/stacks/current")).await
+    }
+
     /// `POST /v1/highlights`: lässt ein Jelly kurz aufleuchten und liefert den neuen Stand.
     ///
     /// # Fehler
