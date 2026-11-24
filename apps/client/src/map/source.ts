@@ -35,6 +35,12 @@ export interface MapSource extends StageSource {
   goTo: (point: StagePoint) => Promise<void>;
   /** Lässt ein Jelly aufleuchten. */
   highlight: (playerId: number) => Promise<void>;
+  /** Beginnt einen Stapel, wo das eigene Jelly gerade steht. */
+  startStack: () => Promise<void>;
+  /** Klettert oben auf einen Stapel. `false`, solange das Jelly zu weit weg steht. */
+  joinStack: (stackId: number) => Promise<boolean>;
+  /** Steigt vom Stapel ab. */
+  leaveStack: () => Promise<void>;
   /** Die Gesten, die zwei Jellies zusammen machen können. */
   readPartnerEmotes: () => Promise<CatalogEntry[]>;
   /** Fordert ein Jelly zu einem Partner-Emote auf. */
@@ -92,6 +98,13 @@ export async function createDesktopSource(): Promise<MapSource> {
     },
     highlight: async (playerId) => {
       await backend.highlightPlayer(playerId);
+    },
+    startStack: async () => {
+      await backend.startStack();
+    },
+    joinStack: async (stackId) => (await backend.joinStack(stackId)) !== null,
+    leaveStack: async () => {
+      await backend.leaveStack();
     },
     readPartnerEmotes: async () => (await backend.getCatalog()).partner_emotes,
     invitePartner: async (key, partnerId) => (await backend.invitePartner(key, partnerId)).invite,

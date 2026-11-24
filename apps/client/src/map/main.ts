@@ -1,9 +1,10 @@
 /**
  * Die Karte im eigenen Fenster: die Bühne aus `@jelly/stage` über das ganze Fenster, unten eine
  * Leiste mit dem eigenen Jelly, Suche, Hervorheben und Kamera (`dock.ts`, `zoom.ts`). Ein Klick
- * aufs eigene Jelly startet ein Partner-Emote (`partner.ts`), einer auf ein fremdes öffnet dessen
- * Fenster (`actions.ts`), einer auf den Boden einen Ausflug, einer auf einen Hinweis am Rand fliegt
- * hin. Ein Doppelklick zoomt. Beim Öffnen fliegt die Kamera vom eigenen Jelly auf die ganze Halle.
+ * aufs eigene Jelly startet ein Partner-Emote (`partner.ts`) oder einen Stapel (`stacks.ts`), einer
+ * auf ein fremdes öffnet dessen Fenster (`actions.ts`), einer auf den Boden einen Ausflug, einer
+ * auf einen Hinweis am Rand fliegt hin. Ein Doppelklick zoomt. Beim Öffnen fliegt die Kamera vom
+ * eigenen Jelly auf die ganze Halle.
  *
  * Reines TypeScript ohne React: Außer der Canvas gibt es hier nur Knöpfe und eine Statuszeile.
  *
@@ -31,6 +32,7 @@ import {
 } from "./partner";
 import { createJellySearch } from "./search";
 import { createDesktopSource } from "./source";
+import { actOnStack, chooseStack, labelOwnStack, toggleOwnStack, watchStackPlan } from "./stacks";
 import { listenToZoom } from "./zoom";
 import "./map.css";
 
@@ -168,6 +170,7 @@ function handleClick(page: MapPage, flow: PartnerFlow, point: ScreenPoint) {
   }
   if (handleStageClick(flow, point) || page.menu.close() || page.search.close()) return;
   if (page.view?.isOwnAt(point)) {
+    labelOwnStack(page);
     void openGestures(flow);
     return;
   }
@@ -195,6 +198,10 @@ function listenToInput(page: MapPage, flow: PartnerFlow) {
   });
   page.canvas.addEventListener("dblclick", (event) => handleDoubleClick(page, pointOf(event)));
   document.querySelector("#partner-cancel")!.addEventListener("click", () => cancelFlow(flow));
+  document.querySelector("#own-stack")!.addEventListener("click", () => {
+    handleEscape(flow);
+    void toggleOwnStack(page);
+  });
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     handleEscape(flow);
@@ -206,12 +213,13 @@ function listenToInput(page: MapPage, flow: PartnerFlow) {
   window.addEventListener("focus", () => page.view?.reload());
 }
 
-/** Nach jedem Bild: Fenster bleiben an ihrem Jelly, die Leiste zeigt die Kamera. */
+/** Nach jedem Bild: Fenster bleiben an ihrem Jelly, die Leiste zeigt die Kamera, ein Stapel wartet. */
 function followFrame(page: MapPage, flow: PartnerFlow) {
   if (!page.view) return;
   page.dock.showCamera(page.view.readCamera());
   page.menu.place();
   placeGestures(flow);
+  watchStackPlan(page);
 }
 
 /** Die Fensterknöpfe. In der Vorschau tut das Browser-Fenster, was es kann. */
@@ -263,6 +271,9 @@ function createPage(source: MapPage["source"]): MapPage {
     menu: createJellyMenu({
       follow: (playerId) => void follow(page, playerId),
       highlight: (playerId) => void highlight(page, playerId),
+      chooseStack: (playerId) =>
+        chooseStack(page.view?.readStacks() ?? [], page.source.readOwn().id, playerId),
+      stack: (playerId, choice) => void actOnStack(page, playerId, choice),
       locate: (playerId) => page.view?.locate(playerId) ?? null,
     }),
     search: createJellySearch({
@@ -287,6 +298,7 @@ function createPage(source: MapPage["source"]): MapPage {
     acting: false,
     pendingTrip: undefined,
     isShown: false,
+    stackPlan: null,
   };
   return page;
 }

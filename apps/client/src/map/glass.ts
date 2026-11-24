@@ -30,11 +30,11 @@ import { createGlass, FULLSCREEN, readShapes } from "../scene/glassMaterial";
  * das Feld Platz hat. Auf dem hellen Boden fällt ein Schatten stärker auf als am Jelly, und mehr
  * Farbe hält die Schrift lesbar, wenn Namen und Jellies dahinter durchscheinen.
  *
- * Ponytail: Platz für Leiste, Suche, Hinweis, Abbrechen, die zwei Knöpfe am fremden Jelly und vier
- * Gesten. Mehr Plätze kosten jedes Pixel einen Blick mehr. Kennt der Server mehr Gesten, fehlt den
- * letzten das Glas.
+ * Ponytail: Platz für Leiste, Suche, Hinweis, Abbrechen, die drei Knöpfe am fremden Jelly, vier
+ * Gesten und den Stapel-Knopf hinter ihnen. Mehr Plätze kosten jedes Pixel einen Blick mehr. Kennt
+ * der Server mehr Gesten, fehlt dem Stapel-Knopf und den letzten Gesten das Glas.
  */
-const LAYOUT = { maxShapes: 10, soloShapes: 1, shadow: 0.1, body: 0.62 };
+const LAYOUT = { maxShapes: 12, soloShapes: 1, shadow: 0.1, body: 0.62 };
 /** Bei reduzierter Bewegung gilt die Bildrate nicht, die Bilder sind dann nur noch für Hover. */
 const STILL_FRAME_MS = 100;
 const MAX_PIXEL_RATIO = 2;

@@ -15,13 +15,14 @@ const TEXT_OWN_LIT = "Dein Jelly leuchtet.";
 
 /**
  * Schickt einen Aufruf ab, bestätigt ihn und liest danach neu. Den Weg schickt der Server im
- * Stream.
+ * Stream. Ein leerer Text bestätigt nichts: Dann hat die Aktion selbst schon gemeldet, was war.
  */
-async function runAction(page: MapPage, action: () => Promise<string>) {
+export async function runAction(page: MapPage, action: () => Promise<string>) {
   if (page.acting) return;
   page.acting = true;
   try {
-    page.notice.confirm(await action());
+    const text = await action();
+    if (text) page.notice.confirm(text);
   } catch (cause) {
     page.notice.problem(String(cause));
   }
@@ -36,10 +37,11 @@ export function flyToJelly(page: MapPage, playerId: number) {
 }
 
 /**
- * Stellt das Jelly dazu oder weg. Das beendet einen Ausflug. Das Ziel gilt sofort, damit schon der
- * nächste Klick es kennt.
+ * Stellt das Jelly dazu oder weg. Das beendet einen Ausflug und einen geplanten Stapel. Das Ziel
+ * gilt sofort, damit schon der nächste Klick es kennt.
  */
 export function follow(page: MapPage, playerId: number | null) {
+  page.stackPlan = null;
   if (playerId !== null) page.view?.flyTo(playerId);
   return runAction(page, async () => {
     const target = await page.source.setFollow(playerId);
@@ -50,10 +52,11 @@ export function follow(page: MapPage, playerId: number | null) {
 }
 
 /**
- * Schickt das Jelly auf einen Ausflug, der ein Dazustellen beendet. Der Zeiger steht sofort. Lehnt
- * der Server ab, räumt ihn das Neuladen danach wieder weg.
+ * Schickt das Jelly auf einen Ausflug, der ein Dazustellen und einen geplanten Stapel beendet. Der
+ * Zeiger steht sofort. Lehnt der Server ab, räumt ihn das Neuladen danach wieder weg.
  */
 export function goTo(page: MapPage, point: StagePoint) {
+  page.stackPlan = null;
   return runAction(page, async () => {
     page.destination = point;
     setTarget(page, null);

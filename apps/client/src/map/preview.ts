@@ -1,6 +1,7 @@
 /**
  * Daten der Karte für die Browser-Vorschau, ohne Backend: die Halle der Server-Demo mit ein paar
- * Jellies, in ihrer echten Größe. Die Desktop-App lädt diese Datei nie.
+ * Jellies, in ihrer echten Größe, und einem Turm (`previewStacks.ts`). Die Desktop-App lädt diese
+ * Datei nie.
  *
  * @module
  */
@@ -20,6 +21,7 @@ import { createDemoRoom, DEMO_HALL } from "@jelly/stage/demo-room";
 import type { MapSource } from "./source";
 
 import { FRAME_RATE, PREVIEW_CATALOG, PREVIEW_ME, PREVIEW_RULES, type PartnerInvite } from "../pet";
+import { createStackPreview } from "./previewStacks";
 
 /**
  * Das eigene Jelly. Nicht 0: Die Bühne liest ein fehlendes Ziel als ID 0, sonst stünden alle bei
@@ -54,6 +56,8 @@ const BARE_EVERY = 3;
 const WALK_EVERY_MS = 500;
 const WALK_MS = 2000;
 const WALK_REACH = 3;
+/** Wer sich dazustellt, steht so weit links daneben. Rechts bummelt das andere Jelly. */
+const FOLLOW_GAP = 6;
 /** So lange überlegt das andere Jelly und so lange gilt eine Aufforderung. */
 const ANSWER_MS = 2000;
 const INVITE_MS = 120_000;
@@ -116,19 +120,28 @@ function createWalk(
   };
 }
 
+/** Wo ein Jelly zu Hause ist. */
+function homeOf(player: StagePlayer): StagePoint {
+  return { x: player.home_x, y: player.home_y };
+}
+
 /**
- * Lässt die Jellies abwechselnd um ihren Platz bummeln, wie sonst der Server. Das eigene läuft bei
- * einem Ziel oder Ausflug dorthin und bummelt dann nicht mehr.
+ * Lässt die Jellies abwechselnd um ihren Platz bummeln, wie sonst der Server. Wer gerade woanders
+ * ist (`isBusy`: auf einem Stapel, das eigene auch bei einem Ziel oder Ausflug), bummelt nicht.
  */
-function startWalks(players: StagePlayer[], trips: Trips, listener: StreamListener) {
+function startWalks(
+  players: StagePlayer[],
+  isBusy: (player: StagePlayer) => boolean,
+  listener: StreamListener,
+) {
   let next = 0;
   let isAway = false;
   setInterval(() => {
     next = (next + 1) % players.length;
     const player = players[next];
-    if (next === 0 && (player.follow !== null || trips.current() !== null)) return;
+    if (isBusy(player)) return;
     if (next === 0) isAway = !isAway;
-    const home = { x: player.home_x, y: player.home_y };
+    const home = homeOf(player);
     const away = { x: home.x + WALK_REACH, y: home.y };
     const [from, to] = isAway ? [home, away] : [away, home];
     listener.onMove(createWalk(player.id, from, to));
@@ -139,14 +152,15 @@ function startWalks(players: StagePlayer[], trips: Trips, listener: StreamListen
 interface Trips {
   /** Der laufende Ausflug, wie ihn sonst der eigene Stand nennt. */
   current: () => StageTrip | null;
-  go: (point: StagePoint) => void;
+  /** Läuft von `from` los, wo das Jelly gerade steht. */
+  go: (point: StagePoint, from: StagePoint) => void;
   /** Beendet den Ausflug und liefert, wo das Jelly jetzt steht. */
   end: () => StagePoint;
 }
 
 /** Ausflüge des eigenen Jellys, wie sonst beim Server: hin, warten und von selbst zurück. */
 function createTrips(own: StagePlayer, onMove: (move: StageMove) => void): Trips {
-  const home = { x: own.home_x, y: own.home_y };
+  const home = homeOf(own);
   let trip: StageTrip | null = null;
   let back: ReturnType<typeof setTimeout> | undefined;
   const end = (): StagePoint => {
@@ -155,8 +169,9 @@ function createTrips(own: StagePlayer, onMove: (move: StageMove) => void): Trips
     trip = null;
     return here;
   };
-  const go = (point: StagePoint) => {
-    onMove(createWalk(own.id, end(), point, "trip"));
+  const go = (point: StagePoint, from: StagePoint) => {
+    end();
+    onMove(createWalk(own.id, from, point, "trip"));
     own.follow = null;
     trip = { ...point, ends_at: Date.now() + TRIP_MS };
     back = setTimeout(() => onMove(createWalk(own.id, end(), home)), TRIP_MS);
@@ -234,14 +249,69 @@ function createPartnerPreview(): Pick<
   };
 }
 
-/** Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier nur für Aufforderungen und Licht. */
+/** Wege und Ereignisse an die Bühne, sobald sie hört. */
+type PreviewSend = Parameters<typeof createStackPreview>[2];
+
+/**
+ * Was das eigene Jelly in der Vorschau tut: dazustellen, Ausflug und Stapel. Losgehen nimmt es wie
+ * beim Server vom Stapel, Klettern und Beginnen beenden Ausflug und Dazustellen.
+ */
+function createOwnPreview(players: StagePlayer[], send: PreviewSend) {
+  const own = players[0];
+  const trips = createTrips(own, send.move);
+  const followed = () => players.find((player) => player.id === own.follow?.player_id);
+  const besideOrHome = () => {
+    const target = followed();
+    return target ? { x: target.home_x - FOLLOW_GAP, y: target.home_y } : homeOf(own);
+  };
+  // Ein Ausflug geht vor, Dazustellen und Stapel schließen sich mit ihm aus.
+  const ownSpot = (): StagePoint => trips.current() ?? stacks.spotOf(own.id) ?? besideOrHome();
+  const endWalks = () => {
+    trips.end();
+    own.follow = null;
+  };
+  const stacks = createStackPreview(players, { id: own.id, spot: ownSpot, endWalks }, send);
+  const actions: Pick<MapSource, "setFollow" | "goTo"> = {
+    setFollow: (playerId) => {
+      const from = ownSpot();
+      endWalks();
+      stacks.drop(own.id);
+      own.follow =
+        playerId === null ? null : { player_id: playerId, ends_at: Date.now() + TRIP_MS };
+      send.move(createWalk(own.id, from, besideOrHome(), playerId === null ? "wander" : "follow"));
+      return Promise.resolve(playerId);
+    },
+    goTo: (point) => {
+      const from = ownSpot();
+      stacks.drop(own.id);
+      trips.go(point, from);
+      return Promise.resolve();
+    },
+  };
+  const isBusy = (player: StagePlayer) =>
+    stacks.spotOf(player.id) !== undefined ||
+    (player === own && (own.follow !== null || trips.current() !== null));
+  return { trips, stacks, isBusy, actions };
+}
+
+/**
+ * Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier nur für Aufforderungen, Licht und
+ * Stapel.
+ */
 export function createPreviewSource(): MapSource {
   const areas = createDemoRoom();
   const players = listPlayers(areas);
   let listener: StreamListener | null = null;
-  const trips = createTrips(players[0], (move) => listener?.onMove(move));
+  const { trips, stacks, isBusy, actions } = createOwnPreview(players, {
+    move: (move) => listener?.onMove(move),
+    event: (event) => listener?.onEvent(event),
+  });
   return {
     ...createPartnerPreview(),
+    ...actions,
+    startStack: stacks.startStack,
+    joinStack: stacks.joinStack,
+    leaveStack: stacks.leaveStack,
     readState: () =>
       Promise.resolve({
         last_event_id: 0,
@@ -249,15 +319,15 @@ export function createPreviewSource(): MapSource {
         room: { width: 100, height: 100, unit: "percent", ...DEMO_HALL },
         areas,
         players,
-        moves: [],
-        stacks: [],
+        moves: stacks.moves(),
+        stacks: stacks.list(),
         gathering: null,
       }),
     readCatalog: () => Promise.resolve(PREVIEW_CATALOG),
     subscribe: (_firstEventId, next) => {
       listener = next;
       next.onConnectionChange(true);
-      startWalks(players, trips, next);
+      startWalks(players, isBusy, next);
     },
     // Die Vorschau teilt keine Einstellungen mit dem Pet: `map.html?optimized&fps=60` zeigt sie.
     readOwn: () => ({
@@ -268,18 +338,6 @@ export function createPreviewSource(): MapSource {
       nearDistance: PREVIEW_RULES.near_distance,
       trip: trips.current(),
     }),
-    setFollow: (playerId) => {
-      const own = players[0];
-      own.follow =
-        playerId === null ? null : { player_id: playerId, ends_at: Date.now() + TRIP_MS };
-      const target = players.find((player) => player.id === playerId) ?? own;
-      listener?.onMove(createWalk(own.id, trips.end(), { x: target.home_x, y: target.home_y }));
-      return Promise.resolve(playerId);
-    },
-    goTo: (point) => {
-      trips.go(point);
-      return Promise.resolve();
-    },
     highlight: (playerId) => {
       listener?.onEvent(highlightEvent(playerId));
       return Promise.resolve();

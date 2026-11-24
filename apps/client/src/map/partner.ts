@@ -103,9 +103,12 @@ function show(flow: PartnerFlow, step: PartnerStep) {
   }
 }
 
-/** Legt die Gesten ins Fenster. Sie bleiben im DOM: Das Glas zählt seine Tropfen der Reihe nach. */
+/**
+ * Legt die Gesten einmal ins Fenster, vor den Stapel-Knopf aus `map.html` (`stacks.ts`). Sie
+ * bleiben im DOM: Das Glas zählt seine Tropfen der Reihe nach.
+ */
 function fillMenu(flow: PartnerFlow, entries: CatalogEntry[]) {
-  flow.menu.replaceChildren(
+  flow.menu.prepend(
     ...entries.map((entry) => {
       const button = document.createElement("button");
       button.type = "button";

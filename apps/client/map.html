@@ -77,8 +77,18 @@
         <button id="jelly-highlight" class="glass-pill icon-pill" type="button" data-liquid="calm" aria-label="Hervorheben" data-tip="Hervorheben">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 13.9 9l5.6 1.9-5.6 1.9L12 18.5l-1.9-5.7-5.6-1.9L10.1 9z" /><path d="M19 3.5v3M17.5 5h3" /></svg>
         </button>
+        <button id="jelly-stack" class="glass-pill icon-pill" type="button" data-liquid="calm" aria-label="Stapel starten" data-tip="Stapel starten">
+          <svg class="stack-start" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h12c0-3-2.7-5-6-5s-6 2-6 5zM4.5 14.5h9c0-2.5-2-4-4.5-4s-4.5 1.5-4.5 4zM6.5 9h5c0-1.8-1.1-3-2.5-3s-2.5 1.2-2.5 3zM19 4v6M16 7h6" /></svg>
+          <svg class="stack-join" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h12c0-3-2.7-5-6-5s-6 2-6 5zM4.5 14.5h9c0-2.5-2-4-4.5-4s-4.5 1.5-4.5 4zM6.5 9h5c0-1.8-1.1-3-2.5-3s-2.5 1.2-2.5 3zM19 11V4M16.5 6.5 19 4l2.5 2.5" /></svg>
+        </button>
       </div>
-      <div id="partner-menu" role="group" aria-label="Partner-Emote wählen" hidden></div>
+      <div id="partner-menu" role="group" aria-label="Partner-Emote oder Stapel wählen" hidden>
+        <button id="own-stack" class="glass-pill" type="button" data-liquid="calm">
+          <svg class="stack-start" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h12c0-3-2.7-5-6-5s-6 2-6 5zM4.5 14.5h9c0-2.5-2-4-4.5-4s-4.5 1.5-4.5 4zM6.5 9h5c0-1.8-1.1-3-2.5-3s-2.5 1.2-2.5 3zM19 4v6M16 7h6" /></svg>
+          <svg class="stack-down" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h12c0-3-2.7-5-6-5s-6 2-6 5zM4.5 14.5h9c0-2.5-2-4-4.5-4s-4.5 1.5-4.5 4zM6.5 9h5c0-1.8-1.1-3-2.5-3s-2.5 1.2-2.5 3zM19 4v7M16.5 8.5 19 11l2.5-2.5" /></svg>
+          <span>Stapel starten</span>
+        </button>
+      </div>
       <p id="status" role="status" hidden></p>
     </div>
     <script type="module" src="/src/map/main.ts"></script>
