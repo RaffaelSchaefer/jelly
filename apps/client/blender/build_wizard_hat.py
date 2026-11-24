@@ -4,8 +4,8 @@
 
 The geometry and materials are the wizard's own (`build_hat` in `build_wizard.py`: felt cone, brim,
 hem, embroidery, patch, band, clasp and tip star), reshaped around his hat's pivot to fit a
-cosmetic: his hat reaches y 2, above the speech bubble at y 1.6. The cone keeps its width, so it
-still covers the head's crown, the brim narrows a little, and the height shrinks to fit. The wizard's paint layers (trim over felt) merge into one: a cosmetic has one layer.
+cosmetic: his hat reaches y 2, above the speech bubble at y 1.6. Cone and brim grow wider, so it
+reads as a big wizard's hat, and the height shrinks to fit. The wizard's paint layers (trim over felt) merge into one: a cosmetic has one layer.
 See README.md for the modelling rules.
 """
 import math
@@ -22,8 +22,8 @@ import generator  # noqa: E402
 from shapes import HEAD_R, HEAD_Y, from_blender, to_blender  # noqa: E402
 
 PIVOT = Vector((0.0, 0.99, 0.2))  # HAT_PIVOT in packages/jelly-scene/src/wizard.ts, at the brim
-CONE_WIDE = 1.0  # x and z of everything but the brim, around the pivot
-BRIM_WIDE = 0.84  # x and z of brim and hem: the wizard's brim would reach past the raised hands
+CONE_WIDE = 1.18  # x and z of everything but the brim, around the pivot: wider than the wizard's, it reads as a hat
+BRIM_WIDE = 1.08  # x and z of brim and hem, a little narrower than the cone so the raised hands stay clear
 BRIM = ("hat_brim", "hat_hem")
 TALL = 0.62  # y above the pivot
 DROP = -0.06  # moves the whole hat down; the brim's front then rests on the forehead
