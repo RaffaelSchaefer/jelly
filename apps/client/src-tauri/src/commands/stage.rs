@@ -10,18 +10,13 @@ use crate::{
     popout,
 };
 
-/// Was die Karte bei jedem Lesen bekommt.
+/// Was die Karte bei jedem Lesen vom Server bekommt. Die Einstellungen des Geräts liest sie
+/// getrennt mit [`super::get_settings`], denn dieses Lesen scheitert ohne laufende LAN.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MapState {
     /// Das eigene Jelly. Frisch je Lesen, denn ein neuer Code kann es ändern.
     own_id: i64,
-    /// Einstellung „Weniger Bewegung“, `None` folgt dem Betriebssystem.
-    reduced_motion: Option<bool>,
-    /// Einstellung „Optimierter Modus“: feste Knöpfe statt Glas.
-    optimized_rendering: bool,
-    /// Einstellung „Bildrate“, `None` heißt unbegrenzt.
-    frame_limit: Option<u16>,
     /// Regel `near_distance` der LAN: Bis dahin reicht eine Aufforderung, in Jelly-Einheiten.
     near_distance: f64,
     /// Der laufende Ausflug des eigenen Jellys. Die Bühne nennt ihn nicht, nur der eigene Stand.
@@ -158,7 +153,7 @@ pub async fn leave_stack(app: AppHandle, state: State<'_, GameState>) -> Result<
 /// [`Error::NotRegistered`] ohne geladene Sitzung oder Konto, sonst Netzwerk- oder Serverfehler.
 #[tauri::command]
 pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Result<MapState> {
-    let (api, own_id, trip, settings, near_distance) = {
+    let (api, own_id, trip, near_distance) = {
         let mut slot = state.0.lock().await;
         let session = slot.as_mut().ok_or(Error::NotRegistered)?;
         // Über `refresh`, damit der neue Stream beim frischen Stand beginnt und das Pet nichts
@@ -171,16 +166,12 @@ pub async fn get_map_state(app: AppHandle, state: State<'_, GameState>) -> Resul
             session.api.clone(),
             me.id,
             me.trip.clone(),
-            session.store.local.settings,
             session.lan.rules.near_distance,
         )
     };
     let stage = api.stage().await?;
     Ok(MapState {
         own_id,
-        reduced_motion: settings.reduced_motion,
-        optimized_rendering: settings.optimized_rendering,
-        frame_limit: settings.frame_limit,
         near_distance,
         trip,
         stage,

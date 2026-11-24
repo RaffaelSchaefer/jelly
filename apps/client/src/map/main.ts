@@ -83,20 +83,30 @@ function showMap(page: MapPage, hasOwn: boolean) {
   if (hasOwn) page.view?.playIntro();
 }
 
-/** Übernimmt, was ein neuer Stand für die Seite bedeutet. */
-function applyState(page: MapPage, state: StageState) {
-  const { id, reducedMotion, optimizedRendering, frameLimit, trip } = page.source.readOwn();
-  const own = state.players.find((player) => player.id === id);
-  page.players = state.players;
-  page.clockOffset = state.server_time - Date.now();
-  applyAway(page, own, trip);
+/**
+ * Übernimmt die Einstellungen des Geräts. Sie gelten auch nach einem Lesefehler, etwa ohne laufende
+ * LAN.
+ */
+function applySettings(page: MapPage) {
+  const { reducedMotion, optimizedRendering, frameLimit } = page.source.readOwn();
   const reduced = reducedMotion ?? OS_REDUCED_MOTION.matches;
   document.documentElement.toggleAttribute("data-reduced-motion", reduced);
   page.view?.setReducedMotion(reduced);
   page.view?.setFrameLimit(frameLimit);
   applyButtonLook(page, optimizedRendering);
   page.glass?.setFrameLimit(frameLimit);
-  if (own) page.glass?.setLook(knownPetColor(own.color), reduced);
+  page.glass?.setReducedMotion(reduced);
+}
+
+/** Übernimmt, was ein neuer Stand für die Seite bedeutet. */
+function applyState(page: MapPage, state: StageState) {
+  const { id, trip } = page.source.readOwn();
+  const own = state.players.find((player) => player.id === id);
+  page.players = state.players;
+  page.clockOffset = state.server_time - Date.now();
+  applyAway(page, own, trip);
+  applySettings(page);
+  if (own) page.glass?.setLook(knownPetColor(own.color));
   page.notice.setNote(state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "");
   page.notice.setReadProblem("");
   showMap(page, own !== undefined);
@@ -248,8 +258,9 @@ function startView(page: MapPage, flow: PartnerFlow) {
       insets: INSETS,
       onState: (state) => applyState(page, state),
       onError: (cause) => {
+        // Vor der Meldung: Sie steigt nur auf, wenn „Weniger Bewegung“ aus ist.
+        applySettings(page);
         page.notice.setReadProblem(String(cause));
-        applyButtonLook(page, page.source.readOwn().optimizedRendering);
         showMap(page, false);
       },
       onFrame: () => followFrame(page, flow),
