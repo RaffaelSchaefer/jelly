@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -78,7 +77,9 @@ func (store *Store) JoinStack(ctx context.Context, join StackJoin) (StackAnswer,
 			}
 			// Climbing a stack you already top changes nothing. Example: alone on your own stack,
 			// leaving first would delete the stack you want to climb.
-			if slices.Index(stack.MemberIDs, action.playerID) == len(stack.MemberIDs)-1 {
+			isTop := len(stack.MemberIDs) > 0 &&
+				stack.MemberIDs[len(stack.MemberIDs)-1] == action.playerID
+			if isTop {
 				answer.Stack = stack
 				return nil
 			}

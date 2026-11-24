@@ -394,3 +394,21 @@ func TestMemberOfAFullStackCannotClimbItAgain(t *testing.T) {
 		t.Fatalf("members = %v", got)
 	}
 }
+
+// Finding 0 fix: an empty stack, left over when its only jelly was deleted, can still be climbed.
+// An empty member list must not count as "the climber is already on top".
+func TestClimbingAnEmptyStackPutsTheJellyOnIt(t *testing.T) {
+	testFixture := newFixture(t)
+	players := testFixture.registerStackPlayers("A", "B")
+	stackID := testFixture.stackIDOf(players[0])
+	testFixture.callAdmin("DELETE", "/admin/api/players/"+strconv.FormatInt(players[0].id, 10), "")
+	response := testFixture.climb(players[1], stackID)
+	if response.status != http.StatusOK {
+		t.Fatalf("climb: %d %s", response.status, response.body)
+	}
+	if members := testFixture.membersOf(players[1], stackID); !slices.Equal(
+		members, []int64{players[1].id},
+	) {
+		t.Fatalf("members = %v", members)
+	}
+}
