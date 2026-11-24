@@ -50,6 +50,8 @@ COSMETICS = [
     ("nasal-helmet", "Kopf"),
     ("kite-shield", "Hände"),
     ("octopus", "Kopf"),
+    ("hollow-helmet", "Kopf"),
+    ("nail-sword", "Hände"),
 ]
 ROOT = "Cosmetics"
 REFERENCE = "Referenz"
@@ -76,7 +78,10 @@ def export(collections):
         meshes = [obj for obj in collection.all_objects if obj.type == "MESH"]
         if not meshes:
             continue
-        bpy.ops.object.select_all(action="DESELECT")
+        # Not select_all: run with --background it leaves objects selected that the .blend was
+        # saved with, and use_selection would export them into this cosmetic too.
+        for obj in bpy.context.view_layer.objects:
+            obj.select_set(False)
         for obj in meshes:
             obj.hide_set(False)
             obj.select_set(True)

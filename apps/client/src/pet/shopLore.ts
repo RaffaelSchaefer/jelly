@@ -127,6 +127,14 @@ const WARES: Readonly<Record<string, WareText>> = {
     lore: "Hat sich im Aquarium der Halle verlaufen. Bleibt jetzt bei dir und pulsiert vor Glück.",
     article: "den",
   },
+  "hollow-helmet": {
+    lore: "Aus einem Königreich tief unter der Erde. Innen hohl, außen tapfer, und kein Wort zu viel.",
+    article: "den",
+  },
+  "nail-sword": {
+    lore: "Kein Schwert, ein Nagel. Alt und etwas stumpf, trifft aber jeden Nagel auf den Kopf.",
+    article: "den",
+  },
   hood: {
     lore: "Für geheime Wege durch die Halle. Niemand erkennt dich. Fast niemand.",
     article: "die",

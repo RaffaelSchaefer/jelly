@@ -44,6 +44,7 @@ import goldenCup from "./cosmetics/golden-cup.glb?url&inline";
 import goose from "./cosmetics/goose.glb?url&inline";
 import headsetNeutral from "./cosmetics/headset-neutral.glb?url&inline";
 import headset from "./cosmetics/headset.glb?url&inline";
+import hollowHelmet from "./cosmetics/hollow-helmet.glb?url&inline";
 import hood from "./cosmetics/hood.glb?url&inline";
 import kaminaGlasses from "./cosmetics/kamina-glasses.glb?url&inline";
 import kiteShield from "./cosmetics/kite-shield.glb?url&inline";
@@ -51,6 +52,7 @@ import kitten from "./cosmetics/kitten.glb?url&inline";
 import knitScarf from "./cosmetics/knit-scarf.glb?url&inline";
 import longSchnoerbi from "./cosmetics/long-schnoerbi.glb?url&inline";
 import miniBackpack from "./cosmetics/mini-backpack.glb?url&inline";
+import nailSword from "./cosmetics/nail-sword.glb?url&inline";
 import nasalHelmet from "./cosmetics/nasal-helmet.glb?url&inline";
 import octopus from "./cosmetics/octopus.glb?url&inline";
 import ogreEars from "./cosmetics/ogre-ears.glb?url&inline";
@@ -90,6 +92,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   goose,
   headset,
   "headset-neutral": headsetNeutral,
+  "hollow-helmet": hollowHelmet,
   hood,
   "kamina-glasses": kaminaGlasses,
   "kite-shield": kiteShield,
@@ -97,6 +100,7 @@ export const COSMETIC_MODELS: Readonly<Record<string, string>> = {
   "knit-scarf": knitScarf,
   "long-schnoerbi": longSchnoerbi,
   "mini-backpack": miniBackpack,
+  "nail-sword": nailSword,
   "nasal-helmet": nasalHelmet,
   octopus,
   "ogre-ears": ogreEars,

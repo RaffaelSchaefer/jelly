@@ -285,6 +285,9 @@ export const PREVIEW_CATALOG: Catalog = {
     },
     { ...WARE, key: "kite-shield", name: "Normannenschild", slot: "hands", price: 3 },
     { ...WARE, key: "octopus", name: "Chibi-Oktopus", slot: "head", price: 4 },
+    // Der kleine Ritter aus der Tiefe.
+    { ...WARE, key: "hollow-helmet", name: "Hohlhelm", slot: "head", price: 4, colorable: false },
+    { ...WARE, key: "nail-sword", name: "Ritternagel", slot: "hands", price: 3, colorable: false },
   ],
   cosmetic_slots: [
     { key: "head", label: "Kopf" },

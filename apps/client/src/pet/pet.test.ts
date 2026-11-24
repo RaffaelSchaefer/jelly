@@ -48,6 +48,7 @@ describe("shop", () => {
       ["cat-tail", "affordable", 0],
       ["nasal-helmet", "affordable", 0],
       ["kite-shield", "affordable", 0],
+      ["nail-sword", "affordable", 0],
       ["hood", "short", 1],
       ["long-schnoerbi", "short", 1],
       ["goose", "short", 1],
@@ -56,6 +57,7 @@ describe("shop", () => {
       ["cyber-cat-ears", "short", 1],
       ["kitten", "short", 1],
       ["octopus", "short", 1],
+      ["hollow-helmet", "short", 1],
       ["crown", "short", 3],
       ["fairy-wings", "short", 3],
     ]);

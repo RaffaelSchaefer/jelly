@@ -19,7 +19,7 @@ This writes `blender/cosmetics.blend` with:
   `pixel-glasses`, `hood`, `crown`, `golden-cup`, `sprout`, `schnoerbi-mask`, `long-schnoerbi`, `goose`, `bandana`,
   `bell-collar`, `knit-scarf`, `snail-shell`, `mini-backpack`, `fairy-wings`, `bat-wings`, `chicken`, `piercings`, `ogre-ears`,
   `kamina-glasses`, `cat-ears`, `cyber-cat-ears`, `cat-whiskers`, `kitten`, `yarn-ball`, `cat-paws`, `cat-tail`,
-  `nasal-helmet`, `kite-shield`, `octopus`). The collection name is the id.
+  `nasal-helmet`, `kite-shield`, `octopus`, `hollow-helmet`, `nail-sword`). The collection name is the id.
 
 Open the file. If Blender asks about running Python scripts, allow it once for this file: that
 registers the **Cosmetics** tab in the 3D view's side bar (N).
@@ -57,8 +57,10 @@ registers the **Cosmetics** tab in the 3D view's side bar (N).
 6. Head and face cosmetics (slot `Kopf`, `Gesicht`) bob with the head. Cosmetics for the hands (slot
    `Hände`) sit between `hand_left` and `hand_right` of the reference pet, and `src/scene/HandHeld.tsx`
    moves them with the hands. What the pet wears on its hands instead (the cat paws on each, the
-   kite shield on the left one: `ON_HANDS` in `packages/jelly-scene/src/held.ts`) is one hand's part
-   round the origin: the app draws it on those hands, so it stays on while the pet waves. Body cosmetics (slot `Körper`) stay with the body while the head
+   kite shield and the nail sword on the left one: `ON_HANDS` in `packages/jelly-scene/src/held.ts`)
+   is one hand's part round the origin: the app draws it on those hands, so it stays on while the
+   pet waves. It keeps its angle while the hand moves; the sword leaves its grip out where the fist
+   closes, so the hand shows there. Body cosmetics (slot `Körper`) stay with the body while the head
    bobs above them: neckwear sits just below the seam, and parts behind the pet (wings, backpack,
    shell) exist only outside its silhouette, tucked under the body's edge, not the head's. The cat
    tail is drawn behind the pet instead (`behind`, see 5.) and needs no such cut: body and hands

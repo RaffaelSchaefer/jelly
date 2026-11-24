@@ -187,6 +187,20 @@
       "error": "not_enough_coins"
     },
     {
+      "name": "the hollow helmet costs four coins",
+      "key": "hollow-helmet",
+      "coins": 4,
+      "owned": false,
+      "error": null
+    },
+    {
+      "name": "two coins are too few for the nail sword",
+      "key": "nail-sword",
+      "coins": 2,
+      "owned": false,
+      "error": "not_enough_coins"
+    },
+    {
       "name": "the bat wings are not for sale",
       "key": "bat-wings",
       "coins": 100,

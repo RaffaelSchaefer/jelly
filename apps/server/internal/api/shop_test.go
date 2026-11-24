@@ -338,7 +338,7 @@ func TestBuyingEarnsTheShopAchievements(t *testing.T) {
 	token := testFixture.registerPlayer("Sammelt")
 	playerID := testFixture.loadMe(token).ID
 	admin := testFixture.callAdmin(
-		"POST", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/coins", `{"coins":100}`,
+		"POST", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/coins", `{"coins":200}`,
 	)
 	if admin.status != 200 {
 		t.Fatalf("give coins: %d %s", admin.status, admin.body)
@@ -348,7 +348,7 @@ func TestBuyingEarnsTheShopAchievements(t *testing.T) {
 		"long-schnoerbi", "goose", "crown", "bandana", "bell-collar", "knit-scarf", "snail-shell",
 		"mini-backpack", "fairy-wings", "chicken", "piercings", "ogre-ears", "kamina-glasses",
 		"cat-ears", "cyber-cat-ears", "cat-whiskers", "kitten", "yarn-ball", "cat-paws", "cat-tail",
-		"nasal-helmet", "kite-shield", "octopus",
+		"nasal-helmet", "kite-shield", "octopus", "hollow-helmet", "nail-sword",
 	} {
 		response := testFixture.callAPI("POST", "/v1/purchases", token, `{"key":"`+key+`"}`)
 		if response.status != 200 {
@@ -388,7 +388,7 @@ func TestAnAwardedCosmeticCountsForTheShopAchievement(t *testing.T) {
 		t.Fatalf("award headset: %d %s", admin.status, admin.body)
 	}
 	if admin := testFixture.callAdmin(
-		"POST", "/admin/api/players/"+playerPath+"/coins", `{"coins":100}`,
+		"POST", "/admin/api/players/"+playerPath+"/coins", `{"coins":200}`,
 	); admin.status != http.StatusOK {
 		t.Fatalf("give coins: %d %s", admin.status, admin.body)
 	}
@@ -397,7 +397,7 @@ func TestAnAwardedCosmeticCountsForTheShopAchievement(t *testing.T) {
 		"long-schnoerbi", "goose", "bandana", "bell-collar", "knit-scarf", "snail-shell",
 		"mini-backpack", "fairy-wings", "chicken", "piercings", "ogre-ears", "kamina-glasses",
 		"cat-ears", "cyber-cat-ears", "cat-whiskers", "kitten", "yarn-ball", "cat-paws", "cat-tail",
-		"nasal-helmet", "kite-shield", "octopus",
+		"nasal-helmet", "kite-shield", "octopus", "hollow-helmet", "nail-sword",
 	} {
 		if bought := testFixture.callAPI(
 			"POST", "/v1/purchases", token, `{"key":"`+key+`"}`,

@@ -22,12 +22,14 @@ describe("boardPose", () => {
 });
 
 describe("isWornOnHands", () => {
-  it("puts paws on each hand, the shield on the left and plushies between them", () => {
+  it("puts paws on each hand, shield and sword on the left and plushies between them", () => {
     expect(isWornOnHands("cat-paws")).toBe(true);
     expect(isWornOnHands("kite-shield")).toBe(true);
+    expect(isWornOnHands("nail-sword")).toBe(true);
     expect(isWornOnHands("goose")).toBe(false);
     expect(handsOf("cat-paws")).toEqual([0, 1]);
     expect(handsOf("kite-shield")).toEqual([0]);
+    expect(handsOf("nail-sword")).toEqual([0]);
     expect(handsOf("goose")).toEqual([]);
     expect(handsOf("constructor")).toEqual([]);
   });
