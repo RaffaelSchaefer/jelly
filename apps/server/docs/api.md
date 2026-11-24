@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.38.0**
+Aktuelle Version: **1.39.0**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.38.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.39.0  | Ein Ausflug (`POST /trips/goto`) genau zum Punkt eines laufenden Stapels endet auf dem Stapel statt an der freien Stelle daneben, so klappt `POST /stacks/members` bei der Ankunft auch im Gedränge. Bots laufen zu einem Stapel, klettern bei der Ankunft und bauen Türme bis fünf Jellies |
 | 1.38.0  | Neues Cosmetic im Shop, dauerhaft und einfärbbar (`colorable`): `bfg` (BFG, `hands`) für 10 Münzen. Die Farbe aus `cosmetic_colors` färbt ihr Plasma. „Ausverkauft“ verlangt damit 32 Shop-Cosmetics |
 | 1.37.0  | Zwei neue Cosmetics im Shop, beide dauerhaft und nicht einfärbbar: `hollow-helmet` (Hohlhelm, `head`) für 4 Münzen und `nail-sword` (Ritternagel, `hands`) für 3. „Ausverkauft“ verlangt damit 31 Shop-Cosmetics |
 | 1.36.0  | `headset-neutral` (Headset schlicht) ist einfärbbar (`colorable`) und nimmt wie `headset` eine Farbe aus `cosmetic_colors` |
@@ -334,12 +335,14 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 
 - `POST /stacks` beginnt einen Stapel an der eigenen Stelle, `POST /stacks/members` mit `{"stack_id"}` klettert oben
   auf einen Stapel in der Nähe, sonst `409 too_far`. Beide antworten mit `{"stack","me"}`.
+- Ein Ausflug (`POST /trips/goto`) genau zu `x` und `y` eines laufenden Stapels endet nicht an der freien Stelle daneben,
+  sondern auf dem Stapel, so klappt `POST /stacks/members` bei der Ankunft.
 - `DELETE /stacks/current` steigt ab, die Jellies darüber rutschen nach. Ausflug und Folgen beenden den Stapelplatz,
   und wer klettert, beendet Ausflug und Folgen.
 - Laufende Stapel stehen als `stacks` in `GET /stage`, `member_ids` geht von unten nach oben. Nach `stack_seconds`
   fällt ein Stapel auseinander, ohne `stack_max_members` ist er unbegrenzt, mit gesetztem Wert folgt darüber `409 stack_full`. Ist er weg, folgt
   `404 stack_not_found`. Jede Änderung meldet `stack.changed`.
-- `level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
+- `stack_level` im Weg zählt die Jellies darunter. Erst wenn ein Jelly am Ende seines Wegs ankommt, steht es auf dieser Höhe.
 - `POST /highlights` mit `{"player_id"}` lässt ein Jelly für `highlight_seconds` aufleuchten, auch das eigene. Das Ereignis
   nennt `cosmetic_key`, die Aura `highlight-aura` ersetzt so lange die getragene. Freischalten kann sie niemand.
   Danach folgt das nächste erst nach `highlight_cooldown`, sonst `409 highlight_cooldown`.
@@ -561,11 +564,14 @@ normale Spieler und halten sich an dieselben Regeln: Abklingzeiten, Grenzen und 
 lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Server `400 not_a_bot`.
 
 - **Von Hand:** `POST /admin/api/bots/{id}/actions` lässt einen Bot eine Aktion ausführen. Emote, Schild, Ziel eines
-  Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf einen laufenden Stapel in der Nähe oder
-  beginnt einen, wo der Bot steht. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler,
+  Ausflugs und wem er folgt, wählt der Server zufällig. `stack` klettert auf den höchsten laufenden Stapel mit weniger
+  als fünf Jellies, ohne einen solchen beginnt der Bot einen, wo er steht. Ist der Stapel zu weit weg, macht der Bot einen
+  Ausflug dorthin und klettert, sobald er nah genug ist, das aber nur, solange automatische Bots laufen. Auf einem Stapel
+  bleibt `stack` ohne Wirkung. `xp` schenkt bis zu 10000 XP direkt, `redeem` löst einen Event-Code ein wie ein Spieler,
   und `purchase` kauft ein bezahlbares Cosmetic, das der Bot noch nicht hat.
 - **Automatisch:** Die ersten `auto_count` Bots der laufenden LAN handeln im Takt der Bewegung, jeder etwa alle 20
-  Sekunden. Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
+  Sekunden. Wer auf einem Stapel steht, macht keinen Ausflug und folgt niemandem, bis der Stapel auseinanderfällt.
+  Die Zahl liegt nur im Speicher, ein Neustart stoppt sie also, damit auf einer LAN keine Bots ungefragt
   loslaufen.
 
 ### Regeln ändern

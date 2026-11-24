@@ -153,7 +153,6 @@ func (planner *Planner) findPlan(now int64, player Player) walkPlan {
 
 // startPlan sends a jelly on its way after its plan changed.
 func (planner *Planner) startPlan(now int64, walker *walker) {
-	room := planner.frame.listRoomRect()
 	var goal floorPoint
 	switch walker.plan.kind {
 	case KindSnack:
@@ -161,7 +160,7 @@ func (planner *Planner) startPlan(now int64, walker *walker) {
 	case KindFood, KindCeremony:
 		goal = planner.findGatherSpot(now, walker, planner.findGatherZones(walker.playerID))
 	case KindTrip:
-		goal = planner.findFreeSpot(walker, planner.frame.toFloorPoint(walker.plan.trip), room)
+		goal = planner.findTripGoal(walker)
 	case KindFollow:
 		goal = planner.findFollowGoal(walker)
 	case KindStack:
@@ -176,6 +175,16 @@ func (planner *Planner) startPlan(now int64, walker *walker) {
 	if walker.plan.kind == KindWander {
 		walker.nextWanderAt += walker.findArrival() - now
 	}
+}
+
+// findTripGoal returns where a trip ends. At the point of a stack, the jelly walks onto it, so it
+// can climb on arrival. Anywhere else it keeps its personal space.
+func (planner *Planner) findTripGoal(walker *walker) floorPoint {
+	trip := planner.frame.toFloorPoint(walker.plan.trip)
+	if slices.Contains(planner.stackPoints, walker.plan.trip) {
+		return planner.floor.findNearestWalkable(trip)
+	}
+	return planner.findFreeSpot(walker, trip, planner.frame.listRoomRect())
 }
 
 // startWalk plans the way to a goal and publishes it. The jelly goes on walking its old route

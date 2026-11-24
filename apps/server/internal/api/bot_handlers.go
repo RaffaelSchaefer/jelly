@@ -2,10 +2,12 @@ package api
 
 import (
 	"context"
+	"errors"
 	"math/rand/v2"
 	"net/http"
 	"slices"
 
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/movement"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
@@ -16,6 +18,8 @@ const (
 	// A trip of a bot goes somewhere on the floor, away from the walls.
 	botTripMargin = 5.0
 	botTripRange  = 90.0
+	// Bots build a tower up to this height, then start the next one.
+	botTowerHeight = 5
 )
 
 // botList is the answer about the bots of a LAN.
@@ -178,20 +182,95 @@ func (server *apiServer) followSomeone(ctx context.Context, botID, now int64) er
 	return err
 }
 
-// stackSomewhere climbs a running stack, or starts one where the bot stands. A stack too far away
-// refuses the bot like a player.
+// stackSomewhere climbs the highest stack with room, or starts one where the bot stands. A stack
+// too far away refuses the bot like a player, so it walks there and climbs on arrival
+// ([climbReachedStacks]). A bot on a stack stays there.
 func (server *apiServer) stackSomewhere(ctx context.Context, botID, now int64) error {
 	state, err := server.Store.LoadStageState(ctx, now)
 	if err != nil {
 		return err
 	}
-	if len(state.Stacks) > 0 {
-		stack := state.Stacks[pickNumber(len(state.Stacks))]
-		_, err = server.climbStack(ctx, botID, stack.ID, now)
+	if isOnStack(state.Stacks, botID) {
+		return nil
+	}
+	tower, found := pickBotTower(state.Stacks)
+	if !found {
+		_, err = server.startStackHere(ctx, botID, now)
 		return err
 	}
-	_, err = server.startStackHere(ctx, botID, now)
+	_, err = server.climbStack(ctx, botID, tower.ID, now)
+	if errors.Is(err, store.ErrTooFar) {
+		_, err = server.Store.StartTrip(ctx, botID, rules.StagePoint{X: tower.X, Y: tower.Y}, now)
+	}
 	return err
+}
+
+// pickBotTower returns the highest stack below [botTowerHeight].
+func pickBotTower(stacks []store.Stack) (store.Stack, bool) {
+	var tower store.Stack
+	found := false
+	for _, stack := range stacks {
+		height := len(stack.MemberIDs)
+		if height < botTowerHeight && (!found || height > len(tower.MemberIDs)) {
+			tower, found = stack, true
+		}
+	}
+	return tower, found
+}
+
+// isOnStack says whether a jelly stands on one of the stacks.
+func isOnStack(stacks []store.Stack, playerID int64) bool {
+	return slices.ContainsFunc(stacks, func(stack store.Stack) bool {
+		return slices.Contains(stack.MemberIDs, playerID)
+	})
+}
+
+// climbReachedStacks lets every bot on a trip to the point of a stack climb it once it stands
+// close enough. A trip to a stack that is full or high enough ends, because it would end inside
+// the tower. When the stack is gone, the trip goes on like any other.
+func (server *apiServer) climbReachedStacks(
+	ctx context.Context, state store.StageState, now int64,
+) error {
+	if len(state.Stacks) == 0 {
+		return nil
+	}
+	gameRules, err := server.Store.LoadCurrentRules(ctx, now)
+	if err != nil {
+		return err
+	}
+	for _, player := range state.Players {
+		if !player.IsBot || player.Trip == nil {
+			continue
+		}
+		tower, found := findStackAt(state.Stacks, *player.Trip)
+		if !found {
+			continue
+		}
+		height := len(tower.MemberIDs)
+		if height >= botTowerHeight || rules.IsStackFull(gameRules, height) {
+			_, err = server.Store.EndTrip(ctx, player.ID, now)
+			server.logBotError(ctx, rules.BotActionStack, err)
+			continue
+		}
+		point := movement.Point{X: tower.X, Y: tower.Y}
+		distance, known := server.planner.MeasureDistanceTo(player.ID, point, now)
+		if known && distance <= gameRules.NearDistance {
+			_, err = server.climbStack(ctx, player.ID, tower.ID, now)
+			server.logBotError(ctx, rules.BotActionStack, err)
+		}
+	}
+	return nil
+}
+
+// findStackAt returns the stack at the point of a trip.
+func findStackAt(stacks []store.Stack, trip store.Trip) (store.Stack, bool) {
+	index := slices.IndexFunc(stacks, func(stack store.Stack) bool {
+		return stack.X == trip.X && stack.Y == trip.Y
+	})
+	if index < 0 {
+		return store.Stack{}, false
+	}
+	return stacks[index], true
 }
 
 // playBots lets the automatic bots act now and then. It runs in the tick of the movement, so
@@ -201,21 +280,39 @@ func (server *apiServer) playBots(ctx context.Context) {
 	if count == 0 {
 		return
 	}
-	bots, err := server.Store.ListRunningBots(ctx, server.currentMillis())
+	now := server.currentMillis()
+	bots, err := server.Store.ListRunningBots(ctx, now)
 	if err != nil {
 		server.Logger.WarnContext(ctx, "list bots", "error", err)
 		return
+	}
+	state, err := server.Store.LoadStageState(ctx, now)
+	if err == nil {
+		err = server.climbReachedStacks(ctx, state, now)
+	}
+	if err != nil && ctx.Err() == nil {
+		server.Logger.WarnContext(ctx, "climb reached stacks", "error", err)
 	}
 	for _, bot := range bots[:min(len(bots), int(count))] {
 		if pickNumber(rules.BotActionOdds) != 0 {
 			continue
 		}
 		kind := rules.ChooseBotAction(pickNumber(rules.CountBotChoices()))
+		// A bot stays on its stack until it falls apart, so that towers can grow.
+		isWalking := kind == rules.BotActionTrip || kind == rules.BotActionFollow
+		if isWalking && isOnStack(state.Stacks, bot.ID) {
+			continue
+		}
 		// Cooldowns and limits refuse many actions, which is how a player would fare too.
 		err = server.runBotAction(ctx, bot.ID, botAction{Kind: kind, XP: 0, Code: ""})
-		if err != nil && ctx.Err() == nil {
-			server.Logger.DebugContext(ctx, "bot action", "kind", kind, "error", err)
-		}
+		server.logBotError(ctx, kind, err)
+	}
+}
+
+// logBotError notes a refused bot action. It is no fault of the server.
+func (server *apiServer) logBotError(ctx context.Context, kind string, err error) {
+	if err != nil && ctx.Err() == nil {
+		server.Logger.DebugContext(ctx, "bot action", "kind", kind, "error", err)
 	}
 }
 

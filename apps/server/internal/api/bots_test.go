@@ -3,10 +3,15 @@ package api_test
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/api"
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/movement"
+	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
 // botListAnswer is the answer of `GET /admin/api/lans/{id}/bots`.
@@ -206,5 +211,70 @@ func TestBotsRedeemEventCodesLikePlayers(t *testing.T) {
 		`{"kind":"redeem","code":"kuchen"}`,
 	); response.status != http.StatusConflict {
 		t.Errorf("second redeem: %d %s", response.status, response.body)
+	}
+}
+
+// findStackOf returns the members of the stack a jelly stands on, or nil.
+func findStackOf(stacks []store.Stack, playerID int64) []int64 {
+	for _, stack := range stacks {
+		if slices.Contains(stack.MemberIDs, playerID) {
+			return stack.MemberIDs
+		}
+	}
+	return nil
+}
+
+// findMove returns the move of a jelly.
+func findMove(answer api.StageAnswer, playerID int64) movement.Move {
+	index := slices.IndexFunc(answer.Moves, func(move movement.Move) bool {
+		return move.PlayerID == playerID
+	})
+	if index < 0 {
+		return movement.Move{}
+	}
+	return answer.Moves[index]
+}
+
+func TestBotsWalkToAFarStackAndClimbIt(t *testing.T) {
+	testFixture := newFixture(t)
+	// The fixture lets every jelly reach every other, this test needs the real distance.
+	testFixture.callAdmin("PATCH", "/admin/api/lans/1/rules", `{"near_distance":1.8}`)
+	testFixture.callAdmin("POST", "/admin/api/lans/1/bots", `{"count":2}`)
+	climber := testFixture.listBots().Bots[1].ID
+	token := testFixture.registerPlayer("Base")
+	testFixture.readStage(token)
+	testFixture.advanceClock(time.Second)
+	testFixture.callAPI("POST", "/v1/trips/goto", token, `{"x":95,"y":95}`)
+	testFixture.readStage(token)
+	testFixture.advanceClock(2 * time.Minute)
+	testFixture.startStack(token)
+	path := "/admin/api/bots/" + strconv.FormatInt(climber, 10) + "/actions"
+	response := testFixture.callAdmin("POST", path, `{"kind":"stack"}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("stack: %d %s", response.status, response.body)
+	}
+	stage := testFixture.readStage(token)
+	if move := findMove(stage, climber); len(stage.Stacks) != 1 || move.Kind != movement.KindTrip {
+		t.Fatalf("the bot should walk to the stack: %+v %+v", stage.Stacks, move)
+	}
+	// Only the first bot acts by itself, the climber just walks.
+	testFixture.callAdmin("PUT", "/admin/api/bots/auto", `{"count":1}`)
+	for range 120 {
+		testFixture.advanceClock(time.Second)
+		if findStackOf(testFixture.loadStage().Stacks, climber) != nil {
+			break
+		}
+		testFixture.service.PlayBotsForTest(t.Context())
+	}
+	stage = testFixture.readStage(token)
+	members := findStackOf(stage.Stacks, climber)
+	if len(members) < 2 || findMove(stage, climber).Kind != movement.KindStack {
+		t.Fatalf("the bot did not climb: %+v", stage.Stacks)
+	}
+	// A bot on a stack stays there.
+	testFixture.callAdmin("POST", path, `{"kind":"stack"}`)
+	again := findStackOf(testFixture.loadStage().Stacks, climber)
+	if !slices.Equal(again, members) {
+		t.Errorf("members = %v, want %v", again, members)
 	}
 }
