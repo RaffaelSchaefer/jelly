@@ -1,7 +1,7 @@
 {
   "name": "@jelly/client",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "blender:reference": "node scripts/export-pet-reference.mjs",

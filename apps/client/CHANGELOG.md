@@ -6,6 +6,15 @@ Zeilen. Je Version eine Überschrift `## X.Y.Z` wie in `tauri.conf.json`, darunt
 `Neu:`, `Besser:` oder `Weg:`, je höchstens etwa 40 Zeichen, damit sie in eine Zeile der Karte
 passen. Ohne Abschnitt für die Version bricht das Release ab.
 
+## 0.5.0
+
+- Neu: Nasenstupser und Streicheln
+- Neu: Zauberer nerven: Hut und Bart
+- Neu: BFG und Chibi-Oktopus im Laden
+- Neu: Hohlhelm, Ritternagel, Nasalhelm
+- Neu: Normannenschild
+- Besser: Headset jetzt einfärbbar
+
 ## 0.4.0
 
 - Neu: Zeitplan der LAN im Dock
