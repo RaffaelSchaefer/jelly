@@ -98,16 +98,37 @@ async function walkToStack(page: MapPage, stack: StageStack) {
   return TEXT_WALKING;
 }
 
-/** Klettert auf einen Stapel. Ist er zu weit weg, läuft das Jelly hin, wenn es `mayWalk` darf. */
-function climb(page: MapPage, stackId: number, mayWalk: boolean) {
+/** Klettert auf einen Stapel. Ist er zu weit weg, läuft das Jelly erst hin. */
+function climb(page: MapPage, stackId: number) {
   return runAction(page, async () => {
     if (await page.source.joinStack(stackId)) {
       endWalks(page);
       return TEXT_CLIMBED;
     }
     const stack = page.view?.readStacks().find((running) => running.id === stackId);
-    if (mayWalk && stack) return walkToStack(page, stack);
-    page.notice.problem(TEXT_TOO_FAR);
+    if (stack) return walkToStack(page, stack);
+    page.notice.problem(TEXT_GONE);
+    return "";
+  });
+}
+
+/**
+ * Klettert bei der Ankunft. Klappt das nicht, etwa weil der Stapel inzwischen voll ist, geht das
+ * Jelly zurück an seinen Platz: Sein Ausflug endete auf dem Stapel, es stünde sonst im Sockel.
+ */
+function climbOnArrival(page: MapPage, stackId: number) {
+  return runAction(page, async () => {
+    try {
+      if (await page.source.joinStack(stackId)) {
+        endWalks(page);
+        return TEXT_CLIMBED;
+      }
+      page.notice.problem(TEXT_TOO_FAR);
+    } catch (cause) {
+      page.notice.problem(String(cause));
+    }
+    await page.source.setFollow(null);
+    endWalks(page);
     return "";
   });
 }
@@ -146,7 +167,7 @@ export function actOnStack(page: MapPage, playerId: number, choice: StackChoice)
   if (choice?.kind === "start") return startBeside(page, playerId);
   if (!choice) return;
   page.view?.flyTo(playerId);
-  return climb(page, choice.stackId, true);
+  return climb(page, choice.stackId);
 }
 
 /** Der Stapel-Knopf am eigenen Jelly: absteigen oder hier beginnen. */
@@ -192,5 +213,5 @@ export function watchStackPlan(page: MapPage) {
   if (walk === "late") givePlanUp(page, TEXT_LATE);
   if (walk !== "arrived") return;
   page.stackPlan = null;
-  void (plan.kind === "join" ? climb(page, plan.stackId, false) : startHere(page));
+  void (plan.kind === "join" ? climbOnArrival(page, plan.stackId) : startHere(page));
 }
