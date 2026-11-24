@@ -17,10 +17,12 @@ type WizardHat struct {
 }
 
 // wizardHatChange is the payload of `wizard_hat.changed`. `Worn` is false once the hat is back.
+// Like
+// every event it holds no name, the state of the LAN names the holder.
 type wizardHatChange struct {
-	WizardHat
-
-	Worn bool `json:"worn"`
+	HolderID int64 `json:"holder_id"`
+	EndsAt   int64 `json:"ends_at"`
+	Worn     bool  `json:"worn"`
 }
 
 // StealWizardHat lets a jelly take the hat of the wizard, if nobody else wears it. Taking it again
@@ -56,15 +58,8 @@ func takeWizardHat(ctx context.Context, action actionContext) error {
 	if err != nil {
 		return fmt.Errorf("take wizard hat: %w", err)
 	}
-	hat := WizardHat{HolderID: action.playerID, HolderName: "", EndsAt: endsAt}
-	const selectHolderNameSQL = `SELECT name FROM players WHERE id = ?`
-	err = action.transaction.QueryRowContext(ctx, selectHolderNameSQL, action.playerID).
-		Scan(&hat.HolderName)
-	if err != nil {
-		return fmt.Errorf("load wizard hat holder: %w", err)
-	}
 	err = appendVisibleEvent(ctx, action, EventWizardHatChanged,
-		wizardHatChange{WizardHat: hat, Worn: true})
+		wizardHatChange{HolderID: action.playerID, EndsAt: endsAt, Worn: true})
 	if err != nil {
 		return err
 	}
@@ -120,11 +115,11 @@ func wearWizardHat(equipped map[string]EquippedCosmetic) map[string]EquippedCosm
 // finishWizardHat gives back a hat whose time is over and announces it as its holder, so a hidden
 // jelly stays quiet. It reads the row again, because a jelly may have taken it in the meantime.
 func finishWizardHat(ctx context.Context, action actionContext) error {
-	hat := WizardHat{HolderID: 0, HolderName: "", EndsAt: 0}
-	const selectEndedWizardHatSQL = `SELECT h.player_id, p.name, h.ends_at FROM wizard_hats h
-		JOIN players p ON p.id = h.player_id WHERE h.lan_id = ? AND h.ends_at <= ?`
+	ended := wizardHatChange{HolderID: 0, EndsAt: 0, Worn: false}
+	const selectEndedWizardHatSQL = `SELECT player_id, ends_at FROM wizard_hats
+		WHERE lan_id = ? AND ends_at <= ?`
 	err := action.transaction.QueryRowContext(ctx, selectEndedWizardHatSQL,
-		action.lan.id, action.now).Scan(&hat.HolderID, &hat.HolderName, &hat.EndsAt)
+		action.lan.id, action.now).Scan(&ended.HolderID, &ended.EndsAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -136,10 +131,9 @@ func finishWizardHat(ctx context.Context, action actionContext) error {
 	if err != nil {
 		return fmt.Errorf("delete expired wizard hat: %w", err)
 	}
-	holder, err := loadOtherPlayerAction(ctx, action, hat.HolderID)
+	holder, err := loadOtherPlayerAction(ctx, action, ended.HolderID)
 	if err != nil {
 		return err
 	}
-	return appendVisibleEvent(ctx, holder, EventWizardHatChanged,
-		wizardHatChange{WizardHat: hat, Worn: false})
+	return appendVisibleEvent(ctx, holder, EventWizardHatChanged, ended)
 }

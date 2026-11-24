@@ -148,7 +148,7 @@
       }
     },
     "Event": {
-      "description": "One entry of the event log. It holds IDs and keys, never names, except `holder_name` of `wizard_hat.changed`.",
+      "description": "One entry of the event log. It holds IDs and keys, never names.",
       "fields": {
         "id": "Rising number of the event, the `since` of a later reconnect.",
         "type": "What happened. The stream route lists all types, unknown ones are ignored.",
@@ -692,7 +692,7 @@
       "type": "wizard_hat.changed",
       "meaning": "A jelly stole the hat of the wizard (`worn` true), or its time ran out and it is free again (`worn` false). It goes to every app, so read `wizard_hat` and `equipped` again.",
       "player": "the holder",
-      "payload": "`{\"holder_id\",\"holder_name\",\"ends_at\",\"worn\"}`"
+      "payload": "`{\"holder_id\",\"ends_at\",\"worn\"}`"
     },
     {
       "type": "move",

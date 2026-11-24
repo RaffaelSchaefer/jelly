@@ -492,8 +492,7 @@ für alle gleich, das eigene Jelly filtert der Client über `player_id`.
 | `gathering.changed`                               | Essens-Event oder Siegerehrung, Stand neu laden |
 | `wizard_hat.changed`                              | Funkelbarts Hut gestohlen oder zurück, Stand neu laden |
 
-Ereignisse tragen IDs und Schlüssel, aber keine Namen, nur `holder_name` bei `wizard_hat.changed`. Löscht jemand sein
-Konto, verschwinden diese Ereignisse mit ihm. Die Nutzlast `payload` hängt vom Typ ab:
+Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` hängt vom Typ ab:
 
 | Ereignis                                          | `player_id` | `payload`                         |
 | ------------------------------------------------- | ----------- | --------------------------------- |
@@ -515,7 +514,7 @@ Konto, verschwinden diese Ereignisse mit ihm. Die Nutzlast `payload` hängt vom 
 | `highlight`                                       | Spieler     | `{"target_id","ends_at","cosmetic_key"}` |
 | `stage.changed`, `rules.changed`, `schedule.changed` | `null`   | `{}`                              |
 | `gathering.changed`                               | `null`      | Das Gathering, `null` am Ende     |
-| `wizard_hat.changed`                              | Träger      | `{"holder_id","holder_name","ends_at","worn"}`, `worn` ist `false` am Ende |
+| `wizard_hat.changed`                              | Träger      | `{"holder_id","ends_at","worn"}`, `worn` ist `false` am Ende |
 
 Ausflug, Folgen, Stapel, Gathering und Funkelbarts Hut melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
 Sekunde. Eine App braucht dafür keine eigenen Timer. Das Bild bleibt schon vorher überall gleich, weil alle Wege vom Server kommen.

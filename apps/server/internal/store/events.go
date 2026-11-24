@@ -39,8 +39,7 @@ const (
 	maxEventsPerQueryRows  = 200
 )
 
-// Event is one entry of the stream. The payload holds IDs and keys, never names, except the holder
-// of `wizard_hat.changed`, whose event goes away with the account.
+// Event is one entry of the stream. The payload holds IDs and keys, never names.
 type Event struct {
 	ID        int64           `json:"id"`
 	Type      string          `json:"type"`

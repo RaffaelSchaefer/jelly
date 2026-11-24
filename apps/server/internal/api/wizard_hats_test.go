@@ -64,7 +64,7 @@ func TestAStolenWizardHatIsWornEverywhere(t *testing.T) {
 		t.Fatalf("profile head = %q", got)
 	}
 	payload := `{"holder_id":` + strconv.FormatInt(state.ID, 10) +
-		`,"holder_name":"Dieb","ends_at":` + strconv.FormatInt(hat.EndsAt, 10) + `,"worn":true}`
+		`,"ends_at":` + strconv.FormatInt(hat.EndsAt, 10) + `,"worn":true}`
 	if got := testFixture.countEvents(store.EventWizardHatChanged, payload); got != 1 {
 		t.Fatalf("theft announced %d times", got)
 	}
