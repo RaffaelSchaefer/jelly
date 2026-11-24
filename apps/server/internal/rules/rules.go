@@ -185,6 +185,14 @@ func IsLANPeriodValid(startsAt, endsAt int64) bool {
 	return startsAt >= earliestLANStart && startsAt < endsAt && endsAt-startsAt <= maxLANMillis
 }
 
+// StopsRunningLAN reports whether a new period ends a LAN that runs now, or moves its start into
+// the future. Both cut every jelly off at once, so the orga has to mean it.
+func StopsRunningLAN(startsAt, endsAt, newStartsAt, newEndsAt, now int64) bool {
+	isRunning := startsAt <= now && now < endsAt
+	keepsRunning := newStartsAt <= now && now < newEndsAt
+	return isRunning && !keepsRunning
+}
+
 // IsEventCodeValid reports whether a code gives a sensible amount of XP for a time that fits a LAN.
 func IsEventCodeValid(xp int, validFrom, validUntil int64) bool {
 	return xp >= 0 && xp <= MaxGivenXP && validFrom < validUntil &&

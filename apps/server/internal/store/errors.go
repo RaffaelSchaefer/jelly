@@ -38,6 +38,8 @@ var (
 	ErrLANSlugTaken = errors.New("short name of the LAN is taken")
 	// ErrLANOverlap reports a LAN whose period overlaps another one.
 	ErrLANOverlap = errors.New("period overlaps another LAN")
+	// ErrLANRunning reports a change that would end a running LAN without saying so.
+	ErrLANRunning = errors.New("LAN is running")
 	// ErrLANNotFound reports an unknown LAN.
 	ErrLANNotFound = errors.New("LAN not found")
 	// ErrPlayerNotFound reports an unknown player.

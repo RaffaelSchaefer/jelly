@@ -114,6 +114,10 @@ func listAdminErrors() []knownError {
 			http.StatusConflict, "lan_has_players",
 			"An dieser LAN nehmen schon Spieler teil, deshalb lässt sie sich nicht löschen.",
 		}},
+		{store.ErrLANRunning, problem{
+			http.StatusConflict, "lan_running",
+			"Die LAN läuft gerade. Damit endet sie für alle, bitte bestätige das.",
+		}},
 		{store.ErrLANSlugTaken, problem{
 			http.StatusConflict, "slug_taken", "Dieser Kurzname ist schon vergeben.",
 		}},

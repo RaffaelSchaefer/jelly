@@ -671,7 +671,7 @@
       "type": "stack.changed",
       "meaning": "A stack was started, changed or ended, also when its time ran out.",
       "player": "the player, null when its time ran out",
-      "payload": "The stack, only `{\"id\"}` after climbing down or when it ended"
+      "payload": "The whole stack while it stands, also after someone climbed down. Only `{\"id\"}` once it is gone"
     },
     {
       "type": "highlight",
