@@ -103,11 +103,8 @@ func TestAbsentMemberLeavesAGapInALongRunningStack(t *testing.T) {
 	_ = stackID
 }
 
-// Scenario 7: an absent jelly cannot start a stack with its first action.
+// Scenario 7, finding 4: a jelly back from a break starts a stack with its first action.
 func TestAbsentJellyCanStartAStackWithItsFirstAction(t *testing.T) {
-	t.Skip("finding 4: beginPlayerAction refreshes last_seen_at inside the transaction, but " +
-		"startStackHere and climbStack ask the planner first. An absent jelly is not in the " +
-		"planner and gets `too_far` until any other action. Without Skip the test fails.")
 	testFixture := newFixture(t)
 	players := testFixture.registerStackPlayers("A", "B")
 	testFixture.advanceClock(91 * time.Minute)
@@ -116,6 +113,15 @@ func TestAbsentJellyCanStartAStackWithItsFirstAction(t *testing.T) {
 	if response.status != http.StatusOK {
 		t.Fatalf("absent jelly starts a stack: %d %s", response.status, response.body)
 	}
+}
+
+// Finding 4: like a stack, the first partner emote after a break finds the jelly on the stage.
+func TestAbsentJellyCanInviteWithItsFirstAction(t *testing.T) {
+	testFixture := newFixture(t)
+	players := testFixture.registerStackPlayers("A", "B")
+	testFixture.advanceClock(91 * time.Minute)
+	testFixture.pokePlayer(players[0].token)
+	testFixture.invitePartner(players[1].token, players[0].token)
 }
 
 // Scenario 8: A follows B, B climbs a stack. A keeps following and can climb as well.
