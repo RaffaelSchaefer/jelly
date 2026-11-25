@@ -21,14 +21,17 @@ export type {
   StageFollow,
   StageGathering,
   StageMove,
+  StageNews,
   StagePlayer,
   StagePoint,
   StageRoom,
+  StageScheduleItem,
   StageStack,
   StageState,
   StageTrip,
 } from "./types.ts";
 export type { CameraReading } from "./cameraControls.ts";
+export type { NewsCameraMode, NewsReading } from "./newsCameraRig.ts";
 export type { JellyOnScreen, StageMarks } from "./overlay.ts";
 export type { StageInsets } from "./insets.ts";
 export { createStageView, type StageView, type StageViewOptions } from "./view.ts";

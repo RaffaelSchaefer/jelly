@@ -56,7 +56,8 @@ export type StageEffect = { playerId: number; startedAt: number; endsAt: number 
   | { kind: "toast"; text: string; isReward: boolean }
   | { kind: "motion"; motion: MotionKey }
   | { kind: "emote"; key: EmoteKey }
-  | { kind: "spotlight"; hue: number }
+  /** `strength` dims the light, from 0 to 1. Missing means full, as a highlight shines. */
+  | { kind: "spotlight"; hue: number; strength?: number }
 );
 
 /** Reports whether an event rewards its jelly, which then bounces. */
@@ -139,7 +140,8 @@ function createSpotlight(event: StageEvent, highlighterId: number, now: number):
 export function calculateSpotlightPresence(effect: StageEffect, now: number): number {
   const coming = (now - effect.startedAt) / SPOTLIGHT_ON_MS;
   const going = (effect.endsAt - now) / SPOTLIGHT_OFF_MS;
-  return Math.max(0, Math.min(1, coming, going));
+  const strength = effect.kind === "spotlight" ? (effect.strength ?? 1) : 1;
+  return Math.max(0, Math.min(1, coming, going)) * strength;
 }
 
 /** XP rises as a short text. */

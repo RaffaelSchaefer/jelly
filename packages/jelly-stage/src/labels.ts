@@ -9,6 +9,7 @@ import type { StageEffect } from "./effects.ts";
 import type { StagePlayer } from "./types.ts";
 
 import { findPalette } from "./jellies.ts";
+import { fitsBounds, type TextBounds } from "./newsCameraBounds.ts";
 
 const TEXT_COLOR = "#ffffff";
 const TEXT_OUTLINE = "rgba(28, 38, 52, 0.85)";
@@ -64,6 +65,10 @@ export interface LabelAnchor {
   height: number;
   /** Which level of a tower it sits on, 0 at the bottom. Missing outside a tower. */
   tier?: number;
+  /** The height its texts are sized for, when a close camera caps them. Missing: its height. */
+  textHeight?: number;
+  /** A nearer jelly covers where its name and sign would go, so it shows neither. */
+  muted?: boolean;
 }
 
 /** Jellies whose names show in any crowd, besides those in a beam of light. The big stage has none. */
@@ -81,6 +86,12 @@ interface TextBox {
   height: number;
 }
 
+/** The texts of a frame so far, and where texts may go at all. */
+interface TextRoom {
+  taken: TextBox[];
+  bounds: TextBounds | null;
+}
+
 /** Everything the texts of a frame need. */
 export interface LabelScene {
   /** Sorted from back to front. Texts are placed from the front, so nearer jellies keep theirs. */
@@ -89,6 +100,11 @@ export interface LabelScene {
   signLabels: Map<string, string>;
   now: number;
   marks: LabelMarks;
+  /**
+   * While the news are filmed: texts only inside the free band and clear of the news look, the
+   * rest is left out. Missing anywhere, as in the usual view.
+   */
+  bounds?: TextBounds | null;
 }
 
 /**
@@ -97,18 +113,19 @@ export interface LabelScene {
  * already painted is left out.
  */
 export function drawLabels(context: CanvasRenderingContext2D, scene: LabelScene): void {
-  const taken: TextBox[] = [];
-  const marked = listMarked(scene);
+  const room: TextRoom = { taken: [], bounds: scene.bounds ?? null };
+  const visible = scene.anchors.filter((anchor) => !anchor.muted);
+  const marked = listMarked({ ...scene, anchors: visible });
   for (const anchor of marked) {
-    drawMarkedName(context, anchor, scene.marks, taken);
+    drawMarkedName(context, anchor, scene.marks, room);
   }
-  for (const anchor of [...scene.anchors].reverse()) {
+  for (const anchor of [...visible].reverse()) {
     if (!marked.includes(anchor)) {
-      drawName(context, anchor, taken);
+      drawName(context, anchor, room);
     }
     const signLabel = scene.signLabels.get(anchor.player.sign ?? "");
     if (signLabel) {
-      drawSign(context, signLabel, anchor, taken);
+      drawSign(context, signLabel, anchor, room);
     }
   }
   drawMarkers(context, scene);
@@ -132,17 +149,22 @@ function findOwnColors(player: StagePlayer): TextColors {
   return { fill: palette.glow, edge: palette.outline };
 }
 
-/** Takes a box for a text, unless it overlaps one already taken. */
-function claimBox(taken: TextBox[], box: TextBox): boolean {
-  const isFree = taken.every(
+/** Reports whether a box overlaps none of the texts already taken. */
+function isFree(taken: TextBox[], box: TextBox): boolean {
+  return taken.every(
     (other) =>
       box.x + box.width <= other.x ||
       other.x + other.width <= box.x ||
       box.y + box.height <= other.y ||
       other.y + other.height <= box.y,
   );
-  if (isFree) taken.push(box);
-  return isFree;
+}
+
+/** Takes a box for a text, unless it overlaps one already taken or lies where texts may not go. */
+function claimBox(room: TextRoom, box: TextBox): boolean {
+  if (!fitsBounds(box, room.bounds) || !isFree(room.taken, box)) return false;
+  room.taken.push(box);
+  return true;
 }
 
 /** Writes text with a dark edge, so it stays readable on any background. */
@@ -158,6 +180,11 @@ function writeOutlined(
   context.strokeText(text, position.x, position.y);
   context.fillStyle = colors.fill;
   context.fillText(text, position.x, position.y);
+}
+
+/** Returns the height the texts of a jelly are sized for: its height, unless a close camera caps it. */
+function findTextHeight(anchor: LabelAnchor): number {
+  return anchor.textHeight ?? anchor.height;
 }
 
 /** Sets a font scaled to the jelly, but never below a readable size. Returns the size. */
@@ -182,7 +209,7 @@ function findAside(anchor: LabelAnchor) {
 
 /** Returns the size of a marker: half its width and its length. */
 function measureMarker(anchor: LabelAnchor) {
-  const size = Math.max(MIN_MARKER_PIXELS, anchor.height * MARKER_SHARE);
+  const size = Math.max(MIN_MARKER_PIXELS, findTextHeight(anchor) * MARKER_SHARE);
   return { size, length: size * MARKER_STRETCH };
 }
 
@@ -210,40 +237,42 @@ function findMiddle(box: TextBox) {
 }
 
 /** Writes name and level below a jelly, if there is room. */
-function drawName(context: CanvasRenderingContext2D, anchor: LabelAnchor, taken: TextBox[]): void {
-  const size = useFont(context, anchor.height * NAME_FONT_SHARE);
+function drawName(context: CanvasRenderingContext2D, anchor: LabelAnchor, room: TextRoom): void {
+  const size = useFont(context, findTextHeight(anchor) * NAME_FONT_SHARE);
   const text = `${anchor.player.name} · ${anchor.player.level}`;
   const box = placeName(anchor, size, context.measureText(text).width + OUTLINE_PIXELS, false);
-  if (claimBox(taken, box)) {
+  if (claimBox(room, box)) {
     writeOutlined(context, text, findMiddle(box));
   }
 }
 
 /**
  * Writes name and level of a marked jelly below it. Only another marked name can push it further
- * down: a jelly stands right next to its target, so their names would always collide.
+ * down: a jelly stands right next to its target, so their names would always collide. Pushed out of
+ * where texts may go, under the lower third of the news, it is left out.
  */
 function drawMarkedName(
   context: CanvasRenderingContext2D,
   anchor: LabelAnchor,
   marks: LabelMarks,
-  taken: TextBox[],
+  room: TextRoom,
 ): void {
-  const pixels = anchor.height * NAME_FONT_SHARE * MARKED_NAME_SCALE;
+  const pixels = findTextHeight(anchor) * NAME_FONT_SHARE * MARKED_NAME_SCALE;
   const size = useFont(context, pixels, MARKED_NAME_WEIGHT);
   const text = `${anchor.player.name} · ${anchor.player.level}`;
   const width = context.measureText(text).width + OUTLINE_PIXELS;
   const box = placeName(anchor, size, width, hasMarker(anchor, marks));
-  while (!claimBox(taken, box)) {
+  while (!isFree(room.taken, box)) {
     box.y += size;
   }
+  if (!claimBox(room, box)) return;
   const colors = marks.ownId === anchor.player.id ? findOwnColors(anchor.player) : PLAIN_TEXT;
   writeOutlined(context, text, findMiddle(box), colors);
 }
 
 /** Returns where the sign of a jelly hangs and how high it is, with its font set. */
 function placeSign(context: CanvasRenderingContext2D, anchor: LabelAnchor) {
-  const size = useFont(context, anchor.height * SIGN_FONT_SHARE);
+  const size = useFont(context, findTextHeight(anchor) * SIGN_FONT_SHARE);
   const boxHeight = size + SIGN_PADDING;
   return { boxHeight, centerY: anchor.y - anchor.height * (1 + SIGN_GAP_SHARE) - boxHeight / 2 };
 }
@@ -263,11 +292,11 @@ function drawSign(
   context: CanvasRenderingContext2D,
   label: string,
   anchor: LabelAnchor,
-  taken: TextBox[],
+  room: TextRoom,
 ): void {
-  useFont(context, anchor.height * SIGN_FONT_SHARE);
+  useFont(context, findTextHeight(anchor) * SIGN_FONT_SHARE);
   const box = placeSignBox(context, anchor, context.measureText(label).width + 2 * SIGN_PADDING);
-  if (!claimBox(taken, box)) {
+  if (!claimBox(room, box)) {
     return;
   }
   context.fillStyle = SIGN_FILL;
@@ -298,35 +327,52 @@ function drawMarkers(context: CanvasRenderingContext2D, scene: LabelScene): void
 }
 
 /**
- * Traces a triangle pointing at a jelly: down from above its head and sign, or, in a tower, from
- * its side toward its face, before its name.
+ * Returns the corners of a triangle pointing at a jelly: down from above its head and sign, or, in a
+ * tower, from its side toward its face, before its name. The tip comes first.
  */
-function traceMarker(context: CanvasRenderingContext2D, anchor: LabelAnchor, scene: LabelScene) {
+function findMarkerCorners(
+  context: CanvasRenderingContext2D,
+  anchor: LabelAnchor,
+  scene: LabelScene,
+): { x: number; y: number }[] {
   const { size, length } = measureMarker(anchor);
-  context.beginPath();
   if (anchor.tier !== undefined) {
     const { right, y } = findAside(anchor);
-    context.moveTo(right, y);
-    context.lineTo(right + length, y - size);
-    context.lineTo(right + length, y + size);
-    return;
+    return [
+      { x: right, y },
+      { x: right + length, y: y - size },
+      { x: right + length, y: y + size },
+    ];
   }
   const { boxHeight, centerY } = placeSign(context, anchor);
   const hasSign = scene.signLabels.has(anchor.player.sign ?? "");
   const tipY = hasSign ? centerY - boxHeight / 2 - SIGN_PADDING : centerY + boxHeight / 2;
-  context.moveTo(anchor.x, tipY);
-  context.lineTo(anchor.x - size, tipY - length);
-  context.lineTo(anchor.x + size, tipY - length);
+  return [
+    { x: anchor.x, y: tipY },
+    { x: anchor.x - size, y: tipY - length },
+    { x: anchor.x + size, y: tipY - length },
+  ];
 }
 
-/** Paints a triangle pointing at a jelly. */
+/** Returns the box around some points. */
+function surround(points: { x: number; y: number }[]): TextBox {
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const [x, y] = [Math.min(...xs), Math.min(...ys)];
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
+/** Paints a triangle pointing at a jelly, unless it lies where texts may not go. */
 function drawMarker(
   context: CanvasRenderingContext2D,
   anchor: LabelAnchor,
   colors: TextColors,
   scene: LabelScene,
 ): void {
-  traceMarker(context, anchor, scene);
+  const corners = findMarkerCorners(context, anchor, scene);
+  if (!fitsBounds(surround(corners), scene.bounds ?? null)) return;
+  context.beginPath();
+  for (const { x, y } of corners) context.lineTo(x, y);
   context.closePath();
   context.fillStyle = colors.fill;
   context.strokeStyle = colors.edge;
@@ -346,26 +392,47 @@ function placeEffect(anchor: LabelAnchor, size: number) {
   return { x: aside.left - size / 2, y: aside.y + size / 2 };
 }
 
+/** Returns the box of a text `size` high written around a point, with its font set. */
+function boxText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  at: { x: number; y: number },
+  size: number,
+): TextBox {
+  const { width } = context.measureText(text);
+  return { x: at.x - width / 2, y: at.y - size / 2, width, height: size };
+}
+
+/** Paints one bubble or rising text over its jelly, unless it lies where texts may not go. */
+function drawEffect(
+  context: CanvasRenderingContext2D,
+  effect: Extract<StageEffect, { kind: "bubble" | "toast" }>,
+  anchor: LabelAnchor,
+  scene: LabelScene,
+): void {
+  const progress = (scene.now - effect.startedAt) / (effect.endsAt - effect.startedAt);
+  const isBubble = effect.kind === "bubble";
+  const share = isBubble ? BUBBLE_FONT_SHARE : TOAST_FONT_SHARE;
+  const size = useFont(context, findTextHeight(anchor) * share, isBubble ? "600" : "700");
+  const spot = placeEffect(anchor, size);
+  const at = isBubble
+    ? { x: spot.x, y: spot.y - size }
+    : { x: spot.x, y: spot.y - progress * anchor.height * TOAST_RISE_SHARE };
+  const text = isBubble ? effect.glyph : effect.text;
+  if (!fitsBounds(boxText(context, text, at, size), scene.bounds ?? null)) return;
+  context.globalAlpha = Math.min(1, 2 * (1 - progress));
+  if (isBubble) context.fillText(text, at.x, at.y);
+  else writeOutlined(context, text, at);
+  context.globalAlpha = 1;
+}
+
 /** Paints bubbles and rising texts over their jellies. */
 function drawEffects(context: CanvasRenderingContext2D, scene: LabelScene): void {
   const anchorById = new Map(scene.anchors.map((anchor) => [anchor.player.id, anchor]));
   for (const effect of scene.effects) {
     const anchor = anchorById.get(effect.playerId);
-    if (!anchor || (effect.kind !== "bubble" && effect.kind !== "toast")) {
-      continue;
+    if (anchor && (effect.kind === "bubble" || effect.kind === "toast")) {
+      drawEffect(context, effect, anchor, scene);
     }
-    const progress = (scene.now - effect.startedAt) / (effect.endsAt - effect.startedAt);
-    context.globalAlpha = Math.min(1, 2 * (1 - progress));
-    if (effect.kind === "bubble") {
-      const size = useFont(context, anchor.height * BUBBLE_FONT_SHARE);
-      const spot = placeEffect(anchor, size);
-      context.fillText(effect.glyph, spot.x, spot.y - size);
-    } else {
-      const size = useFont(context, anchor.height * TOAST_FONT_SHARE, "700");
-      const spot = placeEffect(anchor, size);
-      const riseY = spot.y - progress * anchor.height * TOAST_RISE_SHARE;
-      writeOutlined(context, effect.text, { x: spot.x, y: riseY });
-    }
-    context.globalAlpha = 1;
   }
 }

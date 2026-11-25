@@ -5,10 +5,21 @@
  * @module
  */
 
+/** The slot of what a jelly holds or wears on its hands, such as a cup, the BFG or paws. */
+export const HANDS_SLOT = "hands";
+
 /** One cosmetic as the player wants it: its key and, for colorable ones, the chosen color. */
 export interface WornWish {
   key: string;
   color: string | null;
+}
+
+/**
+ * Returns what a jelly wears with its hands free: everything but the hands slot. The presenter of
+ * the news reads with empty hands, so its gestures show, and gets its things back after the show.
+ */
+export function freeHands<Item>(equipped: Record<string, Item>): Record<string, Item> {
+  return Object.fromEntries(Object.entries(equipped).filter(([slot]) => slot !== HANDS_SLOT));
 }
 
 /** One slot in use. `shown` stays empty while the model loads or if there is none. */

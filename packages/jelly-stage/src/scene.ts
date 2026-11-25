@@ -12,6 +12,7 @@ import {
   HemisphereLight,
   MathUtils,
   PerspectiveCamera,
+  Quaternion,
   Scene,
   SRGBColorSpace,
   Vector3,
@@ -45,6 +46,19 @@ const SKY_LIGHT = { sky: "#ffffff", ground: "#c7d3e0", intensity: 2.1 };
 /** Same direction as the softbox the jelly shader reflects, so desks and jellies agree. */
 const SUN = { color: "#ffffff", intensity: 1.3, direction: [-0.45, 0.8, 0.45] as const };
 
+/**
+ * How the camera was fitted last. The news camera turns and widens the camera, and with this it
+ * puts it back exactly, also after the window changed its size meanwhile.
+ */
+export interface FittedView {
+  fov: number;
+  quaternion: Quaternion;
+  /** A copy of the view offset that centers the room. */
+  view: PerspectiveCamera["view"];
+  /** The point the fitted camera looks at. */
+  target: ScenePoint;
+}
+
 /** Everything that draws the stage. */
 export interface StageScene {
   renderer: WebGLRenderer;
@@ -52,6 +66,7 @@ export interface StageScene {
   camera: PerspectiveCamera;
   /** Where the camera stands when it shows the whole room. `zoom.ts` moves it from there. */
   home: Vector3;
+  fitted: FittedView;
   floor: Mesh;
 }
 
@@ -80,7 +95,13 @@ export function createStageScene(): StageScene {
   const floor = createFloor();
   scene.add(sky, sun, floor);
   const camera = new PerspectiveCamera(FIELD_OF_VIEW_DEGREES, 1, NEAR_PLANE, FAR_PLANE);
-  return { renderer, scene, camera, home: new Vector3(), floor };
+  const fitted: FittedView = {
+    fov: FIELD_OF_VIEW_DEGREES,
+    quaternion: new Quaternion(),
+    view: null,
+    target: { x: 0, y: 0, z: 0 },
+  };
+  return { renderer, scene, camera, home: new Vector3(), fitted, floor };
 }
 
 /** Lists the points of a room that must stay on screen. */
@@ -130,6 +151,12 @@ export function resizeStageScene(stage: StageScene, screen: StageScreen, room: R
   // Nothing of the room lies farther away than its diagonal behind the target.
   camera.far = Math.max(FAR_PLANE, distance + Math.hypot(room.width, room.depth));
   fitThroughLens(camera, screen, points);
+  stage.fitted = {
+    fov: camera.fov,
+    quaternion: camera.quaternion.clone(),
+    view: camera.view && { ...camera.view },
+    target,
+  };
 }
 
 /**
@@ -195,6 +222,15 @@ function centerVertically(
 /** Returns where the camera stands, seen from above. Idle jellies look there. */
 export function findViewer(camera: PerspectiveCamera): FloorPoint {
   return { x: camera.position.x, z: camera.position.z };
+}
+
+/**
+ * Reports whether a point lies in front of the camera. A point behind it projects to a wrong place
+ * on the screen. The fitted camera has nothing of the room behind it, the news camera has.
+ */
+export function isInFront(camera: PerspectiveCamera, point: ScenePoint): boolean {
+  const local = new Vector3(point.x, point.y, point.z).applyMatrix4(camera.matrixWorldInverse);
+  return local.z < -camera.near;
 }
 
 /** Projects a point of the scene onto the screen. */

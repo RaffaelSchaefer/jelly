@@ -61,14 +61,42 @@ export interface StageFollow {
   ends_at: number;
 }
 
+/** One point of the program, as the news name the next one. */
+export interface StageScheduleItem {
+  starts_at: number;
+  /** Null: the point lasts until the next one starts. */
+  ends_at: number | null;
+  title: string;
+  detail: string | null;
+  /** Such as `orga`, `food`, `yoga`, `tournament` or `together`. Unknown kinds show neutrally. */
+  kind: string;
+}
+
+/** What the Jelly-News present from the last hour. A part without news is null or empty. */
+export interface StageNews {
+  top_xp: { player_id: number; xp: number } | null;
+  /** Newest first, at most five. */
+  achievements: { player_id: number; key: string }[];
+  /** The jellies of the tallest stack, from the bottom to the top. */
+  tallest_stack: number[];
+  next_item: StageScheduleItem | null;
+}
+
 /**
  * What all jellies do right now: `food` sends them to the queues, `ceremony` to the spectators and
- * the winner to the winner zone. Unknown kinds show nothing special.
+ * the winner to the winner zone, `news` to the spectators and the presenter to the winner zone.
+ * Unknown kinds show nothing special.
  */
 export interface StageGathering {
   kind: string;
   winner_id: number | null;
   ends_at: number;
+  /** The jelly that presents the news. Missing from servers before the Jelly-News. */
+  presenter_id?: number | null;
+  /** What the presenter of `news` presents, null for other kinds. */
+  news?: StageNews | null;
+  /** When it began. No server sends it yet, see `findShowStart` in `news.ts`. */
+  starts_at?: number;
 }
 
 /** A jelly as the server reports it. */
@@ -99,7 +127,7 @@ export interface MovePoint extends StagePoint {
  */
 export interface StageMove {
   player_id: number;
-  /** Why the jelly walks, such as `wander`, `trip`, `follow` or `snack`. */
+  /** Why the jelly walks, such as `wander`, `trip`, `follow`, `snack`, `ceremony` or `news`. */
   kind: string;
   start_at: number;
   points: MovePoint[];
@@ -141,7 +169,10 @@ export interface StageState {
   gathering: StageGathering | null;
 }
 
-/** One entry of `GET /v1/stage/events`. The payload depends on the event type. */
+/**
+ * One entry of `GET /v1/stage/events`. The payload depends on the event type. The server sends
+ * `null` where something ended, such as a gathering, which the view reads as an empty payload.
+ */
 export interface StageEvent {
   id: number;
   type: string;
@@ -159,6 +190,8 @@ export interface EventPayload {
   title?: string;
   /** What the XP of `xp.gained` was for, such as `poke`, `food` or `drink`. */
   source?: string;
+  /** The kind of the gathering `gathering.changed` reports. It also tells `ends_at`. */
+  kind?: string;
   /** Whom `highlight` lights up, when it goes out and the aura it wears meanwhile. */
   target_id?: number;
   ends_at?: number;

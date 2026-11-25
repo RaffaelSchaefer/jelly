@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { syncWorn, type Worn, type WornActions, type WornWish } from "./worn.ts";
+import { freeHands, syncWorn, type Worn, type WornActions, type WornWish } from "./worn.ts";
 
 /** Records what happens and lets the test decide when a model arrives. */
 function createWorld() {
@@ -146,4 +146,12 @@ test("recolors when only the color changes", async () => {
   syncWorn(worn, wanted({ head: "beanie" }), actions);
   await answer("beanie");
   assert.deepEqual(shown, ["beanie"]);
+});
+
+test("free hands keep everything but what is held or worn on the hands", () => {
+  const cup = { key: "golden-cup", color: null };
+  const hat = { key: "wizard-hat", color: null };
+  const scarf = { key: "scarf", color: "#ff0000" };
+  assert.deepEqual(freeHands({ hands: cup, head: hat, body: scarf }), { head: hat, body: scarf });
+  assert.deepEqual(freeHands({ head: hat }), { head: hat });
 });

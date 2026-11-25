@@ -12,8 +12,9 @@ import { measureServerDistance, toFloorPoint } from "./world.ts";
 
 /** Below this a ring that goes away counts as gone. */
 const RING_GONE = 0.01;
-/** The gathering whose winner grows on the stage. */
+/** The gatherings with a jelly that grows on the stage: the winner, or the presenter of the news. */
 const CEREMONY = "ceremony";
+const NEWS = "news";
 
 /** Which jellies light up on a personal screen: all others, or those within `reach` of the own. */
 export type StageHighlight = { kind: "others" } | { kind: "near"; reach: number };
@@ -38,10 +39,22 @@ export function findPositions(
   return positions;
 }
 
-/** Returns the winner of a running ceremony, who grows on the stage. It ends without an event. */
+/**
+ * Returns the presenter of running news, the one place that decides it. It grows on the stage and
+ * shows nothing in or on its hands until the show ends. A gathering ends without an event.
+ */
+export function findPresenter(gathering: StageGathering | null, serverTime: number): number | null {
+  if (gathering?.kind !== NEWS || serverTime >= gathering.ends_at) return null;
+  return gathering.presenter_id ?? null;
+}
+
+/**
+ * Returns the jelly that grows on the stage: the winner of a running ceremony or the presenter of
+ * running news. A gathering ends without an event.
+ */
 export function findWinner(gathering: StageGathering | null, serverTime: number): number | null {
-  if (gathering?.kind !== CEREMONY || serverTime >= gathering.ends_at) return null;
-  return gathering.winner_id;
+  if (gathering?.kind === CEREMONY && serverTime < gathering.ends_at) return gathering.winner_id;
+  return findPresenter(gathering, serverTime);
 }
 
 /** Forgets the moves of jellies that left the stage. */

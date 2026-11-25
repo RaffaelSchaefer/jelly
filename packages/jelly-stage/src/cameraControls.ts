@@ -1,18 +1,32 @@
 /**
  * The camera of a running view as a page uses it: zoom, drag, flights to a jelly and the flight out
  * of the own jelly when the view opens. `zoom.ts` holds the view, `flight.ts` the way between two.
- * Without a page that calls these, as on the big stage, the camera shows the whole room.
+ * Without a page that calls these, as on the big stage, the camera shows the whole room, and films
+ * the Jelly-News while they are on air (`newsCameraRig.ts`). A hand on the camera ends that.
  *
  * @module
  */
 
 import type { JellySpot } from "./jellies.ts";
 import type { ScreenPoint } from "./lens.ts";
+import type { NewsView } from "./newsCamera.ts";
+import type { NewsGaze } from "./newsShots.ts";
+import type { StageScene } from "./scene.ts";
 import type { FloorPoint, RoomSize } from "./world.ts";
 
 import { findFloor, readPickView } from "./floorPicking.ts";
 import { hasLanded, planFlight, poseAt, type CameraPose, type Flight } from "./flight.ts";
 import { keepHalf, type StageInsets } from "./insets.ts";
+import {
+  createNewsRig,
+  filmNews,
+  readNewsRig,
+  stopFilming,
+  type NewsCameraFrame,
+  type NewsCameraMode,
+  type NewsReading,
+  type NewsRig,
+} from "./newsCameraRig.ts";
 import {
   createZoom,
   findHomeFocus,
@@ -60,6 +74,13 @@ export interface CameraControls {
   /** Starts the next frame close to the own jelly and flies out to the whole room. */
   playIntro: () => void;
   readCamera: () => CameraReading;
+  /**
+   * Lets the news camera film the show on air, or hands the camera back to the page at once. In
+   * `manual` a request holds for the show on air only. Every other control above also hands back.
+   */
+  watchNews: (on: boolean) => void;
+  /** Tells whether news are on air and whether the news camera films them. */
+  readNews: () => NewsReading;
 }
 
 /** What a frame tells the camera. */
@@ -70,19 +91,29 @@ export interface CameraFrame {
   reducedMotion: boolean;
 }
 
-/** The camera of a view: the controls for the page and a step for every frame. */
+/** The camera of a view: the controls for the page and the steps of every frame. */
 export interface ViewCamera {
   controls: CameraControls;
+  /**
+   * Films the news before the jellies move, if the news camera is to, so they sort and turn by the
+   * camera of this frame. Returns where the jellies look, null while it does not film.
+   */
+  film: (frame: NewsCameraFrame) => NewsGaze | null;
+  /** Reports whether the news camera holds the camera in this frame. */
+  isFilming: () => boolean;
+  /** Moves zoom and flights on, after the jellies moved. Does nothing while the news are filmed. */
   update: (frame: CameraFrame) => void;
 }
 
 /** The parts of a view the camera works on. Room, lens and bands are read anew, they can change. */
 export interface CameraSource {
-  stage: Pick<ZoomStage, "camera" | "home">;
+  stage: Pick<StageScene, "camera" | "home" | "fitted">;
   hall: { size: RoomSize };
   canvas: HTMLCanvasElement;
   lens: { strength: number };
   readInsets: () => StageInsets;
+  /** Whether the news camera films by itself, see {@link NewsCameraMode}. */
+  newsCamera: NewsCameraMode;
 }
 
 /** Where a flight goes: to the own jelly, to another one, or out of the own one at the start. */
@@ -99,6 +130,7 @@ interface CameraMemory {
   /** The camera follows the own jelly once the flight has landed. */
   followsAfter: boolean;
   reducedMotion: boolean;
+  news: NewsRig;
 }
 
 /** Returns where a jelly stands on the floor. */
@@ -166,37 +198,86 @@ function willFollow(memory: CameraMemory): boolean {
   return memory.flight ? memory.followsAfter : memory.zoom.followsOwn;
 }
 
-/** The controls for the page. Every way of moving the camera by hand stops a flight first. */
+/**
+ * The controls for the page. Every way of moving the camera by hand ends the news camera for good
+ * and stops a flight first. The fitted view comes back before the control acts, because zoom and
+ * drag read the floor from the camera as it stands.
+ */
 function createControls(
   memory: CameraMemory,
   readStage: () => ZoomStage,
-  room: { size: RoomSize },
+  source: CameraSource,
 ): CameraControls {
   const { zoom } = memory;
-  const request = (goal: FlightGoal) => {
+  const takeBack = () => {
+    memory.news.armed = false;
+    if (!memory.news.filming) return;
+    stopFilming(memory.news, source.stage);
+    placeCamera(readStage(), zoom);
+  };
+  const steer = () => {
+    takeBack();
     cancelFlight(memory);
+  };
+  const request = (goal: FlightGoal) => {
+    steer();
     memory.request = goal;
   };
   return {
     zoomBy: (factor, at) => {
-      cancelFlight(memory);
+      steer();
       zoomAt(zoom, readStage(), factor, at);
     },
     zoomInAt: (at, factor) => {
-      cancelFlight(memory);
+      steer();
       zoom.followsOwn = false;
       zoomAt(zoom, readStage(), factor, at);
     },
     pan: (from, to) => {
-      cancelFlight(memory);
+      steer();
       panBetween(zoom, readStage(), { from, to, at: performance.now() });
     },
-    releasePan: () => releasePan(zoom, room.size, performance.now(), memory.reducedMotion),
+    releasePan: () => releasePan(zoom, source.hall.size, performance.now(), memory.reducedMotion),
     followOwn: () => request("own"),
     flyTo: (playerId) => request(playerId),
     playIntro: () => request("intro"),
     readCamera: () => ({ factor: zoom.goal, followsOwn: willFollow(memory) }),
+    watchNews: (on) => {
+      if (on) memory.news.armed = true;
+      else takeBack();
+    },
+    readNews: () => readNewsRig(memory.news),
   };
+}
+
+/** Returns the picture the news are filmed for: its shape and the band the page leaves free. */
+function readNewsView(source: CameraSource): NewsView {
+  const { size } = readPickView(source.canvas, source.lens);
+  const height = Math.max(1, size.height);
+  const insets = keepHalf(size, source.readInsets());
+  return {
+    aspect: source.stage.camera.aspect,
+    top: insets.top / height,
+    bottom: (height - insets.bottom) / height,
+  };
+}
+
+/**
+ * Films the news if the news camera is to. A flight gives way to it. When a show ends on its own,
+ * its last shot was the whole room, so the page gets the whole room back instead of a jump.
+ */
+function filmFrame(
+  memory: CameraMemory,
+  source: CameraSource,
+  frame: NewsCameraFrame,
+): NewsGaze | null {
+  const wasFilming = memory.news.filming;
+  const gaze = filmNews(memory.news, frame, source.stage, readNewsView(source));
+  if (!wasFilming && memory.news.filming) cancelFlight(memory);
+  if (wasFilming && !memory.news.filming && !frame.live) {
+    Object.assign(memory.zoom, createZoom(), { followsOwn: memory.zoom.followsOwn });
+  }
+  return gaze;
 }
 
 /** Creates the camera of a view, which starts with the whole room. */
@@ -209,6 +290,7 @@ export function createViewCamera(source: CameraSource): ViewCamera {
     chased: null,
     followsAfter: true,
     reducedMotion: false,
+    news: createNewsRig(source.newsCamera),
   };
   const readStage = (): ZoomStage => {
     const view = readPickView(canvas, lens);
@@ -222,9 +304,12 @@ export function createViewCamera(source: CameraSource): ViewCamera {
     };
   };
   return {
-    controls: createControls(memory, readStage, hall),
+    controls: createControls(memory, readStage, source),
+    film: (frame) => filmFrame(memory, source, frame),
+    isFilming: () => memory.news.filming,
     update: (frame) => {
       memory.reducedMotion = frame.reducedMotion;
+      if (memory.news.filming) return;
       const zoomStage = readStage();
       if (memory.request !== null) startFlight(memory, zoomStage, frame);
       if (memory.flight) {

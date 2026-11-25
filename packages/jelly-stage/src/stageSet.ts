@@ -44,17 +44,15 @@ import {
   VENUE_TIME,
 } from "./props.ts";
 import propVertexShader from "./shaders/prop.vert.glsl?raw";
-import screenFragmentShader from "./shaders/screen.frag.glsl?raw";
-import screenVertexShader from "./shaders/screen.vert.glsl?raw";
 import speakerFragmentShader from "./shaders/speaker.frag.glsl?raw";
 import speakerVertexShader from "./shaders/speaker.vert.glsl?raw";
 import floorFragmentShader from "./shaders/stageFloor.frag.glsl?raw";
+import { createScreen } from "./stageScreen.ts";
 import {
   findPedestalRect,
   listScreenRects,
   listSpeakerRects,
   PEDESTAL,
-  SCREEN_WIDTH,
   SPEAKER,
   STAGE_HEIGHT,
   toLocalRect,
@@ -65,12 +63,6 @@ const STAGE_CORNER = 0.08;
 const FLOOR_LIFT = 0.003;
 const LED_STRIP = { height: 0.07, depth: 0.08 };
 const STEP = { width: 2.4, depth: 0.32, count: 2 };
-/** The screen hangs this high over the stage floor and is this tall. */
-const SCREEN_BOTTOM = 0.55;
-const SCREEN_HEIGHT = 2.3;
-const FRAME_BORDER = 0.12;
-const FRAME_DEPTH = 0.12;
-const LEG = { radius: 0.05, inset: 0.3 };
 const SOCKET = { width: 0.32, height: 0.26, depth: 0.2, inset: 0.35, rounding: 0.03 };
 /** A cable ends this far behind the front of its speaker. */
 const CABLE = { radius: 0.025, swing: 0.25, segments: 24, sides: 6, endInset: 0.15 };
@@ -111,11 +103,10 @@ const GLINT = { radius: 0.035, spread: 0.45, height: 0.35, step: 0.25, front: 0.
 const GLINT_COLOR = "#ffffff";
 /** Glints sit at these shares of the spread around the cup, every other one a step higher. */
 const GLINT_SHARES = [-1, -0.4, 0.5, 1];
-const SEGMENTS = { leg: 8, cone: 28, can: 16, lens: 20, cup: 32, handleTube: 10, handleRing: 20 };
+const SEGMENTS = { cone: 28, can: 16, lens: 20, cup: 32, handleTube: 10, handleRing: 20 };
 
 const PLATFORM_MATERIAL = createMatte("#56658a");
 const STEP_MATERIAL = createMatte("#6f7fa6");
-const FRAME_MATERIAL = createMatte("#2d3446");
 const SOCKET_MATERIAL = createMatte("#e98a3a");
 const CABLE_MATERIAL = createMatte("#2b3140");
 const SPEAKER_MATERIAL = createMatte("#353b4e");
@@ -125,20 +116,6 @@ const GOLD_MATERIAL = createShiny("#f2c14e", "#fff1c2");
 GOLD_MATERIAL.side = DoubleSide;
 GOLD_MATERIAL.emissive = new Color("#4a3208");
 const LENS_MATERIALS = GLOW_COLORS.map((color) => createGlow(color));
-const SCREEN_MATERIAL = keepMaterial(
-  new ShaderMaterial({
-    defines: { SCREEN_ASPECT: (SCREEN_WIDTH / SCREEN_HEIGHT).toFixed(3) },
-    uniforms: {
-      uTime: VENUE_TIME,
-      uSeed: { value: 0 },
-      uBase: { value: new Color("#1b2242") },
-      uColors: { value: GLOW_COLORS.map((color) => new Color(color)) },
-    },
-    vertexShader: screenVertexShader,
-    fragmentShader: screenFragmentShader,
-    toneMapped: false,
-  }),
-);
 const CONE_MATERIAL = keepMaterial(
   new ShaderMaterial({
     defines: { BEATS_PER_SECOND: BEATS_PER_SECOND.toFixed(2) },
@@ -199,38 +176,6 @@ function createPlatform(rect: FloorRect): Group {
   return platform;
 }
 
-/** Builds a beamer screen in its frame, standing in the middle of its rectangle. */
-export function createScreen(rect: FloorRect, seed: number): Group {
-  const screen = new Group();
-  const middle = findMiddle(rect);
-  const frame = {
-    width: SCREEN_WIDTH + 2 * FRAME_BORDER,
-    height: SCREEN_HEIGHT + 2 * FRAME_BORDER,
-    depth: FRAME_DEPTH,
-    rounding: FRAME_DEPTH / 2,
-  };
-  screen.add(createBox(frame, FRAME_MATERIAL, middle, SCREEN_BOTTOM - FRAME_BORDER));
-  const legHeight = SCREEN_BOTTOM - FRAME_BORDER;
-  for (const side of [-1, 1]) {
-    const leg = new CylinderGeometry(LEG.radius, LEG.radius, legHeight, SEGMENTS.leg);
-    const x = middle.x + side * (SCREEN_WIDTH / 2 - LEG.inset);
-    screen.add(placeMesh(leg, FRAME_MATERIAL, { x, y: legHeight / 2, z: middle.z }));
-  }
-  const picture = placeMesh(new PlaneGeometry(SCREEN_WIDTH, SCREEN_HEIGHT), SCREEN_MATERIAL, {
-    x: middle.x,
-    y: SCREEN_BOTTOM + SCREEN_HEIGHT / 2,
-    z: middle.z + FRAME_DEPTH / 2 + FACE_LIFT,
-  });
-  // One material for both screens: each sets its own seed right before it is drawn.
-  picture.onBeforeRender = () => {
-    const seedUniform = SCREEN_MATERIAL.uniforms.uSeed;
-    if (seedUniform) seedUniform.value = seed;
-    SCREEN_MATERIAL.uniformsNeedUpdate = true;
-  };
-  screen.add(picture);
-  return screen;
-}
-
 /** Builds a speaker cone facing the hall. */
 function createCone(radius: number, point: { x: number; y: number; z: number }): Mesh {
   return placeMesh(new CircleGeometry(radius, SEGMENTS.cone), CONE_MATERIAL, point);
@@ -246,7 +191,7 @@ export function createParLight(
   const light = new Group();
   const can = new CylinderGeometry(PAR.radius, PAR.radius * PAR.back, PAR.length, SEGMENTS.can);
   light.add(placeMesh(can, PAR_MATERIAL, { x: 0, y: 0, z: 0 }));
-  const lensMaterial = LENS_MATERIALS[color % LENS_MATERIALS.length] ?? FRAME_MATERIAL;
+  const lensMaterial = LENS_MATERIALS[color % LENS_MATERIALS.length] ?? PAR_MATERIAL;
   const lens = placeMesh(new CircleGeometry(PAR.radius * PAR.lens, SEGMENTS.lens), lensMaterial, {
     x: 0,
     y: PAR.length / 2 + FACE_LIFT,

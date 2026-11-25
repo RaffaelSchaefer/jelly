@@ -22,6 +22,7 @@ import {
 import { Group, Object3D } from "three";
 
 import type { MotionPose, StageEffect } from "./effects.ts";
+import type { NewsGaze } from "./newsShots.ts";
 import type { StageMove, StagePlayer, StageStack } from "./types.ts";
 import type { FloorPoint, ScenePoint } from "./world.ts";
 
@@ -54,7 +55,7 @@ import {
   type WalkPose,
   type Walker,
 } from "./walking.ts";
-import { syncWorn, type Worn, type WornWish } from "./worn.ts";
+import { freeHands, syncWorn, type Worn, type WornWish } from "./worn.ts";
 import { findFloorHeight, type Placement } from "./zones.ts";
 
 /** From the feet to the top of the head, in jelly units. */
@@ -79,8 +80,8 @@ export const FIRST_JELLY_ORDER = 1;
 const TIER_ORDER = 0.001;
 /** How fast a jelly steps up onto the stage or down from it, per second. */
 const STEP_RATE = 10;
-/** The winner of a ceremony grows to this size, and this fast per second. */
-const WINNER_SCALE = 1.8;
+/** The winner of a ceremony and the presenter of the news grow to this size, and this fast per second. */
+export const WINNER_SCALE = 1.8;
 const GROW_RATE = 2;
 /** Higher than this over its floor a jelly is in the air or on a tower. */
 const STEP_LIFT = 0.05;
@@ -109,6 +110,8 @@ interface StageJelly {
   scale: number;
   wearer: Wearer;
   worn: Worn<Object3D[]>;
+  /** It presents the news, so it is dressed without what it holds or wears on its hands. */
+  bareHands: boolean;
 }
 
 /** All jellies on the stage. */
@@ -124,15 +127,23 @@ export interface JellyCast {
 export interface JellyFrame {
   /** Where the move of each jelly puts it in this frame, by player ID. */
   positions: Map<number, FloorPoint>;
+  /** The camera seen from above. Standing jellies look there. */
   viewer: FloorPoint;
+  /** Where standing jellies look while the news are filmed instead, null: at the camera. */
+  gaze: NewsGaze | null;
   camera: ScenePoint;
   effects: StageEffect[];
   /** Jellies on a snack run carry their snack with both hands. */
   visitors: Set<number>;
   /** The stage platforms: jellies on them stand higher. */
   platforms: Placement[];
-  /** The winner of a running ceremony, who grows on the stage. */
+  /** The winner of a running ceremony or the presenter of running news, who grows on the stage. */
   winnerId: number | null;
+  /**
+   * The presenter of running news: it shows nothing in or on its hands while it presents, so its
+   * gestures read. The winner of a ceremony keeps what it holds.
+   */
+  presenterId: number | null;
   /** The newest move of each jelly, by player ID. Stack moves tell how high it sits. */
   moves: ReadonlyMap<number, StageMove>;
   /** The running stacks, as fresh as the last `stack.changed`. */
@@ -187,6 +198,7 @@ function addJelly(cast: JellyCast, player: StagePlayer, position: FloorPoint): v
     scale: 1,
     wearer: createWearer(jelly),
     worn: new Map(),
+    bareHands: false,
   });
 }
 
@@ -199,12 +211,20 @@ function removeJelly(cast: JellyCast, shown: StageJelly): void {
   forgetPerch(cast.stacking, shown.player.id);
 }
 
+/** Returns the player as the jelly shows it: a presenter with its hands free. */
+function findDress(shown: StageJelly): StagePlayer {
+  const { player } = shown;
+  return shown.bareHands ? { ...player, equipped: freeHands(player.equipped) } : player;
+}
+
 /** Dresses a jelly in what its player wears, without building the jelly again. */
-function dressJelly({ wearer, player, worn }: StageJelly): void {
+function dressJelly(shown: StageJelly): void {
+  const { wearer, player, worn } = shown;
+  const { equipped } = findDress(shown);
   const wanted = new Map<string, WornWish>();
   for (const slot of WORN_SLOTS) {
-    const equipped = player.equipped[slot];
-    if (equipped?.key) wanted.set(slot, { key: equipped.key, color: equipped.color ?? null });
+    const wish = equipped[slot];
+    if (wish?.key) wanted.set(slot, { key: wish.key, color: wish.color ?? null });
   }
   syncWorn(worn, wanted, {
     load: loadCosmetic,
@@ -274,13 +294,29 @@ function placeJelly(
   shown.shadowScale = shown.scale * pose.shadow * hop;
 }
 
+/**
+ * Returns where a standing jelly looks: into the camera, or while the news are filmed into the lens
+ * of its shot, and otherwise at the presenter like everybody in the hall.
+ */
+function findLook(frame: JellyFrame, playerId: number): FloorPoint {
+  const { gaze } = frame;
+  return (gaze && (gaze.lookers.get(playerId) ?? gaze.crowd)) ?? frame.viewer;
+}
+
+/** Takes away or gives back what a jelly holds, when it starts or stops presenting the news. */
+function keepHandsFree(shown: StageJelly, bareHands: boolean): void {
+  if (shown.bareHands === bareHands) return;
+  shown.bareHands = bareHands;
+  dressJelly(shown);
+}
+
 /** Walks, poses and animates one jelly. */
 function updateJelly(cast: JellyCast, shown: StageJelly, frame: JellyFrame): void {
   const { walker } = shown;
   const playerId = shown.player.id;
   stepWalker(walker, {
     target: frame.positions.get(playerId) ?? walker.position,
-    viewer: frame.viewer,
+    viewer: findLook(frame, playerId),
     seconds: frame.seconds,
   });
   const floor = findFloorHeight(walker.position, frame.platforms);
@@ -294,15 +330,17 @@ function updateJelly(cast: JellyCast, shown: StageJelly, frame: JellyFrame): voi
   const wantedScale = frame.winnerId === playerId ? WINNER_SCALE : 1;
   shown.scale += (wantedScale - shown.scale) * (1 - Math.exp(-GROW_RATE * frame.seconds));
   placeJelly(shown, pose, walk, motion);
+  keepHandsFree(shown, frame.presenterId === playerId);
   // On a snack run it carries the snack like a board; a held cosmetic the way that one wants.
   const visiting = frame.visitors.has(playerId);
-  const hold = holdOf(shown.player.equipped.hands?.key);
+  const dressed = findDress(shown);
+  const hold = holdOf(dressed.equipped.hands?.key);
   animateJelly(shown.jelly, shown.motion, {
     time: frame.time + shown.timeOffset,
     rawDelta: frame.seconds,
     pulse: shown.pulse,
     reducedMotion: frame.reducedMotion,
-    holding: visiting || holdsModel(shown.player),
+    holding: visiting || holdsModel(dressed),
     hold: visiting ? undefined : hold,
     emote: findEmote(frame.effects, playerId, frame.now),
   });

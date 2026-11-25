@@ -4,6 +4,7 @@ import { test } from "node:test";
 import type { StageMove, StagePlayer } from "./types.ts";
 
 import {
+  findPresenter,
   findWinner,
   findPositions,
   listHighlighted,
@@ -92,4 +93,21 @@ test("the winner grows while the ceremony runs", () => {
   assert.equal(findWinner(ceremony, 5000), null);
   assert.equal(findWinner({ ...ceremony, kind: "food" }, 100), null);
   assert.equal(findWinner(null, 100), null);
+});
+
+test("the presenter grows while the news run", () => {
+  const news = { kind: "news", winner_id: null, ends_at: 5000, presenter_id: 7, news: null };
+  assert.equal(findWinner(news, 4999), 7);
+  assert.equal(findWinner(news, 5000), null);
+  assert.equal(findWinner({ ...news, presenter_id: null }, 100), null);
+  // A server before the Jelly-News names no presenter.
+  assert.equal(findWinner({ kind: "news", winner_id: null, ends_at: 5000 }, 100), null);
+});
+
+test("only the presenter of running news keeps its hands free, a ceremony winner does not", () => {
+  const news = { kind: "news", winner_id: null, ends_at: 5000, presenter_id: 7, news: null };
+  assert.equal(findPresenter(news, 4999), 7);
+  assert.equal(findPresenter(news, 5000), null);
+  assert.equal(findPresenter({ kind: "ceremony", winner_id: 4, ends_at: 5000 }, 100), null);
+  assert.equal(findPresenter(null, 100), null);
 });

@@ -10,12 +10,16 @@ import type { JellySpot } from "./jellies.ts";
 import type { LabelAnchor } from "./labels.ts";
 import type { ScreenPoint, ScreenSize } from "./lens.ts";
 import type { StageHighlight } from "./moves.ts";
+import type { TextBounds } from "./newsCameraBounds.ts";
+import type { NewsDirector } from "./newsDirector.ts";
 import type { StageInsets } from "./insets.ts";
 import type { StagePoint } from "./types.ts";
 import type { ScenePoint } from "./world.ts";
 
 import { drawEdgeHints, findEdgeHints, pickEdgeHint, type EdgeHint } from "./edgeHints.ts";
 import { drawLabels } from "./labels.ts";
+import { drawNewsBar } from "./newsBar.ts";
+import { frameAnchors } from "./newsCameraLabels.ts";
 import { pickJelly } from "./picking.ts";
 
 /** Which jellies stand out on a personal screen. The big stage marks none. */
@@ -60,22 +64,36 @@ export interface OverlayFrame extends PickScene {
   size: ScreenSize;
   insets: StageInsets;
   now: number;
+  /** The Jelly-News, whose report on air is painted over everything else. */
+  news: NewsDirector;
+  /** Server time minus the clock of this screen, in milliseconds. */
+  clockOffset: number;
+  reducedMotion: boolean;
+  /** While the news camera films: where texts of the jellies may go. Null anywhere. */
+  textBounds: TextBounds | null;
 }
 
 /** Nothing under the pointer. */
 export const NOTHING_HOVERED: Hovered = { playerId: null, isOwn: false };
 
-/** Returns where the jellies are on screen, in the order of the spots. */
+/**
+ * Returns where the jellies are on screen, in the order of the spots. `toScreen` returns null for a
+ * point behind the camera: such a jelly would land somewhere wrong, so it has no texts and no click.
+ * With `picture`, as while the news camera films, only jellies in the picture count, with capped texts.
+ */
 export function measureAnchors(
   spots: JellySpot[],
-  toScreen: (point: ScenePoint) => ScreenPoint,
+  toScreen: (point: ScenePoint) => ScreenPoint | null,
+  picture: ScreenSize | null = null,
 ): LabelAnchor[] {
-  return spots.map((spot) => {
+  const anchors = spots.flatMap((spot) => {
     const feet = toScreen(spot.feet);
     const head = toScreen(spot.head);
+    if (!feet || !head) return [];
     const height = feet.y - head.y;
-    return { player: spot.player, x: feet.x, y: feet.y, headX: head.x, height, tier: spot.tier };
+    return [{ player: spot.player, x: feet.x, y: feet.y, headX: head.x, height, tier: spot.tier }];
   });
+  return picture ? frameAnchors(anchors, picture) : anchors;
 }
 
 /** Returns the player of the jelly at a point that can be picked right now. */
@@ -131,6 +149,7 @@ export function paintOverlay(
     signLabels: frame.signLabels,
     now,
     marks: { ...marks, hoveredId: hovered.playerId },
+    bounds: frame.textBounds,
   });
   const { ownId } = marks;
   const hints =
@@ -138,6 +157,10 @@ export function paintOverlay(
       ? []
       : findEdgeHints({ ...frame, ownId, size: frame.size, insets: frame.insets });
   drawEdgeHints(context, hints);
+  if (frame.news.live || frame.news.flash) {
+    const serverTime = now + frame.clockOffset;
+    drawNewsBar(context, frame.news, { ...frame, serverTime });
+  }
   const isOverHint = pointer !== null && pickEdgeHint(hints, pointer) !== null;
   const canClick = isOverHint || hovered.isOwn || hovered.playerId !== null;
   context.canvas.style.cursor = canClick ? "pointer" : "";
