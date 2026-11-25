@@ -1,6 +1,11 @@
 /**
  * Gibt dem Jelly seine Stimme: Was gerade erklingt und was der Mund dazu formt, folgt aus Meldung,
- * Hüpfer, Level und Geste.
+ * Hüpfer, Level und Geste. Dazu spricht hier der Vorleser der Jelly-News seine Sätze.
+ *
+ * Liest ein anderes Jelly vor, spricht es mit eigener Stimme ({@link moderator}), und der Mund des
+ * eigenen Jellys bleibt still. Liest das eigene vor, spricht es selbst, mit Mund. In beiden Fällen
+ * gehen die eigenen Sätze vor: Kommt einer, verstummt der Vorleser, und spricht das Jelly gerade,
+ * setzt er für diesen Beitrag aus (`pickAnchor`).
  *
  * @module
  */
@@ -9,11 +14,27 @@ import { useEffect, useMemo, useRef } from "react";
 
 import type { PetGame } from "./usePet";
 
-import { pickClip, type VoiceMoment, type VoiceNote } from "./pet";
+import {
+  notesSeconds,
+  pickAnchor,
+  pickClip,
+  type AnchorLine,
+  type VoiceMoment,
+  type VoiceNote,
+} from "./pet";
 import { createVoice, startClock } from "./voice";
 
 /** Eine Stimme für die ganze App. */
 const voice = createVoice();
+
+/**
+ * Die Stimme eines fremden Vorlesers der Jelly-News, mit der Klangfarbe je Satz. Ein eigenes
+ * Audiogerät: So löst sie das Jelly nicht ab, und das Jelly sie nur, wenn es selbst spricht.
+ */
+const moderator = createVoice();
+
+/** Bis wann das eigene Jelly spricht, auf der Uhr von `performance.now()`. */
+let ownUntil = 0;
 
 /** Was als Geste des Nutzers zählt. */
 const GESTURES = ["pointerdown", "keydown"] as const;
@@ -31,6 +52,50 @@ export interface ActiveVoice {
   elapsed: () => number;
 }
 
+/** Wo der Mund liest, was das Jelly formt. */
+type Voiced = { current: ActiveVoice | null };
+
+/**
+ * Spielt, was das Jelly selbst sagt, und zeigt es dem Mund. Ein eigener Satz lässt den Vorleser
+ * verstummen.
+ */
+function speakOwn(before: VoiceMoment, after: VoiceMoment, voiced: Voiced) {
+  const clip = pickClip(before, after);
+  // Auch stumm bewegt sich der Mund, so wie die Sprechblase weitertippt.
+  const notes = clip ?? pickClip({ ...before, sound: true }, { ...after, sound: true });
+  const clock = clip ? voice.play(clip) : null;
+  if (clip?.length) {
+    moderator.stop();
+    ownUntil = performance.now() + notesSeconds(clip) * 1000;
+  }
+  if (notes?.length) {
+    voiced.current = {
+      notes: notes.filter((note) => !note.by),
+      partnerNotes: notes.filter((note) => note.by),
+      elapsed: clock ?? startClock(),
+    };
+  }
+}
+
+/**
+ * Spielt die Sätze des Vorlesers. Nach dem Effekt der eigenen Laute aufgerufen: Spricht das Jelly
+ * im selben Moment, weiß das {@link ownUntil} schon.
+ */
+function useAnchorVoice(line: AnchorLine | null, sound: boolean, voiced: Voiced) {
+  const before = useRef<AnchorLine | null>(line);
+  useEffect(() => {
+    const anchor = pickAnchor(before.current, line, sound, performance.now() < ownUntil);
+    before.current = line;
+    if (!anchor) return;
+    if (!anchor.own) {
+      moderator.play(anchor.notes, anchor.timbre);
+      return;
+    }
+    const clock = voice.play(anchor.notes);
+    voiced.current = { notes: anchor.notes, partnerNotes: [], elapsed: clock ?? startClock() };
+  }, [line, sound, voiced]);
+}
+
 /**
  * Spielt die Laute.
  *
@@ -38,14 +103,17 @@ export interface ActiveVoice {
  *   Sprechblase. `voiced` hält, was der Mund gerade formt.
  */
 export function useJellyVoice(game: PetGame) {
-  const { message, messageId, pulse, touched, activeEmote: emote, ready } = game;
+  const { message, messageId, pulse, touched, activeEmote: emote, ready, newsJingle: news } = game;
   const { sound, volume: percent } = game.game.settings;
   const known = ready ? game.game.me : null;
   const level = known ? known.level : null;
   const volume = ready ? percent : null;
 
   useEffect(() => {
-    const arm = () => voice.arm();
+    const arm = () => {
+      voice.arm();
+      moderator.arm();
+    };
     for (const gesture of GESTURES) window.addEventListener(gesture, arm, true);
     return () => {
       for (const gesture of GESTURES) window.removeEventListener(gesture, arm, true);
@@ -53,7 +121,7 @@ export function useJellyVoice(game: PetGame) {
   }, []);
 
   const voiced = useRef<ActiveVoice | null>(null);
-  const before = useRef<VoiceMoment>({
+  const moment: VoiceMoment = {
     sound,
     message,
     messageId,
@@ -62,25 +130,23 @@ export function useJellyVoice(game: PetGame) {
     volume,
     emote,
     touched,
-  });
-  // Ein Effekt für alles: Text, Hüpfer und Level kommen im selben Render und sollen nur einen Laut geben.
+    news,
+  };
+  const before = useRef(moment);
+  // Ein Effekt für alles: Text, Hüpfer, Level und Jingle kommen im selben Render und sollen nur
+  // einen Laut geben.
   useEffect(() => {
-    const after: VoiceMoment = { sound, message, messageId, pulse, level, volume, emote, touched };
-    const clip = pickClip(before.current, after);
-    // Auch stumm bewegt sich der Mund, so wie die Sprechblase weitertippt.
-    const notes = clip ?? pickClip({ ...before.current, sound: true }, { ...after, sound: true });
-    if (before.current.sound && !sound) voice.stop();
-    before.current = after;
-    voice.setVolume(percent);
-    const clock = clip ? voice.play(clip) : null;
-    if (notes?.length) {
-      voiced.current = {
-        notes: notes.filter((note) => !note.by),
-        partnerNotes: notes.filter((note) => note.by),
-        elapsed: clock ?? startClock(),
-      };
+    if (before.current.sound && !moment.sound) {
+      voice.stop();
+      moderator.stop();
     }
-  }, [sound, message, messageId, pulse, level, volume, percent, emote, touched]);
+    voice.setVolume(percent);
+    moderator.setVolume(percent);
+    speakOwn(before.current, moment, voiced);
+    before.current = moment;
+    // `moment` ist je Render neu, es zählen seine Felder.
+  }, [sound, message, messageId, pulse, level, volume, percent, emote, touched, news]);
+  useAnchorVoice(game.newsAnchor, sound, voiced);
 
   // `messageId` zählt mit: Auch derselbe Satz wird neu gesprochen.
   const saidAt = useMemo(() => performance.now(), [message, messageId]);

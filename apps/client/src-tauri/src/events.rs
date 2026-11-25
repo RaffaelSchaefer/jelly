@@ -1,9 +1,10 @@
 //! Leitet Ereignisse und Wege aus `GET /v1/stage/events` an die Oberfläche weiter.
 //!
 //! Der Stream ist für alle Spieler gleich. Zum Pet gehen nur Ereignisse zum eigenen Jelly durch, als
-//! Tauri-Ereignis [`EVENT_NAME`], beim Stapel auch die der anderen darauf ([`OwnStack`]). Die
-//! Oberfläche lädt danach den Stand neu, denn Ereignisse tragen keine Namen und keinen vollständigen
-//! Stand. Nach `player.removed` lehnt der Server das Secret dabei ab, und die Oberfläche fragt nach
+//! Tauri-Ereignis [`EVENT_NAME`], beim Stapel auch die der anderen darauf ([`OwnStack`]). Dazu
+//! kommt, was allen gilt, etwa geänderte Regeln oder Beginn und Ende der Jelly-News
+//! ([`NewsOnAir`]). Die Oberfläche lädt danach den Stand neu, denn Ereignisse tragen keine Namen und
+//! keinen vollständigen Stand. Nach `player.removed` lehnt der Server das Secret dabei ab, und die Oberfläche fragt nach
 //! einem neuen Code. Die Karte hört als [`STAGE_EVENT_NAME`] alles, dazu als [`STAGE_MOVE_NAME`] die
 //! Wege. [`STREAM_RESET_NAME`] geht an beide.
 
@@ -74,6 +75,12 @@ const RULES_CHANGED: &str = "rules.changed";
 /// Zauberer mit oder ohne Hut, und das Pet des Trägers liest seinen Kopf neu. Karte und Shop bleiben
 /// dabei offen.
 const WIZARD_HAT_CHANGED: &str = "wizard_hat.changed";
+
+/// Ereignis, wenn ein Gathering beginnt oder endet: Essens-Event, Siegerehrung oder Jelly-News.
+const GATHERING_CHANGED: &str = "gathering.changed";
+
+/// Art des Gatherings, das die Jelly-News auf der Bühne zeigt.
+const NEWS_KIND: &str = "news";
 
 /// Ereignis, wenn jemand die eigene Aufforderung annimmt.
 const PARTNER_EMOTE: &str = "partner.emote";
@@ -168,6 +175,45 @@ fn closes_popouts(event: &ServerEvent, player_id: i64) -> bool {
     }
 }
 
+/// Ob `event` den Beginn der Jelly-News meldet.
+fn is_news(event: &ServerEvent) -> bool {
+    event.kind == GATHERING_CHANGED
+        && event.payload.get("kind").and_then(Value::as_str) == Some(NEWS_KIND)
+}
+
+/// Ob gerade Jelly-News laufen, soweit dieser Stream es mitbekommen hat.
+///
+/// Ihr Beginn gilt allen: Das Pet sagt dazu, ob es vorliest, genannt wird oder nur zuschaut, und der
+/// Vorleser spricht Beitrag für Beitrag. Karte und Shop bleiben dabei offen. Endet die Sendung
+/// vorzeitig (`null`) oder ersetzt ein anderes Gathering sie, geht auch dieses Ereignis einmal ans
+/// Pet, damit der Vorleser aufhört. Andere Gatherings ohne laufende News zeigt nur die Karte. Ein
+/// reguläres Ende meldet der Server nicht: Dann geht das nächste Gathering einmal mit, das Pet ist da
+/// längst fertig. Der Stand lebt wie bei [`OwnStack`] nur im Stream.
+#[derive(Debug, Default)]
+struct NewsOnAir(bool);
+
+impl NewsOnAir {
+    /// Ob `event` ans Pet soll: ein Beginn von News oder das erste Gathering danach. Merkt sich, ob
+    /// danach News laufen.
+    fn track(&mut self, event: &ServerEvent) -> bool {
+        if event.kind != GATHERING_CHANGED {
+            return false;
+        }
+        let news = is_news(event);
+        let was = std::mem::replace(&mut self.0, news);
+        news || was
+    }
+}
+
+/// Was der Stream sich merkt, um Ereignisse anderer dem eigenen Jelly zuzuordnen.
+#[derive(Debug, Default)]
+struct Memory {
+    /// Der eigene Stapel.
+    own_stack: OwnStack,
+    /// Ob Jelly-News laufen.
+    news: NewsOnAir,
+}
+
 /// Ob `event` das Jelly von `player_id` betrifft und an die Oberfläche soll.
 fn is_own_event(event: &ServerEvent, player_id: i64) -> bool {
     if event.kind == RULES_CHANGED || event.kind == WIZARD_HAT_CHANGED {
@@ -236,11 +282,14 @@ pub(crate) fn emit_to_ui<T: Serialize + Clone>(app: &AppHandle, name: &str, payl
 
 /// Reicht eine Nachricht weiter: eigene Ereignisse ans Pet, alle Ereignisse und Wege an die Karte,
 /// falls sie offen ist.
-fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64, own_stack: &mut OwnStack) {
+fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64, memory: &mut Memory) {
     match message {
         StreamMessage::Event(event) => {
-            // Erst der Stapel: Er muss jedes `stack.changed` sehen, um sich den eigenen zu merken.
-            if own_stack.track(&event, player_id) || is_own_event(&event, player_id) {
+            // Erst Stapel und News: Sie müssen jedes Ereignis ihrer Art sehen, um sich den Stand zu
+            // merken.
+            let stacked = memory.own_stack.track(&event, player_id);
+            let news = memory.news.track(&event);
+            if stacked || news || is_own_event(&event, player_id) {
                 emit_to_ui(app, EVENT_NAME, &event);
             }
             if popout::is_open(app, popout::MAP) {
@@ -262,13 +311,13 @@ fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64, own_stack: 
 
 /// Liest den Stream, bis der Server das Secret ablehnt.
 async fn forward(app: AppHandle, mut source: EventSource, player_id: i64) {
-    let mut own_stack = OwnStack::default();
+    let mut memory = Memory::default();
     while let Some(item) = source.next().await {
         match item {
             Ok(Event::Open) => {}
             Ok(Event::Message(message)) => {
                 let parsed = parse_message(&message.event, &message.data);
-                dispatch(&app, parsed, player_id, &mut own_stack);
+                dispatch(&app, parsed, player_id, &mut memory);
             }
             // Nach `401` hilft kein neuer Versuch. Die nächste Aktion zeigt den Fehler an.
             Err(StreamError::InvalidStatusCode(StatusCode::UNAUTHORIZED, _)) => source.close(),

@@ -275,6 +275,11 @@ export interface VoiceMoment {
   emote: { key: string; partner?: unknown } | null;
   /** Die letzte Berührung mit eigener Reaktion. Jede neue ist ein neues Objekt. */
   touched: { touch: PetTouch } | null;
+  /**
+   * Die zuletzt begonnenen Jelly-News, deren Jingle die Oberfläche spielt. Jede neue Sendung ist
+   * ein neues Objekt.
+   */
+  news: { show: number } | null;
 }
 
 /**
@@ -309,6 +314,15 @@ function touchClip({ touched: before }: VoiceMoment, { touched: after }: VoiceMo
   return after && after !== before ? TOUCH_CLIPS[after.touch] : null;
 }
 
+/**
+ * Stille zum Satz, mit dem neue Jelly-News beginnen: Ihr Jingle läuft über die Geräusche der
+ * Oberfläche (`news` in `uiSounds.ts`), und das Jelly plappert und quiekt nicht in seinen Auftakt.
+ * Hüpfer und Sprechblase bleiben, der Mund bleibt zu.
+ */
+function newsSilence({ news: before }: VoiceMoment, { news: after }: VoiceMoment) {
+  return after && after !== before ? [] : null;
+}
+
 /** Was erklingen soll, wenn der Stand von `before` zu `after` wechselt, oder `null` für nichts. */
 export function pickClip(before: VoiceMoment, after: VoiceMoment): VoiceNote[] | null {
   if (!after.sound) return null;
@@ -317,6 +331,8 @@ export function pickClip(before: VoiceMoment, after: VoiceMoment): VoiceNote[] |
   const gesture = emoteClip(before, after);
   if (gesture) return gesture;
   if (levelRose(before, after)) return LEVEL_UP;
+  const silence = newsSilence(before, after);
+  if (silence) return silence;
   const touch = touchClip(before, after);
   if (touch) return touch;
   if (after.message !== before.message) return speechNotes(after.message);

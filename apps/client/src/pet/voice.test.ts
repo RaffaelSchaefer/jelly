@@ -57,6 +57,7 @@ const MOMENT: VoiceMoment = {
   volume: 100,
   emote: null,
   touched: null,
+  news: null,
 };
 
 describe("speechSyllables", () => {
@@ -120,9 +121,8 @@ describe("speechNotes", () => {
 
 describe("clips", () => {
   it("are all playable", () => {
-    for (const notes of [HELLO, LEVEL_UP, ...HOP_CLIPS, ...Object.values(EMOTE_CLIPS)]) {
-      expectPlayable(notes);
-    }
+    const clips = [HELLO, LEVEL_UP, ...HOP_CLIPS, ...Object.values(EMOTE_CLIPS)];
+    for (const notes of clips) expectPlayable(notes);
   });
   it("sing in a mood: an octave up doubles the pitch, double tempo halves the times", () => {
     const note = { at: 1, duration: 0.4, from: 400, to: 500, vowel: "a" as const, gain: 1 };
@@ -217,6 +217,23 @@ describe("pickClip", () => {
   });
   it("says the same text again without a hop", () => {
     expect(pickClip(MOMENT, { ...MOMENT, messageId: 1 })).toEqual(speechNotes("Bereit."));
+  });
+});
+
+describe("the start of the news", () => {
+  it("keeps the jelly quiet for its line and hop while the jingle plays, once per show", () => {
+    const show = { show: 1 };
+    const after = { ...MOMENT, news: show, message: "In den News!", messageId: 1, pulse: 1 };
+    expect(pickClip(MOMENT, after)).toEqual([]);
+    expect(pickClip(after, { ...after })).toBeNull();
+    expect(pickClip(after, { ...after, news: { show: 2 } })).toEqual([]);
+    const off = { ...MOMENT, sound: false };
+    expect(pickClip(off, { ...off, news: show })).toBeNull();
+  });
+  it("speaks the next line again", () => {
+    const during = { ...MOMENT, news: { show: 1 }, message: "In den News!", messageId: 1 };
+    const next = { ...during, message: "Hihi, das kitzelt!", messageId: 2 };
+    expect(pickClip(during, next)).toEqual(speechNotes("Hihi, das kitzelt!"));
   });
 });
 

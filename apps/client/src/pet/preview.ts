@@ -4,7 +4,9 @@
  * `PREVIEW_CATALOG` ist ein Auszug aus `GET /v1/catalog`, `PREVIEW_ME` ein Spieler auf Level 3 mit
  * drei Münzen. Hashes wie `#join` oder `#shop-pleite` holen andere Zustände in den Browser, die
  * Abfragen `?optimized`, `?ruhig` und `?fps=30` andere Einstellungen. Mit `#shop-nerven` spielt die
- * Vorschau den Diebstahl von Funkelbarts Hut, mit `#shop-hutlos` trägt ihn gerade Mo.
+ * Vorschau den Diebstahl von Funkelbarts Hut, mit `#shop-hutlos` trägt ihn gerade Mo. `#news`,
+ * `#news-tower`, `#news-achievement`, `#news-presenter` und `#news-watching` lassen die Jelly-News
+ * beginnen ({@link previewNewsEvent}).
  *
  * @module
  */
@@ -268,6 +270,66 @@ export function previewGiftEvents(level: number, coins: number): ServerEvent[] {
     event("coins.gained", { amount: coins, source: "level" }),
     event("level.up", { level: level + 1 }),
   ];
+}
+
+/** So lange läuft eine Sendung der Vorschau, etwa so lange wie mit `news_seconds` des Servers. */
+const PREVIEW_SHOW_MS = 90_000;
+
+/** Mo liest in der Vorschau die Jelly-News vor, wenn es das eigene Jelly nicht tut. */
+const PREVIEW_PRESENTER = 7;
+
+/**
+ * Was die Jelly-News der Vorschau melden, ohne das eigene Jelly. Jede Art Beitrag kommt vor, auch
+ * ein dringender nächster Punkt: So hört man in der Vorschau jeden Tonfall des Vorlesers.
+ */
+function previewNews(now: number) {
+  const next = { title: "CS2-Turnier", detail: "Finale auf der Hauptbühne", kind: "tournament" };
+  return {
+    top_xp: { player_id: 9, xp: 80 },
+    achievements: [
+      { player_id: 8, key: "tournament" },
+      { player_id: 5, key: "hatched" },
+    ],
+    tallest_stack: [8, 9],
+    next_item: { starts_at: now + 25 * 60_000, ends_at: null, ...next },
+  };
+}
+
+/** Die News der Vorschau. */
+type PreviewNews = ReturnType<typeof previewNews>;
+
+/** Wer je Hash vorliest und wo das eigene Jelly `own` in den News vorkommt. */
+const NEWS_SHOWS: Readonly<
+  Record<string, (own: number, news: PreviewNews) => Record<string, unknown>>
+> = {
+  "#news": (own, news) => ({ news: { ...news, top_xp: { player_id: own, xp: 120 } } }),
+  "#news-tower": (own, news) => ({ news: { ...news, tallest_stack: [8, own, 9] } }),
+  "#news-achievement": (own, news) => ({
+    news: { ...news, achievements: [{ player_id: own, key: "hydrated" }] },
+  }),
+  "#news-presenter": (own) => ({ presenter_id: own }),
+  "#news-watching": () => ({}),
+};
+
+/**
+ * Der Beginn der Jelly-News in der Vorschau, wie ihn der Server mit `gathering.changed` meldet:
+ * `#news` nennt das eigene Jelly `ownId` mit den meisten XP, `#news-tower` im höchsten Turm und
+ * `#news-achievement` mit einem Erfolg. Mit `#news-presenter` liest es vor, mit `#news-watching`
+ * schaut es nur zu. `null` für jeden anderen Hash.
+ */
+export function previewNewsEvent(hash: string, ownId: number, now: number): ServerEvent | null {
+  const show = Object.hasOwn(NEWS_SHOWS, hash) ? NEWS_SHOWS[hash] : undefined;
+  if (!show) return null;
+  const news = previewNews(now);
+  const payload = {
+    kind: "news",
+    winner_id: null,
+    ends_at: now + PREVIEW_SHOW_MS,
+    presenter_id: PREVIEW_PRESENTER,
+    news,
+    ...show(ownId, news),
+  };
+  return { id: 0, type: "gathering.changed", player_id: null, payload, created_at: now };
 }
 
 /** Ein Level-Aufstieg in der Vorschau (`#shop-muenzen`): ein Level mehr und seine Münzen. */

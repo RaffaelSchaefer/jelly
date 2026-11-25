@@ -52,7 +52,9 @@ export function useGameState() {
   const setGame = useCallback((next: Game) => {
     // Die Beispieldaten der Vorschau sollen nicht zurücksetzen, was dort gerade eingestellt ist.
     patchGame(desktop ? next : (current) => ({ ...next, settings: current.settings }));
-    if (next.me) setOffset(next.me.server_time - Date.now());
+    // In der Vorschau ist die Uhr des Geräts die des Servers. Ihr Stand trägt `server_time` 0, ein
+    // Abstand daraus schöbe jede Uhr der Vorschau um Jahrzehnte zurück.
+    if (desktop && next.me) setOffset(next.me.server_time - Date.now());
   }, []);
 
   /** Liest den Stand still neu, etwa nach einem Ereignis oder einem Fehler. */

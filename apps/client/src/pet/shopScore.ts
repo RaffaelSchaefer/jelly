@@ -124,6 +124,8 @@ export const SHOP_THEME: Readonly<Record<UiSound, ShopCue | null>> = {
   achievement: null,
   invite: null,
   hatch: null,
+  news: null,
+  newsBed: null,
 };
 
 /** Was der Zauberer an Geräuschen auslöst. Dieselben Namen wie `WizardSfx` seines Verstands. */

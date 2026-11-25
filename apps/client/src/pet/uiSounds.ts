@@ -22,6 +22,8 @@ export const UI_SOUND_NAMES = [
   "achievement",
   "invite",
   "hatch",
+  "news",
+  "newsBed",
 ] as const;
 
 /** Ein Geräusch der Oberfläche. */
@@ -66,6 +68,8 @@ export interface GameMoment {
   invited: boolean;
   /** Ob das Jelly gerade schlüpft. */
   hatching: boolean;
+  /** Die Jelly-News, deren Jingle zuletzt begann, als ihr `ends_at`. Vorher `null`. */
+  news: number | null;
 }
 
 /** Ob ein Zähler gestiegen ist. Das erste Laden eines Kontos zählt nicht. */
@@ -79,6 +83,8 @@ function rose(before: number | null, after: number | null) {
  */
 export function gameSoundFor(before: GameMoment, after: GameMoment): UiSound | null {
   if (after.hatching && !before.hatching) return "hatch";
+  // Einmal je Sendung: `news` wechselt nur, wenn neue Jelly-News beginnen.
+  if (after.news !== null && after.news !== before.news) return "news";
   if (rose(before.honors, after.honors)) return "achievement";
   if (after.invited && !before.invited) return "invite";
   return rose(before.xp, after.xp) ? "coin" : null;

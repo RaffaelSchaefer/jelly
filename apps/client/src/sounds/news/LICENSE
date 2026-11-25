@@ -1,0 +1,13 @@
+Jingle und Hintergrundmusik der Jelly-News (intro.mp3, bed.mp3)
+
+Eigene Musik von Jelly, für die Jelly-News geliefert vom Projekt. Sie stammt nicht von
+reactsounds.com, die MIT-Lizenz in ../LICENSE gilt für sie nicht. Laut den Metadaten der
+gelieferten Dateien wurden beide mit Suno erstellt.
+
+intro.mp3: umgewandelt mit ffmpeg aus „News Intro (1).m4a“: Mono, 44,1 kHz, MP3 mit 64 kbit/s,
+ohne Metadaten.
+
+bed.mp3: umgewandelt mit ffmpeg aus „News Intro.m4a“ (78 Sekunden), davon nur der gleichmäßige
+Mittelteil von 26,0 bis 65,6 Sekunden, den die Sendung in Schleife spielt: Mono, 32 kHz, MP3 mit
+40 kbit/s, ohne Metadaten. Die Schleife läuft von 4,35 bis 36,43 Sekunden der Datei
+(`NEWS_BED` in src/pet/newsBed.ts).

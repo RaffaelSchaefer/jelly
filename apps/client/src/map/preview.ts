@@ -3,6 +3,10 @@
  * Jellies, in ihrer echten Größe, und einem Turm (`previewStacks.ts`). Die Desktop-App lädt diese
  * Datei nie.
  *
+ * Abfragen und Hash: `map.html?optimized` zeigt den optimierten Modus, `?fps=60` oder `?fps=max`
+ * eine andere Bildrate. `map.html#news` spielt die Jelly-News, wiederholt mit Pause
+ * (`previewNews.ts`), auch zusammen wie `map.html?optimized&fps=60#news`.
+ *
  * @module
  */
 
@@ -21,6 +25,8 @@ import { createDemoRoom, DEMO_HALL } from "@jelly/stage/demo-room";
 import type { MapSource } from "./source";
 
 import { FRAME_RATE, PREVIEW_CATALOG, PREVIEW_ME, PREVIEW_RULES, type PartnerInvite } from "../pet";
+import { createNewsPreview } from "./previewNews";
+import { positionAt } from "./previewNewsWalks";
 import { createStackPreview } from "./previewStacks";
 
 /**
@@ -132,7 +138,7 @@ function homeOf(player: StagePlayer): StagePoint {
 function startWalks(
   players: StagePlayer[],
   isBusy: (player: StagePlayer) => boolean,
-  listener: StreamListener,
+  sendMove: (move: StageMove) => void,
 ) {
   let next = 0;
   let isAway = false;
@@ -144,7 +150,7 @@ function startWalks(
     const home = homeOf(player);
     const away = { x: home.x + WALK_REACH, y: home.y };
     const [from, to] = isAway ? [home, away] : [away, home];
-    listener.onMove(createWalk(player.id, from, to));
+    sendMove(createWalk(player.id, from, to));
   }, WALK_EVERY_MS);
 }
 
@@ -254,9 +260,14 @@ type PreviewSend = Parameters<typeof createStackPreview>[2];
 
 /**
  * Was das eigene Jelly in der Vorschau tut: dazustellen, Ausflug und Stapel. Losgehen nimmt es wie
- * beim Server vom Stapel, Klettern und Beginnen beenden Ausflug und Dazustellen.
+ * beim Server vom Stapel, Klettern und Beginnen beenden Ausflug und Dazustellen. Ein neuer Weg
+ * beginnt, wo der letzte (`lastMove`) es gerade hinstellt, etwa mitten auf dem Weg zu den News.
  */
-function createOwnPreview(players: StagePlayer[], send: PreviewSend) {
+function createOwnPreview(
+  players: StagePlayer[],
+  send: PreviewSend,
+  lastMove: (playerId: number) => StageMove | undefined,
+) {
   const own = players[0];
   const trips = createTrips(own, send.move);
   const followed = () => players.find((player) => player.id === own.follow?.player_id);
@@ -271,9 +282,10 @@ function createOwnPreview(players: StagePlayer[], send: PreviewSend) {
     own.follow = null;
   };
   const stacks = createStackPreview(players, { id: own.id, spot: ownSpot, endWalks }, send);
+  const here = () => positionAt(lastMove(own.id), ownSpot(), Date.now());
   const actions: Pick<MapSource, "setFollow" | "goTo"> = {
     setFollow: (playerId) => {
-      const from = ownSpot();
+      const from = here();
       endWalks();
       stacks.drop(own.id);
       own.follow =
@@ -282,7 +294,7 @@ function createOwnPreview(players: StagePlayer[], send: PreviewSend) {
       return Promise.resolve(playerId);
     },
     goTo: (point) => {
-      const from = ownSpot();
+      const from = here();
       stacks.drop(own.id);
       trips.go(point, from);
       return Promise.resolve();
@@ -295,16 +307,39 @@ function createOwnPreview(players: StagePlayer[], send: PreviewSend) {
 }
 
 /**
- * Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier nur für Aufforderungen, Licht und
- * Stapel.
+ * Schickt Wege und Ereignisse an die Bühne, sobald sie hört, und hebt den letzten Weg jedes Jellys
+ * auf: So weiß ein neuer Weg, wo das Jelly gerade steht.
+ */
+function createSend(readListener: () => StreamListener | null) {
+  const lastMoves = new Map<number, StageMove>();
+  const send: PreviewSend = {
+    move: (move) => {
+      lastMoves.set(move.player_id, move);
+      readListener()?.onMove(move);
+    },
+    event: (event) => readListener()?.onEvent(event),
+  };
+  return { send, lastMove: (playerId: number) => lastMoves.get(playerId) };
+}
+
+/**
+ * Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier nur für Aufforderungen, Licht,
+ * Stapel und die Jelly-News.
  */
 export function createPreviewSource(): MapSource {
   const areas = createDemoRoom();
   const players = listPlayers(areas);
   let listener: StreamListener | null = null;
-  const { trips, stacks, isBusy, actions } = createOwnPreview(players, {
-    move: (move) => listener?.onMove(move),
-    event: (event) => listener?.onEvent(event),
+  const { send, lastMove } = createSend(() => listener);
+  const { trips, stacks, isBusy, actions } = createOwnPreview(players, send, lastMove);
+  const news = createNewsPreview(location.hash, {
+    players,
+    areas,
+    ownId: OWN_ID,
+    tallestStack: stacks.list()[0]?.member_ids ?? [],
+    isFree: (player) => !isBusy(player),
+    lastMove,
+    send,
   });
   return {
     ...createPartnerPreview(),
@@ -319,15 +354,16 @@ export function createPreviewSource(): MapSource {
         room: { width: 100, height: 100, unit: "percent", ...DEMO_HALL },
         areas,
         players,
-        moves: stacks.moves(),
+        moves: [...stacks.moves(), ...news.moves()],
         stacks: stacks.list(),
-        gathering: null,
+        gathering: news.gathering(),
       }),
     readCatalog: () => Promise.resolve(PREVIEW_CATALOG),
     subscribe: (_firstEventId, next) => {
       listener = next;
       next.onConnectionChange(true);
-      startWalks(players, isBusy, next);
+      startWalks(players, (player) => isBusy(player) || news.isBusy(player.id), send.move);
+      news.start();
     },
     // Die Vorschau teilt keine Einstellungen mit dem Pet: `map.html?optimized&fps=60` zeigt sie.
     readOwn: () => ({

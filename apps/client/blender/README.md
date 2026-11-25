@@ -188,6 +188,28 @@ after changing the hat:
 blender blender/cosmetics.blend --background --python blender/build_wizard_hat.py -- --save --export
 ```
 
+## The opening title of the Jelly-News
+
+The stage opens every show of the Jelly-News with a 3D title: a candy globe with two orbit rings,
+the logo as two plates with extruded letters (`JELLY` on deep blue, `NEWS` on the light accent, as in
+the lower third) and a sparkle. It is no cosmetic and needs no `.blend`: `build_news_title.py` builds
+every part from its numbers in an empty scene and writes `packages/jelly-stage/src/newsTitle.glb`.
+
+```bash
+blender --background --factory-startup --python blender/build_news_title.py -- --export --check
+```
+
+`--check` prints vertices, bytes and the bounds of every part and fails past the budget (200 KB:
+the file lies in the bundle as a data URL). `--preview out.png` renders the parts as they stand once
+the logo has landed. Every object carries the custom property `part`, the stage splits the file by
+it with `loadModelParts` and moves each part on its own, so each part is built around its own middle.
+`TITLE_MODEL` in `newsTitleLayout.ts` holds their sizes, `newsTitle.test.ts` compares them with the
+file. The continents are caps on the ball joined into a smooth coast, a patch of a finer ball raised
+over the sea that sinks under it at its rim. The letters are Inter, which Blender ships under the SIL
+Open Font License 1.1, widened to a black weight by the curve's offset: only the outlines become
+geometry. Materials carry `glow` and `neon` as for cosmetics, the stage shades them in the same
+candy look. After an export restart the Vite dev server, or it keeps the old model.
+
 ## When the pet changes
 
 The reference is generated from `packages/jelly-scene/src/jellyGeometry.ts`. After changing the pet's shape:

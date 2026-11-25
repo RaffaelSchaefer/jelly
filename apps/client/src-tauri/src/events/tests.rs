@@ -176,6 +176,78 @@ fn the_wizard_hat_reaches_everyone_and_keeps_map_and_shop_open() {
     assert!(is_own_event(&back, 7));
 }
 
+/// Ein `gathering.changed` mit diesem Gathering, `null` an seinem Ende.
+fn gathering(payload: Value) -> ServerEvent {
+    event(GATHERING_CHANGED, None, payload)
+}
+
+/// Der Beginn von Jelly-News mit `ends_at` am Ende.
+fn news_start(ends_at: i64) -> ServerEvent {
+    gathering(json!({
+        "kind": "news", "winner_id": null, "ends_at": ends_at, "presenter_id": 8,
+        "news": { "top_xp": { "player_id": 9, "xp": 120 }, "achievements": [],
+            "tallest_stack": [], "next_item": null }
+    }))
+}
+
+/// Gatherings, die keine News beginnen: andere Arten, Unlesbares und das Ende.
+fn other_gatherings() -> [ServerEvent; 5] {
+    [
+        gathering(json!({ "kind": "food", "winner_id": null, "ends_at": 1000 })),
+        gathering(json!({ "kind": "ceremony", "winner_id": 7, "ends_at": 1000 })),
+        gathering(json!({ "kind": 1, "ends_at": 1000 })),
+        gathering(Value::Null),
+        gathering(json!({})),
+    ]
+}
+
+#[test]
+fn the_news_reach_everyone_and_keep_map_and_shop_open() {
+    for player_id in [7, 8, 9] {
+        let mut on_air = NewsOnAir::default();
+        assert!(on_air.track(&news_start(1000)));
+        assert!(!closes_popouts(&news_start(1000), player_id));
+        assert!(
+            !is_own_event(&news_start(1000), player_id),
+            "nur über NewsOnAir"
+        );
+    }
+    let without_presenter = gathering(json!({ "kind": "news", "ends_at": 1000 }));
+    assert!(
+        NewsOnAir::default().track(&without_presenter),
+        "ein älterer Server ohne Vorleser"
+    );
+}
+
+#[test]
+fn other_gatherings_stay_away_from_the_pet_without_news() {
+    let mut on_air = NewsOnAir::default();
+    for other in other_gatherings() {
+        assert!(!on_air.track(&other), "{:?}", other.payload);
+        assert!(!is_own_event(&other, 7));
+        assert!(!closes_popouts(&other, 7));
+    }
+    assert!(!on_air.track(&event("xp.gained", Some(7), json!({}))));
+}
+
+#[test]
+fn the_end_of_running_news_reaches_the_pet_once() {
+    for end in other_gatherings() {
+        let mut on_air = NewsOnAir::default();
+        assert!(on_air.track(&news_start(1000)));
+        assert!(on_air.track(&end), "Ende oder Ersatz: {:?}", end.payload);
+        assert!(!on_air.track(&end), "danach wieder draußen");
+    }
+    let mut on_air = NewsOnAir::default();
+    assert!(on_air.track(&news_start(1000)));
+    assert!(on_air.track(&news_start(2000)), "neue News ersetzen alte");
+    assert!(!on_air.track(&event("xp.gained", Some(7), json!({}))));
+    assert!(
+        on_air.track(&gathering(Value::Null)),
+        "andere Ereignisse ändern nichts"
+    );
+}
+
 /// Ein Stapel, der weiter steht, nachdem `by` hinauf- oder abgestiegen ist.
 fn climbed(by: i64, members: &[i64]) -> ServerEvent {
     event(

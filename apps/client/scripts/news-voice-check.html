@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hörprobe Jelly-News</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+      }
+      body {
+        margin: 16px;
+        max-width: 980px;
+      }
+      table {
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+      }
+      th,
+      td {
+        padding: 2px 10px;
+        text-align: right;
+      }
+      th:first-child,
+      td:first-child {
+        text-align: left;
+      }
+      section {
+        margin-top: 18px;
+      }
+      section button {
+        margin: 2px;
+      }
+      #status {
+        font-family: ui-monospace, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hörprobe Jelly-News</h1>
+    <p id="status">Die Sendung wird geplant …</p>
+    <table id="table"></table>
+
+    <section>
+      <h2>Anhören</h2>
+      <p>Der erste Klick gibt den Ton frei. Ein Satz kommt in der Stimme des Vorlesers.</p>
+      <div id="board"></div>
+      <p>
+        <button type="button" id="show">Ganze Sendung rendern und abspielen</button>
+        <a id="download" hidden download="jelly-news.wav">WAV herunterladen</a>
+      </p>
+    </section>
+
+    <script type="module" src="./news-voice-check.mjs"></script>
+  </body>
+</html>

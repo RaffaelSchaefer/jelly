@@ -138,7 +138,7 @@ vergibt der Admin, sie gelten einmal. Beim Start prüft sie
 - Die Oberfläche hat leise Geräusche: Tippen, Auf- und Zuklappen, Wählen, Sperren, Schalter,
   Öffnen und Schließen von Karte, Shop und Pet-Fenster, Erfolg und Fehler. Dazu klingen XP (Münze), neue
   Erfolge, Einladungen zu Partner-Emotes und das Schlüpfen. Die Töne stammen aus der Bibliothek von
-  [reactsounds.com](https://www.reactsounds.com) (MIT, `src/sounds/LICENSE`), liegen im Bundle,
+  [reactsounds.com](https://www.reactsounds.com) (MIT, `src/sounds/LICENSE`), außer dem eigenen Jingle der Jelly-News (`src/sounds/news/`), liegen im Bundle,
   sind aufeinander abgestimmt laut und folgen dem Schalter und dem Regler der Geräusche. Ein neuer
   Ton kommt nach `src/sounds/`, in `UI_SOUND_NAMES` (`src/pet/uiSounds.ts`) sowie in `SOUNDS` und
   `LEVELS` in `src/uiSound.ts`. Nach Bestätigung

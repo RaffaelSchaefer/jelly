@@ -24,10 +24,10 @@ import { createBush, createCactus, createSnakePlant } from "./plants.ts";
 import { createZoneShadow, findMiddle, VENUE_TIME } from "./props.ts";
 import { createCounter, createFridge, createMarquee, createSnackBar } from "./snackBar.ts";
 import { listSnacks } from "./snacks.ts";
+import { createScreen } from "./stageScreen.ts";
 import {
   createParLight,
   createPedestal,
-  createScreen,
   createSockets,
   createSpeakerStack,
   createStage,

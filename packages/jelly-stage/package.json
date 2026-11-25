@@ -6,13 +6,15 @@
   "exports": {
     ".": "./src/index.ts",
     "./demo-room": "./src/demoRoom.fixture.ts",
-    "./frame-pacing": "./src/framePacing.ts"
+    "./frame-pacing": "./src/framePacing.ts",
+    "./news": "./src/news.ts"
   },
   "scripts": {
     "test": "node --test --disable-warning=ExperimentalWarning 'src/**/*.test.ts'",
     "check-types": "tsc --noEmit",
     "lint": "oxlint --deny-warnings src",
-    "format": "oxfmt src"
+    "format": "oxfmt src",
+    "pictures": "node --disable-warning=ExperimentalWarning scripts/pictures.mjs"
   },
   "dependencies": {
     "@jelly/scene": "workspace:*"
