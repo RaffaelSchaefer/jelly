@@ -177,6 +177,23 @@ func (server *apiServer) refreshMovement(ctx context.Context, now int64) {
 	server.saveJellySpots(ctx, now)
 }
 
+// refreshMovementFor plans right now for an action of this jelly. A jelly that was away is not on
+// the stage, so it is marked present first. Otherwise its first action after a break, like
+// starting a stack, would answer too_far.
+func (server *apiServer) refreshMovementFor(ctx context.Context, playerID, now int64) {
+	server.refreshMovement(ctx, now)
+	_, isOnStage := server.planner.FindPosition(playerID, now)
+	if isOnStage {
+		return
+	}
+	// A failure here shows again in the action itself, which reports it.
+	_, err := server.Store.RecordPresence(ctx, playerID, now)
+	if err != nil {
+		return
+	}
+	server.refreshMovement(ctx, now)
+}
+
 // saveJellySpots remembers the positions now and then. A failure only costs some of the walking
 // after a restart, so it does not stop anything.
 func (server *apiServer) saveJellySpots(ctx context.Context, now int64) {

@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.41.2**
+Aktuelle Version: **1.41.3**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.2**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.41.3  | Fehlerbehebung: Wer länger als `presence_window` weg war, bekommt beim ersten Stapel oder Partner-Emote nicht mehr `409 too_far`. Das Jelly kommt vor der Prüfung der Nähe zurück auf die Bühne |
 | 1.41.2  | Fehlerbehebung: Versteckt oder löscht die Orga ein Jelly, verlässt es seinen Stapel. Es folgt `stack.changed` ohne Spieler, die Jellies darüber rutschen nach, und ein leerer Stapel verschwindet. Versteckte bekommen so auch keinen Leuchtturm mehr |
 | 1.41.1  | Fehlerbehebung: Den Leuchtturm (`lighthouse`, `lighthouse-light`) macht nur ein Jelly, das nicht selbst auf dem Stapel steht. Bisher reichte es, sich als Spitze selbst hervorzuheben |
 | 1.41.0  | Funkelbarts Hut: `POST /wizard-hat` stiehlt ihn für `wizard_hat_seconds` (Standard 300), je LAN trägt ihn ein Jelly. `wizard_hat` im Stand, `wizard-hat` (Zauberhut, `head`, `unlock: none`) in `equipped`, Ereignis `wizard_hat.changed`, Fehler `409 wizard_hat_taken`, geheimes Achievement `hat-thief` |

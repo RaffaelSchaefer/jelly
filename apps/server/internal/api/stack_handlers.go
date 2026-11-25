@@ -64,7 +64,7 @@ func (server *apiServer) handleStartStack(
 func (server *apiServer) startStackHere(
 	ctx context.Context, playerID, now int64,
 ) (store.StackAnswer, error) {
-	server.refreshMovement(ctx, now)
+	server.refreshMovementFor(ctx, playerID, now)
 	position, ok := server.planner.FindPosition(playerID, now)
 	if !ok {
 		return store.StackAnswer{}, store.ErrTooFar
@@ -84,7 +84,7 @@ func (server *apiServer) handleJoinStack(
 func (server *apiServer) climbStack(
 	ctx context.Context, playerID, stackID, now int64,
 ) (store.StackAnswer, error) {
-	server.refreshMovement(ctx, now)
+	server.refreshMovementFor(ctx, playerID, now)
 	return server.Store.JoinStack(ctx, store.StackJoin{
 		PlayerID: playerID, StackID: stackID, Now: now,
 		IsNear: func(point rules.StagePoint, reach float64) bool {
