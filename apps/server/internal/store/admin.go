@@ -203,6 +203,10 @@ func (store *Store) ResetPlayerName(ctx context.Context, playerID, now int64) er
 // DeletePlayer removes an account with all its data and tells the stage.
 func (store *Store) DeletePlayer(ctx context.Context, playerID, now int64) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
+		err := takeOffStack(ctx, transaction, playerID, now)
+		if err != nil {
+			return err
+		}
 		const deletePlayerSQL = `DELETE FROM players WHERE id = ?`
 		result, err := transaction.ExecContext(ctx, deletePlayerSQL, playerID)
 		if err != nil {
@@ -263,6 +267,13 @@ func (store *Store) updateModeration(
 		err = requireAffectedRow(result, ErrPlayerNotFound)
 		if err != nil {
 			return err
+		}
+		// Only hiding takes a jelly off its stack, showing it again does not put it back.
+		if hiddenAt != nil {
+			err = takeOffStack(ctx, transaction, playerID, now)
+			if err != nil {
+				return err
+			}
 		}
 		err = recordAdminAction(ctx, transaction, change.adminAction, playerID, now)
 		if err != nil {

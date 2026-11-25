@@ -86,7 +86,7 @@ func (server *apiServer) handleCreatePartnerInvite(
 	ctx context.Context, playerID int64, input *jsonInput[InviteBody],
 ) (*jsonOutput[store.PartnerInviteResult], error) {
 	now := server.currentMillis()
-	server.refreshMovement(ctx, now)
+	server.refreshMovementFor(ctx, playerID, now)
 	return answerWith(server.Store.CreatePartnerInvite(ctx, store.NewPartnerInvite{
 		PlayerID: playerID, EmoteKey: input.Body.Key, PartnerID: input.Body.PartnerID, Now: now,
 		IsNear: server.buildNearCheck(playerID, now),
@@ -98,7 +98,7 @@ func (server *apiServer) handleAnswerPartnerInvite(
 	ctx context.Context, playerID int64, input *jsonInput[InviteAnswerBody],
 ) (*jsonOutput[store.PartnerInviteResult], error) {
 	now := server.currentMillis()
-	server.refreshMovement(ctx, now)
+	server.refreshMovementFor(ctx, playerID, now)
 	return answerWith(server.Store.AnswerPartnerInvite(ctx, store.PartnerInviteAnswer{
 		PlayerID: playerID, InviteID: input.Body.ID, State: input.Body.State, Now: now,
 		IsNear: server.buildNearCheck(playerID, now),

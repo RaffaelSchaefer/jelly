@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -146,13 +147,18 @@ func removeStackMember(ctx context.Context, action actionContext) error {
 	if err != nil {
 		return fmt.Errorf("delete stack member: %w", err)
 	}
+	return settleStack(ctx, action, stackID)
+}
+
+// settleStack deletes a stack that lost its last jelly and announces what is left of it. Only a
+// stack that is gone is announced by its id, one that still stands comes whole.
+func settleStack(ctx context.Context, action actionContext, stackID int64) error {
 	const deleteEmptyStackSQL = `DELETE FROM stacks WHERE id = ?1
 		AND NOT EXISTS (SELECT 1 FROM stack_members WHERE stack_id = ?1)`
-	_, err = action.transaction.ExecContext(ctx, deleteEmptyStackSQL, stackID)
+	_, err := action.transaction.ExecContext(ctx, deleteEmptyStackSQL, stackID)
 	if err != nil {
 		return fmt.Errorf("delete empty stack: %w", err)
 	}
-	// Only a stack that is gone is announced by its id, one that still stands comes whole.
 	stack, err := loadRunningStack(ctx, action, stackID)
 	if errors.Is(err, ErrStackNotFound) {
 		return appendVisibleEvent(ctx, action, EventStackChanged,
@@ -162,6 +168,32 @@ func removeStackMember(ctx context.Context, action actionContext) error {
 		return err
 	}
 	return appendVisibleEvent(ctx, action, EventStackChanged, stack)
+}
+
+// takeOffStack removes a jelly the orga hides or deletes from its stack, so the stage shows no gap
+// and no empty stack. The event names no player: a deleted one would take it along.
+func takeOffStack(ctx context.Context, transaction *sql.Tx, playerID, now int64) error {
+	var stackID, lanID int64
+	const selectStackOfPlayerSQL = `SELECT m.stack_id, s.lan_id FROM stack_members m
+		JOIN stacks s ON s.id = m.stack_id WHERE m.player_id = ?`
+	err := transaction.QueryRowContext(ctx, selectStackOfPlayerSQL, playerID).
+		Scan(&stackID, &lanID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("load stack of player: %w", err)
+	}
+	const deleteMemberSQL = `DELETE FROM stack_members WHERE player_id = ?`
+	_, err = transaction.ExecContext(ctx, deleteMemberSQL, playerID)
+	if err != nil {
+		return fmt.Errorf("delete stack member: %w", err)
+	}
+	action := actionContext{
+		transaction: transaction, lan: activeLAN{id: lanID}, playerID: 0, now: now,
+		restHours: 0, sessionHours: 0, hidden: false,
+	}
+	return settleStack(ctx, action, stackID)
 }
 
 // loadRunningStack returns a stack of this LAN whose time is not over.
@@ -267,7 +299,7 @@ func (store *Store) ApplyHighlight(
 	})
 }
 
-// grantLighthouse rewards everyone on a stack whose top jelly was highlighted.
+// grantLighthouse rewards everyone on a stack whose top jelly someone off the stack highlighted.
 func grantLighthouse(ctx context.Context, action actionContext, targetID int64) error {
 	var stackID int64
 	const selectStackOfTargetSQL = `SELECT m.stack_id FROM stack_members m
@@ -285,7 +317,10 @@ func grantLighthouse(ctx context.Context, action actionContext, targetID int64) 
 	if err != nil {
 		return err
 	}
-	if len(members) < lighthouseMembers || members[len(members)-1] != targetID {
+	// Someone off the stack has to light it, otherwise two accounts of one player earn it alone.
+	isLitFromOutside := !slices.Contains(members, action.playerID)
+	if len(members) < lighthouseMembers || members[len(members)-1] != targetID ||
+		!isLitFromOutside {
 		return nil
 	}
 	for _, memberID := range members {
