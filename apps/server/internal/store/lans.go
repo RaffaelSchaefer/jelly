@@ -303,14 +303,10 @@ func requireStableLevels(
 	if startsAt > now {
 		return nil
 	}
-	switch {
-	case stored.XPPerLevel != gameRules.XPPerLevel:
-		return LockedRuleError{Rule: rules.RuleXPPerLevel}
-	case stored.CoinsPerLevel != gameRules.CoinsPerLevel:
-		return LockedRuleError{Rule: rules.RuleCoinsPerLevel}
-	default:
-		return nil
+	if changed := rules.FindChangedLevelRule(stored, gameRules); changed != "" {
+		return LockedRuleError{Rule: changed}
 	}
+	return nil
 }
 
 // loadLANPeriod runs a query for one LAN and returns nil if there is none.
@@ -391,6 +387,8 @@ func (store *Store) LoadCurrentRules(ctx context.Context, now int64) (rules.Rule
 // parseRules reads the rules of a LAN. Missing fields keep their default.
 func parseRules(rulesJSON string) (rules.Rules, error) {
 	gameRules := rules.DefaultRules()
+	// Rules stored before the curves have no `xp_curve` and keep their linear levels.
+	gameRules.XPCurve = rules.CurveLinear
 	err := json.Unmarshal([]byte(rulesJSON), &gameRules)
 	if err != nil {
 		return rules.Rules{}, fmt.Errorf("parse rules: %w", err)

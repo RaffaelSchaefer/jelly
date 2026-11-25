@@ -21,6 +21,8 @@ func TestEveryRuleHasALimitAndTheDefaultsKeepThem(t *testing.T) {
 	if err = json.Unmarshal(encoded, &fields); err != nil {
 		t.Fatal(err)
 	}
+	// The curve is a choice, not a range. ValidateRules checks it apart from the limits.
+	delete(fields, rules.RuleXPCurve)
 	limits := rules.ListRuleLimits(rules.DefaultRules())
 	if len(limits) != len(fields) {
 		t.Errorf("%d limits for %d rules", len(limits), len(fields))

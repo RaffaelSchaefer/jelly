@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.4**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.42.0  | Level-Kurve: Regeln `xp_curve` (`linear` oder `quadratic`), `xp_per_level_step` und `xp_per_level_max`, alle nach dem Start der LAN fest. `xp_in_level` und `xp_for_next_level` im Stand. Neue Standards: Kurve `quadratic` 50 / 25 / 300, `poke_xp` 6, `poke_max_ticks` 8, `food_xp` und `drink_xp` 30, `partner_xp` 50. Gespeicherte LANs behalten ihre Werte, LANs ohne `xp_curve` rechnen `linear` |
 | 1.41.4  | Fehlerbehebung: `POST /admin/api/event-codes/{id}/end` beendet auch einen Code, der noch nicht begonnen hat, statt mit `500` zu scheitern. Er war dann nie einlösbar |
 | 1.41.3  | Fehlerbehebung: Wer länger als `presence_window` weg war, bekommt beim ersten Stapel oder Partner-Emote nicht mehr `409 too_far`. Das Jelly kommt vor der Prüfung der Nähe zurück auf die Bühne |
 | 1.41.2  | Fehlerbehebung: Versteckt oder löscht die Orga ein Jelly, verlässt es seinen Stapel. Es folgt `stack.changed` ohne Spieler, die Jellies darüber rutschen nach, und ein leerer Stapel verschwindet. Versteckte bekommen so auch keinen Leuchtturm mehr |
@@ -117,7 +118,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 415    | `invalid_request`                            | `Content-Type` ist nicht JSON             |
 | 422    | `invalid_request`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
 | 400    | `invalid_request`                         | Admin-Angaben, `since`, `cursor` oder `topics` sind ungültig |
-| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, oder `xp_per_level` oder `coins_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
+| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, `xp_curve` ist kein bekanntes Modell, oder eine Regel der Level-Kurve oder `coins_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
 | 400    | `invalid_schedule`                        | Zeitplan mit Punkt außerhalb der LAN, ohne Titel oder mit unbekannter Art |
 | 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
@@ -161,11 +162,14 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 
 `GET /lans/current` liefert in `rules` die Regeln der laufenden LAN, sonst der nächsten, sonst die Standardwerte. Nur die
 Betriebsgrenzen `max_players`, `max_streams` und `max_player_streams` fehlen. Die App zeigt damit an, was der Server
-entscheiden wird, zum Beispiel die Reichweite `near_distance` in Metern oder den Fortschritt zum nächsten Level mit
-`xp_per_level`. Geprüft wird trotzdem immer auf dem Server. Ändert die Orga etwas, kommt `rules.changed`.
+entscheiden wird, zum Beispiel die Reichweite `near_distance` in Metern. Den Fortschritt zum nächsten Level liefert der
+Stand fertig gerechnet (`xp_in_level`, `xp_for_next_level`). Geprüft wird trotzdem immer auf dem Server. Ändert die Orga etwas, kommt `rules.changed`.
 
-`xp_per_level` gilt linear für jedes Level, Standard 100, und lässt sich nur bis zum Start der LAN ändern. Sonst würden
-Level und Cosmetics für alle springen. `coins_per_level` zahlt bei jedem Level-Aufstieg Münzen für den Shop, Standard 1,
+`xp_curve` wählt die Level-Kurve. Bei `linear` kostet jedes Level `xp_per_level`. Bei `quadratic` kostet der Schritt von
+Level L zu L + 1 `min(xp_per_level + xp_per_level_step · (L − 1), xp_per_level_max)`, mit den Standards also 50, 75,
+100 und so weiter bis höchstens 300 XP. Die Summe wächst damit quadratisch, bis der Deckel greift, danach linear. LANs,
+die vor der Kurve gespeichert wurden, rechnen `linear`. Alle vier Regeln lassen sich nur bis zum Start der LAN ändern,
+sonst würden Level und Cosmetics für alle springen. `coins_per_level` zahlt bei jedem Level-Aufstieg Münzen für den Shop, Standard 1,
 und ist ebenfalls nach dem Start der LAN fest. Ein Kauf senkt kein Level.
 
 ### Zeitplan
@@ -198,6 +202,8 @@ kommt `schedule.changed`.
   "lan": { "slug": "ucb-2026", "name": "UCB LAN 2026", "active": true },
   "xp": 3,
   "level": 1,
+  "xp_in_level": 0,
+  "xp_for_next_level": 50,
   "coins": 3,
   "total_xp": 3,
   "next_poke_at": 1795000900000,
@@ -216,6 +222,7 @@ kommt `schedule.changed`.
 
 - `lan` ist die jüngste LAN des Kontos, nicht unbedingt die laufende. Ob eine läuft, sagt
   `GET /lans/current`. `xp` und `level` gelten für diese LAN, `total_xp` über alle LANs.
+- `xp_in_level` sind die XP seit Beginn des Levels, `xp_for_next_level` kostet das ganze Level. Ohne LAN sind beide `0`.
 - `coins` sind die Münzen für den Shop. Jeder Level-Aufstieg zahlt `coins_per_level`, sie gelten
   je LAN und sind außerhalb einer aktiven LAN `0`.
 - `next_poke_at`, `reports`, `sign`, `trip`, `follow` und `wizard_hat` sind außerhalb einer aktiven LAN `null`.
@@ -625,14 +632,17 @@ lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Serv
 - **`PATCH` für einzelne Regeln:** `{"trip_seconds":60}` ändert nur diesen Wert, alles andere bleibt. Das ist der Normalfall.
 - **`PUT` ersetzt alle Regeln:** Jedes Feld, das im Körper fehlt, fällt auf seinen Standardwert zurück, auch wenn es vorher
   anders eingestellt war. `PUT` mit `{"trip_seconds":60}` setzt also alle anderen Regeln zurück.
-- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. `xp_per_level` und `coins_per_level`
-  lassen sich nach dem Start der LAN mit keinem von beiden ändern.
+- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. Die Regeln der Level-Kurve und
+  `coins_per_level` lassen sich nach dem Start der LAN mit keinem von beiden ändern.
 
 Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, höchstens 30 Tage:
 
 | Regel                    | Erlaubt          | Bedeutung                                                   |
 | ------------------------ | ---------------- | ----------------------------------------------------------- |
-| `xp_per_level`           | 1 bis 1000000    | XP pro Level, nach dem Start der LAN fest                   |
+| `xp_curve`               | `linear`, `quadratic` | Modell der Level-Kurve, nach dem Start der LAN fest    |
+| `xp_per_level`           | 1 bis 1000000    | XP für das erste Level, bei `linear` für jedes, nach dem Start der LAN fest |
+| `xp_per_level_step`      | 0 bis 1000000    | So viel mehr XP je weiterem Level, nur `quadratic`, nach dem Start der LAN fest |
+| `xp_per_level_max`       | 1 bis 1000000    | Höchstens so viele XP je Level, nur `quadratic`, nach dem Start der LAN fest |
 | `coins_per_level`        | 0 bis 100        | Münzen pro Level-Aufstieg, nach dem Start der LAN fest, 0 schaltet den Shop-Werbelohn ab |
 | `poke_interval`          | 1 bis 2592000    | Mindestzeit zwischen zwei Stupsern, die XP geben            |
 | `poke_xp`                | 0 bis 10000      | XP pro Stupser                                              |

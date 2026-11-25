@@ -328,6 +328,8 @@
         "lan": "The newest LAN of the account, which does not have to be the running one. Null without any. `GET /v1/lans/current` says whether one runs.",
         "xp": "XP in the LAN of `lan`.",
         "level": "Level in the LAN of `lan`.",
+        "xp_in_level": "XP earned since the start of `level`, 0 without a LAN.",
+        "xp_for_next_level": "XP that `level` takes in total, so the next level comes at `xp_in_level` = this. 0 without a LAN.",
         "total_xp": "XP over all LANs.",
         "next_poke_at": "When the next poke can earn XP. Null outside an active LAN.",
         "reports": "What the player can report now. Null outside an active LAN.",
@@ -460,7 +462,10 @@
     "PublicRules": {
       "description": "The values a client needs to show what the server will decide. The server still checks every action. Times are seconds.",
       "fields": {
-        "xp_per_level": "XP that one level takes, the same for every level. Fixed once a LAN has started.",
+        "xp_curve": "Model of the level curve: `linear` or `quadratic`. Fixed once a LAN has started.",
+        "xp_per_level": "XP that the first level takes, with `linear` every level. Fixed once a LAN has started.",
+        "xp_per_level_step": "With `quadratic`, how much more XP each further level takes. Fixed once a LAN has started.",
+        "xp_per_level_max": "With `quadratic`, the most XP one level takes. Fixed once a LAN has started.",
         "coins_per_level": "Coins that every reached level pays. 0 pays nothing. Fixed once a LAN has started.",
         "poke_interval": "Minimum time between two XP pokes.",
         "poke_xp": "XP per interval.",

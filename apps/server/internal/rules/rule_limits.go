@@ -1,6 +1,9 @@
 package rules
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 const (
 	// A month is longer than any LAN, and small enough that seconds stay far from an overflow when
@@ -51,6 +54,23 @@ func (InvalidRuleError) Unwrap() error {
 	return ErrInvalidRules
 }
 
+// InvalidChoiceError names a rule whose value is none of its choices. It counts as
+// [ErrInvalidRules].
+type InvalidChoiceError struct {
+	Rule    string
+	Choices []string
+}
+
+// Error describes the rule for logs.
+func (invalid InvalidChoiceError) Error() string {
+	return fmt.Sprintf("rule %s is none of its choices", invalid.Rule)
+}
+
+// Unwrap makes the error count as [ErrInvalidRules].
+func (InvalidChoiceError) Unwrap() error {
+	return ErrInvalidRules
+}
+
 // ListRuleLimits returns the range of every rule with its current value.
 func ListRuleLimits(gameRules Rules) []RuleLimit {
 	return append(listPublicRuleLimits(gameRules.PublicRules),
@@ -63,14 +83,19 @@ func ListRuleLimits(gameRules Rules) []RuleLimit {
 // Names of the rules that no longer change after the start of a LAN. Levels would jump for
 // everyone and take cosmetics away.
 const (
-	RuleXPPerLevel    = "xp_per_level"
-	RuleCoinsPerLevel = "coins_per_level"
+	RuleXPCurve        = "xp_curve"
+	RuleXPPerLevel     = "xp_per_level"
+	RuleXPPerLevelStep = "xp_per_level_step"
+	RuleXPPerLevelMax  = "xp_per_level_max"
+	RuleCoinsPerLevel  = "coins_per_level"
 )
 
 // listPublicRuleLimits returns the ranges of the rules that clients can read.
 func listPublicRuleLimits(public PublicRules) []RuleLimit {
 	return []RuleLimit{
 		countLimit(RuleXPPerLevel, public.XPPerLevel, 1, maxXPPerLevel),
+		countLimit(RuleXPPerLevelStep, public.XPPerLevelStep, 0, maxXPPerLevel),
+		countLimit(RuleXPPerLevelMax, public.XPPerLevelMax, 1, maxXPPerLevel),
 		countLimit(RuleCoinsPerLevel, public.CoinsPerLevel, 0, maxCoinsPerLevel),
 		secondsLimit("poke_interval", public.PokeIntervalSeconds, 1),
 		countLimit("poke_xp", public.PokeXP, 0, maxRuleXP),
@@ -114,6 +139,9 @@ func secondsLimit(name string, value, lowest int64) RuleLimit {
 
 // ValidateRules checks that all values are in range, and names the first one that is not.
 func ValidateRules(gameRules Rules) error {
+	if !slices.Contains(ListXPCurves(), gameRules.XPCurve) {
+		return InvalidChoiceError{Rule: RuleXPCurve, Choices: ListXPCurves()}
+	}
 	for _, limit := range ListRuleLimits(gameRules) {
 		if limit.Value < limit.Lowest || limit.Value > limit.Highest {
 			return InvalidRuleError{Limit: limit}

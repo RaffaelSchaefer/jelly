@@ -355,6 +355,19 @@ func problemInvalidRule(limit rules.RuleLimit) problem {
 	}
 }
 
+// problemInvalidChoice names the rule and the values it can take.
+func problemInvalidChoice(invalid rules.InvalidChoiceError) problem {
+	return problem{
+		http.StatusBadRequest,
+		codeInvalidRules,
+		fmt.Sprintf(
+			"%s muss eines von %s sein.",
+			invalid.Rule,
+			strings.Join(invalid.Choices, ", "),
+		),
+	}
+}
+
 // problemLockedRule names the rule that the orga can no longer change after the LAN has started.
 func problemLockedRule(rule string) problem {
 	return problem{
@@ -426,6 +439,9 @@ func (server *apiServer) writeError(
 func (server *apiServer) translateError(ctx context.Context, route string, err error) problem {
 	if invalidRule, ok := errors.AsType[rules.InvalidRuleError](err); ok {
 		return problemInvalidRule(invalidRule.Limit)
+	}
+	if invalidChoice, ok := errors.AsType[rules.InvalidChoiceError](err); ok {
+		return problemInvalidChoice(invalidChoice)
 	}
 	if lockedRule, ok := errors.AsType[store.LockedRuleError](err); ok {
 		return problemLockedRule(lockedRule.Rule)
