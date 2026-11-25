@@ -168,6 +168,9 @@ die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit do
   `/v1` (`addRootOperation`), damit auch alte Apps ihn nach einem Wechsel des Pfads noch finden.
 - Ein Image entsteht nur aus einem Tag `server-v<APIVersion>` auf `main`, also erst nach dem Merge taggen und die Nummer
   aus `internal/api/openapi.go` nehmen. `server-image.yml` bricht bei anderer Nummer ab.
+- Backports auf eine ältere Version entstehen auf `release/<major>.<minor>` (etwa `release/1.41` von deren letztem Tag),
+  mit `APIVersion` dort als Patch erhöht und dem Tag auf diesem Branch. `:latest` bekommt nur die höchste Version aller
+  Tags `server-v*`, ein Backport nur `:<version>`.
 - Jedes Feature erhöht `APIVersion` und bekommt eine Zeile im Changelog von `docs/api.md`. Erweiterungen
   bleiben in `/v1`. Was den Vertrag bricht, bekommt einen neuen Pfad und eine Begründung in `docs/api.md`.
 
