@@ -37,6 +37,8 @@ type ScheduleItem struct {
 	Title    string  `json:"title"`
 	Detail   *string `json:"detail"`
 	Kind     string  `json:"kind"`
+	// Repeat brings the point back, only in the program as the orga stores it.
+	Repeat *ScheduleRepeat `json:"repeat,omitempty"`
 }
 
 // ListScheduleKinds returns every kind a point can have.
@@ -48,7 +50,7 @@ func ListScheduleKinds() []string {
 }
 
 // PrepareSchedule checks a schedule for a LAN running from `startsAt` to `endsAt` and returns it
-// sorted by start, with trimmed texts and empty details left out.
+// sorted by start, with trimmed texts and empty details left out. Every repeat has to fit the LAN.
 func PrepareSchedule(items []ScheduleItem, startsAt, endsAt int64) ([]ScheduleItem, error) {
 	if len(items) > maxScheduleItems {
 		return nil, ErrInvalidSchedule
@@ -56,10 +58,19 @@ func PrepareSchedule(items []ScheduleItem, startsAt, endsAt int64) ([]ScheduleIt
 	prepared := make([]ScheduleItem, 0, len(items))
 	for _, item := range items {
 		item = trimScheduleItem(item)
-		if !isScheduleItemValid(item, startsAt, endsAt) {
+		if !isScheduleItemValid(item, startsAt, endsAt) || !isRepeatValid(item) {
 			return nil, ErrInvalidSchedule
 		}
 		prepared = append(prepared, item)
+	}
+	occurrences := ExpandSchedule(prepared)
+	if len(occurrences) > maxScheduleOccurrences {
+		return nil, ErrInvalidSchedule
+	}
+	for _, occurrence := range occurrences {
+		if !isScheduleItemValid(occurrence, startsAt, endsAt) {
+			return nil, ErrInvalidSchedule
+		}
 	}
 	slices.SortStableFunc(prepared, func(first, second ScheduleItem) int {
 		return cmp.Compare(first.StartsAt, second.StartsAt)

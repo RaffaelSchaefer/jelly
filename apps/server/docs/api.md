@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.5**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.44.0  | Wiederholte Programmpunkte: Ein Punkt in `PUT /admin/api/lans/{id}/schedule` kann `repeat: {every_minutes, until}` tragen. `GET /lans/current/schedule` listet jeden Termin einzeln, Apps sehen kein `repeat`. Die Jelly-News zählen die Zeit seit den News davor, die ersten weiter eine Stunde |
 | 1.43.0  | Skins: Ein Cosmetic kann im Katalog `skins` mit `{key, name}` haben, wählbare Looks wie die Flaggen am Flaggenmast. `PUT /cosmetics/equipped` nimmt `skin`, `equipped` nennt ihn je Platz, `null` für das schlichte Aussehen. Fehler `unknown_skin`. Noch hat kein Cosmetic Skins |
 | 1.42.0  | Level-Kurve: Regeln `xp_curve` (`linear` oder `quadratic`), `xp_per_level_step` und `xp_per_level_max`, alle nach dem Start der LAN fest. `xp_in_level` und `xp_for_next_level` im Stand. Admin: `POST /admin/api/level-preview`. Neue Standards: Kurve `quadratic` 50 / 25 / 300, `poke_xp` 6, `poke_max_ticks` 8, `food_xp` und `drink_xp` 30, `partner_xp` 50. Gespeicherte LANs behalten ihre Werte, LANs ohne `xp_curve` rechnen `linear` |
 | 1.41.5  | Ohne Änderung am Vertrag: Die Bühne der Server-Seite zeigt die Jelly-News als Sendung |
@@ -187,6 +188,11 @@ Die Orga pflegt den Plan mit `PUT /admin/api/lans/{id}/schedule` und `{"items":[
 Server ersetzt den ganzen Plan, sortiert nach Beginn, entfernt leere Details und antwortet mit dem gespeicherten Plan.
 Jeder Punkt muss in der LAN liegen und braucht Titel und bekannte Art, sonst folgt `400 invalid_schedule`. Danach
 kommt `schedule.changed`.
+
+Ein Punkt kann sich wiederholen: `"repeat": {"every_minutes": 30, "until": …}` bringt ihn alle 5 bis 1440 Minuten
+zurück, bis zum letzten Beginn `until`. Jeder Termin behält die Länge des ersten und muss in der LAN liegen, zusammen
+höchstens 2000 Termine. Gespeichert bleibt der eine Punkt, `GET /admin/api/lans/{id}/schedule` zeigt ihn so.
+`GET /lans/current/schedule` listet dagegen jeden Termin einzeln und ohne `repeat`, Apps und Bühne rechnen nichts aus.
 
 ### Stand eines Spielers
 
@@ -454,7 +460,8 @@ mit `kind`, `winner_id` und `ends_at`, Änderungen meldet `gathering.changed`.
 
 ### Jelly-News
 
-Die News stellen auf der Bühne vor, was in der letzten Stunde passiert ist. Sie sind ein `gathering` der Art `news`: Alle
+Die News stellen auf der Bühne vor, was seit den News davor passiert ist, bei den ersten News einer LAN in der letzten
+Stunde. Sie sind ein `gathering` der Art `news`: Alle
 gehen zu `spectators`, der Vorleser `presenter_id` zu `winner`. `winner_id` bleibt dabei `null`.
 
 - Den Vorleser wählt der Server zufällig unter den anwesenden, sichtbaren Jellies, möglichst eines, das die News nicht
