@@ -6,6 +6,7 @@ import type { NewsCard } from "./newsLines.ts";
 import type { StageArea, StageGathering, StageMove, StagePlayer } from "./types.ts";
 
 import { createDemoRoom, DEMO_HALL } from "./demoRoom.fixture.ts";
+import { playMoves } from "./moves.ts";
 import { findMoment, planShow, type NewsShow } from "./news.ts";
 import {
   DESK,
@@ -89,7 +90,7 @@ function walk(points: [number, number, number][]): StageMove {
 }
 
 function deskInput(
-  moves = new Map<number, StageMove>(),
+  moves: ReadonlyMap<number, StageMove> = new Map(),
   presenterId: number | null = 1,
 ): DeskInput {
   return {
@@ -206,6 +207,37 @@ test("a walking presenter gets its desk where its walk ends, once it arrives", (
     ...end,
     arrival: 16_000,
   });
+});
+
+test("a presenter put on the stage gets its desk right at the start of the show", () => {
+  // As the server sends it: the walk starts 1.5 seconds into the show and takes 40 seconds.
+  const raw = new Map([
+    [
+      1,
+      {
+        ...walk([
+          [50, 40, 0],
+          [40, 9, 40_000],
+        ]),
+        start_at: 101_500,
+      },
+    ],
+  ]);
+  const look = (news: StageGathering, serverTime: number) => {
+    const moves = playMoves(raw, news, serverTime);
+    const spot = placeDesk(deskInput(moves));
+    const span = findShowSpan(news);
+    assert.ok(spot && span);
+    assert.deepEqual({ x: spot.x, z: spot.z }, toFloorPoint({ x: 40, y: 9 }, ROOM));
+    return measureDesk(span, spot, { serverTime, reducedMotion: false });
+  };
+  // With a start from the server the desk rises with the show, under the opening title.
+  const known = gathering(190_000, 100_000);
+  assert.deepEqual(look(known, 100_000), { shown: 0, lift: 0 });
+  assert.ok(look(known, 100_500).lift > 0);
+  assert.deepEqual(look(known, 101_400), { shown: 1, lift: 1 });
+  // Without one, as the server sends it today, it stands whenever the show is on air.
+  assert.deepEqual(look(gathering(190_000), 100_600), { shown: 1, lift: 1 });
 });
 
 test("without a presenter on a stage there is no desk", () => {

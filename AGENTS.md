@@ -337,8 +337,10 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   von Server-Stand und Server-Zeit, ohne Zustand und ohne Glätten über die Zeit, sonst zeigt ein später geladener
   Bildschirm ein anderes Bild. Requisiten verdecken für die Kamera nur mit ihrer Höhe aus der Tabelle in
   `newsCameraProps.ts`: Ein neues Requisit, das ein Gesicht verdecken kann, braucht dort einen Eintrag, sonst filmt
-  sie hindurch. Das Studio filmt den Vorleser erst, wenn sein Weg des Servers zu Ende ist, und zählt die anderen dort,
-  wo ihre Wege enden (`newsShotsStudio.ts`, `frameStudio`). Was er in den Händen hält, blendet `freeHands` (`worn.ts`)
+  sie hindurch. Seinen Weg der Art `news` spielt die Bühne während der Sendung als beendet: Der Vorleser steht vom
+  ersten Bild an am Ende dieses Wegs (`playMoves` in `moves.ts`, die View liest Wege nur über `readMoves` in `viewData.ts`).
+  Sonst filmt das Studio ihn erst, wenn sein Weg zu Ende ist, und zählt die anderen dort, wo ihre Wege enden
+  (`newsShotsStudio.ts`, `frameStudio`). Was er in den Händen hält, blendet `freeHands` (`worn.ts`)
   aus, solange `findPresenter` (`moves.ts`) ihn als Vorleser nennt.
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.
   Das Paket spricht nicht mit dem Netz: Jeder Nutzer bringt seine `StageSource` mit, die App holt
