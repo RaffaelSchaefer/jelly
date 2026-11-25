@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.41.3**
+Aktuelle Version: **1.41.4**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.3**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.41.4  | Fehlerbehebung: `POST /admin/api/event-codes/{id}/end` beendet auch einen Code, der noch nicht begonnen hat, statt mit `500` zu scheitern. Er war dann nie einlösbar |
 | 1.41.3  | Fehlerbehebung: Wer länger als `presence_window` weg war, bekommt beim ersten Stapel oder Partner-Emote nicht mehr `409 too_far`. Das Jelly kommt vor der Prüfung der Nähe zurück auf die Bühne |
 | 1.41.2  | Fehlerbehebung: Versteckt oder löscht die Orga ein Jelly, verlässt es seinen Stapel. Es folgt `stack.changed` ohne Spieler, die Jellies darüber rutschen nach, und ein leerer Stapel verschwindet. Versteckte bekommen so auch keinen Leuchtturm mehr |
 | 1.41.1  | Fehlerbehebung: Den Leuchtturm (`lighthouse`, `lighthouse-light`) macht nur ein Jelly, das nicht selbst auf dem Stapel steht. Bisher reichte es, sich als Spitze selbst hervorzuheben |
@@ -590,7 +591,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp`, `redeem` mit `"code"` oder `purchase` |
 | `DELETE /admin/api/bots`                         | Löscht alle Bots mit allem, was sie getan haben, und stoppt die automatischen |
 | `GET /admin/api/lans/{id}/gathering`             | Antwort: `{"gathering"}`, das laufende Gathering oder `null` |
-| `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben |
+| `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben. Hat er noch nicht begonnen, rückt sein Beginn auf kurz vor jetzt, er war also nie einlösbar |
 | `DELETE /admin/api/lans/{id}/gathering`          | Beendet es vorzeitig                      |
 | `PUT /admin/api/lans/{id}/map`                   | Kartendatei, siehe unten. Antwort: `{"created","updated","removed","unknown_props","unassigned_players"}` |
 | `POST /admin/api/lans/{id}/areas/{area}/code`    | `{"player_id"}`, optional, bindet den Code ans Konto |
