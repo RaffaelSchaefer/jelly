@@ -46,6 +46,7 @@ export interface RuleGroup {
 }
 
 const RULE_XP_CURVE = "xp_curve";
+const CURVE_LINEAR = "linear";
 const CURVE_QUADRATIC = "quadratic";
 const HINT_LOCKED = "Nach dem Start der LAN fest.";
 
@@ -58,7 +59,7 @@ function listCurveRules(): RuleText[] {
       label: "Level-Kurve",
       unit: "choice",
       choices: [
-        ["linear", "Linear: jedes Level gleich"],
+        [CURVE_LINEAR, "Linear: jedes Level gleich"],
         [CURVE_QUADRATIC, "Wachsend: jedes Level etwas mehr, mit Deckel"],
       ],
       hint: HINT_LOCKED,
