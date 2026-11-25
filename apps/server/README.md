@@ -6,10 +6,13 @@ mit Changelog in [docs/api.md](docs/api.md) und als genauer Vertrag in
 [docs/openapi.json](docs/openapi.json).
 
 Gebaut sind Konten, Stupser, Berichte, Event-Codes, Cosmetics, Achievements, Emotes, Partner-Emotes,
-Schilder, die Raumkarte, Moderation, der Simulator und die 3D-Bühne. Die Admin-Seite unter `/admin/` bezieht sich immer auf die LAN oben im Kopf. Sie hat sechs Bereiche:
+Schilder, Folgen, Ausflüge, Stapel und Hervorheben, die Raumkarte in Metern mit Wegen, die der Server plant,
+der Punkteshop mit Münzen, Essens-Event, Siegerehrung und Jelly-News, der Zeitplan der LAN, Funkelbarts Hut,
+Bots, Moderation, der Simulator und die 3D-Bühne. Die Admin-Seite unter `/admin/` bezieht sich immer auf die LAN oben im Kopf. Sie hat sechs Bereiche:
+
 - Übersicht mit LAN-Code, Spielersuche, Essens-Event, laufenden Event-Codes und den letzten Aktionen
 - Spieler, deren Zeile alle Aktionen für diese Person aufklappt
-- Aktionen
+- Aktionen mit dem Programm der LAN und den Gatherings (Essens-Event, Siegerehrung, News)
 - Hallenplan
 - Einstellungen
 - Werkstatt mit Bots, Testzeiten und Protokoll
@@ -48,8 +51,7 @@ einer Reihe sind eine Gruppe (`seats`). Tische, die Theke der Snackbar und auf d
 und Pokal sind Zonen mit `blocks`, um die die Jellies herumlaufen. Jellies ohne Platz chillen in der
 Lounge, auf die Bühne stellt sie ein Admin, etwa für ein Turnier. Wer Essen oder Trinken meldet, stellt
 sich kurz in der Anstellzone an. Der Aufbau steht in `scripts/demo-room.sh`. Die Demo-LAN ist 10 × 20,5 m groß. Jeder Tisch
-misst 1 × 0,5 m, zwischen zwei Reihen ist Platz für drei Tische. Die Bühne zeichnet noch nach
-der alten Zuweisung und muss `prop` erst übernehmen, Tische und Theke fehlen bis dahin im Bild.
+misst 1 × 0,5 m, zwischen zwei Reihen ist Platz für drei Tische.
 
 ![Die 3D-Bühne mit 70 simulierten Jellies](docs/images/stage-3d.jpg)
 
@@ -156,6 +158,7 @@ Passwort. Alle Anmeldeversuche teilen sich einen Zähler, sonst könnte jeder im
 | `internal/store`   | SQLite, Transaktionen, goose-Migrationen in `migrations/` |
 | `internal/architecture` | Tests für Regeln, die kein Linter prüft            |
 | `internal/rules`   | Spielregeln als reine Funktionen, ohne IO               |
+| `internal/movement` | Plant die Wege der Jellies in der Halle, ohne IO und ohne Uhr |
 | `internal/simulator` | Simulierte Spieler, nutzt nur die öffentliche API     |
 | `internal/web`     | Liefert die gebauten Seiten aus, mit Sicherheits-Headern |
 | `web/stage`        | Die Seite der Bühne und ihr Weg zum Server, die Bühne selbst steht in `packages/jelly-stage` |
