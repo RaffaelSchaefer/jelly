@@ -209,24 +209,28 @@ func TestLighthouseGoesToTheCurrentMembersOnce(t *testing.T) {
 	}
 }
 
-// Scenario 10: the top highlights itself and earns the lighthouse for the whole stack.
-func TestTopJellyCanHighlightItselfIntoALighthouse(t *testing.T) {
-	t.Skip("finding 5: ApplyHighlight accepts any visible jelly as target, also the caller " +
-		"itself, and a stack of 2 is enough (lighthouseMembers = 2). Two accounts of one " +
-		"person earn `lighthouse` and `lighthouse-light` alone. Without Skip the test fails.")
+// Scenario 10, finding 5: nobody on the stack can light it, neither the top itself nor a jelly
+// below. Otherwise two accounts of one player earn both achievements alone.
+func TestOnlyAJellyOffTheStackLightsTheLighthouse(t *testing.T) {
 	testFixture := newFixture(t)
 	players := testFixture.registerStackPlayers("A", "B")
 	stackID := testFixture.stackIDOf(players[0])
 	testFixture.climb(players[1], stackID)
-	testFixture.callAPI(
-		"POST",
-		"/v1/highlights",
-		players[1].token,
-		testFixture.playerBodyOf(players[1]),
-	)
-	keys := findAchievementKeys(testFixture.loadMe(players[1].token))
-	if slices.Contains(keys, rules.AchievementLighthouseLight) {
-		t.Fatalf("a jelly lights itself: %v", keys)
+	for _, caller := range players {
+		testFixture.callAPI(
+			"POST",
+			"/v1/highlights",
+			caller.token,
+			testFixture.playerBodyOf(players[1]),
+		)
+		testFixture.advanceClock(time.Hour)
+	}
+	for _, player := range players {
+		keys := findAchievementKeys(testFixture.loadMe(player.token))
+		if slices.Contains(keys, rules.AchievementLighthouse) ||
+			slices.Contains(keys, rules.AchievementLighthouseLight) {
+			t.Fatalf("the stack lit itself: %v", keys)
+		}
 	}
 }
 
