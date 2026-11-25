@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.41.4**
+Aktuelle Version: **1.41.5**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.4**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.41.5  | Ohne Änderung am Vertrag: Die Bühne der Server-Seite zeigt die Jelly-News als Sendung |
 | 1.41.4  | Fehlerbehebung: `POST /admin/api/event-codes/{id}/end` beendet auch einen Code, der noch nicht begonnen hat, statt mit `500` zu scheitern. Er war dann nie einlösbar |
 | 1.41.3  | Fehlerbehebung: Wer länger als `presence_window` weg war, bekommt beim ersten Stapel oder Partner-Emote nicht mehr `409 too_far`. Das Jelly kommt vor der Prüfung der Nähe zurück auf die Bühne |
 | 1.41.2  | Fehlerbehebung: Versteckt oder löscht die Orga ein Jelly, verlässt es seinen Stapel. Es folgt `stack.changed` ohne Spieler, die Jellies darüber rutschen nach, und ein leerer Stapel verschwindet. Versteckte bekommen so auch keinen Leuchtturm mehr |
