@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestMapPreviewChangesNothing(t *testing.T) {
@@ -99,5 +100,33 @@ func TestEndedEventCodeCannotBeRedeemed(t *testing.T) {
 		"",
 	); missing.status != http.StatusNotFound {
 		t.Errorf("unknown code: %d %s", missing.status, missing.body)
+	}
+}
+
+// Ending a code before it starts makes it never valid, instead of breaking the check that a code
+// starts before it ends.
+func TestOrgaEndsAnEventCodeBeforeItStarts(t *testing.T) {
+	testFixture := newFixture(t)
+	token := testFixture.registerPlayer("Früh")
+	now := testFixture.clock.Load()
+	body := fmt.Sprintf(
+		`{"lan_id":1,"title":"Später","code":"spaeter","xp":30,"valid_from":%d,"valid_until":%d}`,
+		now+time.Hour.Milliseconds(),
+		now+2*time.Hour.Milliseconds(),
+	)
+	if created := testFixture.callAdmin("POST", "/admin/api/event-codes", body); created.status !=
+		http.StatusOK {
+		t.Fatalf("create: %d %s", created.status, created.body)
+	}
+	ended := testFixture.callAdmin("POST", "/admin/api/event-codes/1/end", "")
+	if ended.status != http.StatusOK {
+		t.Fatalf("end before the start: %d %s", ended.status, ended.body)
+	}
+	testFixture.advanceClock(90 * time.Minute)
+	redeemed := testFixture.callAPI("POST", "/v1/event-codes/redemptions", token,
+		`{"code":"spaeter"}`)
+	if redeemed.status != http.StatusForbidden {
+		t.Errorf("a code ended before its start must never work: %d %s", redeemed.status,
+			redeemed.body)
 	}
 }

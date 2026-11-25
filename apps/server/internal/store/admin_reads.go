@@ -43,11 +43,13 @@ func (store *Store) LoadGathering(ctx context.Context, lanID, now int64) (*Gathe
 }
 
 // EndEventCode makes a code invalid from now on, for example after it reached the wrong people. XP
-// that players already got stays theirs.
+// that players already got stays theirs. A code that has not started yet moves its start to just
+// before now, so it never worked and still starts before it ends.
 func (store *Store) EndEventCode(ctx context.Context, codeID, now int64) error {
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
-		const endEventCodeSQL = `UPDATE event_codes SET valid_until = MIN(valid_until, ?)
-			WHERE id = ?`
+		const endEventCodeSQL = `UPDATE event_codes
+			SET valid_from = MIN(valid_from, ?1 - 1), valid_until = MIN(valid_until, ?1)
+			WHERE id = ?2`
 		result, err := transaction.ExecContext(ctx, endEventCodeSQL, now, codeID)
 		if err != nil {
 			return fmt.Errorf("end event code: %w", err)

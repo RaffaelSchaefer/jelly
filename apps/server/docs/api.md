@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.41.0**
+Aktuelle Version: **1.41.4**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.41.4  | Fehlerbehebung: `POST /admin/api/event-codes/{id}/end` beendet auch einen Code, der noch nicht begonnen hat, statt mit `500` zu scheitern. Er war dann nie einlösbar |
 | 1.41.0  | Funkelbarts Hut: `POST /wizard-hat` stiehlt ihn für `wizard_hat_seconds` (Standard 300), je LAN trägt ihn ein Jelly. `wizard_hat` im Stand, `wizard-hat` (Zauberhut, `head`, `unlock: none`) in `equipped`, Ereignis `wizard_hat.changed`, Fehler `409 wizard_hat_taken`, geheimes Achievement `hat-thief` |
 | 1.40.0  | Ein Ausflug (`POST /trips/goto`) genau zum Punkt eines laufenden Stapels endet auf dem Stapel statt an der freien Stelle daneben, so klappt `POST /stacks/members` bei der Ankunft auch im Gedränge. Bots laufen zu einem Stapel, klettern bei der Ankunft und bauen Türme bis fünf Jellies |
 | 1.39.0  | Jelly-News: Programmpunkte der Art `news` starten das `gathering` `news` mit `presenter_id` und `news` (`top_xp`, `achievements`, `tallest_stack`, `next_item` der letzten Stunde). Regel `news_seconds`, von Hand über `POST /admin/api/lans/{id}/gathering` mit `kind: news`. Wege kennen `kind: news` |
@@ -585,7 +586,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/bots/{id}/actions`              | `{"kind","xp"}` mit `poke`, `food`, `drink`, `emote`, `sign`, `trip`, `follow`, `stack`, `xp`, `redeem` mit `"code"` oder `purchase` |
 | `DELETE /admin/api/bots`                         | Löscht alle Bots mit allem, was sie getan haben, und stoppt die automatischen |
 | `GET /admin/api/lans/{id}/gathering`             | Antwort: `{"gathering"}`, das laufende Gathering oder `null` |
-| `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben |
+| `POST /admin/api/event-codes/{id}/end`           | Der Code gilt ab sofort nicht mehr, vergebene XP bleiben. Hat er noch nicht begonnen, rückt sein Beginn auf kurz vor jetzt, er war also nie einlösbar |
 | `DELETE /admin/api/lans/{id}/gathering`          | Beendet es vorzeitig                      |
 | `PUT /admin/api/lans/{id}/map`                   | Kartendatei, siehe unten. Antwort: `{"created","updated","removed","unknown_props","unassigned_players"}` |
 | `POST /admin/api/lans/{id}/areas/{area}/code`    | `{"player_id"}`, optional, bindet den Code ans Konto |
