@@ -194,6 +194,9 @@ func listCosmeticErrors() []knownError {
 		{rules.ErrInvalidCosmeticColor, problem{
 			http.StatusBadRequest, "invalid_cosmetic_color", "Diese Farbe geht hier nicht.",
 		}},
+		{rules.ErrUnknownSkin, problem{
+			http.StatusBadRequest, "unknown_skin", "Diesen Skin gibt es für dieses Cosmetic nicht.",
+		}},
 		{store.ErrCosmeticLocked, problem{
 			http.StatusConflict, "cosmetic_locked",
 			"Dieses Cosmetic ist noch nicht freigeschaltet.",

@@ -341,7 +341,7 @@ func TestValidateEquip(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			got := rules.ValidateEquip(testCase.slot, testCase.key, testCase.color)
+			got := rules.ValidateEquip(testCase.slot, testCase.key, testCase.color, nil)
 			if !errors.Is(got, testCase.want) {
 				t.Fatalf("ValidateEquip() = %v, want %v", got, testCase.want)
 			}

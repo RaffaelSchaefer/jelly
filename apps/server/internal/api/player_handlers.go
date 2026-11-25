@@ -43,6 +43,7 @@ type EquipBody struct {
 	Slot  string  `json:"slot"`
 	Key   string  `json:"key,omitempty"`
 	Color *string `json:"color,omitempty"`
+	Skin  *string `json:"skin,omitempty"`
 }
 
 // ReportBody names a food or drink report.
@@ -307,7 +308,7 @@ func (server *apiServer) handleEquipCosmetic(
 	ctx context.Context, playerID int64, input *jsonInput[EquipBody],
 ) (*jsonOutput[store.PlayerState], error) {
 	choice := store.CosmeticChoice{
-		Slot: input.Body.Slot, Key: input.Body.Key, Color: input.Body.Color,
+		Slot: input.Body.Slot, Key: input.Body.Key, Color: input.Body.Color, Skin: input.Body.Skin,
 	}
 	return answerWith(server.Store.EquipCosmetic(ctx, playerID, choice, server.currentMillis()))
 }

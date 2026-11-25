@@ -104,6 +104,7 @@
         "scope": "`permanent` counts progress over all LANs, `lan` only counts the current LAN.",
         "slot": "The place on the jelly that wears it, one of `cosmetic_slots`.",
         "colorable": "Whether it takes a color from `cosmetic_colors`. The others always look the same.",
+        "skins": "The looks a wearer can choose from, missing for a cosmetic with one look. Every skin comes with the cosmetic.",
         "unlock": "How a player gets it: `shop` for coins, `event` from an event code, `award` as a prize from the orga, `none` not at all. Treat new values like `none`.",
         "price": "The price in coins, only with `unlock` `shop`. Buy it with `POST /v1/purchases`."
       }
@@ -119,19 +120,28 @@
         "record_unit": "German unit of the record, only for record achievements."
       }
     },
+    "Skin": {
+      "description": "One look of a cosmetic, such as one flag of the flagpole.",
+      "fields": {
+        "key": "Stable key of the skin within its cosmetic.",
+        "name": "German name to show."
+      }
+    },
     "EquipBody": {
       "description": "Changes one cosmetic slot.",
       "fields": {
         "slot": "The slot to change, one of `cosmetic_slots`.",
         "key": "The cosmetic to put on, out of `cosmetics` in the state. Without it, the slot is emptied.",
-        "color": "Hex color from `cosmetic_colors`, only for colorable cosmetics."
+        "color": "Hex color from `cosmetic_colors`, only for colorable cosmetics.",
+        "skin": "Key out of `skins` of the cosmetic. Without it, the cosmetic keeps its plain look."
       }
     },
     "EquippedCosmetic": {
       "description": "What a jelly wears in one slot.",
       "fields": {
         "key": "Key of the cosmetic.",
-        "color": "The chosen hex color, null for cosmetics that are not colorable."
+        "color": "The chosen hex color, null for cosmetics that are not colorable.",
+        "skin": "The chosen key out of `skins` of the cosmetic, null for its plain look."
       }
     },
     "ErrorDetails": {

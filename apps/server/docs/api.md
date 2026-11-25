@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.5**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.43.0  | Skins: Ein Cosmetic kann im Katalog `skins` mit `{key, name}` haben, wählbare Looks wie die Flaggen am Flaggenmast. `PUT /cosmetics/equipped` nimmt `skin`, `equipped` nennt ihn je Platz, `null` für das schlichte Aussehen. Fehler `unknown_skin`. Noch hat kein Cosmetic Skins |
 | 1.42.0  | Level-Kurve: Regeln `xp_curve` (`linear` oder `quadratic`), `xp_per_level_step` und `xp_per_level_max`, alle nach dem Start der LAN fest. `xp_in_level` und `xp_for_next_level` im Stand. Admin: `POST /admin/api/level-preview`. Neue Standards: Kurve `quadratic` 50 / 25 / 300, `poke_xp` 6, `poke_max_ticks` 8, `food_xp` und `drink_xp` 30, `partner_xp` 50. Gespeicherte LANs behalten ihre Werte, LANs ohne `xp_curve` rechnen `linear` |
 | 1.41.5  | Ohne Änderung am Vertrag: Die Bühne der Server-Seite zeigt die Jelly-News als Sendung |
 | 1.41.4  | Fehlerbehebung: `POST /admin/api/event-codes/{id}/end` beendet auch einen Code, der noch nicht begonnen hat, statt mit `500` zu scheitern. Er war dann nie einlösbar |
@@ -124,7 +125,7 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 400    | `invalid_schedule`                        | Zeitplan mit Punkt außerhalb der LAN, ohne Titel oder mit unbekannter Art |
 | 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
-| 400    | `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color` | Cosmetic passt nicht |
+| 400    | `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color`, `unknown_skin` | Cosmetic passt nicht |
 | 400    | `unknown_report_kind`, `unknown_emote`         | Eintrag steht nicht in der festen Liste   |
 | 400    | `unknown_partner_emote`, `unknown_sign`   | Eintrag steht nicht in der festen Liste   |
 | 400    | `invalid_follow`                          | Zu diesem Jelly kann man sich nicht stellen |
@@ -278,7 +279,7 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `POST /auth/recover`      | `{"code"}`                                 | `{"secret","me"}`              |
 | `GET /players/me`         |                                            | Stand                          |
 | `PATCH /players/me`       | `{"name","color"}`, alle optional          | Stand                          |
-| `PUT /cosmetics/equipped` | `{"slot","key","color"}`, ohne `key` leert den Platz | Stand                |
+| `PUT /cosmetics/equipped` | `{"slot","key","color","skin"}`, ohne `key` leert den Platz | Stand                |
 | `POST /purchases`         | `{"key"}` aus dem Katalog mit `unlock: shop` | `{"cosmetic_key","coins_spent","me"}` |
 | `GET /players`            | `?cursor=&limit=`                          | `{"items","next_cursor"}`      |
 | `GET /players/{id}`       |                                            | Profil: XP, Achievements, Cosmetics |
@@ -303,7 +304,9 @@ Ein neues Secret gibt es nur in der Antwort von `POST /auth/redeem` und `POST /a
 
 Namen haben 1 bis 24 Zeichen aus lateinischen Buchstaben, Umlauten, `ß`, Ziffern, Leerzeichen und
 `. _ ' -`, darunter mindestens ein Buchstabe oder eine Ziffer. Der Präfix `Jelly-` ist für den Admin
-reserviert. Plätze für Cosmetics sind `head`, `hands`, `body`, `face` und `aura`, je Platz eines. Einfärbbare Cosmetics (`colorable`) nehmen eine Farbe aus `cosmetic_colors`. Ein leeres `PATCH /players/me`
+reserviert. Plätze für Cosmetics sind `head`, `hands`, `body`, `face` und `aura`, je Platz eines. Einfärbbare Cosmetics (`colorable`) nehmen eine Farbe aus `cosmetic_colors`. Ein Cosmetic mit `skins` nimmt
+einen davon als `skin`, alle kommen mit dem Cosmetic. Ohne `skin` sieht es schlicht aus, was ein Skin zeigt, entscheidet
+der Renderer. Ein leeres `PATCH /players/me`
 ändert nichts und sendet nichts.
 
 **Anwesenheit:** XP gibt es nur per `POST /pokes`, also per Klick. Solange die App läuft, sendet sie
