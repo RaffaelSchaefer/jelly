@@ -255,12 +255,14 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `pnpm build` holt das neueste Release nach `src/generated/release.json` (mit `GH_TOKEN`, ohne Netz ein Verweis
   auf die Release-Seite) und baut die Seite nach `dist/`. Oben läuft das Jelly aus `@jelly/scene` (`src/hero/`), die
   gewählte Farbe färbt den Akzent der Seite. Im Fuß schaut dasselbe Jelly als großer, angeschnittener Kopf zum
-  Zeiger herauf (`FOOTER_VIEW` in `src/hero/views.ts`), eine zweite Szene, die erst kurz vor dem Fuß startet. Die drei Bilder aus der App (`src/assets/shot-*.webp`) stammen aus der
-  Browser-Vorschau des Clients, ihre Marken stehen als `--x` und `--y` in `index.html`: Nach einer neuen Aufnahme
-  die Marken nachziehen. „Loslegen“ zeigt Download und ersten Start für das gewählte System (`src/tabs.ts`,
-  `src/downloads/`). Die Seite nennt keine bestimmte LAN. Veröffentlicht wird per `.github/workflows/pages.yml` bei
-  Änderungen auf `main` und nach jedem Release, Pull Requests prüfen und bauen sie dort nur. Einmalig im Repository:
-  Settings › Pages › Source auf „GitHub Actions“ stellen, sonst scheitert der erste Deploy.
+  Zeiger herauf (`FOOTER_VIEW` in `src/hero/views.ts`), eine zweite Szene, die erst kurz vor dem Fuß startet. Die
+  Bilder aus der App (`src/assets/shot-*.webp`) stammen aus der Browser-Vorschau des Clients (die Jelly-News aus
+  `/map.html#news` nach „Sendung ansehen“, Fenster 1280×720), ihre Marken stehen als `--x` und `--y` in
+  `index.html`: Nach einer neuen Aufnahme die Marken nachziehen. „Loslegen“ zeigt Download und ersten Start für das
+  gewählte System (`src/tabs.ts`, `src/downloads/`). Die Seite nennt keine bestimmte LAN. Veröffentlicht wird per
+  `.github/workflows/pages.yml` bei Änderungen auf `main` und nach jedem Release, Pull Requests prüfen und bauen sie
+  dort nur. Einmalig im Repository: Settings › Pages › Source auf „GitHub Actions“ stellen, sonst scheitert der
+  erste Deploy.
 - `src-tauri/src/`: `lib.rs` (Zusammenbau), `commands.rs`, `commands/session.rs` (Sitzung und Spielstand),
   `commands/partner.rs`, `commands/stage.rs`, `commands/update.rs`, `api.rs` (HTTP), `api/types.rs`, `api/stage.rs` (Server-Typen),
   `events.rs` (Server-Stream), `popout.rs` (Fenster von Karte und Shop), `error.rs`, `pet.rs` (lokaler Stand,
