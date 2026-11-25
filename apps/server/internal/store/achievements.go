@@ -104,7 +104,8 @@ func findAchievementScopeID(achievement rules.Achievement, lanID int64) int64 {
 	return lifetimeScopeID
 }
 
-// insertAchievement stores one achievement and announces it on the stage.
+// insertAchievement stores one achievement, announces it on the stage and pays its XP. The XP
+// count for the next evaluation, so a level reached by them cannot start a chain here.
 func insertAchievement(
 	ctx context.Context, action actionContext, achievement rules.Achievement,
 ) error {
@@ -117,7 +118,17 @@ func insertAchievement(
 		return fmt.Errorf("insert achievement: %w", err)
 	}
 	payload := map[string]string{payloadKey: achievement.Key}
-	return appendVisibleEvent(ctx, action, EventAchievement, payload)
+	err = appendVisibleEvent(ctx, action, EventAchievement, payload)
+	if err != nil {
+		return err
+	}
+	achievementXP := action.lan.gameRules.AchievementXP
+	if achievementXP == 0 {
+		return nil
+	}
+	return grantXP(ctx, action, xpEntry{
+		action: actionAchievement, amount: achievementXP, eventCodeID: sql.NullInt64{},
+	})
 }
 
 // loadEarnedKeys returns lifetime achievements and those of this LAN.

@@ -109,6 +109,7 @@ func listPublicRuleLimits(public PublicRules) []RuleLimit {
 		secondsLimit("emote_cooldown", public.EmoteCooldownSeconds, 0),
 		secondsLimit("partner_invite_seconds", public.PartnerInviteSeconds, 1),
 		countLimit("partner_xp", public.PartnerXP, 0, maxRuleXP),
+		countLimit("achievement_xp", public.AchievementXP, 0, maxRuleXP),
 		countLimit("full_house_percent", public.FullHousePercent, minRulePercent, maxPercent),
 		secondsLimit("snack_run_seconds", public.SnackRunSeconds, 1),
 		secondsLimit("trip_seconds", public.TripSeconds, 1),

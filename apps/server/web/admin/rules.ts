@@ -116,6 +116,12 @@ function listProgressRules(): RuleText[] {
       hint: "1 heißt: kein Nachholen.",
     },
     {
+      key: "achievement_xp",
+      label: "XP für Achievements",
+      unit: "xp",
+      hint: "Für jedes neu verdiente Achievement. 0 schaltet sie ab.",
+    },
+    {
       key: "partner_xp",
       label: "XP für Partner-Emote",
       unit: "xp",

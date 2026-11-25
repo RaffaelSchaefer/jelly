@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.5**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.45.0  | XP für Achievements: Regel `achievement_xp` (Standard 25, 0 schaltet ab), jedes neu verdiente Achievement zahlt sie mit `xp.gained` und `source: achievement`. Lässt sich auch während der LAN ändern |
 | 1.44.0  | Wiederholte Programmpunkte: Ein Punkt in `PUT /admin/api/lans/{id}/schedule` kann `repeat: {every_minutes, until}` tragen. `GET /lans/current/schedule` listet jeden Termin einzeln, Apps sehen kein `repeat`. Die Jelly-News zählen die Zeit seit den News davor, die ersten weiter eine Stunde |
 | 1.43.0  | Skins: Ein Cosmetic kann im Katalog `skins` mit `{key, name}` haben, wählbare Looks wie die Flaggen am Flaggenmast. `PUT /cosmetics/equipped` nimmt `skin`, `equipped` nennt ihn je Platz, `null` für das schlichte Aussehen. Fehler `unknown_skin`. Noch hat kein Cosmetic Skins |
 | 1.42.0  | Level-Kurve: Regeln `xp_curve` (`linear` oder `quadratic`), `xp_per_level_step` und `xp_per_level_max`, alle nach dem Start der LAN fest. `xp_in_level` und `xp_for_next_level` im Stand. Admin: `POST /admin/api/level-preview`. Neue Standards: Kurve `quadratic` 50 / 25 / 300, `poke_xp` 6, `poke_max_ticks` 8, `food_xp` und `drink_xp` 30, `partner_xp` 50. Gespeicherte LANs behalten ihre Werte, LANs ohne `xp_curve` rechnen `linear` |
@@ -567,7 +568,7 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 Ausflug, Folgen, Stapel, Gathering und Funkelbarts Hut melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
 Sekunde. Eine App braucht dafür keine eigenen Timer. Das Bild bleibt schon vorher überall gleich, weil alle Wege vom Server kommen.
 
-`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`. Ein Level-Aufstieg zahlt
+`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code), `partner` oder `achievement`. Ein Level-Aufstieg zahlt
 Münzen getrennt vom `level.up` per `coins.gained`, ein Kauf nimmt sie ohne Ereignis.
 
 ## Admin
@@ -668,6 +669,7 @@ Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, 
 | `emote_cooldown`         | 0 bis 2592000    | Zeit zwischen zwei Emotes, 0 schaltet sie ab                |
 | `partner_invite_seconds` | 1 bis 2592000    | So lange lässt sich ein Partner-Emote beantworten           |
 | `partner_xp`             | 0 bis 10000      | XP für ein Partner-Emote mit jemand Neuem in dieser LAN     |
+| `achievement_xp`         | 0 bis 10000      | XP für jedes neu verdiente Achievement, 0 schaltet ab       |
 | `full_house_percent`     | 1 bis 100        | Anteil der Spieler, die denselben Event-Code einlösen müssen |
 | `snack_run_seconds`      | 1 bis 2592000    | So lange bleibt ein Jelly nach einer Meldung an der Theke   |
 | `trip_seconds`           | 1 bis 2592000    | So lange bleibt ein Jelly am Ziel eines Ausflugs            |
