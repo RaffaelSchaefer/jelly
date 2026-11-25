@@ -34,15 +34,76 @@ pub struct StageArea {
     pub name: Option<String>,
 }
 
-/// Was alle Jellies gerade tun: Essens-Event oder Siegerehrung.
+/// Ein Punkt des Programms, wie ihn die Jelly-News als nächsten nennen.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScheduleItem {
+    /// Beginn in Unix-Millisekunden.
+    pub starts_at: i64,
+    /// Ende, ohne dauert der Punkt bis zum nächsten.
+    #[serde(default)]
+    pub ends_at: Option<i64>,
+    /// Kurzer Titel.
+    pub title: String,
+    /// Spiel, Gericht oder Hinweis.
+    #[serde(default)]
+    pub detail: Option<String>,
+    /// Art wie `orga`, `food` oder `tournament`. Neue Werte zeigt die Bühne neutral.
+    pub kind: String,
+}
+
+/// Das Jelly mit den meisten XP der Stunde.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewsXp {
+    /// Das Jelly.
+    pub player_id: i64,
+    /// Seine XP in der Stunde.
+    pub xp: i64,
+}
+
+/// Ein Achievement, das ein Jelly in der Stunde bekommen hat.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewsAchievement {
+    /// Das Jelly.
+    pub player_id: i64,
+    /// Schlüssel aus `achievements` im Katalog.
+    pub key: String,
+}
+
+/// Was die Jelly-News aus der letzten Stunde vorstellen. Ein Teil ohne Neuigkeit fehlt oder ist leer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct News {
+    /// Die meisten XP.
+    #[serde(default)]
+    pub top_xp: Option<NewsXp>,
+    /// Neue Achievements, die neuesten zuerst.
+    #[serde(default)]
+    pub achievements: Vec<NewsAchievement>,
+    /// Die Jellies des höchsten Stapels, von unten nach oben.
+    #[serde(default)]
+    pub tallest_stack: Vec<i64>,
+    /// Der nächste Punkt im Programm.
+    #[serde(default)]
+    pub next_item: Option<ScheduleItem>,
+}
+
+/// Was alle Jellies gerade tun: Essens-Event, Siegerehrung oder Jelly-News.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Gathering {
-    /// `food` oder `ceremony`. Neue Werte zeigt die Bühne nicht besonders.
+    /// `food`, `ceremony` oder `news`. Neue Werte zeigt die Bühne nicht besonders.
     pub kind: String,
     /// Der Sieger einer Siegerehrung.
     pub winner_id: Option<i64>,
     /// Wann es endet und die Jellies zurücklaufen.
     pub ends_at: i64,
+    /// Das Jelly, das die News vorliest.
+    #[serde(default)]
+    pub presenter_id: Option<i64>,
+    /// Was der Vorleser der `news` vorstellt.
+    #[serde(default)]
+    pub news: Option<News>,
+    /// Wann es begann. Der Server liefert das noch nicht, die Bühne rechnet bis dahin vom Ende her.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub starts_at: Option<i64>,
 }
 
 /// Ein Jelly aus `GET /v1/stage`.

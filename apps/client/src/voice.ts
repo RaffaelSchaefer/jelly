@@ -385,11 +385,13 @@ export function createVoice(options: VoiceOptions = {}) {
     /**
      * Spielt Noten und löst dabei ab, was gerade läuft. Fehler bleiben hier: Ton darf nie stören.
      *
+     * @param timbre - Eine andere Klangfarbe nur für diese Noten, etwa die des Vorlesers der
+     *   Jelly-News. Ohne die der Stimme.
      * @returns Eine Uhr in Sekunden ab der ersten Note, für den Mund. `null`, wenn nichts erklingt.
      *   Sie läuft auf der Audio-Zeit: Nach langer Stille braucht das Audio einen Moment zum
      *   Aufwachen, und der Mund soll nicht vorauslaufen.
      */
-    play(notes: VoiceNote[]) {
+    play(notes: VoiceNote[], timbre?: VoiceTimbre) {
       if (!armed || notes.length === 0) return null;
       try {
         const target = way();
@@ -398,7 +400,8 @@ export function createVoice(options: VoiceOptions = {}) {
         hush();
         const start = context.currentTime + LEAD_SECONDS;
         const sentAt = performance.now();
-        const phrase = sing(context, output, notes, start);
+        const singer = timbre ? phrasePlayer(timbre, options.layers) : sing;
+        const phrase = singer(context, output, notes, start);
         current = { phrase, context };
         target.started(start, phrase.end);
         const late = () => (performance.now() - sentAt) / 1000 - MAX_WAKE_SECONDS;

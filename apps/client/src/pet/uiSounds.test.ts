@@ -34,12 +34,14 @@ describe("uiSoundFor", () => {
     expect(uiSoundFor({ ...button, sound: "none", blocked: true })).toBeNull();
     expect(uiSoundFor({ ...button, sound: "boom" })).toBe("tap");
     expect(isUiSound("toggleOn")).toBe(true);
+    expect(isUiSound("news")).toBe(true);
+    expect(isUiSound("newsBed")).toBe(true);
     expect(isUiSound("constructor")).toBe(false);
   });
 });
 
 describe("gameSoundFor", () => {
-  const calm: GameMoment = { xp: 100, honors: 2, invited: false, hatching: false };
+  const calm: GameMoment = { xp: 100, honors: 2, invited: false, hatching: false, news: null };
   it("chimes for new XP, honors, invites and hatching", () => {
     expect(gameSoundFor(calm, { ...calm, xp: 110 })).toBe("coin");
     expect(gameSoundFor(calm, { ...calm, honors: 3 })).toBe("achievement");
@@ -49,9 +51,22 @@ describe("gameSoundFor", () => {
   it("prefers the rarer moment when several come at once", () => {
     expect(gameSoundFor(calm, { ...calm, xp: 150, honors: 3 })).toBe("achievement");
     expect(gameSoundFor(calm, { ...calm, xp: 150, hatching: true })).toBe("hatch");
+    expect(gameSoundFor(calm, { ...calm, honors: 3, news: 1000 })).toBe("news");
+  });
+  it("plays the news jingle once per show", () => {
+    const on = { ...calm, news: 1000 };
+    expect(gameSoundFor(calm, on)).toBe("news");
+    expect(gameSoundFor(on, { ...on })).toBeNull();
+    expect(gameSoundFor(on, { ...on, news: 2000 })).toBe("news");
   });
   it("stays silent on the first load and when nothing rose", () => {
-    const empty: GameMoment = { xp: null, honors: null, invited: false, hatching: false };
+    const empty: GameMoment = {
+      xp: null,
+      honors: null,
+      invited: false,
+      hatching: false,
+      news: null,
+    };
     expect(gameSoundFor(empty, calm)).toBeNull();
     expect(gameSoundFor(calm, { ...calm, xp: 90, invited: false })).toBeNull();
   });

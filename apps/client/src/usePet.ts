@@ -40,6 +40,7 @@ import {
   useServerEvents,
   useStreamReset,
 } from "./useGame";
+import { useNews } from "./useNews";
 import { usePartnerEmote, usePlayPartner } from "./usePartnerEmote";
 import { useSigns } from "./useSigns";
 import { useStack } from "./useStack";
@@ -307,6 +308,7 @@ export function usePet(onLevelUp: () => void) {
   const signs = useSigns(state, account, ready, hopAndSay);
   useFollow(state, ready, hopAndSay);
   useStack(state, ready, hopAndSay, setMessage);
+  const news = useNews(state, ready, hopAndSay, setMessage);
   // Ohne Hüpfer: Er stapelte sich mit dem Duett und holte die Hände heraus.
   const playPartner = usePlayPartner(emotes.showEmote, setMessage);
   const partner = usePartnerEmote(state, account, ready, { play: playPartner, say: setMessage });
@@ -324,6 +326,7 @@ export function usePet(onLevelUp: () => void) {
     ...emotes,
     ...signs,
     ...partner,
+    ...news,
   };
 }
 

@@ -10,6 +10,7 @@ import type { StageHighlight, StagePlayer, StagePoint, StageView } from "@jelly/
 import type { JellyMenu } from "./actions";
 import type { Dock } from "./dock";
 import type { GlassLayer } from "./glass";
+import type { NewsWatch } from "./newsWatch";
 import type { Notice } from "./notice";
 import type { JellySearch } from "./search";
 import type { MapSource } from "./source";
@@ -60,6 +61,13 @@ export interface MapPage {
   isShown: boolean;
   /** Was das Jelly am Stapel tun soll, sobald es angekommen ist (`stacks.ts`). */
   stackPlan: StackPlan | null;
+  /** Der Knopf „Sendung ansehen“, solange die Jelly-News laufen. */
+  news: NewsWatch;
+  /**
+   * Ein Klick hat eben vom Bild der Sendung zurück zur Karte geführt. Wird er ein Doppelklick,
+   * zoomt die Karte nicht: Sein Punkt lag im Bild der News-Kamera.
+   */
+  leftNewsByClick: boolean;
 }
 
 /** Der Name eines Jellys vom letzten Lesen. */

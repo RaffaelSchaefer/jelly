@@ -4,7 +4,8 @@
  * aufs eigene Jelly startet ein Partner-Emote (`partner.ts`) oder einen Stapel (`stacks.ts`), einer
  * auf ein fremdes öffnet dessen Fenster (`actions.ts`), einer auf den Boden einen Ausflug, einer
  * auf einen Hinweis am Rand fliegt hin. Ein Doppelklick zoomt. Beim Öffnen fliegt die Kamera vom
- * eigenen Jelly auf die ganze Halle.
+ * eigenen Jelly auf die ganze Halle. Laufen die Jelly-News, filmt die News-Kamera der Bühne nur auf
+ * Wunsch (`newsWatch.ts`). Ein Klick ins Bild der Sendung führt dann zurück zur Karte.
  *
  * Reines TypeScript ohne React: Außer der Canvas gibt es hier nur Knöpfe und eine Statuszeile.
  *
@@ -19,6 +20,7 @@ import { createJellyMenu } from "./actions";
 import { flyToJelly, follow, goTo, highlight } from "./commands";
 import { createDock } from "./dock";
 import { startGlass } from "./glass";
+import { createNewsWatch } from "./newsWatch";
 import { createNotice } from "./notice";
 import { applyAway, applyMarks, findName, type MapPage } from "./page";
 import {
@@ -112,10 +114,11 @@ function applyState(page: MapPage, state: StageState) {
   showMap(page, own !== undefined);
 }
 
-/** Schließt, was gerade über der Karte offen ist. */
-function closeWindows(page: MapPage) {
-  page.menu.close();
-  page.search.close();
+/** Schließt, was gerade über der Karte offen ist. `true`, wenn etwas offen war. */
+function closeWindows(page: MapPage): boolean {
+  const wasMenuOpen = page.menu.close();
+  const wasSearchOpen = page.search.close();
+  return wasMenuOpen || wasSearchOpen;
 }
 
 /** Lässt das eigene Jelly aufleuchten. Vor dem ersten Lesen ist es noch nicht bekannt. */
@@ -168,6 +171,18 @@ function planTrip(page: MapPage, point: ScreenPoint) {
 }
 
 /**
+ * Filmt die News-Kamera, führt ein Klick zurück zur Karte und tut sonst nichts: Ein Ausflug oder
+ * ein Fenster am Jelly gehörten zu einem Bild, das gleich schneidet. `true`, wenn er das tat.
+ */
+function leaveNewsByClick(page: MapPage): boolean {
+  page.leftNewsByClick = false;
+  if (!page.view?.readNews().watching) return false;
+  page.view.watchNews(false);
+  page.leftNewsByClick = true;
+  return true;
+}
+
+/**
  * Ein Klick auf die Bühne. Ein Hinweis am Rand fliegt hin. Dann hat der laufende Partner-Ablauf
  * Vorrang, dann schließt er ein offenes Fenster. Sonst entscheidet, was unter dem Zeiger liegt: das
  * eigene Jelly, ein fremdes oder der Boden.
@@ -189,22 +204,36 @@ function handleClick(page: MapPage, flow: PartnerFlow, point: ScreenPoint) {
   else planTrip(page, point);
 }
 
-/** Ein Doppelklick zoomt auf den Punkt und lässt die Kamera dort. Ein geplanter Ausflug entfällt. */
+/**
+ * Ein Doppelklick zoomt auf den Punkt und lässt die Kamera dort. Ein geplanter Ausflug entfällt.
+ * Hat sein erster Klick die Sendung verlassen, bleibt die Karte, wie sie war.
+ */
 function handleDoubleClick(page: MapPage, point: ScreenPoint) {
+  if (page.leftNewsByClick) {
+    page.leftNewsByClick = false;
+    return;
+  }
   if (!page.view || page.view.hintAt(point) !== null) return;
   clearTimeout(page.pendingTrip);
   page.view.zoomInAt(point, DOUBLE_CLICK_ZOOM);
 }
 
-/** Hover, Klicks und Tasten. Leiste, Suche und Kamera verbinden sich selbst. */
+/** Escape schließt erst Fenster und Wahl. Ist nichts offen, führt sie von der Sendung zurück. */
+function pressEscape(page: MapPage, flow: PartnerFlow) {
+  const wasChoosing = flow.step.kind === "gesture" || flow.step.kind === "target";
+  handleEscape(flow);
+  if (!closeWindows(page) && !wasChoosing) page.view?.watchNews(false);
+}
+
+/** Hover, Klicks und Tasten. Leiste, Suche, Kamera und Sendung verbinden sich selbst. */
 function listenToInput(page: MapPage, flow: PartnerFlow) {
   // Vor dem Klick-Hörer unten: Der Zoom schluckt den Klick am Ende eines Ziehens.
   listenToZoom({ canvas: page.canvas, readView: () => page.view });
   page.canvas.addEventListener("pointermove", (event) => page.view?.setPointer(pointOf(event)));
   page.canvas.addEventListener("pointerleave", () => page.view?.setPointer(null));
   page.canvas.addEventListener("click", (event) => {
-    // Der zweite Klick eines Doppelklicks gehört dem Zoom.
-    if (event.detail <= 1) handleClick(page, flow, pointOf(event));
+    // Der zweite Klick eines Doppelklicks gehört dem Zoom. Während der Sendung führt der erste zurück.
+    if (event.detail <= 1 && !leaveNewsByClick(page)) handleClick(page, flow, pointOf(event));
   });
   page.canvas.addEventListener("dblclick", (event) => handleDoubleClick(page, pointOf(event)));
   document.querySelector("#partner-cancel")!.addEventListener("click", () => cancelFlow(flow));
@@ -213,9 +242,7 @@ function listenToInput(page: MapPage, flow: PartnerFlow) {
     void toggleOwnStack(page);
   });
   window.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
-    handleEscape(flow);
-    closeWindows(page);
+    if (event.key === "Escape") pressEscape(page, flow);
   });
   page.source.onInviteEvent((event) => handleInviteEvent(flow, event, page.source.readOwn().id));
   // Ponytail: Eine geänderte Einstellung kommt erst beim Lesen an. Wer aus dem Pet-Fenster zurückkommt,
@@ -223,9 +250,25 @@ function listenToInput(page: MapPage, flow: PartnerFlow) {
   window.addEventListener("focus", () => page.view?.reload());
 }
 
-/** Nach jedem Bild: Fenster bleiben an ihrem Jelly, die Leiste zeigt die Kamera, ein Stapel wartet. */
+/**
+ * Das Zusehen beginnt: Fenster und Wahl am Jelly weichen, im Bild der Sendung hingen sie an einem
+ * Jelly, das beim nächsten Schnitt woanders steht. Eine gesendete Aufforderung bleibt oben stehen.
+ * Der Fokus bleibt beim Knopf: Die Suche gäbe ihn sonst beim Schließen ihrem eigenen.
+ */
+function makeRoomForNews(page: MapPage, flow: PartnerFlow) {
+  const focused = document.activeElement;
+  closeWindows(page);
+  handleEscape(flow);
+  if (focused instanceof HTMLElement) focused.focus();
+}
+
+/**
+ * Nach jedem Bild: Der Knopf zeigt die Sendung, Fenster bleiben an ihrem Jelly, die Leiste zeigt
+ * die Kamera, ein Stapel wartet.
+ */
 function followFrame(page: MapPage, flow: PartnerFlow) {
   if (!page.view) return;
+  if (page.news.show(page.view.readNews())) makeRoomForNews(page, flow);
   page.dock.showCamera(page.view.readCamera());
   page.menu.place();
   placeGestures(flow);
@@ -256,6 +299,8 @@ function startView(page: MapPage, flow: PartnerFlow) {
       supersampling: SUPERSAMPLING,
       reloadDelayMs: RELOAD_DELAY_MS,
       insets: INSETS,
+      // Die Karte gehört dem Nutzer: Die News-Kamera filmt nur nach „Sendung ansehen“.
+      newsCamera: "manual",
       onState: (state) => applyState(page, state),
       onError: (cause) => {
         // Vor der Meldung: Sie steigt nur auf, wenn „Weniger Bewegung“ aus ist.
@@ -310,6 +355,11 @@ function createPage(source: MapPage["source"]): MapPage {
     pendingTrip: undefined,
     isShown: false,
     stackPlan: null,
+    news: createNewsWatch({
+      readNews: () => page.view?.readNews() ?? null,
+      watchNews: (on) => page.view?.watchNews(on),
+    }),
+    leftNewsByClick: false,
   };
   return page;
 }

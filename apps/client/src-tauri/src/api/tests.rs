@@ -268,6 +268,41 @@ fn the_stage_from_the_docs_parses_with_its_room_map() {
     assert_eq!(stage.stacks[0].member_ids, [1, 2]);
 }
 
+/// Die Jelly-News kommen mit Vorleser und allen Teilen durch, ein Gathering alter Art ohne sie.
+#[test]
+fn reads_the_news_of_a_gathering() {
+    let body = r#"{
+      "kind": "news", "winner_id": null, "ends_at": 1795000500000, "presenter_id": 7,
+      "news": {
+        "top_xp": { "player_id": 3, "xp": 420 },
+        "achievements": [{ "player_id": 4, "key": "hydrated" }],
+        "tallest_stack": [1, 2, 5],
+        "next_item": {
+          "starts_at": 1795003600000, "ends_at": null, "title": "CS2-Turnier", "detail": null,
+          "kind": "tournament", "later": true
+        }
+      }
+    }"#;
+    let gathering: Gathering = serde_json::from_str(body).unwrap();
+    assert_eq!(gathering.presenter_id, Some(7));
+    let news = gathering.news.as_ref().unwrap();
+    assert_eq!(news.top_xp.as_ref().map(|top| top.xp), Some(420));
+    assert_eq!(news.achievements[0].key, "hydrated");
+    assert_eq!(news.tallest_stack, [1, 2, 5]);
+    assert_eq!(
+        news.next_item.as_ref().map(|item| item.title.as_str()),
+        Some("CS2-Turnier")
+    );
+    // Die Oberfläche bekommt dieselben Namen zurück, ohne ein Feld, das der Server nicht kennt.
+    let sent = serde_json::to_value(&gathering).unwrap();
+    assert_eq!(sent["news"]["top_xp"]["player_id"], 3);
+    assert!(sent.get("starts_at").is_none());
+
+    let old: Gathering =
+        serde_json::from_str(r#"{ "kind": "food", "winner_id": null, "ends_at": 5 }"#).unwrap();
+    assert!(old.presenter_id.is_none() && old.news.is_none());
+}
+
 #[test]
 fn the_room_brings_the_size_of_the_hall_in_meters() {
     let body = r#"{
