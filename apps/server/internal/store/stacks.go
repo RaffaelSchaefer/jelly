@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
@@ -267,7 +268,7 @@ func (store *Store) ApplyHighlight(
 	})
 }
 
-// grantLighthouse rewards everyone on a stack whose top jelly was highlighted.
+// grantLighthouse rewards everyone on a stack whose top jelly someone off the stack highlighted.
 func grantLighthouse(ctx context.Context, action actionContext, targetID int64) error {
 	var stackID int64
 	const selectStackOfTargetSQL = `SELECT m.stack_id FROM stack_members m
@@ -285,7 +286,10 @@ func grantLighthouse(ctx context.Context, action actionContext, targetID int64) 
 	if err != nil {
 		return err
 	}
-	if len(members) < lighthouseMembers || members[len(members)-1] != targetID {
+	// Someone off the stack has to light it, otherwise two accounts of one player earn it alone.
+	isLitFromOutside := !slices.Contains(members, action.playerID)
+	if len(members) < lighthouseMembers || members[len(members)-1] != targetID ||
+		!isLitFromOutside {
 		return nil
 	}
 	for _, memberID := range members {
