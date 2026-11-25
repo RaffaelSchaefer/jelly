@@ -13,11 +13,9 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/store"
 )
 
-// Scenario 7: an account that is deleted while it stands in the middle of a stack.
-func TestDeletedMemberLeavesTheStackWithoutAnEvent(t *testing.T) {
-	t.Skip("finding 2: DeletePlayer removes the stack_members row by CASCADE and writes only " +
-		"`player.removed`. The others slide down without `stack.changed`. " +
-		"Without Skip the test fails.")
+// Scenario 7, finding 2: an account deleted in the middle of a stack leaves it with an event, and
+// the jellies above move down.
+func TestDeletedMemberLeavesTheStackWithAnEvent(t *testing.T) {
 	testFixture := newFixture(t)
 	players := testFixture.registerStackPlayers("A", "B", "C")
 	stackID := testFixture.stackIDOf(players[1])
@@ -35,10 +33,8 @@ func TestDeletedMemberLeavesTheStackWithoutAnEvent(t *testing.T) {
 	}
 }
 
-// Scenario 7: the last member of a stack is deleted, the empty stack stays.
-func TestStackOfADeletedJellyStaysEmpty(t *testing.T) {
-	t.Skip("finding 2: an empty stack stays after DeletePlayer and can be climbed until ends_at. " +
-		"Without Skip the test fails.")
+// Scenario 7, finding 2: deleting the only jelly of a stack removes the stack.
+func TestStackOfADeletedJellyIsGone(t *testing.T) {
 	testFixture := newFixture(t)
 	players := testFixture.registerStackPlayers("A", "B")
 	stackID := testFixture.stackIDOf(players[0])
@@ -50,11 +46,8 @@ func TestStackOfADeletedJellyStaysEmpty(t *testing.T) {
 	}
 }
 
-// Scenario 7: a hidden jelly keeps its place in the middle of a stack.
-func TestHiddenMemberLeavesAGapAndItsIDOnTheStage(t *testing.T) {
-	t.Skip("finding 3: HidePlayer does not touch the stack. member_ids on the public stage names " +
-		"the hidden jelly and the visible one above stands at level 2 over nothing. " +
-		"Without Skip the test fails.")
+// Scenario 7, finding 3: hiding a jelly takes it off its stack, so the stage shows no gap.
+func TestHiddenMemberLeavesTheStack(t *testing.T) {
 	testFixture := newFixture(t)
 	players := testFixture.registerStackPlayers("A", "B", "C")
 	stackID := testFixture.stackIDOf(players[0])
@@ -237,10 +230,8 @@ func TestTopJellyCanHighlightItselfIntoALighthouse(t *testing.T) {
 	}
 }
 
-// Scenario 10: a hidden jelly on the stack earns the lighthouse too.
-func TestHiddenMemberEarnsTheLighthouse(t *testing.T) {
-	t.Skip("finding 3: grantLighthouse hands out achievements to every row of stack_members, " +
-		"also hidden players who are no longer on the stage. Without Skip the test fails.")
+// Scenario 10, finding 3: a hidden jelly is off the stack and earns no lighthouse.
+func TestHiddenMemberEarnsNoLighthouse(t *testing.T) {
 	testFixture := newFixture(t)
 	players := testFixture.registerStackPlayers("A", "B", "V")
 	stackID := testFixture.stackIDOf(players[0])
