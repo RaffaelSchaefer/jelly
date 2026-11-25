@@ -66,3 +66,21 @@ func TestEveryLevelRuleIsLockedOnceTheLANRuns(t *testing.T) {
 		t.Fatalf("changed ceiling = %q", got)
 	}
 }
+
+func TestListLevelStepsShowsTheDefaultCurve(t *testing.T) {
+	steps := rules.ListLevelSteps(rules.DefaultRules(), 12)
+	want := map[int]rules.LevelStep{
+		0:  {Level: 1, StartXP: 0, XP: 50},
+		1:  {Level: 2, StartXP: 50, XP: 75},
+		10: {Level: 11, StartXP: 1625, XP: 300},
+		11: {Level: 12, StartXP: 1925, XP: 300},
+	}
+	if len(steps) != 12 {
+		t.Fatalf("%d steps", len(steps))
+	}
+	for index, step := range want {
+		if steps[index] != step {
+			t.Errorf("step %d = %+v, want %+v", index, steps[index], step)
+		}
+	}
+}

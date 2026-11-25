@@ -27,7 +27,7 @@ Aktuelle Version: **1.41.4**
 
 | Version | Änderung |
 | ------- | -------- |
-| 1.42.0  | Level-Kurve: Regeln `xp_curve` (`linear` oder `quadratic`), `xp_per_level_step` und `xp_per_level_max`, alle nach dem Start der LAN fest. `xp_in_level` und `xp_for_next_level` im Stand. Neue Standards: Kurve `quadratic` 50 / 25 / 300, `poke_xp` 6, `poke_max_ticks` 8, `food_xp` und `drink_xp` 30, `partner_xp` 50. Gespeicherte LANs behalten ihre Werte, LANs ohne `xp_curve` rechnen `linear` |
+| 1.42.0  | Level-Kurve: Regeln `xp_curve` (`linear` oder `quadratic`), `xp_per_level_step` und `xp_per_level_max`, alle nach dem Start der LAN fest. `xp_in_level` und `xp_for_next_level` im Stand. Admin: `POST /admin/api/level-preview`. Neue Standards: Kurve `quadratic` 50 / 25 / 300, `poke_xp` 6, `poke_max_ticks` 8, `food_xp` und `drink_xp` 30, `partner_xp` 50. Gespeicherte LANs behalten ihre Werte, LANs ohne `xp_curve` rechnen `linear` |
 | 1.41.4  | Fehlerbehebung: `POST /admin/api/event-codes/{id}/end` beendet auch einen Code, der noch nicht begonnen hat, statt mit `500` zu scheitern. Er war dann nie einlösbar |
 | 1.41.3  | Fehlerbehebung: Wer länger als `presence_window` weg war, bekommt beim ersten Stapel oder Partner-Emote nicht mehr `409 too_far`. Das Jelly kommt vor der Prüfung der Nähe zurück auf die Bühne |
 | 1.41.2  | Fehlerbehebung: Versteckt oder löscht die Orga ein Jelly, verlässt es seinen Stapel. Es folgt `stack.changed` ohne Spieler, die Jellies darüber rutschen nach, und ein leerer Stapel verschwindet. Versteckte bekommen so auch keinen Leuchtturm mehr |
@@ -584,6 +584,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `DELETE /admin/api/lans/{id}`                    | Nur ohne Spieler, sonst `409 lan_has_players`. Zonen und Codes verschwinden mit |
 | `PATCH /admin/api/lans/{id}/rules`               | Ändert nur die genannten Regeln, siehe unten |
 | `PUT /admin/api/lans/{id}/rules`                 | **Ersetzt alle Regeln**, siehe unten      |
+| `POST /admin/api/level-preview`                  | Regeln wie bei `PUT`, ohne zu speichern. Antwort: `{"levels"}` mit `level`, `start_xp` und `xp` der ersten 20 Level |
 | `PUT /admin/api/lans/{id}/join-code`             | `{"join_code"}`. `GET /admin/api/lans` zeigt ihn danach in `join_code`, bei älteren LANs steht dort bis zum Ersetzen `null` |
 | `GET /admin/api/lans/{id}/event-codes`           |                                           |
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |

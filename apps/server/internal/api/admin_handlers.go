@@ -25,6 +25,7 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/lans":                                server.handleCreateLAN,
 		"PUT /admin/api/lans/{id}/rules":                      server.handleUpdateRules,
 		"PATCH /admin/api/lans/{id}/rules":                    server.handlePatchRules,
+		"POST /admin/api/level-preview":                       server.handlePreviewLevels,
 		"PUT /admin/api/lans/{id}/join-code":                  server.handleUpdateJoinCode,
 		"GET /admin/api/lans/{id}/event-codes":                server.handleListEventCodes,
 		"POST /admin/api/event-codes":                         server.handleCreateEventCode,

@@ -99,6 +99,29 @@ func CalculateLevelProgress(gameRules Rules, earnedXP int) LevelProgress {
 	}
 }
 
+// LevelStep is one row of the curve, for a preview of the rules.
+type LevelStep struct {
+	Level int `json:"level"`
+	// StartXP is the total XP that reaches this level.
+	StartXP int `json:"start_xp"`
+	// XP is what this level takes up to the next one.
+	XP int `json:"xp"`
+}
+
+// ListLevelSteps returns the first `count` levels of the curve of a LAN.
+func ListLevelSteps(gameRules Rules, count int) []LevelStep {
+	curve := findLevelCurve(gameRules)
+	steps := make([]LevelStep, 0, max(count, 0))
+	for level := FirstLevel; level < FirstLevel+count; level++ {
+		steps = append(steps, LevelStep{
+			Level:   level,
+			StartXP: curve.calculateLevelStart(level),
+			XP:      curve.calculateLevelXP(level),
+		})
+	}
+	return steps
+}
+
 // FindChangedLevelRule returns the name of the first rule that changes the levels of a LAN, or ""
 // if none does. Levels would jump for everyone and take cosmetics away.
 func FindChangedLevelRule(stored, changed Rules) string {

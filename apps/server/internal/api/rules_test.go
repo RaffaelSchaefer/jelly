@@ -165,3 +165,27 @@ func TestRoomSizeRulesStayInTheirRange(t *testing.T) {
 			http.StatusBadRequest, "invalid_rules")
 	}
 }
+
+func TestThePreviewShowsTheCurveBeforeItIsSaved(t *testing.T) {
+	testFixture := newFixture(t)
+	response := testFixture.callAdmin("POST", "/admin/api/level-preview",
+		`{"xp_curve":"quadratic","xp_per_level":10,"xp_per_level_step":5,"xp_per_level_max":20}`)
+	preview := decodeBody[struct {
+		Levels []rules.LevelStep `json:"levels"`
+	}](t, response)
+	if len(preview.Levels) != 20 ||
+		preview.Levels[3] != (rules.LevelStep{Level: 4, StartXP: 45, XP: 20}) {
+		t.Fatalf("preview: %s", response.body)
+	}
+	if saved := testFixture.loadLANStatus(
+		testFixture.registerPlayer("A"),
+	).Rules; saved.XPPerLevel != 50 {
+		t.Fatalf("a preview must not save: %+v", saved)
+	}
+	requireProblem(
+		t,
+		testFixture.callAdmin("POST", "/admin/api/level-preview", `{"xp_per_level":0}`),
+		http.StatusBadRequest,
+		"invalid_rules",
+	)
+}
