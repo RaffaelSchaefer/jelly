@@ -17,6 +17,7 @@ passen. Ohne Abschnitt für die Version bricht das Release ab.
 - Neu: 3D-Vorspann mit Globus und Logo
 - Neu: Zauberhut klauen und tragen
 - Neu: Schild, wer den Hut gerade hat
+- Neu: Jellys stapeln sich zu Türmen
 
 ## 0.5.0
 
