@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.41.0**
+Aktuelle Version: **1.41.1**
 
 ## Versionen
 
@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.0**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.41.1  | Fehlerbehebung: Den Leuchtturm (`lighthouse`, `lighthouse-light`) macht nur ein Jelly, das nicht selbst auf dem Stapel steht. Bisher reichte es, sich als Spitze selbst hervorzuheben |
 | 1.41.0  | Funkelbarts Hut: `POST /wizard-hat` stiehlt ihn für `wizard_hat_seconds` (Standard 300), je LAN trägt ihn ein Jelly. `wizard_hat` im Stand, `wizard-hat` (Zauberhut, `head`, `unlock: none`) in `equipped`, Ereignis `wizard_hat.changed`, Fehler `409 wizard_hat_taken`, geheimes Achievement `hat-thief` |
 | 1.40.0  | Ein Ausflug (`POST /trips/goto`) genau zum Punkt eines laufenden Stapels endet auf dem Stapel statt an der freien Stelle daneben, so klappt `POST /stacks/members` bei der Ankunft auch im Gedränge. Bots laufen zu einem Stapel, klettern bei der Ankunft und bauen Türme bis fünf Jellies |
 | 1.39.0  | Jelly-News: Programmpunkte der Art `news` starten das `gathering` `news` mit `presenter_id` und `news` (`top_xp`, `achievements`, `tallest_stack`, `next_item` der letzten Stunde). Regel `news_seconds`, von Hand über `POST /admin/api/lans/{id}/gathering` mit `kind: news`. Wege kennen `kind: news` |
@@ -355,8 +356,8 @@ A fordert ein anderes Jelly auf, B bestätigt oder lehnt ab.
 - `POST /highlights` mit `{"player_id"}` lässt ein Jelly für `highlight_seconds` aufleuchten, auch das eigene. Das Ereignis
   nennt `cosmetic_key`, die Aura `highlight-aura` ersetzt so lange die getragene. Freischalten kann sie niemand.
   Danach folgt das nächste erst nach `highlight_cooldown`, sonst `409 highlight_cooldown`.
-- Wird die Spitze eines Stapels mit mindestens zwei Jellies hervorgehoben, bekommen alle darauf `lighthouse` und die
-  Spitze zusätzlich `lighthouse-light`.
+- Hebt ein Jelly, das nicht auf dem Stapel steht, dessen Spitze hervor, bekommen bei mindestens zwei Jellies alle darauf
+  `lighthouse` und die Spitze zusätzlich `lighthouse-light`. Wer selbst auf dem Stapel steht, macht keinen Leuchtturm.
 
 ### Funkelbarts Hut
 
