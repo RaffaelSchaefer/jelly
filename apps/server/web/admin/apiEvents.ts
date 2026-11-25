@@ -100,6 +100,14 @@ export interface ProgramItem {
   title: string;
   detail: string | null;
   kind: string;
+  /** Brings the point back, only the admin page sees it. */
+  repeat?: ProgramRepeat;
+}
+
+/** How a point of the program comes back: every few minutes until a last start. */
+export interface ProgramRepeat {
+  every_minutes: number;
+  until: number;
 }
 
 /** Reads the program of a LAN. */
