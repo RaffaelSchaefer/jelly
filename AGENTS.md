@@ -84,7 +84,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (`packages/jelly-scene/src/emotes.ts`), Bewegung und Laut teilen sich das Tempo. Abschalten und leiser stellen gehen über `Settings.sound` und `Settings.volume`.
   `src/pet/mouth.ts`: welche Mundform zu welcher Note gehört, die Formen stehen in `mouthShapes.ts` im Paket.
 - `src/uiSound.ts`, `src/useUiSounds.ts`, `src/pet/uiSounds.ts`: Geräusche der Oberfläche aus `src/sounds/`
-  (von reactsounds.com, MIT). Ein Hörer im Dokument wählt den Ton aus den Attributen des Knopfs
+  (von reactsounds.com, MIT, außer dem Jingle der Jelly-News in `src/sounds/news/`). Ein Hörer im Dokument wählt den Ton aus den Attributen des Knopfs
   (`aria-expanded`, `aria-disabled`, `role="tab"`), `data-sound` überschreibt ihn,
   `data-sound="none"` schweigt. Dazu klingen Schalter, Fehler und Momente im Spielstand (XP, Erfolge,
   Einladung, Schlüpfen, `gameSoundFor`). `LEVELS` gleicht die sehr verschieden lauten Töne an. Was ein Fenster schließt, nutzt `playThen`,
@@ -126,6 +126,64 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Im Turm stehen Namen rechts und Schilder links neben dem Jelly (`labels.ts`). Mit weniger Bewegung gibt es
   nur das weiche Heben. Ansehen ohne Server: `/scripts/stack-check.html?members=4&zoom=8&play=climb,light,leave,decay`
   in der Browser-Vorschau, die Parameter stehen im Kopf von `apps/client/scripts/stack-check.mjs`.
+- Jelly-News (`gathering` der Art `news`, Plan in `apps/client/docs/superpowers/plans/2026-11-25-jelly-news.md`): Alles
+  steht in `packages/jelly-stage/src/` und rechnet nur aus Gathering und Serverzeit, damit jeder Bildschirm dasselbe
+  zeigt, auch wer mitten in der Sendung lädt. `news.ts` plant die Sendung (Beiträge, Takt, Wiederholung, Zufall aus
+  `ends_at`), `newsLines.ts` schreibt je Beitrag die Karte (Rubrik, Schlagzeile, Genannte, Bild), `newsDirector.ts`
+  hält den Beitrag auf Sendung und startet je Beitrag einmal Licht und Gesten, dazu die rote Eilmeldung bei
+  `award.given`. Den Beginn merkt er sich aus `gathering.changed`, solange der Server kein `starts_at` schickt.
+  `newsBar*.ts` malt den TV-Look ins Overlay (Vorspann, Bauchbinde, Laufband, Uhr, Karte über der Schulter).
+  `newsCamera*.ts` und `newsShots*.ts` sind die News-Kamera: Pose rein aus Beitrag und Fortschritt, Schnitte zwischen
+  Beiträgen, Fahrten im Schuss, am Ende zurück in die Totale. Sie filmt von selbst, solange niemand die Kamera
+  anfasst (Beamer), mit `newsCamera: "manual"` nur nach `watchNews(true)` (Karte). Solange sie filmt, schaut das
+  Publikum zur Bühne und nur Vorleser und Genannte in die Linse. `newsSet*.ts` stellt das Studio (Nachrichtentisch
+  vor dem Vorleser, sobald er auf einer Bühnenplattform steht), `newsScreens*.ts` zeigt Logo oder Karte auf den
+  Leinwänden (`uOnAir` in `shaders/screen.frag.glsl`). Die Zeichen der Beiträge sind eigene Emojis, damit sie
+  auf jedem Rechner gleich aussehen: WebP mit durchsichtigem Grund in `packages/jelly-stage/art/news/`, `pnpm pictures`
+  schreibt daraus `newsPictureData.ts` (Daten-URLs, so braucht kein Bundler einen Loader, vom Formatieren
+  ausgenommen), `newsPictures.ts` zeichnet sie auf Karte und Leinwand. Bis eines geladen ist, steht das Emoji des
+  Systems. Ansehen ohne Server:
+  `/scripts/news-check.html` (Parameter im Kopf von `apps/client/scripts/news-check.mjs`), auf der Karte
+  `/map.html#news`.
+- Vorspann der Jelly-News in 3D: `newsTitle*.ts` in `packages/jelly-stage/src`. Globus mit Umlaufringen, das Logo als
+  zwei Tafeln (`JELLY`, `NEWS`) und Funkeln aus `newsTitle.glb`, erzeugt von `apps/client/blender/build_news_title.py`
+  ohne `.blend` (`blender --background --factory-startup --python blender/build_news_title.py -- --export --check`,
+  danach Vite neu starten). `newsTitleMotion.ts` rechnet die Pose rein aus Fortschritt und Länge des Vorspanns (Flug,
+  Umlauf, Einrasten, Glanz, Schub beim Abgang), `newsTitleLayout.ts` Maße des Modells und das Einpassen für jedes
+  Seitenverhältnis, `newsTitleOpener.ts` entscheidet je Vorspann einmal 3D, flaches Logo oder Warten,
+  `newsTitleScene.ts` und die Shader `newsTitle*.glsl` zeichnen ihn im Look der Cosmetics mit eigener Kamera. Die
+  Bänder aus `newsBarBumper.ts` bleiben das Wischen: Der Titel steht auf dem Band des Logos und wird nach allem
+  anderen gemalt (`paintNewsTitle` in `view.ts`), im Canvas des Renderers, nachdem der Raum herauskopiert ist. Bis das
+  Modell da ist, steht das flache Logo, ein Vorspann wechselt nie mittendrin. Ansehen:
+  `/scripts/news-check.html?slow=4`, mit `notitle` das flache Logo.
+- Testbild der Bühnenleinwände: Zwischen den Sendungen zeigen beide Leinwände `art/backdrops/testcard.webp` statt des
+  Equalizers. `pnpm pictures` schreibt dazu `src/newsTestCardData.ts` (vom Formatieren ausgenommen, der Test prüft beide
+  Datenmodule). `src/newsTestCard.ts` dekodiert das Bild beim ersten Bedarf, bis dahin läuft der Equalizer.
+  `showTestCard` in `src/newsScreens.ts` und `shaders/screen.frag.glsl` blenden die Sendung darüber und lassen einen
+  leisen Streifen laufen, mit weniger Bewegung nicht.
+- Jelly-News auf der Karte: Knopf `#news-watch` oben in der Mitte („Sendung ansehen“, Taste N, `src/map/newsWatch.ts`),
+  fest in den Farben der Bauchbinde statt Glas. Beginnt das Zusehen, schließen Fenster am Jelly, Gesten-Wahl und
+  Suche. Ein Klick ins Bild, Escape und jede Hand an der Kamera führen zurück zur Karte. Die Vorschau spielt die
+  Sendung mit `src/map/previewNews.ts` und `previewNewsWalks.ts` (Plätze vor der Bühne, Wege über die Gänge).
+- Jelly-News im Pet: `src/useNews.ts`, `src/pet/news.ts`. `gathering.changed` der Art `news` geht an jedes Pet, das
+  erste Gathering danach einmal mit, damit ein vorzeitiges Ende ankommt (`NewsOnAir` in `src-tauri/src/events.rs`).
+  `newsCue` entscheidet Rolle und Satz: Vorleser und Genannte (XP vor Turm vor Erfolg) hüpfen, alle anderen bekommen
+  einen Hinweis auf die Karte. Zum Beginn spielt einmal je Sendung der eigene Jingle `src/sounds/news/intro.mp3` als
+  Geräusch `news` der Oberfläche, das Jelly schweigt dazu. Nach 12,5 Sekunden setzt unter seinem Ausklang leise Musik
+  ein (`src/sounds/news/bed.mp3`, Geräusch `newsBed`): Mittelteil des Stücks in Schleife mit Überblendung (`NEWS_BED`,
+  `bedSegments` in `src/pet/newsBed.ts`), gespielt in Abschnitten von `src/uiBed.ts` über `src/newsBedSound.ts`, gut
+  18 dB unter dem Vorleser, blendet mit der Sendung aus. Der Vorleser spricht zu jedem Beitrag ab dem Schnitt einen
+  Satz, mit denselben Beiträgen und Zeiten wie die Bühne (`planShow` aus `@jelly/stage/news`, Beginn `created_at` des
+  Ereignisses): Plan in `src/pet/newsSchedule.ts` (`nextAnchorStep`, `listAnchorPhrases`), Satz und Stimme in
+  `src/pet/newsAnchor.ts` (zügiges Tempo, Tonfall je Beitrag, fremde Vorleser vier bis sieben Halbtöne tiefer, das
+  eigene Jelly mit eigener Stimme und Mund), Wecker in `src/useNewsVoice.ts`, gespielt in `src/useJellyVoice.ts`. Die
+  Begrüßung sitzt in der Eröffnung des Jingles, nur um seinen Schlag schweigt er (`JINGLE_ACCENT_MS`), eigene Sätze
+  gehen vor (`pickAnchor`). Wer Jingle, Vorleser und Musik hört, steht in `JINGLE_ROLES`, `ANCHOR_ROLES` und
+  `BED_ROLES`. Lange Töne laufen nie doppelt und verstummen mit dem Schalter (`LONG_SOUNDS` in `src/uiSound.ts`). In
+  der Browser-Vorschau `/#news`, `/#news-tower`, `/#news-achievement`, `/#news-presenter` und `/#news-watching`,
+  hörbar nach dem ersten Klick. Hörprobe und WAV einer ganzen Sendung samt einzelner Spuren:
+  `/scripts/news-voice-check.html` (Parameter im Kopf von `news-voice-check.mjs`, gerendert in
+  `src/newsVoiceRender.ts`).
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
   `page.ts` (Stand der Seite), `commands.ts` (Aktionen mit Bestätigung und Kameraflug), `dock.ts` (Leiste
   unten), `zoom.ts` (Mausrad, Ziehen, Tasten), `notice.ts` (Statuszeile),
@@ -268,6 +326,20 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `'self'`, `vite.config.ts` legt `.woff2` deshalb nie inline.
 - **Neuer Knopf mit Glas auf der Karte:** Das Glas zählt jedes `data-liquid`-Element der Reihe nach, bis
   `LAYOUT.maxShapes` in `src/map/glass.ts`. Was darüber liegt, bleibt ohne Glas.
+- **Jelly-News ändern:** Kein lokaler Timer und kein Zustand, der davon abhängt, wann ein Bildschirm geladen hat:
+  Beitrag, Text, Licht und Kamera folgen aus Gathering und Serverzeit. Die Zahl der Beiträge hängt nur am Gathering,
+  nie am laufenden Stand, sonst zählen zwei Bildschirme verschieden. Was aus dem Stand kommt (Schilder, Folgen, Hut),
+  gehört in den einen Platz „Vermischtes“. Eine neue Rubrik braucht eine Zeile in `newsLines.ts`, einen Schlüssel in
+  `NEWS_PICTURES`, ein Emoji in `art/news` (384×384, durchsichtiger Grund, ohne Text) und `pnpm pictures`. Rechnende Module
+  bleiben ohne three und Shader, damit `node --test` sie prüft. Ansehen auf der Prüfseite, auf `pnpm demo` (Start im
+  Admin unter „Essens-Event und Siegerehrung“) und auf der Karte, je auch mit weniger Bewegung.
+- **News-Kamera ändern** (`packages/jelly-stage/src/newsCamera*.ts`, `newsShots*.ts`): Die Pose ist eine reine Funktion
+  von Server-Stand und Server-Zeit, ohne Zustand und ohne Glätten über die Zeit, sonst zeigt ein später geladener
+  Bildschirm ein anderes Bild. Requisiten verdecken für die Kamera nur mit ihrer Höhe aus der Tabelle in
+  `newsCameraProps.ts`: Ein neues Requisit, das ein Gesicht verdecken kann, braucht dort einen Eintrag, sonst filmt
+  sie hindurch. Das Studio filmt den Vorleser erst, wenn sein Weg des Servers zu Ende ist, und zählt die anderen dort,
+  wo ihre Wege enden (`newsShotsStudio.ts`, `frameStudio`). Was er in den Händen hält, blendet `freeHands` (`worn.ts`)
+  aus, solange `findPresenter` (`moves.ts`) ihn als Vorleser nennt.
 - **Bühne ändern** heißt `packages/jelly-stage` ändern und Server-Seite und Karte der App ansehen.
   Das Paket spricht nicht mit dem Netz: Jeder Nutzer bringt seine `StageSource` mit, die App holt
   alles über Rust. Was nur die Karte braucht (Markierungen, Treffer), bleibt auf dem Beamer aus.

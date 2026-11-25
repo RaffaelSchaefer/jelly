@@ -8,6 +8,13 @@ passen. Ohne Abschnitt für die Version bricht das Release ab.
 
 ## 0.6.0
 
+- Neu: Jelly-News auf Bühne und Karte
+- Neu: „Sendung ansehen“ auf der Karte
+- Neu: Pet hüpft, wenn es in den News ist
+- Neu: Jelly-News mit eigenem Jingle
+- Neu: Vorleser spricht die Jelly-News
+- Neu: Leise Musik unter den Jelly-News
+- Neu: 3D-Vorspann mit Globus und Logo
 - Neu: Zauberhut klauen und tragen
 - Neu: Schild, wer den Hut gerade hat
 
