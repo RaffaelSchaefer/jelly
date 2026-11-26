@@ -81,9 +81,11 @@ jobs:
           if [ "$VERSION" = "$HIGHEST" ]; then
             echo "Version $VERSION is the highest, latest moves to it."
             echo "IMAGE_TAGS=-t $IMAGE:$VERSION -t $IMAGE:latest" >> "$GITHUB_ENV"
+            echo "MOVES_LATEST=true" >> "$GITHUB_ENV"
           else
             echo "Version $VERSION is below $HIGHEST, latest stays."
             echo "IMAGE_TAGS=-t $IMAGE:$VERSION" >> "$GITHUB_ENV"
+            echo "MOVES_LATEST=false" >> "$GITHUB_ENV"
           fi
 
       - name: Build and push
@@ -96,3 +98,26 @@ jobs:
             $IMAGE_TAGS \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --label "org.opencontainers.image.version=$VERSION" .
+
+      # The stack runs :latest, so only an image that moved latest is deployed. The Komodo webhook
+      # checks a GitHub-style signature and the branch in the body.
+      - name: Redeploy the server
+        if: env.MOVES_LATEST == 'true'
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+        run: |
+          set -eu
+          if [ -z "$DEPLOY_WEBHOOK_URL" ]; then
+            echo "::warning::DEPLOY_WEBHOOK_URL is not set, the server has to be redeployed by hand."
+            exit 0
+          fi
+          BODY='{"ref":"refs/heads/main"}'
+          SIGNATURE=""
+          if [ -n "$DEPLOY_WEBHOOK_SECRET" ]; then
+            SIGNATURE="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$DEPLOY_WEBHOOK_SECRET" -r | cut -d' ' -f1)"
+          fi
+          curl -fsS --max-time 30 -X POST "$DEPLOY_WEBHOOK_URL" \
+            -H "Content-Type: application/json" -H "X-GitHub-Event: push" \
+            -H "X-Hub-Signature-256: $SIGNATURE" -d "$BODY" -o /dev/null
+          echo "Redeploy of the server requested."
