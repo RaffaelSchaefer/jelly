@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { previewSchedule } from "./previewSchedule";
 import {
   countdown,
   dayName,
@@ -15,20 +16,37 @@ import {
 const at = (day: number, hours: number, minutes = 0) =>
   new Date(2026, 10, day, hours, minutes).getTime();
 
-/** Der Plan einer LAN, die Donnerstag um 10 Uhr beginnt. */
-const days = scheduleDays(at(12, 10));
+/** Der Plan einer LAN, die Donnerstag um 10 Uhr beginnt, wie ihn der Server liefert. */
+const days = scheduleDays(previewSchedule(at(12, 10)));
 
 describe("Zeitplan", () => {
-  it("beginnt am ersten Donnerstag ab dem Start der LAN", () => {
-    expect(scheduleDays(at(11, 18))[0].date).toBe(at(12, 0));
+  it("ordnet die Punkte des Servers nach Tagen", () => {
+    expect(previewSchedule(at(11, 18))[0].starts_at).toBe(at(12, 10));
     expect(days.map((day) => day.date)).toEqual([at(12, 0), at(13, 0), at(14, 0), at(15, 0)]);
     expect(days[0].events[0].at).toBe(at(12, 10));
+    expect(scheduleDays([])).toEqual([]);
   });
 
   it("lässt Mitternacht unter ihrem Tag stehen", () => {
     const amongUs = days[1].events.at(-1)!;
     expect(amongUs.at).toBe(at(14, 0));
     expect(amongUs.day).toBe(at(13, 0));
+  });
+
+  it("sortiert und nimmt das Ende des Servers", () => {
+    const item = { title: "Yoga", detail: null, kind: "yoga" };
+    const [day] = scheduleDays([
+      { ...item, starts_at: at(13, 15), ends_at: null },
+      { ...item, starts_at: at(13, 13), ends_at: at(13, 14) },
+    ]);
+    expect(day.events.map((event) => event.end)).toEqual([at(13, 14), at(13, 17)]);
+  });
+
+  it("erinnert auch an eine Art, die es noch nicht kennt", () => {
+    const [day] = scheduleDays([
+      { starts_at: at(13, 15), ends_at: null, title: "Quiz", detail: null, kind: "quiz" },
+    ]);
+    expect(reminderLine(day.events[0])).toBe("Gleich geht’s los: Quiz.");
   });
 
   it("findet den letzten und den nächsten Programmpunkt", () => {

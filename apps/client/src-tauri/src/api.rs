@@ -281,6 +281,15 @@ impl Api {
         Self::send(request.timeout(STAGE_TIMEOUT)).await
     }
 
+    /// `GET /v1/lans/current/schedule`: das Programm der laufenden, sonst der nächsten LAN.
+    ///
+    /// # Fehler
+    ///
+    /// [`Error::Network`] oder [`Error::Server`].
+    pub async fn schedule(&self) -> Result<Schedule> {
+        self.get("/v1/lans/current/schedule").await
+    }
+
     /// `POST /v1/trips/follow`: das Jelly läuft einem anderen nach und liefert den neuen Stand.
     ///
     /// # Fehler

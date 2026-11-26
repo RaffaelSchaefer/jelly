@@ -20,6 +20,10 @@ fn only_own_progress_passes() {
     assert!(is_own_event(&event("xp.gained", Some(7), json!({})), 7));
     assert!(!is_own_event(&event("xp.gained", Some(8), json!({})), 7));
     assert!(!is_own_event(&event("emote", Some(7), json!({})), 7));
+    // Der Zeitplan gilt allen, Karte und Shop bleiben dabei offen.
+    let schedule = event("schedule.changed", None, json!({}));
+    assert!(is_own_event(&schedule, 7));
+    assert!(!closes_popouts(&schedule, 7));
     assert!(!is_own_event(&event("sign.changed", Some(7), json!({})), 7));
     let walked_away = json!({ "target_id": null });
     assert!(is_own_event(

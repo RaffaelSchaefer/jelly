@@ -34,7 +34,7 @@ pub struct StageArea {
     pub name: Option<String>,
 }
 
-/// Ein Punkt des Programms, wie ihn die Jelly-News als nächsten nennen.
+/// Ein Punkt des Programms, im Zeitplan und als nächster in den Jelly-News.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScheduleItem {
     /// Beginn in Unix-Millisekunden.
@@ -49,6 +49,14 @@ pub struct ScheduleItem {
     pub detail: Option<String>,
     /// Art wie `orga`, `food` oder `tournament`. Neue Werte zeigt die Bühne neutral.
     pub kind: String,
+}
+
+/// Das Programm einer LAN, nach Beginn sortiert. Ohne LAN leer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Schedule {
+    /// Die Punkte des Programms.
+    #[serde(default)]
+    pub items: Vec<ScheduleItem>,
 }
 
 /// Das Jelly mit den meisten XP der Stunde.

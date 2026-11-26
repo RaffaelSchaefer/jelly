@@ -20,20 +20,23 @@ import {
   weekday,
   type ScheduleDay,
   type ScheduleEvent,
-  type ScheduleKind,
   type Spotlight,
 } from "../pet";
 import { Icon, type IconName } from "../ui";
 import "../schedule.css";
 
 /** Symbol je Art. Die Farbe steht in `schedule.css`. */
-const KIND_ICONS: Record<ScheduleKind, IconName> = {
+const KIND_ICONS: Record<string, IconName> = {
   orga: "flag",
   food: "food",
   yoga: "lotus",
   tournament: "trophy",
   together: "gamepad",
+  news: "bell",
 };
+
+/** Das Symbol einer Art. Eine Art, die ein neuerer Server ergänzt, bekommt den Kalender. */
+const kindIcon = (kind: string) => KIND_ICONS[kind] ?? "event";
 
 /** Wie oft Ring, Countdown und Jetzt-Linie weiterrücken, in Millisekunden. */
 const TICK_MS = 15_000;
@@ -70,7 +73,7 @@ function Node({ event, moment }: { event: ScheduleEvent; moment: Moment }) {
       style={ring as CSSProperties | undefined}
       aria-hidden="true"
     >
-      <Icon name={KIND_ICONS[event.kind]} />
+      <Icon name={kindIcon(event.kind)} />
     </span>
   );
 }
@@ -166,7 +169,7 @@ function Spot({ spot }: { spot: Spotlight }) {
       aria-label={SPOT_LABELS[state]}
     >
       <span className="schedule-icon" aria-hidden="true">
-        <Icon name={KIND_ICONS[event.kind]} />
+        <Icon name={kindIcon(event.kind)} />
       </span>
       <div>
         <strong>{event.title}</strong>

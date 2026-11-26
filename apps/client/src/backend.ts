@@ -10,7 +10,7 @@
  * @module
  */
 
-import type { StageEvent, StageMove, StageTrip } from "@jelly/stage";
+import type { StageEvent, StageMove, StageScheduleItem, StageTrip } from "@jelly/stage";
 
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { LogicalSize } from "@tauri-apps/api/dpi";
@@ -104,6 +104,9 @@ export const leaveStack = () => invoke<Game>("leave_stack");
 
 /** Liest, wer gerade auf der Bühne steht (`get_stage`). */
 export const getStage = () => invoke<Stage>("get_stage");
+
+/** Liest das Programm der laufenden, sonst der nächsten LAN (`get_schedule`). Geht ohne Konto. */
+export const getSchedule = () => invoke<{ items: StageScheduleItem[] }>("get_schedule");
 
 /** Was die Karte bei jedem Lesen vom Server bekommt (Rust: `MapState`). */
 export interface MapState {
