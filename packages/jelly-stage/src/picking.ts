@@ -33,8 +33,12 @@ function measureToSegment(point: ScreenPoint, start: ScreenPoint, end: ScreenPoi
   return Math.hypot(point.x - (start.x + share * alongX), point.y - (start.y + share * alongY));
 }
 
-/** Reports whether a point lies on a jelly. Perspective and lens tilt it, so its axis can lean. */
-function isOnJelly(anchor: LabelAnchor, point: ScreenPoint): boolean {
+/**
+ * Returns how far a point lies outside a jelly in pixels, 0 or less on it. Perspective and lens
+ * tilt it, so its axis can lean. Below a perched jelly the one below is in front, so there it is
+ * never near.
+ */
+function measureGap(anchor: LabelAnchor, point: ScreenPoint): number {
   const feet = { x: anchor.x, y: anchor.y };
   const top = {
     x: anchor.x + (anchor.headX - anchor.x) * AXIS_SHARE,
@@ -42,24 +46,37 @@ function isOnJelly(anchor: LabelAnchor, point: ScreenPoint): boolean {
   };
   const radius = Math.max(MIN_RADIUS_PIXELS, anchor.height * BODY_RADIUS_SHARE);
   const isPerched = (anchor.tier ?? 0) > 0;
-  if (isPerched && point.y > anchor.y + anchor.height * PERCHED_BOTTOM_SHARE) return false;
-  return measureToSegment(point, feet, top) <= radius;
+  if (isPerched && point.y > anchor.y + anchor.height * PERCHED_BOTTOM_SHARE) return Infinity;
+  return measureToSegment(point, feet, top) - radius;
 }
 
 /**
  * Returns the player of the nearest jelly at a point, or `null`. `anchors` are sorted from back to
- * front. The own jelly never counts, because nobody can stand next to themselves.
+ * front. The own jelly never counts, because nobody can stand next to themselves. With `reach`, as
+ * for a finger, a point up to that many pixels beside a jelly still hits the closest one, but only
+ * when no jelly lies right under it, the own one included.
  */
 export function pickJelly(
   anchors: LabelAnchor[],
   point: ScreenPoint,
   ownId: number | null,
+  reach = 0,
 ): number | null {
+  let nearest: number | null = null;
+  let nearestGap = reach;
+  let isOnOwn = false;
   for (let index = anchors.length - 1; index >= 0; index--) {
     const anchor = anchors[index];
-    if (anchor && anchor.player.id !== ownId && isOnJelly(anchor, point)) {
-      return anchor.player.id;
+    if (!anchor) continue;
+    const gap = measureGap(anchor, point);
+    const isOwn = anchor.player.id === ownId;
+    if (gap <= 0 && !isOwn) return anchor.player.id;
+    isOnOwn ||= isOwn && gap <= 0;
+    // Front to back: on a tie the front one wins.
+    if (!isOwn && gap < nearestGap) {
+      nearest = anchor.player.id;
+      nearestGap = gap;
     }
   }
-  return null;
+  return isOnOwn ? null : nearest;
 }

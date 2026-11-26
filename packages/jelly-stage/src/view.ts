@@ -58,10 +58,13 @@ export interface StageView extends CameraControls {
   setMarks: (marks: StageMarks) => void;
   /** Tells where the pointer is. The jelly under it shows its name in any crowd. */
   setPointer: (point: ScreenPoint | null) => void;
-  /** Returns the player of the nearest jelly at a point in CSS pixels. The own jelly never counts. */
-  pickAt: (point: ScreenPoint) => number | null;
-  /** Reports whether the own jelly is the frontmost one at a point in CSS pixels. */
-  isOwnAt: (point: ScreenPoint) => boolean;
+  /**
+   * Returns the player of the nearest jelly at a point in CSS pixels. The own jelly never counts.
+   * `reach` counts a point that many pixels beside a jelly as on it, for a finger. Default 0.
+   */
+  pickAt: (point: ScreenPoint, reach?: number) => number | null;
+  /** Reports whether the own jelly is the frontmost one at a point in CSS pixels, within `reach`. */
+  isOwnAt: (point: ScreenPoint, reach?: number) => boolean;
   /** Returns the stage position on the floor at a point in CSS pixels, null off the stage. */
   floorAt: (point: ScreenPoint) => StagePoint | null;
   setReducedMotion: (reduced: boolean) => void;
@@ -69,8 +72,8 @@ export interface StageView extends CameraControls {
   setFrameLimit: (limit: FrameLimit) => void;
   /** Returns where a jelly is on screen in CSS pixels, null when it is not in the room. */
   locate: (playerId: number) => JellyOnScreen | null;
-  /** Returns the player of the edge hint at a point in CSS pixels, null for none. */
-  hintAt: (point: ScreenPoint) => number | null;
+  /** Returns the player of the edge hint at a point in CSS pixels, null for none, within `reach`. */
+  hintAt: (point: ScreenPoint, reach?: number) => number | null;
   /** Returns the newest walk of a jelly, null when it has none yet. */
   readMove: (playerId: number) => StageMove | null;
   /** Returns the running stacks, kept up to date by `stack.changed` between two reads. */
@@ -273,8 +276,8 @@ export function createStageView(options: StageViewOptions): StageView {
     setPointer: (point) => {
       memory.pointer = point;
     },
-    pickAt: (point) => pickAvailable(memory, point),
-    isOwnAt: (point) => isOwnAt(memory, point),
+    pickAt: (point, reach) => pickAvailable(memory, point, reach),
+    isOwnAt: (point, reach) => isOwnAt(memory, point, reach),
     floorAt: (point) => {
       const view = readPickView(options.canvas, memory.lens);
       return pickFloor(memory.stage.camera, point, view, memory.hall.size);
@@ -284,7 +287,7 @@ export function createStageView(options: StageViewOptions): StageView {
     },
     setFrameLimit,
     locate: (playerId) => locateJelly(memory.anchors, playerId),
-    hintAt: (point) => pickEdgeHint(memory.hints, point),
+    hintAt: (point, reach) => pickEdgeHint(memory.hints, point, reach),
     readMove: (playerId) => readMoves(memory, Date.now()).get(playerId) ?? null,
     readStacks: () => memory.state?.stacks ?? [],
     ...memory.camera.controls,

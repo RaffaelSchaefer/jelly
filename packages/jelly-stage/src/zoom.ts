@@ -313,6 +313,38 @@ export function panBetween(zoom: StageZoom, stage: ZoomStage, move: PanMove): vo
   placeCamera(stage, zoom);
 }
 
+/** One step of a pinch: the zoom changes by `factor`, the floor under `from` moves under `to`. */
+export interface PinchMove {
+  from: ScreenPoint;
+  to: ScreenPoint;
+  factor: number;
+}
+
+/**
+ * Zooms at once instead of easing, and slides the view so the floor under `from` lies under `to`:
+ * the floor stays under two fingers. Ends following the own jelly. No drag stays behind, so a drag
+ * after the pinch starts from where the view is and does not jump.
+ */
+export function pinchAt(zoom: StageZoom, stage: ZoomStage, move: PinchMove): void {
+  const grabbed = stage.findFloor(move.from);
+  const factor = MathUtils.clamp(zoom.factor * move.factor, ZOOM_RANGE.lowest, ZOOM_RANGE.highest);
+  Object.assign(zoom, { factor, goal: factor, followsOwn: false, anchor: null, drag: null });
+  Object.assign(zoom, { glide: NO_SWING, loose: false });
+  placeCamera(stage, zoom);
+  const target = stage.findFloor(move.to);
+  const bounds = measureBounds(stage, factor);
+  if (grabbed && target) {
+    const focus = {
+      x: zoom.focus.x + grabbed.x - target.x,
+      z: zoom.focus.z + grabbed.z - target.z,
+    };
+    zoom.focus = limitFocus(focus, factor, bounds);
+  } else {
+    zoom.focus = limitFocus(zoom.focus, factor, bounds);
+  }
+  placeCamera(stage, zoom);
+}
+
 /** Ends a drag. The view keeps the swing it had, unless it rested before the release. */
 export function releasePan(zoom: StageZoom, room: RoomSize, at: number, reducedMotion: boolean) {
   const { drag } = zoom;

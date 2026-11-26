@@ -9,9 +9,11 @@ import {
   limitFocus,
   measureBounds,
   panBetween,
+  pinchAt,
   releasePan,
   stepZoom,
   zoomAt,
+  ZOOM_RANGE,
   type StageZoom,
   type ZoomStage,
 } from "./zoom.ts";
@@ -136,4 +138,54 @@ test("a fast release keeps swinging, a resting one stops", () => {
   panBetween(zoom, stage, { from: { x: 400, y: 300 }, to: { x: 390, y: 300 }, at: 1000 });
   releasePan(zoom, ROOM, 1500, false);
   assert.deepEqual(zoom.glide, { x: 0, z: 0 });
+});
+
+test("a pinch zooms at once and keeps the floor under the fingers, off the middle too", () => {
+  const stage = createStage();
+  const zoom = createZoom();
+  stepZoom(zoom, stage, JUMP);
+  const from = { x: 560, y: 380 };
+  const grabbed = stage.findFloor(from)!;
+  pinchAt(zoom, stage, { from, to: from, factor: 2 });
+  assert.equal(zoom.factor, 2);
+  assert.equal(zoom.goal, 2);
+  assert.equal(zoom.followsOwn, false);
+  const still = stage.findFloor(from)!;
+  isNear(still.x, grabbed.x, 1e-3);
+  isNear(still.z, grabbed.z, 1e-3);
+  const to = { x: 520, y: 360 };
+  pinchAt(zoom, stage, { from, to, factor: 1.25 });
+  const moved = stage.findFloor(to)!;
+  isNear(zoom.factor, 2.5);
+  isNear(moved.x, grabbed.x, 1e-3);
+  isNear(moved.z, grabbed.z, 1e-3);
+  stepZoom(zoom, stage, FRAME);
+  const rested = stage.findFloor(to)!;
+  isNear(rested.x, grabbed.x, 1e-3);
+  isNear(rested.z, grabbed.z, 1e-3);
+});
+
+test("a drag after a pinch starts where the pinch left the view", () => {
+  const stage = createStage();
+  const zoom = createZoom();
+  zoomAt(zoom, stage, 2);
+  stepZoom(zoom, stage, JUMP);
+  panBetween(zoom, stage, { from: { x: 400, y: 300 }, to: { x: 380, y: 300 }, at: 0 });
+  pinchAt(zoom, stage, { from: { x: 420, y: 320 }, to: { x: 400, y: 330 }, factor: 1.5 });
+  assert.equal(zoom.drag, null);
+  const focus = { ...zoom.focus };
+  // The finger that stays goes on from where it is: no move, no jump.
+  panBetween(zoom, stage, { from: { x: 450, y: 330 }, to: { x: 450, y: 330 }, at: 32 });
+  isNear(zoom.focus.x, focus.x, 1e-6);
+  isNear(zoom.focus.z, focus.z, 1e-6);
+});
+
+test("a pinch stays in the range of the zoom", () => {
+  const stage = createStage();
+  const zoom = createZoom();
+  stepZoom(zoom, stage, JUMP);
+  pinchAt(zoom, stage, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, factor: 0.5 });
+  assert.equal(zoom.factor, ZOOM_RANGE.lowest);
+  pinchAt(zoom, stage, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, factor: 100 });
+  assert.equal(zoom.factor, ZOOM_RANGE.highest);
 });

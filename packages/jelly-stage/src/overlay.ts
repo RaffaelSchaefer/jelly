@@ -96,19 +96,22 @@ export function measureAnchors(
   return picture ? frameAnchors(anchors, picture) : anchors;
 }
 
-/** Returns the player of the jelly at a point that can be picked right now. */
-export function pickAvailable(scene: PickScene, point: ScreenPoint): number | null {
+/**
+ * Returns the player of the jelly at a point that can be picked right now. `reach` counts a point
+ * that many pixels beside a jelly as on it, as for a finger.
+ */
+export function pickAvailable(scene: PickScene, point: ScreenPoint, reach = 0): number | null {
   const { ownId, highlight } = scene.marks;
   const anchors = highlight
     ? scene.anchors.filter((anchor) => scene.highlighted.has(anchor.player.id))
     : scene.anchors;
-  return pickJelly(anchors, point, ownId);
+  return pickJelly(anchors, point, ownId, reach);
 }
 
-/** Reports whether the own jelly is the frontmost one at a point. */
-export function isOwnAt(scene: PickScene, point: ScreenPoint): boolean {
+/** Reports whether the own jelly is the frontmost one at a point, within `reach` pixels beside it. */
+export function isOwnAt(scene: PickScene, point: ScreenPoint, reach = 0): boolean {
   const { ownId } = scene.marks;
-  return ownId !== null && pickJelly(scene.anchors, point, null) === ownId;
+  return ownId !== null && pickJelly(scene.anchors, point, null, reach) === ownId;
 }
 
 /** Finds what lies under the pointer. While jellies light up for a choice, the own one does not count. */
