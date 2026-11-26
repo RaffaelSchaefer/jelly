@@ -1,6 +1,6 @@
 [package]
 name = "jelly"
-version = "0.7.0"
+version = "0.8.0"
 description = "Ein kleiner Desktop-Begleiter für die LAN am Umwelt-Campus Birkenfeld"
 edition = "2021"
 rust-version = "1.85"

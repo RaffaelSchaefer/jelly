@@ -6,6 +6,13 @@ Zeilen. Je Version eine Überschrift `## X.Y.Z` wie in `tauri.conf.json`, darunt
 `Neu:`, `Besser:` oder `Weg:`, je höchstens etwa 40 Zeichen, damit sie in eine Zeile der Karte
 passen. Ohne Abschnitt für die Version bricht das Release ab.
 
+## 0.8.0
+
+- Neu: Polonaise mit Lichterkette und Tanz
+- Neu: „Polonaise mitmachen“ auf der Karte
+- Neu: Dein Jelly tanzt die Polonaise mit
+- Neu: Leise Musik zur Polonaise
+
 ## 0.7.0
 
 - Neu: Knöpfe blenden von selbst aus
