@@ -6,6 +6,15 @@ Zeilen. Je Version eine Überschrift `## X.Y.Z` wie in `tauri.conf.json`, darunt
 `Neu:`, `Besser:` oder `Weg:`, je höchstens etwa 40 Zeichen, damit sie in eine Zeile der Karte
 passen. Ohne Abschnitt für die Version bricht das Release ab.
 
+## 0.7.0
+
+- Neu: Knöpfe blenden von selbst aus
+- Neu: Jelly bis 30 % klein
+- Neu: Finger und Stift auf Windows
+- Neu: Karte mit zwei Fingern zoomen
+- Neu: „Immer im Vordergrund“ abschaltbar
+- Besser: Levelbalken passt zur XP-Kurve
+
 ## 0.6.3
 
 - Besser: Zeitplan ohne Jelly-News
