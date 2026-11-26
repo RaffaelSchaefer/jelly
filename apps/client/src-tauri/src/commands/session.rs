@@ -60,8 +60,7 @@ impl Session {
     ///
     /// Fehler beim Laden des lokalen Stands, eine veraltete App oder ein Netzwerk-/Serverfehler.
     async fn open(app: &AppHandle) -> Result<Self> {
-        let directory = app.path().app_data_dir().map_err(Error::DataDir)?;
-        let store = Store::open(directory.join("jelly.json"))?;
+        let store = open_store(app)?;
         let api = Api::new(store.local.secret.clone());
         let version = api.version().await?;
         if client_outdated(CLIENT_VERSION, &version.min_client_version) {
@@ -184,6 +183,16 @@ impl Session {
             secret_rejected: self.secret_rejected,
         }
     }
+}
+
+/// Öffnet `jelly.json` im Datenverzeichnis der App, ohne Netz.
+///
+/// # Fehler
+///
+/// [`Error::DataDir`] ohne Datenverzeichnis, sonst dieselben Fehler wie [`Store::open`].
+pub(super) fn open_store(app: &AppHandle) -> Result<Store> {
+    let directory = app.path().app_data_dir().map_err(Error::DataDir)?;
+    Store::open(directory.join("jelly.json"))
 }
 
 /// Liefert die geöffnete Sitzung und öffnet sie beim ersten Mal.

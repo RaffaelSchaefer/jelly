@@ -115,8 +115,10 @@
   color: var(--quill-soft);
 }
 
-.shop .brief-close:hover {
-  background: #a0763a26;
+@media (hover: hover) {
+  .shop .brief-close:hover {
+    background: #a0763a26;
+  }
 }
 
 .shop .brief-close:focus-visible {

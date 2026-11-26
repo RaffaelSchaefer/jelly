@@ -9,10 +9,13 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App";
 import { desktop } from "./backend";
+import { guardPointers } from "./pointerGuards";
 import "./styles.css";
 
 // styles.css blendet je nach Umgebung Vorschau-Hintergrund und -Rahmen ein oder aus.
 document.documentElement.dataset.surface = desktop ? "desktop" : "preview";
+// Eine Fehlermeldung möchte man kopieren können.
+guardPointers(document, ".error");
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

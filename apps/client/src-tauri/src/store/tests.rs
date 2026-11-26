@@ -20,6 +20,8 @@ fn secret_and_settings_survive_reopening() {
             volume: 40,
             optimized_rendering: true,
             frame_limit: Some(60),
+            idle_view: crate::pet::IdleView::Bubble,
+            always_on_top: false,
         })
         .unwrap();
     let restored = Store::open(path).unwrap();
@@ -163,6 +165,18 @@ fn a_save_file_without_sound_loads_with_sound_on_at_full_volume() {
         restored.local.settings.frame_limit,
         Some(DEFAULT_FRAME_LIMIT)
     );
+}
+
+#[test]
+fn a_save_file_without_window_settings_shows_everything_and_stays_on_top() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("jelly.json");
+    let older = r#"{"schemaVersion":2,"token":"geheim","settings":{"size":110}}"#;
+    fs::write(&path, older).unwrap();
+    let restored = Store::open(path).unwrap();
+    assert_eq!(restored.local.secret.as_deref(), Some("geheim"));
+    assert_eq!(restored.local.settings.idle_view, crate::pet::IdleView::All);
+    assert!(restored.local.settings.always_on_top);
 }
 
 #[test]

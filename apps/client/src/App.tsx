@@ -22,6 +22,7 @@ import {
   OPTIMIZED_RENDERING,
   PREVIEW_ME,
   stageLayout,
+  stageSize,
   stopToFrameLimit,
   type Me,
   type PetColor,
@@ -33,6 +34,7 @@ import PetStage, { type PanelId } from "./PetStage";
 import { Dock, DockButton, ErrorAlert, Panel } from "./ui";
 import UpdateNotice, { UpdateButton } from "./UpdateNotice";
 import { OS_REDUCED_MOTION, useDocumentTheme } from "./useDocumentTheme";
+import { useIdleView } from "./useIdleView";
 import { usePet, usePokeKeys, useSettingDraft, type PetGame } from "./usePet";
 import { useSchedule } from "./useSchedule";
 import { useUiSounds } from "./useUiSounds";
@@ -64,6 +66,8 @@ export function stageStyle(size: number) {
     "--canvas-top": `${layout.canvas.top}px`,
     "--canvas-width": `${layout.canvas.width}px`,
     "--canvas-height": `${layout.canvas.height}px`,
+    "--canvas-overscan": layout.canvas.overscan,
+    "--glass-top": `${layout.canvas.glassTop}px`,
     "--feet": `${layout.feet}px`,
     "--bubble-top": `${layout.bubbleTop}px`,
     "--tools-offset": `${layout.toolsOffset}px`,
@@ -76,6 +80,11 @@ function useWindowFit(size: number) {
   useEffect(() => {
     if (desktop) void resizeWindow(width, height);
   }, [width, height]);
+}
+
+/** Ob die Bühne das Jelly gerade vorführt: im Studio, beim Einstieg und beim Aufstieg. */
+function showcase(panel: PanelId | null, joining: boolean, game: PetGame) {
+  return joining || game.hatching || panel === "look" || panel === "levelup";
 }
 
 /** Ob erst ein Code nötig ist, bevor das Pet mitspielt. Die Vorschau kommt per Hash dorthin. */
@@ -148,6 +157,8 @@ function PanelContent(props: PanelContentProps) {
         void game.saveSettings({ ...settings, optimizedRendering })
       }
       onSound={(sound) => void game.saveSettings({ ...settings, sound })}
+      onIdleView={(idleView) => void game.saveSettings({ ...settings, idleView })}
+      onAlwaysOnTop={(alwaysOnTop) => void game.saveSettings({ ...settings, alwaysOnTop })}
     />
   );
 }
@@ -346,6 +357,7 @@ export default function App() {
   const joining = needsJoin(game);
   usePokeKeys(game.interact, panel === null && !joining && !game.hatching);
   const { update, card, stagePanel } = useUpdateCard(game, panel, joining);
+  useIdleView(game, panel, joining, card !== null);
 
   useDocumentTheme(me.color, reducedMotion, settings.optimizedRendering);
   useUiSounds(game);
@@ -360,7 +372,7 @@ export default function App() {
       <main
         className="pet-window"
         aria-label="Dein LAN-Begleiter"
-        style={stageStyle(sliders.size)}
+        style={stageStyle(stageSize(sliders.size, showcase(panel, joining, game)))}
         onKeyDown={(event) => {
           if (event.key === "Escape") close();
         }}

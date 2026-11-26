@@ -11,7 +11,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, type RefObject } from "react";
 import { Vector3 } from "three";
 
-import { CANVAS_OVERSCAN, projectToStage, type StudioRegionId } from "../pet";
+import { projectToStage, type StudioRegionId } from "../pet";
+import { useOverscan } from "./useOverscan";
 
 /** Ein Punkt auf dem Jelly, relativ zu seinem Kopf oder zu seiner Wurzel. */
 interface Anchor {
@@ -49,6 +50,7 @@ export default function StudioAnchors({
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
+  const overscan = useOverscan();
   const written = useRef(new Map<string, string>());
 
   // Jede neu gesetzte Variable lässt den Browser die Stile der ganzen Bühne neu berechnen.
@@ -69,8 +71,8 @@ export default function StudioAnchors({
       jelly[of].localToWorld(point).project(camera);
       // In Pixeln auf der Bühne: Die Canvas ragt nach allen Seiten gleich weit darüber hinaus.
       const { x, y } = projectToStage(
-        { x: point.x * CANVAS_OVERSCAN, y: point.y * CANVAS_OVERSCAN },
-        { width: size.width / CANVAS_OVERSCAN, height: size.height / CANVAS_OVERSCAN },
+        { x: point.x * overscan, y: point.y * overscan },
+        { width: size.width / overscan, height: size.height / overscan },
       );
       write(style, `--anchor-${id}-x`, `${x.toFixed(1)}px`);
       write(style, `--anchor-${id}-y`, `${y.toFixed(1)}px`);

@@ -16,9 +16,11 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 
 import { desktop } from "../backend";
+import { guardPointers } from "../pointerGuards";
 import Shop from "./Shop";
 
 document.documentElement.dataset.surface = desktop ? "desktop" : "preview";
+guardPointers(document, ".error");
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -1,7 +1,9 @@
 /* The window is transparent only outside its rounded corners. Inside, the room fades into its floor colour. */
 :root { --radius: 26px; --floor: #eef4fa; --ink: #171d25; }
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
-button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* Ein langer Druck auf einen Knopf markiert keinen Text. `manipulation` lässt Tippen sofort klicken. */
+button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+#dock, #partner-bar, #news-bar { -webkit-user-select: none; user-select: none; }
 button:focus-visible { outline: 2px solid #2059ed; outline-offset: 3px; }
 
 #frame { position: relative; width: 100vw; height: 100vh; }
@@ -10,6 +12,8 @@ button:focus-visible { outline: 2px solid #2059ed; outline-offset: 3px; }
 /* Das Bild läuft zum Rand hin in die Fläche dahinter aus. Es blendet ein, sobald der erste Stand da ist, während die Kamera vom eigenen Jelly wegfliegt. */
 #map { position: relative; z-index: 1; display: block; width: 100%; height: 100%; border-radius: var(--radius); -webkit-mask-image: radial-gradient(ellipse 72% 72% at center, #000 80%, transparent 100%); mask-image: radial-gradient(ellipse 72% 72% at center, #000 80%, transparent 100%); opacity: 0; transition: opacity 450ms ease-out; }
 #frame[data-ready] #map { opacity: 1; }
+/* Ziehen und Spreizen mit Fingern behandelt die Karte selbst (`gesture.ts`). Sonst nähme der Browser den Zug und bräche ihn mit `pointercancel` ab. */
+#map, #drag { touch-action: none; }
 /* Beim Ziehen gilt die greifende Hand, auch über einem Jelly. */
 #frame[data-dragging] #map { cursor: grabbing !important; }
 
@@ -18,12 +22,13 @@ button:focus-visible { outline: 2px solid #2059ed; outline-offset: 3px; }
 #tools-right { display: flex; gap: 1px; }
 .tool { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 5px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); transition: background 120ms, box-shadow 120ms; }
 .tool svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.tool:hover { background: #ffffffcc; box-shadow: inset 0 0 0 1px #ffffff, 0 3px 10px #0002; }
+/* Hover nur, wo ein Zeiger schwebt: Nach einem Tipp bliebe der Look sonst stehen. */
+@media (hover: hover) { .tool:hover { background: #ffffffcc; box-shadow: inset 0 0 0 1px #ffffff, 0 3px 10px #0002; } }
 #drag { cursor: grab; }
 
 /* Knöpfe und Hinweise der Karte. Im optimierten Modus und ohne WebGL fehlt `data-glass`, dann bleiben sie einfarbig. */
 .glass-pill { margin: 0; padding: 0.55rem 1rem; border: 0; border-radius: 11px; background: var(--ink); color: #f4f8fa; font: 600 0.8125rem system-ui, sans-serif; box-shadow: 0 3px 10px #0003; }
-button.glass-pill:hover { background: #262e38; }
+@media (hover: hover) { button.glass-pill:hover { background: #262e38; } }
 .icon-pill { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; }
 .icon-pill svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -33,7 +38,7 @@ html:not([data-glass]) #glass { display: none; }
 html[data-glass] .glass-pill { background: transparent; color: #ffffff; text-shadow: 0 1px 2px #0b1a2bb3, 0 0 6px #0b1a2b66; box-shadow: none; transition: scale 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4); }
 html[data-glass] .icon-pill svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 /* Der Tropfen liest die Lage des Knopfs ab und wächst mit ihm. */
-html[data-glass] button.glass-pill:hover { background: transparent; scale: 1.06; }
+@media (hover: hover) { html[data-glass] button.glass-pill:hover { background: transparent; scale: 1.06; } }
 html[data-glass] button.glass-pill:active { scale: 0.96; }
 
 /* Die Leiste unten: das eigene Jelly, Suchen und Hervorheben, dann die Kamera. Ein Tropfen für alles. Die Bühne hält die Halle darüber frei (`DOCK_BAND` in `main.ts`). */
@@ -43,7 +48,7 @@ html[data-glass] button.glass-pill:active { scale: 0.96; }
 #own-state[hidden], #own-state[hidden] + .dock-divider { display: none; }
 #dock .tool { flex: none; width: 36px; height: 36px; padding: 7px; border-radius: 10px; color: inherit; }
 #dock .tool svg { width: 22px; height: 22px; }
-#dock .tool:hover { background: #ffffff2e; box-shadow: none; }
+@media (hover: hover) { #dock .tool:hover { background: #ffffff2e; box-shadow: none; } }
 #dock .tool:active { scale: 0.92; }
 html[data-glass] #dock .tool svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 /* Gedrückt: Die Kamera folgt dem eigenen Jelly, oder die Suche ist offen. */
@@ -61,13 +66,16 @@ html[data-glass] #dock .tool svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 /* Tooltips nennen Aktion und Taste. Sie kommen nach kurzem Verweilen: über der Leiste, neben dem Jelly und unter dem Hinweis oben. */
 [data-tip] { position: relative; }
 [data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 12px); left: 50%; z-index: 4; padding: 0.3rem 0.55rem; border-radius: 7px; background: var(--ink); color: #f4f8fa; font: 600 0.75rem system-ui, sans-serif; text-shadow: none; white-space: nowrap; pointer-events: none; opacity: 0; translate: -50% 4px; transition: opacity 120ms, translate 120ms; }
-[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; translate: -50% 0; transition-delay: 350ms; }
+[data-tip]:focus-visible::after { opacity: 1; translate: -50% 0; transition-delay: 350ms; }
+@media (hover: hover) { [data-tip]:hover::after { opacity: 1; translate: -50% 0; transition-delay: 350ms; } }
 /* Eine Meldung über der Leiste geht vor, sonst lägen zwei dunkle Blasen übereinander. */
 #frame:has(#status:not([hidden])) #dock [data-tip]::after { display: none; }
 #jelly-menu [data-tip]::after { top: 50%; bottom: auto; left: calc(100% + 10px); translate: 4px -50%; }
-#jelly-menu [data-tip]:hover::after, #jelly-menu [data-tip]:focus-visible::after { translate: 0 -50%; }
+#jelly-menu [data-tip]:focus-visible::after { translate: 0 -50%; }
+@media (hover: hover) { #jelly-menu [data-tip]:hover::after { translate: 0 -50%; } }
 #partner-bar [data-tip]::after { top: calc(100% + 10px); bottom: auto; translate: -50% -4px; }
-#partner-bar [data-tip]:hover::after, #partner-bar [data-tip]:focus-visible::after { translate: -50% 0; }
+#partner-bar [data-tip]:focus-visible::after { translate: -50% 0; }
+@media (hover: hover) { #partner-bar [data-tip]:hover::after { translate: -50% 0; } }
 
 /* Die Fenster mit Gesten und Aktionen bleiben an ihrem Jelly, `partner.ts` setzt sie in jedem Bild. Dicht genug, damit die Kapseln ineinanderfließen. */
 #partner-menu, #jelly-menu { position: absolute; z-index: 3; display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
@@ -93,7 +101,7 @@ html[data-glass] #own-stack svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 #frame:has(#partner-bar:not([hidden])) #news-bar { top: 64px; }
 #news-watch { display: flex; align-items: center; gap: 0.45rem; height: 32px; padding: 0 0.8rem 0 0.3rem; border: 0; border-radius: 9px; background: #0c2257; color: #ffffff; font: 600 0.8125rem system-ui, sans-serif; white-space: nowrap; box-shadow: 0 0 0 1px #ffffff2e inset, 0 3px 10px #0b18384d; transition: background 120ms, scale 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4); }
 #news-watch[hidden] { display: none; }
-#news-watch:hover { background: #1f5fe0; }
+@media (hover: hover) { #news-watch:hover { background: #1f5fe0; } }
 #news-watch:active { scale: 0.96; }
 #news-watch svg { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .news-map, #news-watch[data-watching] .news-tv { display: none; }
@@ -103,7 +111,8 @@ html[data-glass] #own-stack svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 .news-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: news-blink 1.4s ease-in-out infinite; }
 @keyframes news-blink { 50% { opacity: 0.25; } }
 #news-bar [data-tip]::after { top: calc(100% + 10px); bottom: auto; translate: -50% -4px; }
-#news-bar [data-tip]:hover::after, #news-bar [data-tip]:focus-visible::after { translate: -50% 0; }
+#news-bar [data-tip]:focus-visible::after { translate: -50% 0; }
+@media (hover: hover) { #news-bar [data-tip]:hover::after { translate: -50% 0; } }
 
 /* Die Suche geht über der Leiste auf: das Feld unten an der Leiste, der beste Treffer direkt darüber. */
 #find-panel { position: absolute; bottom: 74px; left: 50%; z-index: 3; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; width: 15rem; padding: 0.85rem 0.75rem 0.75rem; translate: -50% 0; }
@@ -114,10 +123,10 @@ html[data-glass] #own-stack svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 #find-input::placeholder { color: inherit; opacity: 0.85; }
 #find-input:focus { border-bottom-color: #ffffffd9; }
 #find-close { position: absolute; top: 50%; right: 0.1rem; width: 26px; height: 26px; padding: 4px; color: #ffffff; filter: drop-shadow(0 1px 2px #0b1a2bb3); translate: 0 -50%; }
-#find-close:hover { background: #ffffff33; box-shadow: none; }
+@media (hover: hover) { #find-close:hover { background: #ffffff33; box-shadow: none; } }
 #find-list { display: flex; flex-direction: column-reverse; gap: 2px; }
 #find-list button { display: flex; align-items: center; gap: 0.55rem; padding: 0.42rem 0.55rem; border: 0; border-radius: 999px; background: transparent; color: inherit; font: inherit; text-align: left; text-shadow: inherit; transition: background 120ms; }
-#find-list button:hover { background: #ffffff2e; }
+@media (hover: hover) { #find-list button:hover { background: #ffffff2e; } }
 #find-list button:focus-visible { outline: 2px solid #ffffff; outline-offset: -2px; }
 /* Der Ring zeigt, wen Enter wählt, wie bei der gewählten Zeile der Schilder. */
 #find-panel:has(#find-input:not(:placeholder-shown)) #find-list button:first-child { box-shadow: inset 0 0 0 1.5px #ffffffd9; }
@@ -132,6 +141,20 @@ html[data-glass] #own-stack svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 #status[hidden] { display: none; }
 /* Solange die Suche offen ist, wartet die Meldung. */
 #frame:has(#find-panel:not([hidden])) #status { display: none; }
+
+/* Mit Finger oder Stift: Kleine Knöpfe treffen weiter um sich herum, Bild und Layout bleiben. Die Fläche liegt unter den Knöpfen (`z-index: -1`), so gewinnt beim Nachbarn immer der sichtbare Knopf, und das Glas liest weiter nur den Knopf selbst. */
+@media (any-pointer: coarse) {
+  .tool, #partner-menu .glass-pill { position: relative; }
+  .tool::before, #news-watch::before, #partner-menu .glass-pill::before { content: ''; position: absolute; inset: -7px; z-index: -1; }
+  #dock .tool::before { inset: -4px -2px; }
+  #dock #leave::before { inset: -7px; }
+  #news-watch::before { inset: -6px -2px; }
+  #partner-menu .glass-pill::before { inset: -3px 0; }
+  /* Das Feld davor hat rechts Platz für den Knopf, dort darf er über ihm liegen. */
+  #find-close::before { z-index: auto; }
+}
+/* Ganz ohne Maus werden die Treffer der Suche höher, für einen Finger. */
+@media (pointer: coarse) { #find-list button { min-height: 40px; } }
 
 /* Reduzierte Bewegung aus dem System oder aus den Einstellungen der App (`data-reduced-motion`). */
 @media (prefers-reduced-motion: reduce) { html[data-glass] .glass-pill, #map, [data-tip]::after, #news-watch { transition: none; } .news-live::before { animation: none; } }

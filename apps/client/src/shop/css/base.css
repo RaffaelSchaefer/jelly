@@ -212,8 +212,10 @@ html[data-surface="preview"] .shop {
   transition: translate var(--t-hover) var(--ease-out);
 }
 
-.shop .brass-button:hover:enabled {
-  background: linear-gradient(180deg, #fff0c4, #e6c370 45%, #b58b3d);
+@media (hover: hover) {
+  .shop .brass-button:hover:enabled {
+    background: linear-gradient(180deg, #fff0c4, #e6c370 45%, #b58b3d);
+  }
 }
 
 .shop .brass-button:active:enabled {
@@ -229,4 +231,17 @@ html[data-surface="preview"] .shop {
 /* Ruhig: Knöpfe bewegen sich nicht. */
 html[data-reduced-motion] .shop .brass-button {
   transition: none;
+}
+
+/* Mit Finger oder Stift treffen die kleinen Kreuze weiter um sich herum, das Bild bleibt. Sie stehen allein in ihrer Ecke, die Fläche darf über dem Zettel liegen. */
+@media (any-pointer: coarse) {
+  .shop :is(.brief-close, .notice-close) {
+    position: relative;
+  }
+
+  .shop :is(.brief-close, .notice-close)::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
 }

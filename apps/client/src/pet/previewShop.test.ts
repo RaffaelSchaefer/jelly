@@ -177,5 +177,11 @@ describe("previewSettings", () => {
     expect(previewSettings("", settings)).toEqual(settings);
     expect(previewSettings("?fps=schnell", settings)).toEqual(settings);
     expect(previewSettings("?fps=-5", settings)).toEqual(settings);
+    expect(previewSettings("?size=20", settings)).toEqual(settings);
+    expect(previewSettings("?size=gross", settings)).toEqual(settings);
+  });
+
+  it("stellt mit ?size die Größe des Pets ein", () => {
+    expect(previewSettings("?size=30", settings).size).toBe(30);
   });
 });

@@ -10,7 +10,6 @@ import type { Jelly } from "@jelly/scene";
 
 import { Canvas } from "@react-three/fiber";
 import { useEffect, useState, type RefObject } from "react";
-import { MathUtils } from "three";
 
 import {
   CANVAS_OVERSCAN,
@@ -26,26 +25,7 @@ import LiquidGlass from "./LiquidGlass";
 import RenderBoundary from "./RenderBoundary";
 import StudioAnchors from "./StudioAnchors";
 import TouchZones from "./TouchZones";
-
-/** Öffnungswinkel, auf den die Bühnengeometrie in `pet/layout.ts` abgestimmt ist. */
-const STAGE_FOV = 34;
-
-/** Derselbe Bildausschnitt in der größeren Canvas: Das Pet bleibt gleich groß und am selben Ort. */
-const FOV = MathUtils.radToDeg(
-  2 * Math.atan(Math.tan(MathUtils.degToRad(STAGE_FOV / 2)) * CANVAS_OVERSCAN),
-);
-
-/**
- * Die Canvas ragt über den anklickbaren Bereich hinaus, Klicks gehen an ihr vorbei. Fiber würde
- * sonst eine Position und volle Größe setzen.
- */
-const OVERSCAN_STYLE = {
-  position: "absolute",
-  inset: `${((1 - CANVAS_OVERSCAN) / 2) * 100}%`,
-  width: "auto",
-  height: "auto",
-  pointerEvents: "none",
-} as const;
+import { OVERSCAN_STYLE, overscanFov } from "./useOverscan";
 
 /**
  * Meldet, wenn das Gerät nicht hinterherkommt. Zählt die Bildschirmaktualisierungen statt der
@@ -100,7 +80,7 @@ export default function PetScene({
     <RenderBoundary>
       <Canvas
         aria-hidden="true"
-        camera={{ position: [0, 0.1, 5.8], fov: FOV }}
+        camera={{ position: [0, 0.1, 5.8], fov: overscanFov(CANVAS_OVERSCAN) }}
         style={OVERSCAN_STYLE}
         // Pixeldichte deckeln, damit hochauflösende Displays nicht unnötig GPU kosten.
         dpr={rendering.dpr}

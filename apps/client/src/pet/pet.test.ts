@@ -11,7 +11,10 @@ import {
   PREVIEW_ME,
   reportStatus,
   slotLabel,
+  CANVAS_OVERSCAN,
+  SHOWCASE_SIZE,
   stageLayout,
+  stageSize,
   shopItems,
   unlockLabel,
   isColorable,
@@ -195,10 +198,35 @@ describe("stage layout", () => {
     expect(small.feet).toBe(299);
     expect(small.stage).toBe(330);
     expect(small.window.height).toBe(430);
-    expect(small.canvas.height).toBeCloseTo(315 * 0.7);
+    expect(small.canvas.height).toBeCloseTo(315 * 0.3);
     // Die Fensterknöpfe wandern mit der Sprechblase nach unten und halten ihren Abstand.
     expect(small.toolsOffset).toBeCloseTo(small.bubbleTop - 20);
     expect(small.toolsOffset).toBeGreaterThan(0);
+  });
+  it("lets the canvas of a small pet reach the top of the stage, the glass needs the room", () => {
+    for (const size of [30, 40, 50, 60, 70, 80]) {
+      const { canvas, bubbleTop } = stageLayout(size);
+      expect(canvas.glassTop).toBeCloseTo(0);
+      expect(canvas.glassTop).toBeLessThan(bubbleTop);
+      // Ragt nach allen Seiten gleich weit über: die Mitte bleibt die des Kastens.
+      expect(canvas.glassTop + (canvas.height * canvas.overscan) / 2).toBeCloseTo(
+        canvas.top + canvas.height / 2,
+      );
+      // Das Glas der Schild-Säule am linken Fensterrand liegt noch in der Canvas.
+      expect(canvas.width * canvas.overscan).toBeGreaterThan(384);
+    }
+    // Ab 90 % reicht der gewohnte Überstand.
+    expect(stageLayout(90).canvas.overscan).toBe(CANVAS_OVERSCAN);
+    expect(stageLayout(100).canvas).toMatchObject({
+      overscan: CANVAS_OVERSCAN,
+      glassTop: 43 - 78.75,
+    });
+    expect(stageLayout(PET_SIZE.max).canvas.overscan).toBe(CANVAS_OVERSCAN);
+  });
+  it("shows a small pet larger in studio, hatch and level-up", () => {
+    expect(stageSize(30, true)).toBe(SHOWCASE_SIZE);
+    expect(stageSize(30, false)).toBe(30);
+    expect(stageSize(120, true)).toBe(120);
   });
   it("grows a big pet downwards, keeps the bubble above his head and grows the window along", () => {
     const big = stageLayout(PET_SIZE.max);
@@ -209,7 +237,8 @@ describe("stage layout", () => {
     expect(big.window).toEqual({ width: 384, height: 8 + 30 + big.stage + 8 + 40 + 14 });
   });
   it("clamps sizes outside the allowed range", () => {
-    expect(stageLayout(10).scale).toBe(0.7);
+    expect(PET_SIZE.min).toBe(30);
+    expect(stageLayout(10).scale).toBe(0.3);
     expect(stageLayout(500).scale).toBe(1.5);
   });
 });

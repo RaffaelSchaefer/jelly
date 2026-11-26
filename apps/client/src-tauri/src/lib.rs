@@ -11,6 +11,7 @@
 //! - [`api`]: Typen aus dem Server-Vertrag und der HTTP-Client.
 //! - [`events`]: leitet den Ereignis-Stream des Servers an die Oberfläche weiter.
 //! - [`popout`]: die Fenster von Karte und Shop, die das Pet vertreten.
+//! - [`window`]: der Modus „Immer im Vordergrund“ des Pet-Fensters.
 //! - [`error`]: alle Fehler samt deutscher Meldung für die Oberfläche.
 //! - [`commands`]: die Tauri-Befehle, die die Oberfläche aufruft.
 //!
@@ -29,6 +30,7 @@ pub mod events;
 pub mod pet;
 pub mod popout;
 pub mod store;
+pub mod window;
 
 use tauri::{AppHandle, Manager, WindowEvent};
 
@@ -49,6 +51,11 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(commands::GameState::default())
+        // Die Fenster aus `tauri.conf.json` stehen hier schon.
+        .setup(|app| {
+            commands::apply_saved_window_settings(app.handle());
+            Ok(())
+        })
         .on_window_event(|window, event| match (window.label(), event) {
             // Ohne das Pet haben Karte und Shop keinen Sinn, und die App liefe mit ihnen ohne Pet
             // weiter.

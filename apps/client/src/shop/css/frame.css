@@ -56,13 +56,15 @@
   filter: none;
 }
 
-.shop .window-tools .icon-button:hover:enabled {
-  scale: 1.06;
-  background: radial-gradient(circle at 35% 30%, #fff3c4, #c9a24a 55%, #6e5020);
-  box-shadow:
-    0 0 0 1px #3a2810,
-    0 2px 4px #0008,
-    0 0 10px #ffcf7a66;
+@media (hover: hover) {
+  .shop .window-tools .icon-button:hover:enabled {
+    scale: 1.06;
+    background: radial-gradient(circle at 35% 30%, #fff3c4, #c9a24a 55%, #6e5020);
+    box-shadow:
+      0 0 0 1px #3a2810,
+      0 2px 4px #0008,
+      0 0 10px #ffcf7a66;
+  }
 }
 
 .shop .window-tools .icon-button:focus-visible {

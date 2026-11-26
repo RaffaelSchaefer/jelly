@@ -15,7 +15,7 @@
 import { createStageView, type ScreenPoint, type StageState } from "@jelly/stage";
 
 import { desktop, windowAction } from "../backend";
-import { knownPetColor } from "../pet";
+import { knownPetColor, pointerTypeOf, reachOf } from "../pet";
 import { createJellyMenu } from "./actions";
 import { flyToJelly, follow, goTo, highlight } from "./commands";
 import { createDock } from "./dock";
@@ -32,6 +32,7 @@ import {
   placeGestures,
   type PartnerFlow,
 } from "./partner";
+import { blockContextMenu, listenToHover } from "./pointers";
 import { createJellySearch } from "./search";
 import { createDesktopSource } from "./source";
 import { actOnStack, chooseStack, labelOwnStack, toggleOwnStack, watchStackPlan } from "./stacks";
@@ -133,7 +134,7 @@ function createPartnerFlow(page: MapPage): PartnerFlow {
   return {
     context: {
       source: page.source,
-      pickAt: (point) => page.view?.pickAt(point) ?? null,
+      pickAt: (point) => page.view?.pickAt(point, page.reach) ?? null,
       locate: (playerId) => page.view?.locate(playerId) ?? null,
       flyTo: (playerId) => page.view?.flyTo(playerId),
       findName: (playerId) => findName(page, playerId),
@@ -188,18 +189,18 @@ function leaveNewsByClick(page: MapPage): boolean {
  * eigene Jelly, ein fremdes oder der Boden.
  */
 function handleClick(page: MapPage, flow: PartnerFlow, point: ScreenPoint) {
-  const hinted = page.view?.hintAt(point) ?? null;
+  const hinted = page.view?.hintAt(point, page.reach) ?? null;
   if (hinted !== null) {
     flyToJelly(page, hinted);
     return;
   }
   if (handleStageClick(flow, point) || page.menu.close() || page.search.close()) return;
-  if (page.view?.isOwnAt(point)) {
+  if (page.view?.isOwnAt(point, page.reach)) {
     labelOwnStack(page);
     void openGestures(flow);
     return;
   }
-  const picked = page.view?.pickAt(point) ?? null;
+  const picked = page.view?.pickAt(point, page.reach) ?? null;
   if (picked !== null) page.menu.open(picked, picked === page.targetId);
   else planTrip(page, point);
 }
@@ -213,7 +214,7 @@ function handleDoubleClick(page: MapPage, point: ScreenPoint) {
     page.leftNewsByClick = false;
     return;
   }
-  if (!page.view || page.view.hintAt(point) !== null) return;
+  if (!page.view || page.view.hintAt(point, page.reach) !== null) return;
   clearTimeout(page.pendingTrip);
   page.view.zoomInAt(point, DOUBLE_CLICK_ZOOM);
 }
@@ -225,17 +226,26 @@ function pressEscape(page: MapPage, flow: PartnerFlow) {
   if (!closeWindows(page) && !wasChoosing) page.view?.watchNews(false);
 }
 
-/** Hover, Klicks und Tasten. Leiste, Suche, Kamera und Sendung verbinden sich selbst. */
-function listenToInput(page: MapPage, flow: PartnerFlow) {
-  // Vor dem Klick-Hörer unten: Der Zoom schluckt den Klick am Ende eines Ziehens.
-  listenToZoom({ canvas: page.canvas, readView: () => page.view });
-  page.canvas.addEventListener("pointermove", (event) => page.view?.setPointer(pointOf(event)));
-  page.canvas.addEventListener("pointerleave", () => page.view?.setPointer(null));
+/**
+ * Klicks und Doppelklicks auf der Bühne, mit Maus, Stift und Finger. Einen Doppeltipp meldet
+ * Chromium wie einen Doppelklick.
+ */
+function listenToClicks(page: MapPage, flow: PartnerFlow) {
   page.canvas.addEventListener("click", (event) => {
+    page.reach = reachOf(pointerTypeOf(event));
     // Der zweite Klick eines Doppelklicks gehört dem Zoom. Während der Sendung führt der erste zurück.
     if (event.detail <= 1 && !leaveNewsByClick(page)) handleClick(page, flow, pointOf(event));
   });
   page.canvas.addEventListener("dblclick", (event) => handleDoubleClick(page, pointOf(event)));
+}
+
+/** Hover, Klicks und Tasten. Leiste, Suche, Kamera und Sendung verbinden sich selbst. */
+function listenToInput(page: MapPage, flow: PartnerFlow) {
+  // Vor dem Klick-Hörer unten: Der Zoom schluckt den Klick am Ende eines Ziehens.
+  listenToZoom({ canvas: page.canvas, readView: () => page.view });
+  listenToHover(page.canvas, () => page.view);
+  listenToClicks(page, flow);
+  blockContextMenu(document);
   document.querySelector("#partner-cancel")!.addEventListener("click", () => cancelFlow(flow));
   document.querySelector("#own-stack")!.addEventListener("click", () => {
     handleEscape(flow);
@@ -360,6 +370,7 @@ function createPage(source: MapPage["source"]): MapPage {
       watchNews: (on) => page.view?.watchNews(on),
     }),
     leftNewsByClick: false,
+    reach: 0,
   };
   return page;
 }

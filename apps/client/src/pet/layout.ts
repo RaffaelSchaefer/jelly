@@ -14,6 +14,19 @@ import { PET_SIZE } from "./types";
  */
 export const CANVAS_OVERSCAN = 1.5;
 
+/**
+ * Bis hierhin reicht die Canvas mindestens nach oben, in Pixeln ab der Oberkante der Bühne. Das
+ * Glas von Sprechblase, Emote-Auswahl und Schild-Säule zeichnet die Canvas: Bei einem kleinen Jelly
+ * ragt sie deshalb weiter über als {@link CANVAS_OVERSCAN}, sonst fehlte ihnen oben das Glas.
+ */
+const GLASS_TOP = 0;
+
+/**
+ * So klein zeigen Studio, Einstieg und Aufstieg das Jelly höchstens. Darunter fänden die Tropfen
+ * des Studios um das Jelly keinen Platz, und Ei und Zahl des Aufstiegs würden unlesbar.
+ */
+export const SHOWCASE_SIZE = 70;
+
 /** Maße der Bühne bei 100 % in CSS-Pixeln. Muss zu `.pet-stage` in `styles.css` passen. */
 const BASE = {
   stage: 330,
@@ -40,7 +53,7 @@ const WINDOW_CHROME = 100;
  * passen. Beim Vergrößern bleibt der Kopf, wo er war, und die Bühne wächst nach unten. Das Fenster
  * wächst mit, damit es nie größer ist als sein Inhalt: Durchsichtige Fensterfläche schluckt Klicks.
  * Die Sprechblase schwebt immer im gleichen Abstand über dem Kopf, die Fensterknöpfe darüber
- * wandern mit.
+ * wandern mit. Die Canvas schrumpft mit dem Jelly, ragt dann aber weiter über (`canvas.overscan`).
  */
 export function stageLayout(size: number) {
   const scale = Math.min(PET_SIZE.max, Math.max(PET_SIZE.min, size)) / 100;
@@ -51,12 +64,18 @@ export function stageLayout(size: number) {
   const headTop = canvasTop + BASE.head * scale;
   const stage = feet + (BASE.stage - baseFeet);
   const bubbleTop = headTop - BASE.bubbleGap;
+  const height = BASE.canvas.height * scale;
+  // Die Canvas ragt nach allen Seiten gleich weit über, oben mindestens bis `GLASS_TOP`.
+  const overscan = Math.max(CANVAS_OVERSCAN, 1 + (2 * (canvasTop - GLASS_TOP)) / height);
   return {
     scale,
     canvas: {
       top: canvasTop,
       width: BASE.canvas.width * scale,
-      height: BASE.canvas.height * scale,
+      height,
+      overscan,
+      /** Oberkante der wirklich gezeichneten Canvas. */
+      glassTop: canvasTop - (height * (overscan - 1)) / 2,
     },
     feet,
     bubbleTop,
@@ -64,4 +83,14 @@ export function stageLayout(size: number) {
     stage,
     window: { width: WINDOW_WIDTH, height: stage + WINDOW_CHROME },
   };
+}
+
+/**
+ * In welcher Größe die Bühne das Jelly gerade zeigt. Studio, Einstieg und Aufstieg zeigen ein
+ * kleines Jelly in {@link SHOWCASE_SIZE}, danach schrumpft es zurück.
+ *
+ * @param showcase - Ob Studio, Einstieg oder Aufstieg offen ist.
+ */
+export function stageSize(size: number, showcase: boolean) {
+  return showcase ? Math.max(size, SHOWCASE_SIZE) : size;
 }

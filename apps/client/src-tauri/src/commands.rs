@@ -16,6 +16,7 @@ use crate::{
     error::{Error, Result},
     events,
     pet::{poke_due, Action, Color, Settings},
+    window,
 };
 
 pub mod partner;
@@ -345,7 +346,8 @@ pub async fn steal_wizard_hat(
     })
 }
 
-/// Übernimmt Größe und Bewegung. Bleibt auf dem Gerät.
+/// Übernimmt Größe, Bewegung und die übrigen Geräte-Einstellungen. Bleibt auf dem Gerät. Ändert
+/// sich „Immer im Vordergrund“, gilt es sofort für das Pet-Fenster.
 #[tauri::command]
 pub async fn update_settings(
     app: AppHandle,
@@ -354,8 +356,26 @@ pub async fn update_settings(
 ) -> Result<Game> {
     let mut slot = state.0.lock().await;
     let session = session(&app, &mut slot).await?;
+    let was_on_top = session.store.local.settings.always_on_top;
     session.store.set_settings(settings)?;
+    if settings.always_on_top != was_on_top {
+        window::apply_always_on_top(&app, settings.always_on_top);
+    }
     Ok(session.game())
+}
+
+/// Wendet beim Start die gespeicherten Fenster-Einstellungen an. Liest dafür nur `jelly.json`,
+/// ohne Sitzung und ohne Netz, damit der Modus auch gilt, solange der Server nicht antwortet. Ohne
+/// Konto oder ohne lesbare Datei gilt der Standard.
+pub fn apply_saved_window_settings(app: &AppHandle) {
+    let settings = match session::open_store(app) {
+        Ok(store) => store.local.settings,
+        Err(error) => {
+            eprintln!("Die Einstellungen ließen sich beim Start nicht lesen: {error}");
+            Settings::default()
+        }
+    };
+    window::apply_always_on_top(app, settings.always_on_top);
 }
 
 /// Liest die Einstellungen des Geräts. Ohne Netz und ohne eine Sitzung zu öffnen: So bekommt die

@@ -1,8 +1,8 @@
 //! Was das Gerät selbst weiß: Secret, Einstellungen und ein paar reine Regeln für den Server.
 //!
 //! XP, Level, Cosmetics und Erfolge bestimmt der Server (siehe [`crate::api`]). Hier bleiben nur
-//! das Secret und die Geräte-Einstellungen Größe, Bewegung, Geräusche und Lautstärke, dazu reine Funktionen ohne
-//! IO und ohne Uhr. Zeitpunkte kommen als Parameter herein, damit sich jede Regel direkt testen lässt.
+//! das Secret und die Geräte-Einstellungen (Größe, Bewegung, Geräusche, Lautstärke, Bildrate, Ausblenden und
+//! Vordergrund), dazu reine Funktionen ohne IO und ohne Uhr. Zeitpunkte kommen als Parameter herein, damit sich jede Regel direkt testen lässt.
 //!
 //! Die Oberfläche spiegelt Typen und Grenzwerte in `src/pet/types.ts`. Wer hier etwas ändert,
 //! muss dort mitziehen.
@@ -15,7 +15,7 @@ use crate::error::{Error, Result};
 pub const SCHEMA_VERSION: u8 = 2;
 
 /// Kleinste erlaubte Pet-Größe in Prozent.
-pub const MIN_SIZE: u8 = 70;
+pub const MIN_SIZE: u8 = 30;
 /// Größte erlaubte Pet-Größe in Prozent.
 pub const MAX_SIZE: u8 = 150;
 /// Standardgröße in Prozent.
@@ -88,6 +88,19 @@ pub enum InviteState {
     Cancelled,
 }
 
+/// Was um das Jelly herum zu sehen bleibt, solange der Mauszeiger nicht über dem Fenster steht.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IdleView {
+    /// Knöpfe und Sprechblase bleiben stehen.
+    #[default]
+    All,
+    /// Die Knöpfe blenden aus, die Sprechblase bleibt.
+    Bubble,
+    /// Knöpfe und Sprechblase blenden aus, nur das Jelly bleibt.
+    None,
+}
+
 /// Einstellungen, die nur dieses Gerät betreffen und nie zum Server gehen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -112,6 +125,19 @@ pub struct Settings {
     /// Dateien und gilt dort als [`DEFAULT_FRAME_LIMIT`].
     #[serde(default = "default_frame_limit")]
     pub frame_limit: Option<u16>,
+    /// Was ohne Mauszeiger über dem Fenster zu sehen bleibt. Fehlt in älteren Dateien und gilt
+    /// dort als [`IdleView::All`].
+    #[serde(default)]
+    pub idle_view: IdleView,
+    /// Ob das Pet über allen Fenstern bleibt, auch über Spielen im Vollbild. Fehlt in älteren
+    /// Dateien und gilt dort als an.
+    #[serde(default = "default_always_on_top")]
+    pub always_on_top: bool,
+}
+
+/// Das Pet lag schon immer über allen Fenstern.
+fn default_always_on_top() -> bool {
+    true
 }
 
 /// Geräusche sind an, bis jemand sie abschaltet.
@@ -138,6 +164,8 @@ impl Default for Settings {
             volume: default_volume(),
             optimized_rendering: false,
             frame_limit: default_frame_limit(),
+            idle_view: IdleView::default(),
+            always_on_top: default_always_on_top(),
         }
     }
 }

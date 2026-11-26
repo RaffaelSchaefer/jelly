@@ -177,12 +177,15 @@
   transition: opacity var(--t-hover);
 }
 
-.ware:hover {
-  translate: 0 -2px;
-}
+/* Nur wo ein Zeiger schwebt: Nach einem Tipp oder beim Scrollen mit dem Finger bliebe es sonst stehen. */
+@media (hover: hover) {
+  .ware:hover {
+    translate: 0 -2px;
+  }
 
-.ware:hover::before {
-  opacity: 0.6;
+  .ware:hover::before {
+    opacity: 0.6;
+  }
 }
 
 /* Der Zauberer zeigt auf diese Ware (`data-wizard-highlight`, 1,6 s): Ihre Güte leuchtet ganz auf. */

@@ -63,6 +63,14 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (`interact("poke", touch)`). Die Bewegung steht in `packages/jelly-scene/src/touch.ts`.
   `src/LevelUp.tsx`, `src/levelup.css`: der Levelaufstieg auf der Bühne, im Takt der Fanfare (`LEVEL_UP`). In der
   Browser-Vorschau zeigt ihn `/#levelup`.
+- Finger, Stift und Maus (Windows mit Touchscreen): `src/pet/pointerKinds.ts` rechnet Reichweite, Zittern und Schweben
+  je `pointerType` für Pet, Shop und Karte, `src/pointerGuards.ts` unterdrückt Kontextmenü, Markieren und Bild-Ziehen
+  außerhalb der Felder (eingehängt in `main.tsx` und `shop/main.tsx`). Finger und Stift stupsen beim Heben
+  (`isTap`), die Maus per Klick. Hover-Looks stehen in `@media (hover: hover)`, kleine Knöpfe treffen unter
+  `(any-pointer: coarse)` per `::before` weiter, höchstens bis zur Mitte der Lücke zum Nachbarn. Ein Regler im Panel
+  hält Werte von Finger und Stift zurück, bis der Zug zur Seite geht (`src/ui/useSliderTouch.ts`). „Knöpfe
+  ausblenden“: Ein Finger hält alles `TOUCH_SHOW_MS` sichtbar, der erste Tipp auf einen ausgeblendeten Knopf blendet
+  nur ein (`src/useIdleView.ts`, `src/pet/idleView.ts`).
 - Dazustellen, Ausflug und Hervorheben gehen auf der Karte (`src/map/main.ts`, `src/map/actions.ts`),
   `src/useFollow.ts` lässt das Pet auf Dazustellen und Ausflug reagieren. Partner-Emotes als Aufforderung
   (`POST` und `PATCH /v1/partner-emotes`): Auffordern geht in `src/map/partner.ts`, Antworten und Duett im Pet
@@ -94,6 +102,14 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   sagt der Szene, was sie zeichnet, das CSS gibt dem DOM eigene Flächen. Beim Einstieg schaltet ein zu langsames Gerät
   selbst um (`createSlowFrameMeter`). Messung und Shader-Prüfung:
   `scripts/render-check.html` (`render-report.mjs` wertet aus), Ergebnisse in `apps/client/docs/optimized-rendering.md`.
+- Fenster auf dem Desktop: `Settings.idleView` (`all`, `bubble`, `none`) blendet Knöpfe, Tropfen samt Glas und bei
+  `none` auch die Sprechblase aus, solange kein Zeiger über dem Fenster steht und nichts offen ist. Die Regel steht in
+  `src/pet/idleView.ts`, `src/useIdleView.ts` setzt `data-idle-view` an `<html>`, `src/idle.css` schrumpft die Flächen
+  auf null, so verschwindet auch ihr Glas. `Settings.alwaysOnTop` wendet Rust an (`src-tauri/src/window.rs`, beim Start
+  und in `update_settings`), auf macOS mit eigener Ebene und `fullScreenAuxiliary` am `NSWindow`. Die Größe geht von
+  30 bis 150 %: Unter 90 % ragt die Canvas weiter über, damit das Glas Platz behält (`src/scene/useOverscan.ts`),
+  Studio, Einstieg und Aufstieg zeigen ein kleines Jelly solange in 70 % (`SHOWCASE_SIZE`). In der Browser-Vorschau
+  stellt `?size=30` die Größe.
 - `src/pet/frameRate.ts`: der Regler der Bildrate (`Settings.frameLimit`, `null` heißt unbegrenzt).
   `packages/jelly-stage/src/framePacing.ts` entscheidet für Jelly, Karte und Karten-Glas, welche
   Bildschirmaktualisierung ein Bild wird.
@@ -188,7 +204,8 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   `src/newsVoiceRender.ts`).
 - `map.html`, `src/map/`: die Karte im eigenen Fenster, ohne React. `main.ts` (Seite, Klicks),
   `page.ts` (Stand der Seite), `commands.ts` (Aktionen mit Bestätigung und Kameraflug), `dock.ts` (Leiste
-  unten), `zoom.ts` (Mausrad, Ziehen, Tasten), `notice.ts` (Statuszeile),
+  unten), `zoom.ts` (Mausrad, Tasten), `gesture.ts` (Ziehen und Spreizen mit Maus, Stift und Fingern),
+  `pointers.ts` (Finger und Stift: Reichweite, Hover, kein Kontextmenü), `notice.ts` (Statuszeile),
   `source.ts` (Daten aus Rust), `preview.ts` (Browser-Vorschau), `partner.ts` (Partner-Emote starten),
   `actions.ts` (Fenster am fremden Jelly), `stacks.ts` (Stapel-Knöpfe und der Weg zum Stapel), `search.ts` (Jelly per Namen suchen), `glass.ts` (Glas der Knöpfe, eigene Canvas, Material aus `src/scene/glassMaterial.ts`). `src/PopoutDrops.tsx`: die Glas-Tropfen am Jelly,
   die Karte und Shop öffnen.
