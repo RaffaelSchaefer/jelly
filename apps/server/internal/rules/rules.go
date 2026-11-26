@@ -38,6 +38,7 @@ const (
 	defaultEmoteCooldownSeconds  = 3
 	defaultPartnerInviteSeconds  = 120
 	defaultPartnerXP             = 50
+	defaultAchievementXP         = 25
 	defaultFullHousePercent      = 33
 	defaultMaxPlayers            = 120
 	defaultMaxStreams            = 200
@@ -121,6 +122,8 @@ type PublicRules struct {
 	PartnerInviteSeconds int64 `json:"partner_invite_seconds"`
 	// PartnerXP is the XP both players get for a partner emote with someone new in this LAN.
 	PartnerXP int `json:"partner_xp"`
+	// AchievementXP is the XP for every achievement a player earns in a LAN. 0 switches it off.
+	AchievementXP int `json:"achievement_xp"`
 	// FullHousePercent is the share of the LAN's players that must redeem one event code together.
 	FullHousePercent int `json:"full_house_percent"`
 	// SnackRunSeconds is how long a jelly stays at the snack bar after a food or drink report.
@@ -174,6 +177,7 @@ func DefaultRules() Rules {
 		EmoteCooldownSeconds:     defaultEmoteCooldownSeconds,
 		PartnerInviteSeconds:     defaultPartnerInviteSeconds,
 		PartnerXP:                defaultPartnerXP,
+		AchievementXP:            defaultAchievementXP,
 		FullHousePercent:         defaultFullHousePercent,
 		SnackRunSeconds:          defaultSnackRunSeconds,
 		TripSeconds:              defaultTripSeconds,

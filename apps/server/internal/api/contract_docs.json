@@ -497,6 +497,7 @@
         "emote_cooldown": "Time between two emotes of one player.",
         "partner_invite_seconds": "How long a partner emote can be answered.",
         "partner_xp": "XP for both players for a partner emote with someone new in this LAN.",
+        "achievement_xp": "XP for every achievement a player earns in a LAN, with `source` `achievement`. 0 switches it off. It can change while the LAN runs.",
         "full_house_percent": "The share of the players of a LAN that must redeem one event code together.",
         "snack_run_seconds": "How long a jelly stays in a queue zone after a report.",
         "trip_seconds": "How long a jelly stays at the point of a trip.",

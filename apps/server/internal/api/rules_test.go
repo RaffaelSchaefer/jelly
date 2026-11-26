@@ -61,7 +61,11 @@ func TestXPPerLevelIsFixedOnceTheLANRuns(t *testing.T) {
 		http.StatusBadRequest, "invalid_rules")
 
 	testFixture.createFutureLAN()
-	response := testFixture.callAdmin("PUT", "/admin/api/lans/2/rules", `{"xp_per_level":2}`)
+	response := testFixture.callAdmin(
+		"PUT",
+		"/admin/api/lans/2/rules",
+		`{"xp_per_level":2,"achievement_xp":0}`,
+	)
 	if response.status != http.StatusOK {
 		t.Fatalf("a LAN that has not started can change: %d %s", response.status, response.body)
 	}
@@ -73,7 +77,7 @@ func TestXPPerLevelIsFixedOnceTheLANRuns(t *testing.T) {
 		t.Fatalf("poke = %d XP", xp)
 	}
 	if level := testFixture.loadMe(token).Level; level != 2 {
-		t.Fatalf("3 XP at 2 XP per level is level 2, got %d", level)
+		t.Fatalf("6 XP at 2 XP for the first level is level 2, got %d", level)
 	}
 	listing := decodeBody[store.PlayerList](t, testFixture.callAPI("GET", "/v1/players", token, ""))
 	if len(listing.Items) != 1 || listing.Items[0].Level != 2 {

@@ -10,10 +10,12 @@ import (
 )
 
 const (
-	actionPoke    = rules.ActionPoke
-	actionEvent   = "event"
-	millisPerHour = 3_600_000
-	maxReportRows = 500
+	actionPoke  = rules.ActionPoke
+	actionEvent = "event"
+	// actionAchievement is the XP that comes with every new achievement.
+	actionAchievement = "achievement"
+	millisPerHour     = 3_600_000
+	maxReportRows     = 500
 )
 
 // actionContext is what every player action works with inside its transaction.
