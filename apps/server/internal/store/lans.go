@@ -121,7 +121,8 @@ func (store *Store) ListLANs(ctx context.Context, now int64) ([]LANSummary, erro
 	return lans, nil
 }
 
-// UpdateLANRules replaces the rules of a LAN, also while it is running.
+// UpdateLANRules replaces the rules of a LAN, also while it is running. Level rules stay locked
+// after the start, [Store.RelevelLAN] changes them anyway.
 func (store *Store) UpdateLANRules(
 	ctx context.Context, lanID int64, gameRules rules.Rules, now int64,
 ) error {
@@ -129,28 +130,35 @@ func (store *Store) UpdateLANRules(
 	if err != nil {
 		return fmt.Errorf("validate rules: %w", err)
 	}
-	rulesJSON, err := json.Marshal(gameRules)
-	if err != nil {
-		return fmt.Errorf("encode rules: %w", err)
-	}
 	return store.runInTransaction(ctx, func(transaction *sql.Tx) error {
 		execErr := requireStableLevels(ctx, transaction, lanID, gameRules, now)
 		if execErr != nil {
 			return execErr
 		}
-		const updateRulesSQL = `UPDATE lans SET rules = ? WHERE id = ?`
-		_, execErr = transaction.ExecContext(ctx, updateRulesSQL, string(rulesJSON), lanID)
-		if execErr != nil {
-			return fmt.Errorf("update rules: %w", execErr)
-		}
-		execErr = recordAdminAction(ctx, transaction, AdminActionRules, lanID, now)
-		if execErr != nil {
-			return execErr
-		}
-		return appendEvent(ctx, transaction, eventRecord{
-			lanID: lanID, eventType: EventRulesChanged, scope: scopePublic,
-			playerID: 0, payload: struct{}{}, now: now,
-		})
+		return writeLANRules(ctx, transaction, lanID, gameRules, now)
+	})
+}
+
+// writeLANRules stores checked rules, records the admin action and tells everyone.
+func writeLANRules(
+	ctx context.Context, transaction *sql.Tx, lanID int64, gameRules rules.Rules, now int64,
+) error {
+	rulesJSON, err := json.Marshal(gameRules)
+	if err != nil {
+		return fmt.Errorf("encode rules: %w", err)
+	}
+	const updateRulesSQL = `UPDATE lans SET rules = ? WHERE id = ?`
+	_, err = transaction.ExecContext(ctx, updateRulesSQL, string(rulesJSON), lanID)
+	if err != nil {
+		return fmt.Errorf("update rules: %w", err)
+	}
+	err = recordAdminAction(ctx, transaction, AdminActionRules, lanID, now)
+	if err != nil {
+		return err
+	}
+	return appendEvent(ctx, transaction, eventRecord{
+		lanID: lanID, eventType: EventRulesChanged, scope: scopePublic,
+		playerID: 0, payload: struct{}{}, now: now,
 	})
 }
 
