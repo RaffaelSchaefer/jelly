@@ -19,6 +19,7 @@ import type { WizardContext, WizardEvent } from "../pet/wizardScripts";
 
 import { desktop } from "../backend";
 import { previewGiftEvents, previewShop } from "../pet/preview";
+import { levelProgress } from "../pet/progress";
 import { type ShopItem } from "../pet/shop";
 import { serverHat } from "../pet/wizardHat";
 import { useServerEvents } from "../useGame";
@@ -31,7 +32,6 @@ export interface WizardWorld {
   open: boolean;
   /** Münzen je Level-Aufstieg. */
   perLevel: number;
-  xpPerLevel: number;
   /** `server_time - Date.now()`: So weit geht die Uhr des Servers vor. */
   serverOffset: number;
 }
@@ -180,8 +180,7 @@ export function worldContext(world: Omit<WizardWorld, "serverOffset">): Partial<
   return {
     name: me?.name ?? null,
     coins: me?.coins ?? null,
-    xp: me?.xp ?? null,
-    xpPerLevel: world.xpPerLevel,
+    progress: me ? levelProgress(me) : null,
     perLevel: world.perLevel,
     open: world.open,
     items,
@@ -196,11 +195,11 @@ function useKnowledge(dispatch: Dispatch, calm: boolean, world: WizardWorld) {
     dispatch({ kind: "context", patch: { hour: localHour(), modelKeys: COSMETIC_MODEL_KEYS } });
   }, [dispatch]);
   useEffect(() => dispatch({ kind: "context", patch: { calm } }), [dispatch, calm]);
-  const { me, items, open, perLevel, xpPerLevel } = world;
+  const { me, items, open, perLevel } = world;
   useEffect(() => {
-    const patch = worldContext({ me, items, open, perLevel, xpPerLevel });
+    const patch = worldContext({ me, items, open, perLevel });
     dispatch({ kind: "context", patch });
-  }, [dispatch, me, items, open, perLevel, xpPerLevel]);
+  }, [dispatch, me, items, open, perLevel]);
 }
 
 /**

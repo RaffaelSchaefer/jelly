@@ -46,6 +46,12 @@ export type CosmeticSlot = "head" | "hands" | "body" | "face" | "aura";
 /** Was ein Jelly trägt, je Platz. Text als Schlüssel: Ein neuerer Server kann Plätze ergänzen. */
 export type Equipped = Record<string, EquippedCosmetic>;
 
+/**
+ * Was um das Jelly herum zu sehen bleibt, solange der Mauszeiger nicht über dem Fenster steht
+ * (Rust: `IdleView`): alles, nur die Sprechblase oder nur das Jelly.
+ */
+export type IdleView = "all" | "bubble" | "none";
+
 /** Einstellungen, die nur dieses Gerät betreffen (Rust: `Settings`). */
 export interface Settings {
   /** Animation auf eine ruhige Darstellung reduzieren. `null` folgt dem Betriebssystem. */
@@ -60,6 +66,10 @@ export interface Settings {
   optimizedRendering: boolean;
   /** Bilder pro Sekunde, siehe {@link FRAME_RATE}. `null` heißt unbegrenzt. */
   frameLimit: number | null;
+  /** Was ohne Mauszeiger über dem Fenster zu sehen bleibt. */
+  idleView: IdleView;
+  /** Ob das Pet über allen Fenstern bleibt, auch über Spielen im Vollbild. */
+  alwaysOnTop: boolean;
 }
 
 /** Abklingzeiten und Kontingent der Selbstmeldungen. Zeiten in Unix-Millisekunden. */
@@ -147,6 +157,10 @@ export interface Me {
   /** XP in der jüngsten LAN. */
   xp: number;
   level: number;
+  /** XP seit Beginn des Levels. Ohne LAN 0. */
+  xp_in_level: number;
+  /** So viel kostet das ganze laufende Level, je nach Kurve der LAN. Ohne LAN 0. */
+  xp_for_next_level: number;
   /** Münzen für den Shop in der laufenden LAN, sonst 0. Jeder Aufstieg bringt `coins_per_level`. */
   coins: number;
   /** XP über alle LANs. */
@@ -291,7 +305,7 @@ export interface ServerEvent {
 }
 
 /** Größenbereich des Pets in Prozent (Rust: `MIN_SIZE`, `MAX_SIZE`, `DEFAULT_SIZE`). */
-export const PET_SIZE = { min: 70, max: 150, step: 10, default: 100 } as const;
+export const PET_SIZE = { min: 30, max: 150, step: 10, default: 100 } as const;
 
 /**
  * Bereich der Lautstärke in Prozent (Rust: `MIN_VOLUME`, `MAX_VOLUME`). Ganz still macht der

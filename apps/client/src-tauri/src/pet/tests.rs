@@ -28,6 +28,10 @@ fn client_versions_compare_numerically() {
 fn local_state_rejects_other_versions_and_sizes() {
     let mut local = Local::new();
     assert!(local.validate().is_ok());
+    local.settings.size = MIN_SIZE;
+    assert!(local.validate().is_ok());
+    local.settings.size = MIN_SIZE - 1;
+    assert!(matches!(local.validate(), Err(Error::InvalidSize)));
     local.settings.size = MAX_SIZE + 1;
     assert!(matches!(local.validate(), Err(Error::InvalidSize)));
     local.settings.size = DEFAULT_SIZE;

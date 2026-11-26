@@ -9,7 +9,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import * as backend from "./backend";
 import { desktop } from "./backend";
-import { PREVIEW_CATALOG, previewGame, type Catalog, type Game, type ServerEvent } from "./pet";
+import {
+  PREVIEW_CATALOG,
+  previewGame,
+  previewSettings,
+  type Catalog,
+  type Game,
+  type ServerEvent,
+} from "./pet";
 
 /** Abstand der Lebenszeichen. Der Server wartet `presence_window` (90 min), bis er abwesend meldet. */
 const PRESENCE_INTERVAL_MS = 5 * 60_000;
@@ -44,7 +51,10 @@ export function inRunningLan(game: Game, ready: boolean) {
  */
 export function useGameState() {
   // Die App kennt keinen Hash, nur die Vorschau startet damit in einem anderen Zustand.
-  const [game, patchGame] = useState<Game>(() => previewGame(location.hash));
+  const [game, patchGame] = useState<Game>(() => {
+    const preview = previewGame(location.hash);
+    return { ...preview, settings: previewSettings(location.search, preview.settings) };
+  });
   const [catalog, setCatalog] = useState<Catalog>(PREVIEW_CATALOG);
   const [offset, setOffset] = useState(0);
 

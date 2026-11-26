@@ -8,7 +8,8 @@
 
 import type { ComponentProps } from "react";
 
-import { levelProgress } from "../pet";
+import type { LevelProgress } from "../pet";
+
 import { cx } from "./cx";
 import Icon, { type IconName } from "./Icon";
 
@@ -40,17 +41,14 @@ export function ActionButton({ icon, title, detail, xp, ...rest }: ActionButtonP
 /** Levelbalken. `coins` nennt die Münzen für den Shop („3 Münzen · +1 je Level“). */
 export function XpProgress({
   name,
-  xp,
-  xpPerLevel,
+  progress,
   coins,
 }: {
   name: string;
-  xp: number;
-  /** Die Regel `xp_per_level` der LAN. */
-  xpPerLevel: number;
+  /** Der Fortschritt aus `levelProgress`. */
+  progress: LevelProgress;
   coins?: string;
 }) {
-  const progress = levelProgress(xp, xpPerLevel);
   return (
     <div className="level-summary">
       <div className="xp-row">
@@ -61,12 +59,12 @@ export function XpProgress({
           </strong>
         </span>
         <span>
-          {progress.current} / {xpPerLevel} XP
+          {progress.current} / {progress.cost} XP
         </span>
       </div>
       <progress
         value={progress.current}
-        max={xpPerLevel}
+        max={Math.max(1, progress.cost)}
         aria-label={`Fortschritt zu Level ${progress.level + 1}`}
       />
       <div className="xp-row xp-next">

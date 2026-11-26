@@ -12,6 +12,7 @@
 
 import type { CueOptions } from "./cues";
 
+import { canHover } from "../../pet/pointerKinds";
 import {
   HOVER_GATE,
   nextHover,
@@ -64,9 +65,12 @@ function play(state: HoverState, element: Element) {
   state.sounds.cue("hover", { variant: variant as "harp" | "wax" | "coin", step });
 }
 
-/** Einmal je betretenem Element, nur mit der Maus. */
+/**
+ * Einmal je betretenem Element, mit Maus und schwebendem Stift. Ein Finger schwebt nicht: Sein
+ * Aufsetzen klingt schon als Klick, und beim Scrollen durch die Rolle spielte sonst die Harfe.
+ */
 function onOver(state: HoverState, event: PointerEvent) {
-  if (event.pointerType !== "mouse") return;
+  if (!canHover(event.pointerType)) return;
   const target = hoverTarget(event.target);
   if (target === state.current) return;
   state.current = target;

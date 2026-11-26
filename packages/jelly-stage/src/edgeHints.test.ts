@@ -77,4 +77,7 @@ test("xp gets no hint, a new level does, and a click finds the hint", () => {
   const [hint] = hints;
   assert.equal(pickEdgeHint(hints, { x: hint!.x + 3, y: hint!.y }), 5);
   assert.equal(pickEdgeHint(hints, { x: 400, y: 300 }), null);
+  // A hint is 14 pixels round and grabs 6 more, a finger reaches further.
+  assert.equal(pickEdgeHint(hints, { x: hint!.x, y: hint!.y + 26 }), null);
+  assert.equal(pickEdgeHint(hints, { x: hint!.x, y: hint!.y + 26 }, 12), 5);
 });

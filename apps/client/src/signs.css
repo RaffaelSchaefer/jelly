@@ -5,18 +5,19 @@
  */
 .sign-controls {
   --sign-left: calc(50% - 180px);
-  /* Mitte des Tropfens vor der Säule: Er folgt dem Körper, je größer das Jelly, desto weiter außen. */
-  --sign-drop-x: calc(-40px - 85px * var(--pet-scale, 1));
+  /* Mitte des Tropfens vor der Säule: Er folgt dem Körper, je größer das Jelly, desto weiter außen.
+     Unter 70 % bleibt er stehen, sonst rückten er und der Karten-Tropfen ins Dock. */
+  --sign-drop-x: calc(-40px - 85px * max(var(--pet-scale, 1), 0.7));
   /* Höhe der Säule mit acht Kapseln samt Überschrift und Rand. */
   --sign-column: calc(37px + 8 * var(--sign-step));
-  /* Unterkante der Säule, knapp unter den Füßen. Die Canvas ragt ein Viertel ihrer Höhe über ihren
-     Kasten hinaus. Bei einem kleinen Jelly beginnt sie so tief, dass die Säule weiter unten stehen muss. */
+  /* Unterkante der Säule, knapp unter den Füßen. Ihr Glas zeichnet die Canvas: Beginnt die tiefer als
+     die Säule hoch ist, muss die Säule weiter unten stehen (`--glass-top`, siehe `pet/layout.ts`). */
   --sign-bottom: max(
     calc(var(--feet, 299px) + 9px),
-    calc(var(--canvas-top, 43px) - var(--canvas-height, 315px) / 4 + var(--sign-column))
+    calc(var(--glass-top, -35.75px) + var(--sign-column))
   );
   /* Wie weit Kapseln und Füllung beim Ein- und Ausfahren zum Tropfen hinüberrücken. */
-  --sign-to-drop: calc(142px - 85px * var(--pet-scale, 1));
+  --sign-to-drop: calc(182px + var(--sign-drop-x));
   /* Unter 80 % etwas flacher: Sonst schnitte die Canvas unten den Schatten des Tropfens ab. */
   --sign-pill-height: clamp(26px, calc(12px + 20px * var(--pet-scale, 1)), 28px);
   --sign-gap: 2px;
@@ -62,9 +63,11 @@
     background 150ms;
 }
 
-.sign-trigger:hover {
-  scale: 1.08;
-  background: #ffffff1f;
+@media (hover: hover) {
+  .sign-trigger:hover {
+    scale: 1.08;
+    background: #ffffff1f;
+  }
 }
 
 .sign-trigger[aria-expanded="true"] {
@@ -181,10 +184,16 @@
   opacity: 0.6;
 }
 
-.sign-pill:not([aria-disabled="true"]):hover,
 .sign-pill:focus-visible {
   scale: 1.05;
   background: #ffffff26;
+}
+
+@media (hover: hover) {
+  .sign-pill:not([aria-disabled="true"]):hover {
+    scale: 1.05;
+    background: #ffffff26;
+  }
 }
 
 /* Schließt die Lücken in der Säule: Der Zeiger fällt nie durch, die Tafel flackert nicht. */

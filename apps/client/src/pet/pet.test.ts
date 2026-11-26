@@ -11,7 +11,10 @@ import {
   PREVIEW_ME,
   reportStatus,
   slotLabel,
+  CANVAS_OVERSCAN,
+  SHOWCASE_SIZE,
   stageLayout,
+  stageSize,
   shopItems,
   unlockLabel,
   isColorable,
@@ -165,16 +168,18 @@ describe("achievements", () => {
 });
 
 describe("level progress", () => {
-  it("starts at level one with the full next level ahead", () => {
-    expect(levelProgress(0, 100)).toEqual({ level: 1, current: 0, remaining: 100 });
+  const at = (level: number, xp_in_level: number, xp_for_next_level: number) =>
+    levelProgress({ level, xp_in_level, xp_for_next_level });
+  it("takes level and cost from the server instead of dividing XP", () => {
+    // Quadratische Kurve 50 / 25: Level 3 kostet 100, erreicht mit 125 XP.
+    expect(at(3, 40, 100)).toEqual({ level: 3, current: 40, cost: 100, remaining: 60, fill: 0.4 });
+    expect(at(1, 0, 50)).toEqual({ level: 1, current: 0, cost: 50, remaining: 50, fill: 0 });
   });
-  it("carries excess XP across level boundaries", () => {
-    expect(levelProgress(99, 100)).toEqual({ level: 1, current: 99, remaining: 1 });
-    expect(levelProgress(100, 100)).toEqual({ level: 2, current: 0, remaining: 100 });
-    expect(levelProgress(235, 100)).toEqual({ level: 3, current: 35, remaining: 65 });
+  it("stays empty without a LAN", () => {
+    expect(at(1, 0, 0)).toEqual({ level: 1, current: 0, cost: 0, remaining: 0, fill: 0 });
   });
-  it("follows the rule of the LAN", () => {
-    expect(levelProgress(235, 50)).toEqual({ level: 5, current: 35, remaining: 15 });
+  it("never overfills", () => {
+    expect(at(2, 90, 75).fill).toBe(1);
   });
 });
 
@@ -195,10 +200,35 @@ describe("stage layout", () => {
     expect(small.feet).toBe(299);
     expect(small.stage).toBe(330);
     expect(small.window.height).toBe(430);
-    expect(small.canvas.height).toBeCloseTo(315 * 0.7);
+    expect(small.canvas.height).toBeCloseTo(315 * 0.3);
     // Die Fensterknöpfe wandern mit der Sprechblase nach unten und halten ihren Abstand.
     expect(small.toolsOffset).toBeCloseTo(small.bubbleTop - 20);
     expect(small.toolsOffset).toBeGreaterThan(0);
+  });
+  it("lets the canvas of a small pet reach the top of the stage, the glass needs the room", () => {
+    for (const size of [30, 40, 50, 60, 70, 80]) {
+      const { canvas, bubbleTop } = stageLayout(size);
+      expect(canvas.glassTop).toBeCloseTo(0);
+      expect(canvas.glassTop).toBeLessThan(bubbleTop);
+      // Ragt nach allen Seiten gleich weit über: die Mitte bleibt die des Kastens.
+      expect(canvas.glassTop + (canvas.height * canvas.overscan) / 2).toBeCloseTo(
+        canvas.top + canvas.height / 2,
+      );
+      // Das Glas der Schild-Säule am linken Fensterrand liegt noch in der Canvas.
+      expect(canvas.width * canvas.overscan).toBeGreaterThan(384);
+    }
+    // Ab 90 % reicht der gewohnte Überstand.
+    expect(stageLayout(90).canvas.overscan).toBe(CANVAS_OVERSCAN);
+    expect(stageLayout(100).canvas).toMatchObject({
+      overscan: CANVAS_OVERSCAN,
+      glassTop: 43 - 78.75,
+    });
+    expect(stageLayout(PET_SIZE.max).canvas.overscan).toBe(CANVAS_OVERSCAN);
+  });
+  it("shows a small pet larger in studio, hatch and level-up", () => {
+    expect(stageSize(30, true)).toBe(SHOWCASE_SIZE);
+    expect(stageSize(30, false)).toBe(30);
+    expect(stageSize(120, true)).toBe(120);
   });
   it("grows a big pet downwards, keeps the bubble above his head and grows the window along", () => {
     const big = stageLayout(PET_SIZE.max);
@@ -209,7 +239,8 @@ describe("stage layout", () => {
     expect(big.window).toEqual({ width: 384, height: 8 + 30 + big.stage + 8 + 40 + 14 });
   });
   it("clamps sizes outside the allowed range", () => {
-    expect(stageLayout(10).scale).toBe(0.7);
+    expect(PET_SIZE.min).toBe(30);
+    expect(stageLayout(10).scale).toBe(0.3);
     expect(stageLayout(500).scale).toBe(1.5);
   });
 });

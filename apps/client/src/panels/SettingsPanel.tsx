@@ -1,6 +1,7 @@
 /**
- * Panel „Einstellungen“: Pet-Größe, reduzierte Bewegung, optimierter Modus, Bildrate, Geräusche und
- * ihre Lautstärke. Alles bleibt auf diesem Gerät.
+ * Panel „Einstellungen“: Pet-Größe, reduzierte Bewegung, optimierter Modus, Bildrate, was ohne
+ * Mauszeiger zu sehen bleibt, Vordergrund, Geräusche und ihre Lautstärke. Alles bleibt auf diesem
+ * Gerät.
  *
  * @module
  */
@@ -12,9 +13,10 @@ import {
   stopToFrameLimit,
   UNLIMITED_STOP,
   VOLUME,
+  type IdleView,
   type Settings,
 } from "../pet";
-import { PercentSlider, ToggleRow } from "../ui";
+import { ChoiceRow, PercentSlider, ToggleRow } from "../ui";
 
 /** Eigenschaften von {@link SettingsPanel}. */
 interface SettingsPanelProps {
@@ -40,6 +42,8 @@ interface SettingsPanelProps {
   onReducedMotion: (reducedMotion: boolean) => void;
   onOptimizedRendering: (optimizedRendering: boolean) => void;
   onSound: (sound: boolean) => void;
+  onIdleView: (idleView: IdleView) => void;
+  onAlwaysOnTop: (alwaysOnTop: boolean) => void;
 }
 
 /** Die große Anzeige der Bildrate. */
@@ -84,6 +88,48 @@ function SoundRows({
         step={VOLUME.step}
         disabled={!ready || !settings.sound}
         onChange={onVolume}
+      />
+    </>
+  );
+}
+
+/** Die Stufen von „Knöpfe ausblenden“. */
+const IDLE_VIEWS = [
+  { id: "all", label: "Alles zeigen" },
+  { id: "bubble", label: "Nur Sprechblase" },
+  { id: "none", label: "Alles weg" },
+] as const satisfies readonly { id: IdleView; label: string }[];
+
+/** Wie sich das Fenster auf dem Desktop verhält: was es zeigt und ob es über allem liegt. */
+function WindowRows({
+  name,
+  settings,
+  ready,
+  busy,
+  onIdleView,
+  onAlwaysOnTop,
+}: Pick<
+  SettingsPanelProps,
+  "name" | "settings" | "ready" | "busy" | "onIdleView" | "onAlwaysOnTop"
+>) {
+  return (
+    <>
+      <ChoiceRow<IdleView>
+        name="pet-idle-view"
+        label="Knöpfe ausblenden"
+        hint={`Ohne Mauszeiger über ${name} blenden die Knöpfe aus. Mit Zeiger kommt alles zurück.`}
+        options={IDLE_VIEWS}
+        value={settings.idleView}
+        // Nicht bei `busy`: Das gesperrte Feld verlöre beim Speichern den Fokus, Pfeiltasten gingen ins Leere.
+        disabled={!ready}
+        onChange={onIdleView}
+      />
+      <ToggleRow
+        label="Immer im Vordergrund"
+        hint="Bleibt über allen Fenstern, unter Windows auch über Spielen im randlosen Vollbild."
+        checked={settings.alwaysOnTop}
+        disabled={busy || !ready}
+        onChange={onAlwaysOnTop}
       />
     </>
   );
@@ -134,6 +180,7 @@ export default function SettingsPanel(props: SettingsPanelProps) {
         disabled={busy || !ready}
         onChange={onOptimizedRendering}
       />
+      <WindowRows {...props} />
       <SoundRows {...props} />
     </>
   );

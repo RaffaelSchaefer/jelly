@@ -50,6 +50,8 @@ export const PREVIEW_ME: Me = {
   lan: { slug: "vorschau", name: "Vorschau-LAN", active: true },
   xp: 235,
   level: 3,
+  xp_in_level: 35,
+  xp_for_next_level: 100,
   coins: 3,
   total_xp: 235,
   next_poke_at: 0,
@@ -85,6 +87,8 @@ export const PREVIEW_GAME: Game = {
     volume: VOLUME.max,
     optimizedRendering: false,
     frameLimit: FRAME_RATE.default,
+    idleView: "all",
+    alwaysOnTop: true,
   },
   me: PREVIEW_ME,
   lan: {
@@ -241,13 +245,17 @@ export function previewShop(hash: string): PreviewShop {
 
 /**
  * Die Einstellungen der Vorschau mit den Abfragen der Adresse: `?optimized` schaltet den
- * optimierten Modus an, `?ruhig` reduziert die Bewegung und `?fps=30` begrenzt die Bildrate.
+ * optimierten Modus an, `?ruhig` reduziert die Bewegung, `?fps=30` begrenzt die Bildrate und
+ * `?size=30` stellt die Größe des Pets ein, auch für Einstieg und Aufstieg.
  */
 export function previewSettings(search: string, settings: Settings): Settings {
   const query = new URLSearchParams(search);
   const fps = Number(query.get("fps"));
+  const size = Number(query.get("size"));
+  const sized = Number.isInteger(size) && size >= PET_SIZE.min && size <= PET_SIZE.max;
   return {
     ...settings,
+    size: sized ? size : settings.size,
     optimizedRendering: query.has("optimized") || settings.optimizedRendering,
     reducedMotion: query.has("ruhig") ? true : settings.reducedMotion,
     frameLimit: Number.isInteger(fps) && fps > 0 ? fps : settings.frameLimit,

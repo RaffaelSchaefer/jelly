@@ -34,11 +34,14 @@
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; width: 100%; min-height: 100%; background: transparent; }
 body { overflow: hidden; }
+/* Finger zoomen das Fenster nicht, weder gespreizt noch mit Doppeltipp: Sonst verrutschten Jelly und Glas. Scrollen in Panels und in der Rolle bleibt. Kein Wischen zurück und kein Nachfedern am Rand. */
+html, body { touch-action: pan-x pan-y; overscroll-behavior: none; }
 button, input { font: inherit; }
 button { color: inherit; cursor: pointer; }
 button:disabled { cursor: default; opacity: 0.45; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 button { -webkit-tap-highlight-color: transparent; }
+/* Hover-Looks nur, wo ein Zeiger schwebt (`@media (hover: hover)`): Nach einem Tipp blieben sie sonst stehen. */
 button, nav, .pet-stage { user-select: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
@@ -63,13 +66,14 @@ html[data-surface='preview'] .pet-window { position: absolute; top: 50%; left: 5
 .pet-window:has(.panel) .window-tools { transform: none; }
 .window-tools-right { display: flex; gap: 1px; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; width: 30px; height: 30px; padding: 5px; }
-.icon-button:hover:enabled { background: #ffffff10; }
+@media (hover: hover) { .icon-button:hover:enabled { background: #ffffff10; } }
 .drag-handle { cursor: grab; touch-action: none; }
 /* Griff und Fensterknöpfe tragen in Ruhe keinen Hintergrund, erst unter dem Zeiger. Das Fenster ist durchsichtig, darum hebt ein weicher Schatten die Symbole auch auf hellem Desktop ab. Der durchsichtige Rand hält die Maße. */
 .drag-handle, .window-tools-right { border: 1px solid transparent; border-radius: 9px; }
 .window-tools .icon-button { color: #f4f8fa; transition: background 120ms, box-shadow 120ms; }
 .window-tools .icon-button svg { filter: var(--glass-icon-shadow); }
-.window-tools .icon-button:hover:enabled, .window-tools .icon-button:focus-visible { background: var(--surface-solid); box-shadow: inset 0 0 0 1px #ffffff33, 0 3px 10px #0004; }
+.window-tools .icon-button:focus-visible { background: var(--surface-solid); box-shadow: inset 0 0 0 1px #ffffff33, 0 3px 10px #0004; }
+@media (hover: hover) { .window-tools .icon-button:hover:enabled { background: var(--surface-solid); box-shadow: inset 0 0 0 1px #ffffff33, 0 3px 10px #0004; } }
 .window-tools-right .icon-button { height: 28px; }
 .drag-handle svg { stroke-width: 2.6; }
 /* In der Browser-Vorschau sind sie gesperrt und sollen trotzdem wie in der App aussehen. */
@@ -81,7 +85,8 @@ html[data-surface='preview'] .pet-window { position: absolute; top: 50%; left: 5
 .speech-tail { position: absolute; left: calc(50% - 7px); top: calc(100% + 2px); width: 14px; height: 14px; border-radius: 50%; animation: speech-tail 3.1s ease-in-out infinite alternate; }
 .pet-touch { position: absolute; top: var(--canvas-top, 43px); left: 50%; width: var(--canvas-width, 396px); margin-left: calc(var(--canvas-width, 396px) / -2); height: var(--canvas-height, 315px); padding: 0; background: none; border: 0; opacity: 1 !important; cursor: pointer; z-index: 1; touch-action: none; }
 .pet-touch:disabled { cursor: default; pointer-events: none; }
-.ground-shadow { position: absolute; top: var(--feet, 299px); width: calc(140px * var(--pet-scale, 1)); height: calc(18px * var(--pet-scale, 1)); border-radius: 50%; background: #08141177; filter: blur(9px); }
+/* Weichzeichner wächst nicht über 100 % hinaus mit, schrumpft aber: Sonst bliebe vom Schatten eines kleinen Jellys nur ein Hauch. */
+.ground-shadow { position: absolute; top: var(--feet, 299px); width: calc(140px * var(--pet-scale, 1)); height: calc(18px * var(--pet-scale, 1)); border-radius: 50%; background: #08141177; filter: blur(calc(9px * min(var(--pet-scale, 1), 1))); }
 /* Partner emote: both jellies stand on the same shadow, it is never moved in 3D. The drops hang on the jelly and would circle it while it turns, an empty shape is skipped by the glass. */
 .pet-stage[data-duet='pair'] .ground-shadow { width: calc(300px * var(--pet-scale, 1)); }
 .pet-stage[data-duet] :is(.emote-controls, .sign-controls) { display: none; }
@@ -100,19 +105,19 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .dock nav { display: flex; gap: 3px; }
 .dock nav button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #c6ccd0; }
 .dock nav button svg { width: 17px; height: 17px; }
-.dock nav button:hover { background: #ffffff1f; color: #f4f8fa; }
+@media (hover: hover) { .dock nav button:hover { background: #ffffff1f; color: #f4f8fa; } }
 .dock nav button[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
-.panel { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; --panel-max: calc(var(--stage-height, 330px) + 28px); max-height: var(--panel-max); overflow-y: auto; scrollbar-gutter: stable both-edges; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
+.panel { overscroll-behavior: contain; position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: min(340px, calc(100vw - 44px)); padding: 16px; border-radius: 16px; --panel-max: calc(var(--stage-height, 330px) + 28px); max-height: var(--panel-max); overflow-y: auto; scrollbar-gutter: stable both-edges; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 25%, transparent) transparent; }
 /* Panels fill the stage above the dock (tools + stage + gap - panel gap - window padding), never past the window top.
    The bubble is not rendered then, PetStage decides that. */
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: -4px -3px 3px 0; }
 .panel-heading h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
 .panel-hint { margin: 0 0 14px; color: var(--text-muted); font-size: 10px; line-height: 1.6; }
 .text-button { display: block; margin: 10px auto 0; padding: 4px; border: 0; background: none; color: var(--text-muted); font-size: 10px; text-decoration: underline; cursor: pointer; }
-.text-button:hover { color: var(--accent); }
+@media (hover: hover) { .text-button:hover { color: var(--accent); } }
 .action-list { display: flex; flex-direction: column; gap: 7px; }
 .action-button { display: flex; align-items: center; width: 100%; gap: 10px; text-align: left; border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 11px; padding: 11px 9px; }
-.action-button:hover:enabled { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); }
+@media (hover: hover) { .action-button:hover:enabled { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); } }
 .action-icon { display: grid; place-items: center; color: var(--accent); width: 31px; height: 32px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .action-button strong { display: block; font-size: 11px; font-weight: 550; }
 .action-button small { display: block; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
@@ -122,7 +127,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 /* XP panel: tabs, log, self-reports, cosmetics, achievements. */
 .tabs { display: flex; gap: 3px; padding: 3px; margin: 8px 0 14px; border: 1px solid #ffffff0d; border-radius: 9px; }
 .tabs button { flex: 1; height: 26px; border: 0; border-radius: 7px; background: transparent; color: var(--text-muted); font-size: 11px; font-weight: 550; }
-.tabs button:hover { color: #f4f8fa; }
+@media (hover: hover) { .tabs button:hover { color: #f4f8fa; } }
 .tabs button[aria-selected='true'] { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
 .xp-sections { display: flex; flex-direction: column; gap: 14px; }
 .xp-sections .level-summary { padding: 0; margin: 0; border: 0; }
@@ -148,7 +153,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .xp-entry.live .xp-entry-end small { color: var(--accent); }
 .report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .report-button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; text-align: left; border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 11px; }
-.report-button:hover:enabled { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); }
+@media (hover: hover) { .report-button:hover:enabled { background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: color-mix(in srgb, var(--accent) 17%, transparent); } }
 .report-button .action-xp { display: block; margin-top: 1px; font-variant-numeric: tabular-nums; }
 .achievement-badge { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--accent); }
 .achievement-badge svg { width: 16px; height: 16px; }
@@ -163,10 +168,10 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 8px; }
 .achievement-featured .achievement-end { flex-basis: 100%; flex-direction: column-reverse; align-items: stretch; }
 .achievement-featured .achievement-end progress { width: 100%; height: 6px; }
 .secondary-button { border: 1px solid #ffffff0d; background: #ffffff04; border-radius: 9px; padding: 10px 14px; font-size: 11px; font-weight: 550; }
-.secondary-button:hover { background: #ffffff0d; }
+@media (hover: hover) { .secondary-button:hover { background: #ffffff0d; } }
 input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent); background: color-mix(in srgb, var(--base) 70%, var(--surface-solid)); color: #f4f8fa; padding: 10px 12px; border-radius: 9px; font-size: 13px; }
 .primary-button { border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); background: var(--accent); color: var(--accent-ink); border-radius: 9px; padding: 10px 14px; font-size: 11px; font-weight: 650; width: 100%; }
-.primary-button:hover:enabled { background: color-mix(in srgb, var(--accent) 80%, white); }
+@media (hover: hover) { .primary-button:hover:enabled { background: color-mix(in srgb, var(--accent) 80%, white); } }
 .size-row { padding: 4px 0 13px; border-bottom: 1px solid var(--line); }
 .size-row:last-child { border-bottom: 0; padding-bottom: 2px; }
 .toggle-row:has(+ .size-row) { padding-bottom: 8px; border-bottom: 0; }
@@ -184,11 +189,13 @@ input[type='text'], input:not([type]) { width: 100%; border: 1px solid color-mix
 .size-heading output:has(.frame-rate-value) { align-self: flex-end; }
 .size-heading .frame-rate-value small { display: inline; margin: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: inherit; }
 .frame-rate-unlimited { font-size: 42px; line-height: 30px; }
-.size-row input[type='range'] { --thumb: 18px; display: block; width: 100%; height: 22px; margin: 0; padding: 0; background: none; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.size-row input[type='range'] { --thumb: 18px; --hit: 22px; display: block; width: 100%; height: var(--hit); margin: calc((22px - var(--hit)) / 2) 0; padding: 0; background: none; appearance: none; -webkit-appearance: none; cursor: pointer; }
+/* Waagerecht zieht der Finger den Regler, senkrecht scrollt er das Panel. */
+.size-row input[type='range'] { touch-action: pan-y; }
 .size-row input[type='range']:disabled { cursor: default; }
 .size-row input[type='range']::-webkit-slider-runnable-track { height: 6px; border-radius: 99px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 50%, transparent), var(--accent)) 0 0 / calc(var(--slider-fill, 0) * (100% - var(--thumb)) + var(--thumb) / 2) 100% no-repeat, #ffffff1a; box-shadow: inset 0 1px 1px #0005; }
-.size-row input[type='range']::-webkit-slider-thumb { width: var(--thumb); height: var(--thumb); margin-top: -6px; border: 0; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, color-mix(in srgb, var(--accent) 45%, #fff)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent), 0 3px 8px #0007; appearance: none; -webkit-appearance: none; transition: transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 140ms; }
-.size-row input[type='range']:hover:enabled::-webkit-slider-thumb { transform: scale(1.12); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 28%, transparent), 0 3px 10px #0008; }
+.size-row input[type='range']::-webkit-slider-thumb { width: var(--thumb); height: var(--thumb); margin-top: calc((6px - var(--thumb)) / 2); border: 0; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, color-mix(in srgb, var(--accent) 45%, #fff)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent), 0 3px 8px #0007; appearance: none; -webkit-appearance: none; transition: transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 140ms; }
+@media (hover: hover) { .size-row input[type='range']:hover:enabled::-webkit-slider-thumb { transform: scale(1.12); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 28%, transparent), 0 3px 10px #0008; } }
 .size-row input[type='range']:active:enabled::-webkit-slider-thumb { transform: scale(1.2); box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 22%, transparent), 0 4px 12px #0009; }
 .size-row input[type='range']:focus-visible { outline: 0; }
 .size-row input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--base), 0 0 0 4px #fff; }
@@ -202,9 +209,24 @@ html[data-reduced-motion] .size-row input[type='range']::-webkit-slider-thumb { 
 .toggle-row strong { display: block; font-size: 12px; font-weight: 550; }
 .toggle-row small { display: block; font-size: 10px; color: var(--text-muted); margin-top: 6px; }
 .toggle-row input { accent-color: var(--accent); width: 18px; height: 18px; flex-shrink: 0; }
+/* Wahl einer Stufe (`ChoiceRow`): Beschriftung wie bei `.toggle-row`, darunter die Stufen als Leiste. Die Radioknöpfe liegen unsichtbar über ihrer Stufe. */
+.choice-row { min-width: 0; margin: 0; padding: 13px 0; border: 0; border-bottom: 1px solid var(--line); }
+.choice-row:last-child { border-bottom: 0; padding-bottom: 2px; }
+.choice-row:disabled { opacity: 0.5; }
+.choice-row legend { float: left; width: 100%; padding: 0; margin-bottom: 10px; }
+.choice-row legend strong { display: block; font-size: 12px; font-weight: 550; }
+.choice-row legend small { display: block; font-size: 10px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
+.choice-options { clear: both; display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: #ffffff0d; box-shadow: inset 0 1px 1px #0004; }
+.choice-options label { position: relative; flex: 1; padding: 6px 4px; border-radius: 7px; color: #c6ccd0; font-size: 10.5px; font-weight: 600; text-align: center; cursor: pointer; transition: background 120ms, color 120ms; }
+@media (hover: hover) { .choice-options label:hover { color: #f4f8fa; } }
+.choice-options label:has(:checked) { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.choice-options label:has(:focus-visible) { outline: 2px solid #fff; outline-offset: 1px; }
+.choice-options input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.choice-row:disabled .choice-options label { cursor: default; }
+html[data-reduced-motion] .choice-options label { transition: none; }
 .error { position: absolute; z-index: 5; top: 45px; left: 22px; right: 22px; background: #3e2929f5; color: #ffe2da; border: 1px solid #e8a49a55; padding: 14px; border-radius: 12px; box-shadow: 0 8px 24px #0006; font-size: 12px; }
 .error strong, .error span { display: block; }
-.error span { line-height: 1.6; margin-top: 6px; overflow-wrap: anywhere; max-height: 160px; overflow-y: auto; }
+.error span { line-height: 1.6; margin-top: 6px; overflow-wrap: anywhere; max-height: 160px; overflow-y: auto; overscroll-behavior: contain; }
 .error button { border: 1px solid #ffded566; color: inherit; background: #ffffff0e; padding: 8px; margin-top: 10px; border-radius: 6px; }
 .render-fallback { display: block; padding: 70px 35px; font-size: 12px; line-height: 1.7; text-align: center; color: #d6e0e4; }
 /* Unter dem Dock ist kein Platz mehr: Das Fenster endet kurz danach. */
@@ -214,29 +236,29 @@ html[data-reduced-motion] .size-row input[type='range']::-webkit-slider-thumb { 
 .redeem-seal { position: relative; display: grid; place-items: center; width: 172px; height: 172px; border-radius: 50%; color: var(--accent); background: radial-gradient(circle, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 64%); }
 .redeem-seal::before { content: ''; position: absolute; inset: 28px; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--accent) 32%, transparent); transition: border-color 300ms, inset 400ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 .redeem-seal::after { content: ''; position: absolute; inset: 0; border-radius: 50%; opacity: 0; background: conic-gradient(transparent 62%, var(--accent)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); animation: redeem-spin 4s linear infinite paused; transition: opacity 400ms; }
-.redeem-seal:hover::before { inset: 24px; border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
-.redeem-seal:hover::after { opacity: 1; animation-play-state: running; }
+@media (hover: hover) { .redeem-seal:hover::before { inset: 24px; border-color: color-mix(in srgb, var(--accent) 65%, transparent); } }
+@media (hover: hover) { .redeem-seal:hover::after { opacity: 1; animation-play-state: running; } }
 .redeem-ring { position: absolute; inset: 0; width: 100%; height: 100%; animation: redeem-spin 24s linear infinite paused; }
 .redeem-ring text { fill: currentColor; font-size: 12.5px; font-weight: 650; }
-.redeem-seal:hover .redeem-ring { animation-play-state: running; }
+@media (hover: hover) { .redeem-seal:hover .redeem-ring { animation-play-state: running; } }
 .redeem-ticket { position: relative; display: grid; place-items: center; }
 .redeem-ticket svg { width: 84px; height: 84px; stroke-width: 1.2; transform: rotate(-14deg); filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 45%, transparent)); transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 300ms; }
-.redeem-seal:hover .redeem-ticket svg { transform: rotate(0deg) scale(1.1); filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 80%, transparent)); }
+@media (hover: hover) { .redeem-seal:hover .redeem-ticket svg { transform: rotate(0deg) scale(1.1); filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 80%, transparent)); } }
 .redeem-ticket.stamped { animation: redeem-stamp 550ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
 .redeem-ticket.stamped::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); animation: redeem-burst 700ms ease-out both; }
 /* Lichtband über Ring und Ticket. `color-dodge` macht helle Striche weiß und lässt den dunklen Grund fast unberührt. Grau statt Weiß, denn Weiß würde auch den Grund aufhellen. */
 .redeem-shimmer { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0; mix-blend-mode: color-dodge; background: linear-gradient(115deg, transparent 38%, #666 50%, transparent 62%) 130% 0 / 250% 100% no-repeat; animation: redeem-shimmer 2.4s ease-in-out infinite paused; transition: opacity 300ms; }
-.redeem-seal:hover .redeem-shimmer { opacity: 1; animation-play-state: running; }
+@media (hover: hover) { .redeem-seal:hover .redeem-shimmer { opacity: 1; animation-play-state: running; } }
 .redeem-form { display: flex; gap: 8px; width: 100%; }
 .redeem-form input { flex: 1; min-width: 0; width: auto; height: 44px; border-radius: 12px; letter-spacing: 0.06em; transition: border-color 200ms, box-shadow 200ms; }
 .redeem-form input:disabled { opacity: 0.65; }
 .redeem-form input::placeholder { color: var(--text-muted); letter-spacing: 0; }
 .redeem-form input:focus-visible { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
 .redeem-form .redeem-send { flex: none; width: 44px; height: 44px; padding: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 30%, transparent); transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms, opacity 200ms; }
-.redeem-form .redeem-send:hover:enabled { background: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 26px color-mix(in srgb, var(--accent) 55%, transparent); }
+@media (hover: hover) { .redeem-form .redeem-send:hover:enabled { background: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 26px color-mix(in srgb, var(--accent) 55%, transparent); } }
 .redeem-form .redeem-send:active:enabled { transform: scale(0.92); }
 .redeem-send svg { transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-.redeem-send:hover:enabled svg { transform: translate(2px, -2px); }
+@media (hover: hover) { .redeem-send:hover:enabled svg { transform: translate(2px, -2px); } }
 @keyframes speech-pop { from { scale: 0.5; } }
 @keyframes speech-float { to { translate: 0 -2px; } }
 @keyframes speech-say { from { opacity: 0; } }
@@ -245,6 +267,26 @@ html[data-reduced-motion] .size-row input[type='range']::-webkit-slider-thumb { 
 @keyframes redeem-spin { to { transform: rotate(360deg); } }
 @keyframes redeem-stamp { from { transform: scale(1.7) rotate(-24deg); opacity: 0; } 60% { transform: scale(0.92) rotate(3deg); opacity: 1; } to { transform: none; } }
 @keyframes redeem-burst { from { transform: scale(0.5); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
+/*
+ * Mit Finger oder Stift: Kleine Knöpfe treffen weiter um sich herum, Bild und Layout bleiben. Die Fläche reicht höchstens bis
+ * zur Mitte der Lücke zum Nachbarn, so gewinnt dort immer der sichtbare Knopf. Das Glas liest weiter nur den Knopf selbst.
+ */
+@media (any-pointer: coarse) {
+  /* Der Griff bleibt, wie er ist: Ob Ziehen mit dem Finger unter Windows geht, ist offen (tao#525). */
+  .window-tools .icon-button, .dock nav button, .tabs button, .text-button { position: relative; }
+  .window-tools .icon-button:not(.drag-handle)::before, .dock nav button::before, .tabs button::before, .text-button::before { content: ''; position: absolute; inset: -6px; }
+  .window-tools-right .icon-button::before { inset: -6px 0; }
+  .window-tools-right .icon-button:first-child::before { left: -6px; }
+  .window-tools-right .icon-button:last-child::before { right: -6px; }
+  .dock nav button::before { inset: -7px -1px; }
+  .tabs button::before { inset: -8px -1px; }
+  :is(.dock nav, .tabs) button:first-child::before { left: -4px; }
+  :is(.dock nav, .tabs) button:last-child::before { right: -4px; }
+  .text-button::before { inset: -8px -12px; }
+  /* Der Regler trifft höher, sein Griff wird größer. Das Layout behält 22 px. */
+  .size-row input[type='range'] { --thumb: 22px; --hit: 40px; }
+}
+
 html[data-reduced-motion] .speech, html[data-reduced-motion] .speech * { animation: none; transition: none; }
 html[data-reduced-motion] .ground-shadow { transition: none; }
 html[data-reduced-motion] .redeem-ring, html[data-reduced-motion] .redeem-seal::after, html[data-reduced-motion] .redeem-ticket, html[data-reduced-motion] .redeem-ticket::after, html[data-reduced-motion] .redeem-shimmer { animation: none; }

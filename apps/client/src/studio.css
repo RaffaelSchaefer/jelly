@@ -24,7 +24,7 @@
 .blob-shape, .blob { width: var(--size); height: var(--size); translate: -50% -50%; animation: blob-float 5s ease-in-out infinite alternate var(--phase); transition: scale 350ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 .studio[data-open] .blob-shape { scale: 0.78; }
 .studio[data-open] .blob-shape.active { scale: 1.08; }
-.studio:has(.blob.at-kopf:hover) .blob-shape.at-kopf, .studio:has(.blob.at-gesicht:hover) .blob-shape.at-gesicht, .studio:has(.blob.at-haende:hover) .blob-shape.at-haende, .studio:has(.blob.at-koerper:hover) .blob-shape.at-koerper, .studio:has(.blob.at-aura:hover) .blob-shape.at-aura, .studio:has(.blob.at-farbe:hover) .blob-shape.at-farbe { scale: 1.16; }
+@media (hover: hover) { .studio:has(.blob.at-kopf:hover) .blob-shape.at-kopf, .studio:has(.blob.at-gesicht:hover) .blob-shape.at-gesicht, .studio:has(.blob.at-haende:hover) .blob-shape.at-haende, .studio:has(.blob.at-koerper:hover) .blob-shape.at-koerper, .studio:has(.blob.at-aura:hover) .blob-shape.at-aura, .studio:has(.blob.at-farbe:hover) .blob-shape.at-farbe { scale: 1.16; } }
 
 .blob { display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #fff; pointer-events: auto; }
 .blob svg { width: 45%; height: 45%; min-width: 18px; min-height: 18px; filter: drop-shadow(0 1px 2px #0008); }
@@ -52,7 +52,7 @@
 
 .pop button { position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #fff; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1), background 150ms; }
 .pop button svg { filter: drop-shadow(0 1px 2px #0008); }
-.pop button[aria-pressed='false']:not([aria-disabled='true']):hover { scale: 1.14; background: #ffffff26; }
+@media (hover: hover) { .pop button[aria-pressed='false']:not([aria-disabled='true']):hover { scale: 1.14; background: #ffffff26; } }
 /* Angelegt: ein schillernder Ring wie die Haut der Tropfen. */
 .pop button[aria-pressed='true'] { background: #ffffff1f; cursor: default; }
 .pop button[aria-pressed='true']::after { content: ''; position: absolute; inset: -1px; border-radius: 50%; background: conic-gradient(#8dffbf, #ff9bd8, #9fd4ff, #ffe79a, #8dffbf); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px)); animation: film-spin 6s linear infinite; }
@@ -60,7 +60,7 @@
 
 /* Färbbar: Das angelegte Cosmetic bleibt klickbar und trägt einen kleinen Regenbogen-Tupfer. */
 .pop button.paintable[aria-pressed='true'] { cursor: pointer; }
-.pop button.paintable:not([aria-disabled='true']):hover { scale: 1.14; }
+@media (hover: hover) { .pop button.paintable:not([aria-disabled='true']):hover { scale: 1.14; } }
 /* Über dem Ring des angelegten Knopfs, sonst schneidet er den Tupfer an. */
 .paint-hint { position: absolute; z-index: 1; right: -3px; bottom: -3px; width: 11px; height: 11px; border-radius: 50%; background: conic-gradient(#ff6b6b, #ffd45c, #4cd97b, #4cc9f0, #7a5cff, #f59ac9, #ff6b6b); box-shadow: 0 0 0 1.5px #fff, 0 1px 2px #0008; }
 
@@ -91,7 +91,10 @@
 
 /* Beschriftung beim Darüberfahren. Reines CSS, damit nichts im React-Zustand mitläuft. */
 [data-tip]::before { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; translate: -50% 0; padding: 3px 8px; border-radius: 8px; background: var(--surface-solid); color: #eef3f5; font-size: 10px; font-weight: 500; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 120ms; }
-[data-tip]:is(:hover, :focus-visible)::before { opacity: 1; }
+[data-tip]:focus-visible::before { opacity: 1; }
+@media (hover: hover) { [data-tip]:hover::before { opacity: 1; } }
+/* Ein Finger schwebt nicht: Wer den Tropfen länger hält, liest den Namen. Ein langer Druck klickt nicht (kein Kontextmenü, `pointerGuards.ts`). */
+@media (any-pointer: coarse) { [data-tip]:active::before { opacity: 1; transition-delay: 350ms; } }
 
 /* Namensschild: bleibt immer über dem Dock, auch wenn die Füße beim Zoom aus dem Bild wandern. Der Spiegel-Text gibt ihm seine Breite. */
 .name-tag { position: absolute; left: var(--anchor-name-x); top: min(var(--anchor-name-y), calc(var(--stage-height, 330px) - var(--canvas-top, 43px) - 18px)); translate: -50% -50%; display: inline-grid; min-width: 72px; max-width: 220px; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 150ms, visibility 150ms; }
@@ -99,13 +102,14 @@
 .name-tag > span { visibility: hidden; white-space: pre; overflow: hidden; }
 .studio .name-tag input { width: 100%; min-width: 0; border: 0; border-radius: 14px; background: transparent; color: #fff; text-align: center; text-shadow: 0 1px 2px #0008; cursor: text; }
 .studio .name-tag input:focus-visible { outline: 1.5px solid #ffffffb0; outline-offset: -2px; }
-.name-tag:hover, .name-tag:focus-within { scale: 1.06; }
+.name-tag:focus-within { scale: 1.06; }
+@media (hover: hover) { .name-tag:hover { scale: 1.06; } }
 /* Die Körperfarben brechen in mehrere Reihen um und reichen bis zum Namen: Solange sie offen sind, tritt er zurück, sonst fingen Klick und Tab ihn ab. */
 .studio[data-open='farbe'] .name-tag { visibility: hidden; opacity: 0; }
 
 /* Vom Fenstermittelpunkt aus gerechnet, damit es bei jeder Pet-Größe im Fenster bleibt. */
 .studio-done { position: absolute; top: 2px; left: calc(50% + 122px); padding: 6px 14px; border: 0; border-radius: 14px; background: transparent; color: #fff; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px #0008; pointer-events: auto; transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-.studio-done:hover { scale: 1.08; }
+@media (hover: hover) { .studio-done:hover { scale: 1.08; } }
 /* Die Kopf-Auswahl ist die längste und füllt fast die Fensterbreite. Solange sie offen ist, rückt „Fertig“ unter sie, neben den Kopf-Blob. */
 .studio:has(.pop.at-kopf) .studio-done { top: calc(var(--anchor-kopf-y) - 12px); }
 

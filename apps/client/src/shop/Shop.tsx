@@ -51,11 +51,11 @@ function tryOn(me: Me, item: ShopItem | null): Equipped {
 
 /** Was der Zauberer über den Laden weiß. */
 function useWorld(shop: ShopControls, me: Me, items: readonly ShopItem[]): WizardWorld {
-  const { coins_per_level: perLevel, xp_per_level: xpPerLevel } = shop.game.lan.rules;
+  const perLevel = shop.game.lan.rules.coins_per_level;
   const { open, offset: serverOffset } = shop;
   return useMemo(
-    () => ({ me, items, open, perLevel, xpPerLevel, serverOffset }),
-    [me, items, open, perLevel, xpPerLevel, serverOffset],
+    () => ({ me, items, open, perLevel, serverOffset }),
+    [me, items, open, perLevel, serverOffset],
   );
 }
 

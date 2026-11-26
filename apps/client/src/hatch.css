@@ -142,8 +142,10 @@
 .hatch-back svg {
   filter: drop-shadow(0 1px 2px #0008);
 }
-.hatch-back:hover {
-  background: #ffffff24;
+@media (hover: hover) {
+  .hatch-back:hover {
+    background: #ffffff24;
+  }
 }
 .hatch-next {
   flex: none;
@@ -170,14 +172,16 @@
   stroke-width: 2.2;
   transition: translate 220ms var(--spring);
 }
-.hatch-next:hover:enabled {
-  translate: 0 -1px;
-  box-shadow:
-    inset 0 1px 0 #fff,
-    0 8px 24px color-mix(in srgb, var(--accent) 75%, transparent);
-}
-.hatch-next:hover:enabled svg {
-  translate: 2px 0;
+@media (hover: hover) {
+  .hatch-next:hover:enabled {
+    translate: 0 -1px;
+    box-shadow:
+      inset 0 1px 0 #fff,
+      0 8px 24px color-mix(in srgb, var(--accent) 75%, transparent);
+  }
+  .hatch-next:hover:enabled svg {
+    translate: 2px 0;
+  }
 }
 .hatch-next:active:enabled {
   scale: 0.92;
@@ -219,8 +223,10 @@
   stroke-width: 1.5px;
   filter: drop-shadow(0 1px 2px #0008);
 }
-.hatch-color:hover {
-  scale: 1.15;
+@media (hover: hover) {
+  .hatch-color:hover {
+    scale: 1.15;
+  }
 }
 .hatch-color:has(input:checked) {
   scale: 1.2;
@@ -249,8 +255,10 @@
   pointer-events: auto;
   animation: hatch-fade 300ms ease-out 700ms both;
 }
-.hatch .hatch-lost:hover {
-  color: var(--accent);
+@media (hover: hover) {
+  .hatch .hatch-lost:hover {
+    color: var(--accent);
+  }
 }
 /* Mit dem üblichen Abstand läge der untere Rand des Rings außerhalb des Fensters. */
 .hatch .hatch-lost:focus-visible {

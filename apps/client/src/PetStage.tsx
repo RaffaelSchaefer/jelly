@@ -80,8 +80,8 @@ function stageModes(panel: PanelId | null, hatch: boolean) {
     dropsVisible,
     // Wo Glas liegt, braucht es die Lage des Jellys und die Flächen aus dem DOM.
     glass: hatch || studio || levelUp || dropsVisible,
-    // Die Säule der Schilder bräuchte den Platz. In den anderen Fällen läuft das Glas gar nicht.
-    bubble: hatch || (dropsVisible && panel !== "signs"),
+    // Säule der Schilder und Emote-Auswahl bräuchten den Platz. Sonst läuft das Glas gar nicht.
+    bubble: hatch || (dropsVisible && panel === null),
   };
 }
 

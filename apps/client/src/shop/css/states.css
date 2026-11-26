@@ -93,8 +93,10 @@
   color: var(--quill-soft);
 }
 
-.shop .notice-close:hover {
-  background: #a0763a26;
+@media (hover: hover) {
+  .shop .notice-close:hover {
+    background: #a0763a26;
+  }
 }
 
 .shop .notice-close:focus-visible {

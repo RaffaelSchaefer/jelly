@@ -180,8 +180,10 @@
   color: #f1eaff;
 }
 
-.seal:not([data-mode="locked"]):hover .seal-wax {
-  scale: 1.06;
+@media (hover: hover) {
+  .seal:not([data-mode="locked"]):hover .seal-wax {
+    scale: 1.06;
+  }
 }
 
 /* Beim Aufschlag wird aus dem Zeichen ein geprägtes Z. */

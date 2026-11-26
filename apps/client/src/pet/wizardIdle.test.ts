@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import type { Me } from "./types";
 
 import { PREVIEW_CATALOG, PREVIEW_ME } from "./preview";
+import { levelProgress } from "./progress";
 import { shopItems } from "./shop";
 import {
   asleepScript,
@@ -32,13 +33,20 @@ import { flattenCues, UNKNOWN_CONTEXT, type ScriptKit, type WizardContext } from
 
 /** Ein Laden für ein Jelly mit `coins` Münzen und `xp` XP. */
 function shop(coins = 3, xp = 235, patch: Partial<WizardContext> = {}): WizardContext {
-  const me: Me = { ...PREVIEW_ME, coins, xp };
+  // Lineare Kurve mit 100 XP je Level, wie der Server sie fertig gerechnet schickt.
+  const me: Me = {
+    ...PREVIEW_ME,
+    coins,
+    xp,
+    level: Math.floor(xp / 100) + 1,
+    xp_in_level: xp % 100,
+    xp_for_next_level: 100,
+  };
   return {
     ...UNKNOWN_CONTEXT,
     name: "Pixel",
     coins,
-    xp,
-    xpPerLevel: 100,
+    progress: levelProgress(me),
     perLevel: 1,
     open: true,
     items: shopItems(PREVIEW_CATALOG, me),

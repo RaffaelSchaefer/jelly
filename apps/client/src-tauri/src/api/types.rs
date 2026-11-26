@@ -180,6 +180,13 @@ pub struct Me {
     pub xp: i64,
     /// Level in dieser LAN.
     pub level: i64,
+    /// XP seit Beginn des Levels. Fehlt bei älteren Servern, ohne LAN 0.
+    #[serde(default)]
+    pub xp_in_level: i64,
+    /// So viel kostet das ganze laufende Level, je nach Kurve der LAN. Fehlt bei älteren Servern,
+    /// ohne LAN 0.
+    #[serde(default)]
+    pub xp_for_next_level: i64,
     /// Münzen für den Shop in dieser LAN, außerhalb einer laufenden LAN 0.
     #[serde(default)]
     pub coins: i64,

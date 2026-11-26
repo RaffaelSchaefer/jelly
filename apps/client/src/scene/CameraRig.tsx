@@ -7,9 +7,10 @@
 import { HAND, HEAD } from "@jelly/scene";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { Vector3, type Camera } from "three";
+import { PerspectiveCamera, Vector3, type Camera } from "three";
 
-import { CANVAS_OVERSCAN, stageLayout, type CameraFocus } from "../pet";
+import { stageLayout, type CameraFocus } from "../pet";
+import { overscanFov, useOverscan } from "./useOverscan";
 
 /** Standort und Blickziel der Kamera. */
 type Shot = { position: Vector3; look: Vector3 };
@@ -32,8 +33,8 @@ const SHOTS: Record<CameraFocus, Shot> = {
   aura: { position: new Vector3(-0.5, 0.2, 6.3), look: new Vector3(0.2, -0.1, 0) },
 };
 
-/** Breite der Canvas bei 100 %, auf die die Ansichten abgestimmt sind. */
-const BASE_WIDTH = stageLayout(100).canvas.width * CANVAS_OVERSCAN;
+/** Breite des Kastens der Canvas bei 100 %, auf die die Ansichten abgestimmt sind. */
+const BASE_WIDTH = stageLayout(100).canvas.width;
 
 /** Abstand zur Grundansicht, ab dem die Kamera noch unterwegs ist. */
 const AWAY_DISTANCE = 0.01;
@@ -64,7 +65,17 @@ export default function CameraRig({
   reducedMotion: boolean;
 }) {
   const invalidate = useThree((state) => state.invalidate);
+  const camera = useThree((state) => state.camera);
+  const overscan = useOverscan();
   const look = useRef(DEFAULT_SHOT.look.clone());
+
+  // Ragt die Canvas weiter über, sieht die Kamera um denselben Faktor mehr.
+  useEffect(() => {
+    if (!(camera instanceof PerspectiveCamera)) return;
+    camera.fov = overscanFov(overscan);
+    camera.updateProjectionMatrix();
+    invalidate();
+  }, [camera, overscan, invalidate]);
 
   // Ohne laufende Uhr bräuchte der Sprung sonst einen Anstoß von außen.
   useEffect(() => invalidate(), [focus, reducedMotion, invalidate]);
@@ -74,7 +85,9 @@ export default function CameraRig({
     const step = reducedMotion ? 1 : 1 - Math.exp(-EASE_SPEED * Math.min(delta, MAX_DELTA));
     goal.copy(shot.position);
     // Ein großes Pet hat eine breitere Canvas. Gleich nah würde der Kopf das Fenster sprengen.
-    if (goal.z < DEFAULT_SHOT.position.z) goal.z *= Math.max(1, size.width / BASE_WIDTH);
+    if (goal.z < DEFAULT_SHOT.position.z) {
+      goal.z *= Math.max(1, size.width / overscan / BASE_WIDTH);
+    }
     camera.position.lerp(goal, step);
     look.current.lerp(shot.look, step);
     camera.lookAt(look.current);

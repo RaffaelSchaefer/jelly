@@ -23,5 +23,10 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 reqwest-eventsource = "0.6"
 futures-util = "0.3"
 
+# Ebene und Spaces des Pet-Fensters, die Tauri nicht setzt (`src/window.rs`). Dieselbe Version, die
+# tao ohnehin mitbringt.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "bitflags", "NSResponder", "NSWindow"] }
+
 [dev-dependencies]
 tempfile = "3"

@@ -12,6 +12,7 @@ import { useState, type ComponentProps, type CSSProperties, type ReactNode } fro
 import { speechSyllables } from "../pet";
 import { cx } from "./cx";
 import Icon, { type IconName } from "./Icon";
+import { useSliderTouch } from "./useSliderTouch";
 
 /** Eigenschaften von {@link IconButton}. */
 export interface IconButtonProps extends ComponentProps<"button"> {
@@ -229,6 +230,7 @@ export function PercentSlider({
   disabled,
   onChange,
 }: PercentSliderProps) {
+  const { change, handlers } = useSliderTouch(onChange);
   // Bis wohin die Spur des Reglers gefüllt ist, siehe `styles.css`.
   const fill = { "--slider-fill": (value - min) / (max - min) } as CSSProperties;
   return (
@@ -249,7 +251,8 @@ export function PercentSlider({
         value={value}
         aria-valuetext={valueText}
         disabled={disabled}
-        onChange={(event) => onChange(Number(event.target.value))}
+        onChange={(event) => change(Number(event.target.value))}
+        {...handlers}
       />
       {ends ? (
         <div className="size-scale" aria-hidden="true">
@@ -269,6 +272,53 @@ export interface ToggleRowProps {
   checked: boolean;
   disabled?: boolean;
   onChange: (checked: boolean) => void;
+}
+
+/** Eigenschaften von {@link ChoiceRow}. `T` ist die Vereinigung der Werte. */
+export interface ChoiceRowProps<T extends string> {
+  /** Name der Gruppe für die Radioknöpfe, je Seite eindeutig. */
+  name: string;
+  label: string;
+  /** Erklärung unter der Beschriftung. */
+  hint: string;
+  options: readonly { id: T; label: string }[];
+  value: T;
+  disabled?: boolean;
+  onChange: (value: T) => void;
+}
+
+/** Wahl einer von wenigen Stufen, als Zeile mit Beschriftung und nebeneinander liegenden Knöpfen. */
+export function ChoiceRow<T extends string>({
+  name,
+  label,
+  hint,
+  options,
+  value,
+  disabled,
+  onChange,
+}: ChoiceRowProps<T>) {
+  return (
+    <fieldset className="choice-row" disabled={disabled}>
+      <legend>
+        <strong>{label}</strong>
+        <small>{hint}</small>
+      </legend>
+      <div className="choice-options">
+        {options.map((option) => (
+          <label key={option.id}>
+            <input
+              type="radio"
+              name={name}
+              value={option.id}
+              checked={option.id === value}
+              onChange={() => onChange(option.id)}
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
 }
 
 /** Einstellung zum An- und Ausschalten, als Zeile mit Beschriftung. */

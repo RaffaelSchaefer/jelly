@@ -108,3 +108,25 @@ test("a swaying tower is picked where its jellies are, not on its axis", () => {
   assert.equal(pickJelly(swaying, { x: 461 + 34 + 30, y: 120 }, null), 5);
   assert.equal(pickJelly(swaying, { x: 461 - 30, y: 120 }, null), null);
 });
+
+test("a finger beside a jelly still hits it, the closest one first", () => {
+  const anchors = [anchorAt(1, 100, 200), anchorAt(2, 200, 200)];
+  // A jelly 60 pixels tall reaches 30 pixels from its axis: 140 lies 10 pixels beside the first one.
+  assert.equal(pickJelly(anchors, { x: 140, y: 180 }, null), null);
+  assert.equal(pickJelly(anchors, { x: 140, y: 180 }, null, 12), 1);
+  assert.equal(pickJelly(anchors, { x: 140, y: 180 }, null, 8), null);
+  assert.equal(pickJelly(anchors, { x: 165, y: 180 }, null, 12), 2);
+});
+
+test("a finger reach never beats a jelly right under it", () => {
+  const backToFront = [anchorAt(1, 100, 200), anchorAt(2, 160, 200)];
+  // 125 lies on the first one and 5 pixels beside the second one, which is in front.
+  assert.equal(pickJelly(backToFront, { x: 125, y: 190 }, null, 12), 1);
+  assert.equal(pickJelly(TOWER, { x: 451, y: 340 }, null, 20), 2);
+});
+
+test("a finger on the own jelly picks nobody beside it", () => {
+  const anchors = [anchorAt(1, 100, 200), anchorAt(2, 170, 200)];
+  assert.equal(pickJelly(anchors, { x: 175, y: 190 }, 2, 30), null);
+  assert.equal(pickJelly(anchors, { x: 135, y: 190 }, 2, 30), 1);
+});

@@ -5,7 +5,12 @@
   width: var(--canvas-width, 396px);
   height: var(--canvas-height, 315px);
   margin-left: calc(var(--canvas-width, 396px) / -2);
-  --emote-x: clamp(calc(50% - 138px), var(--anchor-emote-x), calc(50% + 160px));
+  /* Bei einem kleinen Jelly hinge der Tropfen sonst auf seinem Kopf, die Auswahl links davon fiele
+     aus dem Fenster. Mindestens 70 px rechts der Mitte: */
+  --emote-x: clamp(calc(50% + 70px), var(--anchor-emote-x), calc(50% + 160px));
+  /* Mindestens 80 px über den Füßen: So bleibt er über dem Shop-Tropfen, und die Auswahl endet über
+     dem Dock. */
+  --emote-y: min(var(--anchor-emote-y), calc(var(--feet, 299px) - var(--canvas-top, 43px) - 80px));
   z-index: 2;
   pointer-events: none;
   opacity: var(--studio-ready, 0);
@@ -15,7 +20,7 @@
 .emote-pop {
   position: absolute;
   left: var(--emote-x);
-  top: var(--anchor-emote-y);
+  top: var(--emote-y);
   color: #fff;
   pointer-events: auto;
 }
@@ -70,9 +75,11 @@
   opacity: 0.45;
   cursor: default;
 }
-.emote-pop button:not([aria-disabled="true"]):hover,
-.emote-trigger:hover {
-  background: #ffffff26;
+@media (hover: hover) {
+  .emote-pop button:not([aria-disabled="true"]):hover,
+  .emote-trigger:hover {
+    background: #ffffff26;
+  }
 }
 .emote-controls button:focus-visible {
   outline: 2px solid #fff;

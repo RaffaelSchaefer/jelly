@@ -68,14 +68,22 @@ html[data-optimized-rendering] :is(.drag-handle, .window-tools-right) {
   background: var(--surface-solid);
   border-color: var(--solid-line);
 }
-html[data-optimized-rendering] .window-tools .icon-button:is(:hover:enabled, :focus-visible) {
+html[data-optimized-rendering] .window-tools .icon-button:focus-visible {
   background: var(--solid-hover);
   box-shadow: none;
 }
+@media (hover: hover) {
+  html[data-optimized-rendering] .window-tools .icon-button:hover:enabled {
+    background: var(--solid-hover);
+    box-shadow: none;
+  }
+}
 
 /* Zustände */
-html[data-optimized-rendering] :is(.blob, .emote-trigger, .sign-trigger, .studio-done):not([aria-expanded='true']):hover:enabled {
-  background: var(--solid-hover);
+@media (hover: hover) {
+  html[data-optimized-rendering] :is(.blob, .emote-trigger, .sign-trigger, .studio-done):not([aria-expanded='true']):hover:enabled {
+    background: var(--solid-hover);
+  }
 }
 html[data-optimized-rendering] :is(.blob, .emote-trigger, .sign-trigger)[aria-expanded='true'] {
   background: var(--accent);

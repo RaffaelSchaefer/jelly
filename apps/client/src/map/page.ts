@@ -68,6 +68,11 @@ export interface MapPage {
    * zoomt die Karte nicht: Sein Punkt lag im Bild der News-Kamera.
    */
   leftNewsByClick: boolean;
+  /**
+   * So viele CSS-Pixel neben einem Jelly trifft der laufende Klick noch: mit dem Finger mehr als
+   * mit der Maus (`reachOf` in `pointers.ts`).
+   */
+  reach: number;
 }
 
 /** Der Name eines Jellys vom letzten Lesen. */

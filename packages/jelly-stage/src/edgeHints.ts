@@ -206,10 +206,13 @@ export function drawEdgeHints(context: CanvasRenderingContext2D, hints: EdgeHint
   }
 }
 
-/** Returns the player of the hint at a point, null when there is none. */
-export function pickEdgeHint(hints: EdgeHint[], point: ScreenPoint): number | null {
+/**
+ * Returns the player of the hint at a point, null when there is none. `reach` widens every hint by
+ * that many pixels, as for a finger.
+ */
+export function pickEdgeHint(hints: EdgeHint[], point: ScreenPoint, reach = 0): number | null {
   const hit = hints.find(
-    (hint) => Math.hypot(hint.x - point.x, hint.y - point.y) <= hint.radius + SIZE.grab,
+    (hint) => Math.hypot(hint.x - point.x, hint.y - point.y) <= hint.radius + SIZE.grab + reach,
   );
   return hit?.playerId ?? null;
 }

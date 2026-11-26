@@ -33,6 +33,7 @@ import {
   limitFocus,
   measureBounds,
   panBetween,
+  pinchAt,
   placeCamera,
   releasePan,
   stepZoom,
@@ -67,6 +68,11 @@ export interface CameraControls {
   pan: (from: ScreenPoint, to: ScreenPoint) => void;
   /** Ends a drag: the view swings out and springs back into the room. */
   releasePan: () => void;
+  /**
+   * Zooms by a factor at once and slides the view so the floor under `from` lies under `to`, as
+   * two fingers do. Ends following the own jelly.
+   */
+  pinch: (from: ScreenPoint, to: ScreenPoint, factor: number) => void;
   /** Flies to the own jelly, closer if needed, and keeps it in the middle. */
   followOwn: () => void;
   /** Flies to a jelly, closer if needed, and stays there. */
@@ -238,6 +244,10 @@ function createControls(
       panBetween(zoom, readStage(), { from, to, at: performance.now() });
     },
     releasePan: () => releasePan(zoom, source.hall.size, performance.now(), memory.reducedMotion),
+    pinch: (from, to, factor) => {
+      steer();
+      pinchAt(zoom, readStage(), { from, to, factor });
+    },
     followOwn: () => request("own"),
     flyTo: (playerId) => request(playerId),
     playIntro: () => request("intro"),

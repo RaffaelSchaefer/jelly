@@ -1845,6 +1845,7 @@ name = "jelly"
 version = "0.6.3"
 dependencies = [
  "futures-util",
+ "objc2-app-kit",
  "reqwest 0.12.28",
  "reqwest-eventsource",
  "serde",

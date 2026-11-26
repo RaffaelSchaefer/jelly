@@ -137,9 +137,9 @@ function LevelNumber({ level }: { level: number }) {
 }
 
 /** Der Fortschritt zum nächsten Level als Ring um dessen Zahl. */
-function XpDrop({ xp, xpPerLevel }: { xp: number; xpPerLevel: number }) {
-  const { level, current, remaining } = levelProgress(xp, xpPerLevel);
-  const fill = { "--levelup-fill": current / xpPerLevel } as CSSProperties;
+function XpDrop({ me }: { me: Me }) {
+  const { level, current, cost, remaining, fill: share } = levelProgress(me);
+  const fill = { "--levelup-fill": share } as CSSProperties;
   return (
     <div className="levelup-side right">
       <span className="levelup-drop" data-liquid="calm" style={fill}>
@@ -149,7 +149,7 @@ function XpDrop({ xp, xpPerLevel }: { xp: number; xpPerLevel: number }) {
       <progress
         className="sr-only"
         value={current}
-        max={xpPerLevel}
+        max={Math.max(1, cost)}
         aria-label={`Fortschritt zu Level ${level + 1}`}
       />
       <small>Noch {remaining} XP</small>
@@ -247,7 +247,7 @@ export default function LevelUp({
       </div>
       <div className="levelup-front">
         <Capsule {...{ gained, disabled, onShop, onClose }} name={me.name} />
-        <XpDrop xp={me.xp} xpPerLevel={rules.xp_per_level} />
+        <XpDrop me={me} />
         {gained > 0 ? <CoinDrop coins={me.coins} /> : null}
         <BoomFront />
       </div>

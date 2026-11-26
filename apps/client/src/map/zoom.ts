@@ -1,13 +1,16 @@
 /**
  * Zoom der Karte: Mausrad, Spreizen und Knöpfe holen die Halle heran, Ziehen und Pfeiltasten oder
- * WASD verschieben den Ausschnitt, der danach ausrollt. Herangeholt folgt die Kamera dem eigenen
- * Jelly, bis man sie verschiebt. „Zu meinem Jelly“ und die Leertaste fliegen zurück. Gleiten,
- * Schwung und Flüge rechnet `@jelly/stage`.
+ * WASD verschieben den Ausschnitt, der danach ausrollt. Ziehen und Spreizen mit Zeigern und Fingern
+ * stehen in `gesture.ts`. Herangeholt folgt die Kamera dem eigenen Jelly, bis man sie verschiebt.
+ * „Zu meinem Jelly“ und die Leertaste fliegen zurück. Gleiten, Schwung und Flüge rechnet
+ * `@jelly/stage`.
  *
  * @module
  */
 
-import type { ScreenPoint, StageView } from "@jelly/stage";
+import type { StageView } from "@jelly/stage";
+
+import { listenToGestures } from "./gesture";
 
 /** Zoom je Einheit des Mausrads. Ein Rastschritt sind rund 100 Einheiten. */
 const WHEEL_ZOOM = 0.0015;
@@ -15,8 +18,6 @@ const WHEEL_ZOOM = 0.0015;
 const PINCH_ZOOM = 0.012;
 /** Zoom je Druck auf Plus oder Minus. */
 const STEP_ZOOM = 1.5;
-/** Ab so vielen Pixeln ist ein gedrückter Zeiger ein Ziehen und kein Klick mehr. */
-const DRAG_START = 4;
 /** Pixel pro Sekunde, um die eine gehaltene Taste den Ausschnitt schiebt. */
 const KEY_SPEED = 700;
 /** Nach einer Pause, etwa in einem verborgenen Fenster, springt der Ausschnitt nicht weit. */
@@ -53,45 +54,6 @@ function listenToWheel(zoom: MapZoom) {
     },
     { passive: false },
   );
-}
-
-/**
- * Ziehen mit der linken Taste verschiebt, beim Loslassen schwingt der Ausschnitt aus. Der Klick am
- * Ende eines Ziehens zählt nicht, sonst ginge das Jelly danach auf einen Ausflug. Dafür muss dieser
- * Hörer vor dem der Seite angemeldet sein.
- */
-function listenToDrag(zoom: MapZoom) {
-  const { canvas } = zoom;
-  const frame = canvas.parentElement!;
-  let last: ScreenPoint | null = null;
-  let isDragging = false;
-  canvas.addEventListener("pointerdown", (event) => {
-    last = event.button === 0 ? { x: event.offsetX, y: event.offsetY } : null;
-    isDragging = false;
-  });
-  canvas.addEventListener("pointermove", (event) => {
-    if (!last || !(event.buttons & 1)) return;
-    const point = { x: event.offsetX, y: event.offsetY };
-    if (!isDragging && Math.hypot(point.x - last.x, point.y - last.y) < DRAG_START) return;
-    // Auch über den Knöpfen und außerhalb des Fensters geht das Ziehen weiter.
-    if (!isDragging) canvas.setPointerCapture(event.pointerId);
-    isDragging = true;
-    frame.toggleAttribute("data-dragging", true);
-    zoom.readView()?.pan(last, point);
-    last = point;
-  });
-  const end = () => {
-    last = null;
-    if (!frame.hasAttribute("data-dragging")) return;
-    frame.toggleAttribute("data-dragging", false);
-    zoom.readView()?.releasePan();
-  };
-  canvas.addEventListener("pointerup", end);
-  canvas.addEventListener("pointercancel", end);
-  canvas.addEventListener("click", (event) => {
-    if (isDragging) event.stopImmediatePropagation();
-    isDragging = false;
-  });
 }
 
 /** Wohin die gehaltenen Tasten zusammen schieben. */
@@ -170,10 +132,10 @@ function listenToKeys(zoom: MapZoom) {
   window.addEventListener("blur", keyPan.releaseAll);
 }
 
-/** Verbindet Mausrad, Ziehen, Tasten und die Kamera-Knöpfe der Leiste mit der Bühne. */
+/** Verbindet Mausrad, Ziehen, Spreizen, Tasten und die Kamera-Knöpfe der Leiste mit der Bühne. */
 export function listenToZoom(zoom: MapZoom): void {
   listenToWheel(zoom);
-  listenToDrag(zoom);
+  listenToGestures(zoom);
   listenToKeys(zoom);
   const listen = (id: string, action: (view: StageView) => void) =>
     document.querySelector(id)!.addEventListener("click", () => {

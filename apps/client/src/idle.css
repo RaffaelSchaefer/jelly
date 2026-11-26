@@ -1,0 +1,69 @@
+/*
+ * „Knöpfe ausblenden“: `data-idle-view` an `<html>` (gesetzt von `useIdleView.ts`) blendet ohne
+ * Mauszeiger aus, mit `bubble` alles außer Sprechblase und Jelly, mit `none` auch die Blase. Liegt der
+ * Tastaturfokus im Fenster, bleibt alles stehen.
+ *
+ * Das Glas zeichnet `scene/LiquidGlass.tsx` aus der Lage der `data-liquid`-Elemente, die Deckkraft
+ * sieht es nicht. Darum schrumpfen Tropfen und Blase mit `transform` auf ihrer Stelle zu nichts: Das
+ * Glas liest ihre Größe per `getBoundingClientRect` und verschwindet mit ihnen. Sie bleiben dabei im
+ * DOM, sonst rückten Blase und Schwanz auf die Plätze der Emotes, die mit nichts verschmelzen. Im
+ * optimierten Modus tragen dieselben Elemente ihre Fläche selbst und gehen genauso.
+ *
+ * Ausblenden wartet kurz, damit nichts flackert, wenn der Zeiger nur über den Rand streift.
+ * Zurück kommt alles sofort. Mit weniger Bewegung ohne Übergang, das Warten bleibt.
+ */
+.pet-window {
+  --idle-out: 320ms ease-in 700ms;
+  --idle-in: 160ms ease-out;
+  --idle-pop: 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html[data-reduced-motion] .pet-window {
+  --idle-out: 0s 700ms;
+  --idle-in: 0s;
+  --idle-pop: 0s;
+}
+
+/* Der Weg zurück. Eigene Übergänge der Elemente stehen mit drin, die Kurzschreibweise ersetzt sie. */
+.pet-window :is(.dock, .loading, .emote-controls, .sign-controls) {
+  transition: opacity var(--idle-in);
+}
+
+.pet-window .window-tools {
+  transition:
+    transform 0.25s ease,
+    opacity var(--idle-in);
+}
+
+.pet-window .emote-trigger {
+  transition: transform var(--idle-pop);
+}
+
+.pet-window .sign-trigger {
+  transition:
+    scale 300ms var(--sign-spring),
+    background 150ms,
+    transform var(--idle-pop);
+}
+
+.pet-window .speech {
+  transition:
+    background 300ms,
+    opacity var(--idle-in),
+    transform var(--idle-pop);
+}
+
+/* Der Weg hinaus. */
+html[data-idle-view]:not(:has(:focus-visible)) .pet-window
+  :is(.window-tools, .dock, .loading, .emote-controls, .sign-controls, .emote-trigger, .sign-trigger),
+html[data-idle-view="none"]:not(:has(:focus-visible)) .pet-window .speech {
+  opacity: 0;
+  transition:
+    opacity var(--idle-out),
+    transform var(--idle-out);
+}
+
+html[data-idle-view]:not(:has(:focus-visible)) .pet-window :is(.emote-trigger, .sign-trigger),
+html[data-idle-view="none"]:not(:has(:focus-visible)) .pet-window .speech {
+  transform: scale(0);
+}
