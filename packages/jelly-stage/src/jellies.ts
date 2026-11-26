@@ -19,13 +19,15 @@ import {
   type Jelly,
   type Motion,
 } from "@jelly/scene";
-import { Group, Object3D } from "three";
+import { Group, Object3D, Vector3 } from "three";
 
+import type { CongaDancer } from "./congaLines.ts";
 import type { MotionPose, StageEffect } from "./effects.ts";
 import type { NewsGaze } from "./newsShots.ts";
 import type { StageMove, StagePlayer, StageStack } from "./types.ts";
 import type { FloorPoint, ScenePoint } from "./world.ts";
 
+import { addCongaPose } from "./congaLines.ts";
 import { findEmote, findMotionPose } from "./effects.ts";
 import {
   createWearer,
@@ -89,6 +91,8 @@ const POP_SCALE = 0.1;
 const STEP_LIFT = 0.05;
 /** With reduced motion a jelly glides along its move, without hopping or leaning. */
 const STILL_WALK: WalkPose = { lift: 0, lean: 0 };
+/** Reused to find the crown of every jelly, so that allocates no vector. */
+const CROWN = new Vector3();
 
 /** One jelly on the stage. */
 interface StageJelly {
@@ -150,6 +154,8 @@ export interface JellyFrame {
   moves: ReadonlyMap<number, StageMove>;
   /** The running stacks, as fresh as the last `stack.changed`. */
   stacks: StageStack[];
+  /** Everybody who dances in a conga line right now, by player ID. */
+  dancers: ReadonlyMap<number, CongaDancer>;
   /** Server time of this frame in milliseconds, as `ends_at` of a stack counts. */
   serverTime: number;
   /** Seconds since the last frame and since the page opened. */
@@ -166,6 +172,8 @@ export interface JellySpot {
   /** Under the body, also up in a swaying tower or thrown out of one. */
   feet: ScenePoint;
   head: ScenePoint;
+  /** The top of the head as drawn: tilted by a dance, a walk or a leaning tower, lifted by a jump. */
+  crown: ScenePoint;
   /** Which level of a standing tower it sits on, 0 at the bottom. Missing outside a tower. */
   tier?: number;
 }
@@ -322,6 +330,26 @@ function growJelly(shown: StageJelly, frame: JellyFrame, isPlaced: boolean): voi
   shown.scale += (wanted - shown.scale) * (1 - Math.exp(-GROW_RATE * frame.seconds));
 }
 
+/** How a jelly moves by itself in a frame: along its walk, and by its effects and its dance. */
+interface OwnSteps {
+  walk: WalkPose;
+  motion: MotionPose;
+}
+
+/**
+ * Returns the steps of a jelly. In the air or in a tower it neither hops along its move nor dances,
+ * not even at the bottom of one.
+ */
+function findSteps(shown: StageJelly, frame: JellyFrame, isPerched: boolean): OwnSteps {
+  const playerId = shown.player.id;
+  const pose = findMotionPose(frame.reducedMotion ? [] : frame.effects, playerId, frame.now);
+  const dancer = isPerched || shown.perch ? undefined : frame.dancers.get(playerId);
+  const walk = isPerched ? STILL_WALK : calculateWalkPose(shown.walker);
+  // A dancer steps on the beat of its line instead of hopping at its own stride.
+  const lift = walk.lift * (1 - (dancer?.presence ?? 0));
+  return { walk: { ...walk, lift }, motion: addCongaPose(pose, dancer, frame.serverTime) };
+}
+
 /** Walks, poses and animates one jelly. */
 function updateJelly(cast: JellyCast, shown: StageJelly, frame: JellyFrame): void {
   const { walker } = shown;
@@ -340,8 +368,7 @@ function updateJelly(cast: JellyCast, shown: StageJelly, frame: JellyFrame): voi
   const pose = shown.perch ?? STANDING;
   // In the air or on a tower it does not hop along its move.
   const isPerched = frame.reducedMotion || pose.rise > STEP_LIFT;
-  const walk = isPerched ? STILL_WALK : calculateWalkPose(walker);
-  const motion = findMotionPose(frame.reducedMotion ? [] : frame.effects, playerId, frame.now);
+  const { walk, motion } = findSteps(shown, frame, isPerched);
   growJelly(shown, frame, isPlaced);
   placeJelly(shown, pose, walk, motion);
   keepHandsFree(shown, frame.presenterId === playerId);
@@ -401,7 +428,10 @@ function locateSpot(shown: StageJelly): JellySpot {
     y: group.position.y + up,
     z: group.position.z + pose.leanZ * up,
   };
-  return { player: shown.player, feet, head, tier: pose.tier };
+  // The jelly bobs and jumps inside its group, as when it cheers.
+  const top = up + shown.jelly.root.position.y * group.scale.y;
+  const { x, y, z } = CROWN.set(0, top, 0).applyEuler(group.rotation).add(group.position);
+  return { player: shown.player, feet, head, crown: { x, y, z }, tier: pose.tier };
 }
 
 /** Moves every jelly for one frame and returns where they are, from back to front. */

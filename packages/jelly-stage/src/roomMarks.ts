@@ -1,13 +1,14 @@
 /**
  * The marks in the room that follow the jellies: the light on highlighted ones, the rings of choice,
  * the ring under the pointer, the pointer at the own goal, the ring with the time left around every
- * stack and the lighthouse on a highlighted tower.
+ * stack, the lighthouse on a highlighted tower, and the garland and the dance floor of a conga line.
  *
  * @module
  */
 
 import type { Scene } from "three";
 
+import type { CongaFrame } from "./congaLines.ts";
 import type { StageEffect } from "./effects.ts";
 import type { JellySpot } from "./jellies.ts";
 import type { StageMove, StagePoint, StageStack } from "./types.ts";
@@ -16,6 +17,8 @@ import type { Placement } from "./zones.ts";
 
 import { createBeams, updateBeams, type StageBeams } from "./beams.ts";
 import { createChoiceRings, updateChoiceRings, type ChoiceRings } from "./choiceRings.ts";
+import { createGarlands, updateGarlands, type Garlands } from "./conga.ts";
+import { createCongaFloor, updateCongaFloor, type CongaFloor } from "./congaFloor.ts";
 import { createHoverRing, updateHoverRing, type HoverRing } from "./hoverRing.ts";
 import { createLighthouses, updateLighthouses, type Lighthouses } from "./lighthouse.ts";
 import { createPointer, updatePointer, type StagePointer } from "./pointer.ts";
@@ -25,6 +28,8 @@ import { createStackRings, updateStackRings, type StackRings } from "./stackRing
 export interface RoomMarks {
   beams: StageBeams;
   choiceRings: ChoiceRings;
+  congaFloor: CongaFloor;
+  garlands: Garlands;
   goalPointer: StagePointer;
   hoverRing: HoverRing;
   lighthouses: Lighthouses;
@@ -40,6 +45,8 @@ export interface RoomMarksFrame {
   moves: ReadonlyMap<number, StageMove>;
   /** The running stacks, as fresh as the last `stack.changed`. */
   stacks: StageStack[];
+  /** The conga lines that show in this frame: where a garland hangs and who dances. */
+  congas: CongaFrame;
   platforms: Placement[];
   room: RoomSize;
   /** The jellies that light up in this frame. */
@@ -62,6 +69,8 @@ export function createRoomMarks(scene: Scene): RoomMarks {
   const marks: RoomMarks = {
     beams: createBeams(),
     choiceRings: createChoiceRings(),
+    congaFloor: createCongaFloor(),
+    garlands: createGarlands(),
     goalPointer: createPointer(),
     hoverRing: createHoverRing(),
     lighthouses: createLighthouses(),
@@ -70,6 +79,8 @@ export function createRoomMarks(scene: Scene): RoomMarks {
   scene.add(
     marks.beams.root,
     marks.choiceRings.root,
+    marks.congaFloor.mesh,
+    marks.garlands.root,
     marks.goalPointer.root,
     marks.hoverRing.mesh,
     marks.lighthouses.root,
@@ -78,7 +89,10 @@ export function createRoomMarks(scene: Scene): RoomMarks {
   return marks;
 }
 
-/** Moves the light on highlighted jellies and towers, all rings and the pointer at the own goal. */
+/**
+ * Moves the light on highlighted jellies and towers, the garlands and the dance floor, all rings
+ * and the pointer at the own goal.
+ */
 export function updateRoomMarks(marks: RoomMarks, frame: RoomMarksFrame): void {
   const { spots, effects, stacks, platforms, room, serverTime, seconds, now, reducedMotion } =
     frame;
@@ -92,6 +106,9 @@ export function updateRoomMarks(marks: RoomMarks, frame: RoomMarksFrame): void {
     now,
     reducedMotion,
   });
+  const { links, dancers } = frame.congas;
+  updateGarlands(marks.garlands, { spots, links, serverTime, reducedMotion });
+  updateCongaFloor(marks.congaFloor, { spots, dancers, platforms, serverTime, reducedMotion });
   updateStackRings(marks.stackRings, {
     stacks,
     platforms,

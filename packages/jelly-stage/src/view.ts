@@ -8,6 +8,7 @@
  */
 
 import type { CameraControls } from "./cameraControls.ts";
+import type { CongaFrame } from "./congaLines.ts";
 import type { FrameLimit } from "./framePacing.ts";
 import type { JellySpot } from "./jellies.ts";
 import type { ScreenPoint } from "./lens.ts";
@@ -16,6 +17,7 @@ import type { NewsGaze } from "./newsShots.ts";
 import type { StageMove, StagePoint, StageStack } from "./types.ts";
 import type { FloorPoint, ScenePoint } from "./world.ts";
 
+import { findCongaLines, gatherCongas, NO_CONGA } from "./congaLines.ts";
 import { updateEffects, type StageEffect } from "./effects.ts";
 import { pickEdgeHint } from "./edgeHints.ts";
 import { pickFloor, readPickView } from "./floorPicking.ts";
@@ -24,7 +26,7 @@ import { NO_INSETS } from "./insets.ts";
 import { JELLY_HEIGHT, updateJellies, WINNER_SCALE } from "./jellies.ts";
 import { bendToLens } from "./lens.ts";
 import { applyLens } from "./lensPass.ts";
-import { findPositions, findPresenter, findWinner, listHighlighted } from "./moves.ts";
+import { findPositions, findPresenter, findWinner, isNewsOnAir, listHighlighted } from "./moves.ts";
 import { findTextBounds } from "./newsCameraBounds.ts";
 import { castNews } from "./newsCameraCast.ts";
 import { stepNews } from "./newsDirector.ts";
@@ -86,6 +88,8 @@ interface FrameStep {
   moves: ReadonlyMap<number, StageMove>;
   /** Where these moves put every jelly, by player ID. */
   positions: Map<number, FloorPoint>;
+  /** The conga lines of this frame: who dances and where a garland hangs. */
+  congas: CongaFrame;
   seconds: number;
   now: number;
 }
@@ -108,6 +112,7 @@ function moveJellies(memory: StageMemory, step: JellyStep): JellySpot[] {
     positions,
     moves,
     stacks: memory.state?.stacks ?? [],
+    dancers: step.congas.dancers,
     serverTime,
     viewer: findViewer(memory.stage.camera),
     gaze: step.gaze,
@@ -137,6 +142,7 @@ function moveRoomMarks(memory: StageMemory, spots: JellySpot[], step: FrameStep)
     effects: memory.effects,
     moves,
     stacks: memory.state?.stacks ?? [],
+    congas: step.congas,
     platforms: memory.hall.platforms,
     room: memory.hall.size,
     lit: memory.highlighted,
@@ -198,6 +204,20 @@ function readNewsFrame(memory: StageMemory, step: FrameStep): NewsCameraFrame {
   };
 }
 
+/**
+ * Returns the conga lines of a frame. None while the news are on air: their camera wants calm heads
+ * and free faces, and a follow outlasts a gathering.
+ */
+function readCongas(
+  memory: StageMemory,
+  positions: ReadonlyMap<number, FloorPoint>,
+  serverTime: number,
+): CongaFrame {
+  const { players = [], gathering = null } = memory.state ?? {};
+  if (isNewsOnAir(gathering, serverTime)) return NO_CONGA;
+  return gatherCongas(findCongaLines(players, serverTime), positions);
+}
+
 /** Moves everything one frame on, renders the room and paints it with the texts. */
 function paintFrame(
   memory: StageMemory,
@@ -212,7 +232,8 @@ function paintFrame(
   const players = memory.state?.players ?? [];
   const moves = readMoves(memory, now);
   const positions = findPositions(players, moves, serverTime, memory.hall.size);
-  const step = { moves, positions, seconds, now };
+  const congas = readCongas(memory, positions, serverTime);
+  const step = { moves, positions, congas, seconds, now };
   // The news camera goes first, so the jellies sort and turn by the camera of this very frame.
   const gaze = memory.camera.film(readNewsFrame(memory, step));
   const spots = moveJellies(memory, { ...step, gaze });

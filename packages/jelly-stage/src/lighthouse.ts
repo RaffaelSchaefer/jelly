@@ -27,10 +27,10 @@ import type { StageEffect } from "./effects.ts";
 import type { JellySpot } from "./jellies.ts";
 import type { StageStack } from "./types.ts";
 
-import { createLightMesh, paintLight, type LightUniforms } from "./beams.ts";
+import { createLightMesh, LIGHT_POOL_ORDER, paintLight, type LightUniforms } from "./beams.ts";
 import { calculateSpotlightPresence } from "./effects.ts";
 import { FIRST_JELLY_ORDER } from "./jellies.ts";
-import { FLAT_ORDER, VENUE_TIME } from "./props.ts";
+import { VENUE_TIME } from "./props.ts";
 import { FLOOR_BLENDING, SHADOW_HEIGHT } from "./shadow.ts";
 import dustShader from "./shaders/dust.glsl?raw";
 import coneFragmentShader from "./shaders/lighthouseCone.frag.glsl?raw";
@@ -149,7 +149,7 @@ function createTower(shapes: TowerShapes): Tower {
       ...FLOOR_BLENDING,
     }),
   );
-  patch.renderOrder = FLAT_ORDER;
+  patch.renderOrder = LIGHT_POOL_ORDER;
   patch.visible = false;
   const lampPresence = { value: 0 };
   const lamp = createLightMesh(
