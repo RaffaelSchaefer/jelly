@@ -37,7 +37,7 @@ export interface RoomMarksFrame {
   spots: JellySpot[];
   effects: StageEffect[];
   /** The newest move of each jelly, by player ID. */
-  moves: Map<number, StageMove>;
+  moves: ReadonlyMap<number, StageMove>;
   /** The running stacks, as fresh as the last `stack.changed`. */
   stacks: StageStack[];
   platforms: Placement[];

@@ -54,7 +54,10 @@ export interface NewsActor {
   goal: FloorPoint;
   /** Where its move puts it at a server time. Choices that hold for a whole take are made with it. */
   walk: (serverTime: number) => FloorPoint;
-  /** Server time its move ends, minus infinity without one: until then it walks and faces its way. */
+  /**
+   * Server time its move ends, minus infinity without one or when it stood there all along: until
+   * then it walks and faces its way.
+   */
   arrival: number;
   /** How high its feet stand at the goal: on a platform or up in a tower. */
   floor: number;
@@ -105,7 +108,8 @@ export interface NewsCast {
 /** What {@link castNews} reads. */
 export interface NewsCastInput {
   players: StagePlayer[];
-  moves: Map<number, StageMove>;
+  /** The moves as the stage plays them, see `playMoves` in `moves.ts`. */
+  moves: ReadonlyMap<number, StageMove>;
   stacks: StageStack[];
   areas: StageArea[];
   platforms: Placement[];

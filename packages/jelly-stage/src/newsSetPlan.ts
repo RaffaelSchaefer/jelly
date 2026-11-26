@@ -55,6 +55,10 @@ export interface ShowSpan {
 export interface DeskInput {
   presenterId: number | null;
   players: StagePlayer[];
+  /**
+   * The moves as the stage plays them, see `playMoves` in `moves.ts`: the presenter stands at its
+   * spot from the start of the show, so the desk rises with the show.
+   */
   moves: ReadonlyMap<number, StageMove>;
   /** The stage platforms: the desk only stands on one of them. */
   platforms: Placement[];
