@@ -1,0 +1,74 @@
+name: Mirror GitHub
+
+# Forgejo only. Raffael pushes to GitHub, but images are built here, so every few minutes main
+# and new server tags come over. main goes first, because server-image.yml needs the tag on main.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+env:
+  GITHUB_REPO: https://github.com/RaffaelSchaefer/jelly.git
+
+jobs:
+  mirror:
+    runs-on: docker
+    steps:
+      # The forge copy is close, so only what is new comes from GitHub. The job token stays out,
+      # its header would otherwise replace the mirror token on every push.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A push with the job token starts no workflow, so a personal token pushes, and its tags
+      # start server-image.yml as if pushed by hand.
+      - name: Point the push at the forge with the mirror token
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "::error::MIRROR_TOKEN is not set, nothing can be mirrored."
+            exit 1
+          fi
+          HOST="${GITHUB_SERVER_URL#https://}"
+          git remote set-url --push origin "https://mirror:${MIRROR_TOKEN}@${HOST}/${GITHUB_REPOSITORY}.git"
+          git remote add github "$GITHUB_REPO"
+          git fetch --quiet github main
+          git fetch --quiet github 'refs/tags/server-v*:refs/github-tags/server-v*'
+
+      # Only a fast forward: if the forge main went its own way, a human decides.
+      - name: Mirror main
+        run: |
+          set -eu
+          if [ "$(git rev-parse origin/main)" = "$(git rev-parse github/main)" ]; then
+            echo "main is up to date."
+          elif git merge-base --is-ancestor origin/main github/main; then
+            git push --quiet origin github/main:refs/heads/main
+            echo "main moved to $(git rev-parse --short github/main)."
+          else
+            echo "::error::main on the forge is not behind GitHub, mirror it by hand."
+            exit 1
+          fi
+
+      # A tag on the forge is never replaced, even if GitHub moved it, because its image exists.
+      - name: Mirror new server tags
+        run: |
+          set -eu
+          for REF in $(git for-each-ref --format='%(refname)' refs/github-tags/); do
+            TAG="${REF#refs/github-tags/}"
+            COMMIT="$(git rev-parse "$REF^{commit}")"
+            if git rev-parse --quiet --verify "refs/tags/$TAG" >/dev/null; then
+              if [ "$(git rev-parse "refs/tags/$TAG^{commit}")" != "$COMMIT" ]; then
+                echo "::warning::$TAG points elsewhere on GitHub, the forge keeps its own."
+              fi
+              continue
+            fi
+            if ! git merge-base --is-ancestor "$COMMIT" github/main; then
+              echo "::warning::$TAG is not on main, skipped."
+              continue
+            fi
+            git push --quiet origin "$REF:refs/tags/$TAG"
+            echo "$TAG mirrored."
+          done
