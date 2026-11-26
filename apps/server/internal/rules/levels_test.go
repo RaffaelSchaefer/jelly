@@ -84,3 +84,25 @@ func TestListLevelStepsShowsTheDefaultCurve(t *testing.T) {
 		}
 	}
 }
+
+func TestMissingLevelCoinsPayOnlyWhatIsOwed(t *testing.T) {
+	gameRules := rules.DefaultRules()
+	gameRules.XPCurve = rules.CurveLinear
+	gameRules.XPPerLevel = 10
+	gameRules.CoinsPerLevel = 3
+	cases := []struct {
+		earnedXP, paidCoins, want int
+	}{
+		{earnedXP: 0, paidCoins: 0, want: 0},
+		{earnedXP: 25, paidCoins: 0, want: 6},
+		{earnedXP: 25, paidCoins: 3, want: 3},
+		{earnedXP: 25, paidCoins: 9, want: 0},
+	}
+	for _, testCase := range cases {
+		got := rules.CalculateMissingLevelCoins(gameRules, testCase.earnedXP, testCase.paidCoins)
+		if got != testCase.want {
+			t.Errorf("%d XP with %d paid: %d coins, want %d",
+				testCase.earnedXP, testCase.paidCoins, got, testCase.want)
+		}
+	}
+}

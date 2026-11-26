@@ -112,6 +112,13 @@ func CalculateLevel(gameRules Rules, earnedXP int) int {
 	return findLevel(findLevelCurve(gameRules), max(earnedXP, 0))
 }
 
+// CalculateMissingLevelCoins returns the coins a jelly still gets for its level after the level
+// rules changed. Coins for levels it no longer has stay with it.
+func CalculateMissingLevelCoins(gameRules Rules, earnedXP, paidCoins int) int {
+	reachedLevels := CalculateLevel(gameRules, earnedXP) - FirstLevel
+	return max(CalculateCoinsForLevels(gameRules, reachedLevels)-paidCoins, 0)
+}
+
 // CalculateLevelProgress returns the level for the XP of a LAN and how far it is to the next one.
 func CalculateLevelProgress(gameRules Rules, earnedXP int) LevelProgress {
 	curve := findLevelCurve(gameRules)

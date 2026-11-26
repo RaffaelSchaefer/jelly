@@ -228,6 +228,11 @@ type xpGainedPayload struct {
 	Source string `json:"source"`
 }
 
+// levelUpPayload names the level a jelly reached.
+type levelUpPayload struct {
+	Level int `json:"level"`
+}
+
 // announceXP emits the XP gain and, if reached, the new level with its coins.
 func announceXP(ctx context.Context, action actionContext, previousXP int, entry xpEntry) error {
 	payload := xpGainedPayload{Amount: entry.amount, Source: entry.action}
@@ -241,7 +246,7 @@ func announceXP(ctx context.Context, action actionContext, previousXP int, entry
 	if level == previousLevel {
 		return nil
 	}
-	err = appendVisibleEvent(ctx, action, EventLevelUp, map[string]int{"level": level})
+	err = appendVisibleEvent(ctx, action, EventLevelUp, levelUpPayload{Level: level})
 	if err != nil {
 		return err
 	}

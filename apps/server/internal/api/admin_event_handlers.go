@@ -11,6 +11,17 @@ import (
 // queryDryRun asks a map import to only report what it would change.
 const queryDryRun = "dry_run"
 
+// queryRelevel lets a change of the rules move the levels of a LAN that has started.
+const queryRelevel = "relevel"
+
+// queryYes switches on a query flag.
+const queryYes = "true"
+
+// isQueryFlagSet reports whether a request switches on the query flag `name`.
+func isQueryFlagSet(request *http.Request, name string) bool {
+	return request.URL.Query().Get(name) == queryYes
+}
+
 // gatheringAnswer wraps the running gathering, so that the answer is an object even without one.
 type gatheringAnswer struct {
 	Gathering *store.Gathering `json:"gathering"`
