@@ -18,6 +18,8 @@ export interface OwnPlace {
   color: string;
   /** Der Name des Jellys, bei dem es steht, sonst `null`. */
   targetName: string | null;
+  /** Es steht dort in einer Polonaise (`conga.ts`). */
+  isConga: boolean;
   isOnTrip: boolean;
 }
 
@@ -43,7 +45,8 @@ export function formatZoom(factor: number): string {
 
 /** Was der Zustand des eigenen Jellys sagt. */
 function describePlace(place: OwnPlace): string {
-  if (place.targetName !== null) return `Bei ${place.targetName}`;
+  if (place.targetName !== null)
+    return `${place.isConga ? "Polonaise mit" : "Bei"} ${place.targetName}`;
   return place.isOnTrip ? TEXT_TRIP : TEXT_HOME;
 }
 

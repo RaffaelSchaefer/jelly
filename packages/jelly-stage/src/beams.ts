@@ -52,6 +52,8 @@ const YARD_COLOR = "#232a44";
 const BEFORE_JELLY = 0.5;
 /** Ponytail: enough for about one highlight per second. Further ones get no light. */
 const MOST_BEAMS = 16;
+/** Light on the floor draws over the dance floor of a conga line: a highlight wins. */
+export const LIGHT_POOL_ORDER = FLAT_ORDER + 0.375;
 
 /** Clock, brightness and colors of one light, shared by its beam, halo and pool. */
 export interface LightUniforms {
@@ -129,7 +131,7 @@ function createPool(plane: BufferGeometry, light: LightUniforms): Mesh {
   });
   const pool = new Mesh(plane, material);
   pool.frustumCulled = false;
-  pool.renderOrder = FLAT_ORDER;
+  pool.renderOrder = LIGHT_POOL_ORDER;
   pool.visible = false;
   return pool;
 }

@@ -24,6 +24,7 @@ export const UI_SOUND_NAMES = [
   "hatch",
   "news",
   "newsBed",
+  "congaBed",
 ] as const;
 
 /** Ein Geräusch der Oberfläche. */

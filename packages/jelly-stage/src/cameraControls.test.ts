@@ -37,7 +37,8 @@ function createSource(newsCamera: NewsCameraMode = "auto") {
 
 function spotAt(id: number, x: number, z: number): JellySpot {
   const player = { id, name: `Jelly ${id}`, color: "mint" } as StagePlayer;
-  return { player, feet: { x, y: 0, z }, head: { x, y: 2.3, z } };
+  const head = { x, y: 2.3, z };
+  return { player, feet: { x, y: 0, z }, head, crown: head };
 }
 
 const SPOTS = [spotAt(1, -8, 4), spotAt(2, 9, -6)];

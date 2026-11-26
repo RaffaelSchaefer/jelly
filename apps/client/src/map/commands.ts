@@ -7,7 +7,8 @@
 
 import type { StagePoint } from "@jelly/stage";
 
-import { findName, setTarget, type MapPage } from "./page";
+import { countConga, describeFollow } from "./conga";
+import { findName, readCongaScene, setTarget, type MapPage } from "./page";
 
 const TEXT_TRIP = "Dein Jelly macht einen Ausflug.";
 const TEXT_BACK = "Dein Jelly geht zurück an seinen Platz.";
@@ -38,7 +39,8 @@ export function flyToJelly(page: MapPage, playerId: number) {
 
 /**
  * Stellt das Jelly dazu oder weg. Das beendet einen Ausflug und einen geplanten Stapel. Das Ziel
- * gilt sofort, damit schon der nächste Klick es kennt.
+ * gilt sofort, damit schon der nächste Klick es kennt. Wird daraus eine Polonaise, sagt das die
+ * Meldung (`conga.ts`).
  */
 export function follow(page: MapPage, playerId: number | null) {
   page.stackPlan = null;
@@ -47,7 +49,8 @@ export function follow(page: MapPage, playerId: number | null) {
     const target = await page.source.setFollow(playerId);
     page.destination = null;
     setTarget(page, target);
-    return target === null ? TEXT_BACK : `Dein Jelly stellt sich zu ${findName(page, target)}.`;
+    if (target === null) return TEXT_BACK;
+    return describeFollow(countConga(readCongaScene(page), target), findName(page, target));
   });
 }
 

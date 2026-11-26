@@ -1,12 +1,14 @@
 //! Leitet Ereignisse und Wege aus `GET /v1/stage/events` an die Oberfläche weiter.
 //!
 //! Der Stream ist für alle Spieler gleich. Zum Pet gehen nur Ereignisse zum eigenen Jelly durch, als
-//! Tauri-Ereignis [`EVENT_NAME`], beim Stapel auch die der anderen darauf ([`OwnStack`]). Dazu
-//! kommt, was allen gilt, etwa geänderte Regeln oder Beginn und Ende der Jelly-News
-//! ([`NewsOnAir`]). Die Oberfläche lädt danach den Stand neu, denn Ereignisse tragen keine Namen und
+//! Tauri-Ereignis [`EVENT_NAME`], beim Stapel auch die der anderen darauf ([`OwnStack`]), bei der
+//! Polonaise auch das Dazustellen der anderen darin ([`Follows`]). Dazu kommt, was allen gilt, etwa
+//! geänderte Regeln oder Beginn und Ende der Jelly-News ([`NewsOnAir`]). Die Oberfläche lädt danach den Stand neu, denn Ereignisse tragen keine Namen und
 //! keinen vollständigen Stand. Nach `player.removed` lehnt der Server das Secret dabei ab, und die Oberfläche fragt nach
 //! einem neuen Code. Die Karte hört als [`STAGE_EVENT_NAME`] alles, dazu als [`STAGE_MOVE_NAME`] die
 //! Wege. [`STREAM_RESET_NAME`] geht an beide.
+
+use std::collections::{HashMap, HashSet};
 
 use futures_util::StreamExt;
 use reqwest::StatusCode;
@@ -45,7 +47,8 @@ const RESET_MESSAGE: &str = "reset";
 /// Ereignisarten zum eigenen Jelly, die die Oberfläche bekommt.
 /// Emotes starten lokal aus der Befehlsantwort, damit der Stream sie nicht doppelt abspielt.
 /// `sign.changed` bleibt draußen: Nur die eigene App ändert das Schild, ihre Antwort trägt den Stand.
-/// `follow.changed` kommt durch: Der Server darf das Dazustellen von sich aus beenden.
+/// `follow.changed` kommt durch: Der Server darf das Dazustellen von sich aus beenden. Das der
+/// anderen in derselben Polonaise lässt [`Follows`] durch.
 /// `partner.emote` trägt den Annehmenden als `player_id`, der Auffordernde steht in
 /// `payload.partner_id`. Nur er braucht es: Der Annehmende hat die Geste schon aus seiner Antwort.
 /// `trip.changed` kommt durch: Die Karte startet den Ausflug, das Pet sagt etwas dazu. Beide melden
@@ -128,6 +131,72 @@ impl OwnStack {
         self.0 = None;
         true
     }
+}
+
+/// Ereignis, wenn sich ein Jelly zu einem anderen stellt oder wieder geht.
+const FOLLOW_CHANGED: &str = "follow.changed";
+
+/// Wer wem nachläuft, Folgender zu Ziel: damit das Pet von seiner Polonaise erfährt.
+///
+/// Eine Polonaise entsteht und endet auch, wenn andere sich dazustellen oder gehen. Darum geht
+/// `follow.changed` eines anderen Jellys ans Pet, wenn es vor oder nach dem Wechsel über solche
+/// Folgen mit dem eigenen verbunden ist. Das ist nur ein Filter, damit nicht jedes Dazustellen in
+/// der Halle jedes Pet weckt: Ob daraus eine Polonaise wird, liest das Pet danach von der Bühne
+/// (`src/useConga.ts`).
+///
+/// Der Stand beginnt mit dem der Bühne ([`read_follows`]) und folgt danach dem Stream. Scheitert
+/// dieses Lesen, beginnt er leer: Dann fehlt, wer schon vorher folgte, bis er sich neu dazustellt
+/// oder geht. Ein Jelly, das die Bühne ohne `follow.changed` verlässt, bleibt bis dahin stehen. Dann
+/// geht höchstens ein Ereignis zu viel ans Pet.
+#[derive(Debug, Default)]
+struct Follows(HashMap<i64, i64>);
+
+impl Follows {
+    /// Der Stand aus Paaren von Folgendem und Ziel.
+    fn of(pairs: impl IntoIterator<Item = (i64, i64)>) -> Self {
+        Self(pairs.into_iter().collect())
+    }
+
+    /// Alle Jellies, die über Folgen mit `player_id` verbunden sind, egal in welcher Richtung.
+    fn around(&self, player_id: i64) -> HashSet<i64> {
+        let mut group = HashSet::from([player_id]);
+        // Je Runde wächst die Gruppe um mindestens ein Jelly, in einer Halle sind das wenige.
+        loop {
+            let size = group.len();
+            for (&follower, &target) in &self.0 {
+                if group.contains(&follower) || group.contains(&target) {
+                    group.extend([follower, target]);
+                }
+            }
+            if group.len() == size {
+                return group;
+            }
+        }
+    }
+
+    /// Ob `event` das Dazustellen eines Jellys meldet, das vor oder nach diesem Wechsel mit
+    /// `player_id` verbunden ist, und darum ans Pet soll. Merkt sich den Wechsel.
+    fn track(&mut self, event: &ServerEvent, player_id: i64) -> bool {
+        let Some(follower) = event.player_id.filter(|_| event.kind == FOLLOW_CHANGED) else {
+            return false;
+        };
+        let before = self.around(player_id).contains(&follower);
+        match event.payload.get("target_id").and_then(Value::as_i64) {
+            Some(target) => self.0.insert(follower, target),
+            None => self.0.remove(&follower),
+        };
+        before || self.around(player_id).contains(&follower)
+    }
+}
+
+/// Liest von der Bühne, wer gerade wem folgt. Ohne Antwort beginnt der Stand leer, siehe
+/// [`Follows`].
+async fn read_follows(api: &Api) -> Follows {
+    let Ok(stage) = api.stage().await else {
+        return Follows::default();
+    };
+    let players = stage.players.iter();
+    Follows::of(players.filter_map(|player| Some((player.id, player.follow.as_ref()?.player_id))))
 }
 
 /// Was eine Nachricht des Streams bedeutet.
@@ -215,6 +284,8 @@ struct Memory {
     own_stack: OwnStack,
     /// Ob Jelly-News laufen.
     news: NewsOnAir,
+    /// Wer wem nachläuft.
+    follows: Follows,
 }
 
 /// Ob `event` das Jelly von `player_id` betrifft und an die Oberfläche soll.
@@ -257,7 +328,7 @@ impl EventStream {
                 return;
             }
         };
-        let task = tauri::async_runtime::spawn(forward(app.clone(), source, me.id));
+        let task = tauri::async_runtime::spawn(forward(app.clone(), source, api.clone(), me.id));
         self.task = Some(task);
     }
 
@@ -288,11 +359,12 @@ pub(crate) fn emit_to_ui<T: Serialize + Clone>(app: &AppHandle, name: &str, payl
 fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64, memory: &mut Memory) {
     match message {
         StreamMessage::Event(event) => {
-            // Erst Stapel und News: Sie müssen jedes Ereignis ihrer Art sehen, um sich den Stand zu
-            // merken.
+            // Erst Stapel, News und Folgen: Sie müssen jedes Ereignis ihrer Art sehen, um sich den
+            // Stand zu merken.
             let stacked = memory.own_stack.track(&event, player_id);
             let news = memory.news.track(&event);
-            if stacked || news || is_own_event(&event, player_id) {
+            let followed = memory.follows.track(&event, player_id);
+            if stacked || news || followed || is_own_event(&event, player_id) {
                 emit_to_ui(app, EVENT_NAME, &event);
             }
             if popout::is_open(app, popout::MAP) {
@@ -313,13 +385,20 @@ fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64, memory: &mu
 }
 
 /// Liest den Stream, bis der Server das Secret ablehnt.
-async fn forward(app: AppHandle, mut source: EventSource, player_id: i64) {
-    let mut memory = Memory::default();
+async fn forward(app: AppHandle, mut source: EventSource, api: Api, player_id: i64) {
+    let mut memory = Memory {
+        follows: read_follows(&api).await,
+        ..Memory::default()
+    };
     while let Some(item) = source.next().await {
         match item {
             Ok(Event::Open) => {}
             Ok(Event::Message(message)) => {
                 let parsed = parse_message(&message.event, &message.data);
+                // Nach verworfenen Ereignissen stimmt nicht mehr, wer wem folgt.
+                if matches!(parsed, StreamMessage::Reset) {
+                    memory.follows = read_follows(&api).await;
+                }
                 dispatch(&app, parsed, player_id, &mut memory);
             }
             // Nach `401` hilft kein neuer Versuch. Die nächste Aktion zeigt den Fehler an.

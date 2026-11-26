@@ -46,8 +46,12 @@ export function findPositions(
  * shows nothing in or on its hands until the show ends. A gathering ends without an event.
  */
 export function findPresenter(gathering: StageGathering | null, serverTime: number): number | null {
-  if (gathering?.kind !== NEWS || serverTime >= gathering.ends_at) return null;
-  return gathering.presenter_id ?? null;
+  return isNewsOnAir(gathering, serverTime) ? (gathering?.presenter_id ?? null) : null;
+}
+
+/** Returns whether the news are on air, with or without a presenter. */
+export function isNewsOnAir(gathering: StageGathering | null, serverTime: number): boolean {
+  return gathering?.kind === NEWS && serverTime < gathering.ends_at;
 }
 
 /**

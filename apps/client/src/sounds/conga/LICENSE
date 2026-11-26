@@ -1,0 +1,10 @@
+Hintergrundmusik zur Polonaise (bed.mp3)
+
+Eigene Musik von Jelly, für die Polonaise geliefert vom Projekt. Sie stammt nicht von
+reactsounds.com, die MIT-Lizenz in ../LICENSE gilt für sie nicht. Laut den Metadaten der
+gelieferten Datei („Beach Monkey Dance“, Künstler „raffael1506“) wurde sie mit Suno erstellt.
+
+bed.mp3: umgewandelt mit ffmpeg aus der gelieferten MP3 (189 Sekunden, Stereo, 48 kHz), davon nur
+der gleichmäßige Teil von 16,6 bis 47,8 Sekunden: Mono, 32 kHz, um 6 dB leiser, MP3 mit
+40 kbit/s, ohne Metadaten. Die Schleife läuft von 0,26 bis 29,76 Sekunden der Datei, das sind
+64 Schläge bei gut 130 Schlägen je Minute (`CONGA_BED` in src/pet/conga.ts).

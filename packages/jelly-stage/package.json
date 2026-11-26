@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./conga": "./src/congaLines.ts",
     "./demo-room": "./src/demoRoom.fixture.ts",
     "./frame-pacing": "./src/framePacing.ts",
     "./news": "./src/news.ts"

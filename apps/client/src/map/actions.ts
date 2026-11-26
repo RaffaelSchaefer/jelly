@@ -1,16 +1,17 @@
 /**
  * Das Fenster an einem fremden Jelly auf der Karte: dazustellen, weggehen, hervorheben und stapeln.
- * Es bleibt am Jelly, auch wenn die Kamera fährt oder das Jelly läuft.
+ * Es bleibt am Jelly, auch wenn die Kamera fährt oder das Jelly läuft. Wird aus dem Dazustellen
+ * eine Polonaise, nennt der Knopf sie (`conga.ts`).
  *
  * @module
  */
 
 import type { JellyOnScreen } from "@jelly/stage";
 
+import type { FollowChoice } from "./conga";
+
 import { placeMenu } from "./partner";
 
-const TEXT_FOLLOW = "Dazustellen";
-const TEXT_LEAVE = "Weggehen";
 const TEXT_JOIN = "Draufklettern";
 const TEXT_START = "Stapel starten";
 
@@ -21,6 +22,8 @@ export type StackChoice = { kind: "join"; stackId: number } | { kind: "start" } 
 export interface JellyMenuActions {
   /** Stellt das eigene Jelly dazu oder mit `null` weg. */
   follow: (playerId: number | null) => void;
+  /** Was der Knopf dazu sagt: dazustellen, weggehen oder die Polonaise (`conga.ts`). */
+  chooseFollow: (playerId: number, isTarget: boolean) => FollowChoice;
   highlight: (playerId: number) => void;
   /** Welcher Stapel-Knopf zum Jelly gehört. */
   chooseStack: (playerId: number) => StackChoice;
@@ -36,6 +39,16 @@ export interface JellyMenu {
   close: () => boolean;
   /** Rückt das offene Fenster an sein Jelly. Ist es nicht mehr zu sehen, geht das Fenster zu. */
   place: () => void;
+  /** Beschriftet das offene Fenster neu, nach jedem Lesen: Andere Jellies ändern die Polonaise. */
+  refresh: () => void;
+}
+
+/** Beschriftet den Knopf zum Dazustellen. Das Symbol wählt `map.css` aus den Attributen. */
+function labelFollow(button: HTMLButtonElement, choice: FollowChoice, isTarget: boolean) {
+  button.setAttribute("aria-label", choice.label);
+  button.dataset.tip = choice.label;
+  button.toggleAttribute("data-target", isTarget);
+  button.toggleAttribute("data-conga", choice.isConga);
 }
 
 /** Sucht das Fenster aus `map.html` und verbindet seine Knöpfe. */
@@ -75,10 +88,7 @@ export function createJellyMenu(actions: JellyMenuActions): JellyMenu {
   return {
     open: (playerId, isTarget) => {
       chosen = { playerId, isTarget, stack: actions.chooseStack(playerId) };
-      const label = isTarget ? TEXT_LEAVE : TEXT_FOLLOW;
-      follow.setAttribute("aria-label", label);
-      follow.dataset.tip = label;
-      follow.toggleAttribute("data-target", isTarget);
+      labelFollow(follow, actions.chooseFollow(playerId, isTarget), isTarget);
       const stackLabel = chosen.stack?.kind === "join" ? TEXT_JOIN : TEXT_START;
       stack.hidden = chosen.stack === null;
       stack.setAttribute("aria-label", stackLabel);
@@ -89,5 +99,10 @@ export function createJellyMenu(actions: JellyMenuActions): JellyMenu {
     },
     close,
     place,
+    refresh: () => {
+      if (menu.hidden) return;
+      const { playerId, isTarget } = chosen;
+      labelFollow(follow, actions.chooseFollow(playerId, isTarget), isTarget);
+    },
   };
 }

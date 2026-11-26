@@ -1,8 +1,9 @@
 /**
  * Die Geräusche der Oberfläche: Tippen, Auf- und Zuklappen, Wählen, Schalter, Fenster, Sperren,
  * Fehler und die schönen Momente im Spiel. Sie stammen aus der Bibliothek von reactsounds.com (MIT,
- * siehe `sounds/LICENSE`), nur Jingle und leise Musik der Jelly-News sind eigene
- * (`sounds/news/LICENSE`). Die Musik spielt in Abschnitten (`playWith`, `newsBedSound.ts`).
+ * siehe `sounds/LICENSE`), nur Jingle und leise Musik der Jelly-News und die Musik zur Polonaise
+ * sind eigene (`sounds/news/LICENSE`, `sounds/conga/LICENSE`). Die Musik spielt in Abschnitten
+ * (`playWith`, `newsBedSound.ts`, `congaBedSound.ts`).
  *
  * Die MP3s liegen als Daten im Bundle und werden ohne `fetch` dekodiert: Die CSP der App erlaubt
  * weder `fetch` noch `blob:`, und auf der LAN fehlt vielleicht das Internet. Das Paket
@@ -15,6 +16,7 @@
 import { uiSoundFor, volumeGain, type UiSound } from "./pet";
 import coin from "./sounds/arcade/coin.mp3?inline";
 import hatch from "./sounds/arcade/power_up.mp3?inline";
+import congaBed from "./sounds/conga/bed.mp3?inline";
 import newsBed from "./sounds/news/bed.mp3?inline";
 import news from "./sounds/news/intro.mp3?inline";
 import error from "./sounds/notification/error.mp3?inline";
@@ -50,6 +52,7 @@ const SOUNDS: Record<UiSound, string> = {
   hatch,
   news,
   newsBed,
+  congaBed,
 };
 
 /**
@@ -77,13 +80,17 @@ const LEVELS: Record<UiSound, number> = {
   // Die Musik unter den Jelly-News liegt leise: ihr lautestes Zehntel bei −27 dBFS, gut 18 dB unter
   // den Sätzen des Vorlesers.
   newsBed: 0.72,
+  // Die Musik zur Polonaise liegt noch darunter, sie soll nur im Hintergrund mitlaufen: ihr
+  // lautestes Zehntel bei −35 dBFS, gut 7 dB unter der Musik der News (Datei −15,3 dBFS und
+  // −20,6 LUFS, die der News −15,5 dBFS und −19,3 LUFS). Nach LUFS liegt sie 9 LU darunter.
+  congaBed: 0.3,
 };
 
 /**
  * Lange Töne: Sie laufen nie doppelt und verstummen mit dem Schalter, wie die Stimme des Jellys.
  * Die kurzen klingen aus, sonst schnitte der Schalter sein eigenes Klicken ab.
  */
-const LONG_SOUNDS: ReadonlySet<UiSound> = new Set(["news", "newsBed"]);
+const LONG_SOUNDS: ReadonlySet<UiSound> = new Set(["news", "newsBed", "congaBed"]);
 
 /**
  * Später als so viele Millisekunden nach dem Aufruf beginnt kein Ton mehr. Sperrt das Gerät Ton bis
