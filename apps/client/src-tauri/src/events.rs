@@ -145,9 +145,10 @@ const FOLLOW_CHANGED: &str = "follow.changed";
 /// (`src/useConga.ts`).
 ///
 /// Der Stand beginnt mit dem der Bühne ([`read_follows`]) und folgt danach dem Stream. Scheitert
-/// dieses Lesen, beginnt er leer: Dann fehlt, wer schon vorher folgte, bis er sich neu dazustellt
-/// oder geht. Ein Jelly, das die Bühne ohne `follow.changed` verlässt, bleibt bis dahin stehen. Dann
-/// geht höchstens ein Ereignis zu viel ans Pet.
+/// dieses Lesen, gibt es keinen Stand: Bis zum nächsten gelungenen Lesen geht dann jedes
+/// `follow.changed` ans Pet, statt dass eines fehlt. Ein Jelly, das die Bühne ohne `follow.changed`
+/// verlässt, bleibt stehen, bis es sich neu dazustellt oder geht. Dann geht höchstens ein Ereignis
+/// zu viel ans Pet.
 #[derive(Debug, Default)]
 struct Follows(HashMap<i64, i64>);
 
@@ -189,14 +190,13 @@ impl Follows {
     }
 }
 
-/// Liest von der Bühne, wer gerade wem folgt. Ohne Antwort beginnt der Stand leer, siehe
-/// [`Follows`].
-async fn read_follows(api: &Api) -> Follows {
-    let Ok(stage) = api.stage().await else {
-        return Follows::default();
-    };
+/// Liest von der Bühne, wer gerade wem folgt. Ohne Antwort gibt es keinen Stand, siehe [`Follows`].
+async fn read_follows(api: &Api) -> Option<Follows> {
+    let stage = api.stage().await.ok()?;
     let players = stage.players.iter();
-    Follows::of(players.filter_map(|player| Some((player.id, player.follow.as_ref()?.player_id))))
+    Some(Follows::of(players.filter_map(|player| {
+        Some((player.id, player.follow.as_ref()?.player_id))
+    })))
 }
 
 /// Was eine Nachricht des Streams bedeutet.
@@ -284,8 +284,8 @@ struct Memory {
     own_stack: OwnStack,
     /// Ob Jelly-News laufen.
     news: NewsOnAir,
-    /// Wer wem nachläuft.
-    follows: Follows,
+    /// Wer wem nachläuft. `None`, solange die Bühne es nicht gesagt hat.
+    follows: Option<Follows>,
 }
 
 /// Ob `event` das Jelly von `player_id` betrifft und an die Oberfläche soll.
@@ -363,7 +363,11 @@ fn dispatch(app: &AppHandle, message: StreamMessage, player_id: i64, memory: &mu
             // Stand zu merken.
             let stacked = memory.own_stack.track(&event, player_id);
             let news = memory.news.track(&event);
-            let followed = memory.follows.track(&event, player_id);
+            let followed = match &mut memory.follows {
+                Some(follows) => follows.track(&event, player_id),
+                // Ohne Stand lieber jedes Dazustellen als eines zu wenig.
+                None => event.kind == FOLLOW_CHANGED,
+            };
             if stacked || news || followed || is_own_event(&event, player_id) {
                 emit_to_ui(app, EVENT_NAME, &event);
             }

@@ -173,13 +173,13 @@ function listOtherGoals(id) {
 function findGoal(id) {
   const target = goals.get(playerOf(id).follow.player_id);
   const others = listOtherGoals(id);
+  const isOnStage = ({ x, y }) => x >= 0 && x <= 100 && y >= 0 && y <= 100;
   if (!IS_ROW) {
-    const isOnStage = ({ x, y }) => x >= 0 && x <= 100 && y >= 0 && y <= 100;
     return findFollowSpot(id, target, (spot) => isOnStage(spot) && keepsSpace(spot, others));
   }
   for (let step = 1; step < ROW_PLACES; step += 1) {
     const spot = offsetSpot(target, back * step * PERSONAL_SPACE, 0);
-    if (keepsSpace(spot, others)) return spot;
+    if (isOnStage(spot) && keepsSpace(spot, others)) return spot;
   }
   return target;
 }

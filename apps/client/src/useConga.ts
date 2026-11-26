@@ -93,9 +93,14 @@ function useServerNow(offset: number) {
   return useCallback(() => Date.now() + known.current, []);
 }
 
-/** Womit {@link useCongaPlace} liest und spricht. Alles sollte stabil sein. */
+/** So lange nach einer Nachlese, die nichts geändert hat, liest das Pet noch einmal. */
+const EXPIRY_RETRY_MS = 5000;
+
+/** Womit {@link useCongaPlace} liest und spricht. Alles außer `active` sollte stabil sein. */
 interface CongaSenses {
   ownId: number | undefined;
+  /** Ob es gerade eine Polonaise geben kann: mit Konto in einer laufenden LAN. */
+  active: boolean;
   read: () => Promise<CongaReading>;
   serverNow: () => number;
   hop: (message: string) => void;
@@ -107,13 +112,20 @@ interface CongaSenses {
  * hat, außer `silent`: Der erste Stand nach dem Start ist nichts Neues.
  *
  * Scheitert das Lesen, bleibt die Polonaise stehen, bis ihr letztes `ends_at` um ist
- * (`congaAfterRead`). Eine überholte Antwort zählt nicht.
+ * (`congaAfterRead`). Eine überholte Antwort zählt nicht, auch keine, die erst ankommt, wenn Konto
+ * oder LAN schon weg sind: Dann ist die Polonaise vergessen.
  */
-function useCongaPlace({ ownId, read, serverNow, hop, say }: CongaSenses) {
+function useCongaPlace({ ownId, active, read, serverNow, hop, say }: CongaSenses) {
   const place = useRef<CongaPlace | null>(null);
   const [conga, setConga] = useState<CongaPlace | null>(null);
   const latest = useRef(0);
   const spokeAt = useRef(-Infinity);
+  useEffect(() => {
+    if (active) return;
+    latest.current += 1;
+    place.current = null;
+    setConga(null);
+  }, [active]);
 
   const refresh = useCallback(
     async (silent = false) => {
@@ -155,7 +167,8 @@ export function useConga(
   const active = ownId !== undefined && (PREVIEW ? ready : inRunningLan(state.game, ready));
   const read = useFollowReader(state);
   const serverNow = useServerNow(state.offset);
-  const { conga, refresh, spokeAt } = useCongaPlace({ ownId, read, serverNow, hop, say });
+  const senses = { ownId, active, read, serverNow, hop, say };
+  const { conga, refresh, spokeAt } = useCongaPlace(senses);
   const reread = useCallback(() => void refresh(), [refresh]);
 
   // Wer beim Start schon in einer Polonaise steht, tanzt gleich mit, ohne es zu melden.
@@ -180,14 +193,23 @@ export function useConga(
   }, [active, reread]);
 
   // Das Netz unter allem: Auch wenn kein Ereignis das Ende meldet, hört die Polonaise mit dem
-  // letzten Dazustellen darin auf, und mit ihr Tanz und Musik.
+  // letzten Dazustellen darin auf, und mit ihr Tanz und Musik. Steht sie nach der Nachlese noch mit
+  // demselben Ende da, etwa weil die Uhr des Servers anders ging, liest das Pet wieder.
   const endsAt = active ? conga?.endsAt : undefined;
+  const [rereads, setRereads] = useState(0);
   useEffect(() => {
     if (endsAt === undefined) return;
-    const wait = Math.max(0, endsAt - serverNow()) + EXPIRY_SLACK_MS;
-    const timer = window.setTimeout(reread, Math.min(wait, LONGEST_TIMER_MS));
+    const left = endsAt - serverNow();
+    const wait = left > 0 ? left + EXPIRY_SLACK_MS : EXPIRY_RETRY_MS;
+    const timer = window.setTimeout(
+      () => {
+        reread();
+        setRereads((count) => count + 1);
+      },
+      Math.min(wait, LONGEST_TIMER_MS),
+    );
     return () => window.clearTimeout(timer);
-  }, [endsAt, serverNow, reread]);
+  }, [endsAt, rereads, serverNow, reread]);
 
   const saysFollow = useCallback(
     (message: string) => {
