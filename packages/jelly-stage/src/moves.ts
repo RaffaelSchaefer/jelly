@@ -15,6 +15,8 @@ const RING_GONE = 0.01;
 /** The gatherings with a jelly that grows on the stage: the winner, or the presenter of the news. */
 const CEREMONY = "ceremony";
 const NEWS = "news";
+/** The kind of move that sends the presenter of the news to the stage, `KindNews` of the server. */
+const NEWS_WALK = "news";
 
 /** Which jellies light up on a personal screen: all others, or those within `reach` of the own. */
 export type StageHighlight = { kind: "others" } | { kind: "near"; reach: number };
@@ -22,7 +24,7 @@ export type StageHighlight = { kind: "others" } | { kind: "near"; reach: number 
 /** Returns where the move of every jelly puts it. A jelly without a move stands at home. */
 export function findPositions(
   players: StagePlayer[],
-  moves: Map<number, StageMove>,
+  moves: ReadonlyMap<number, StageMove>,
   serverTime: number,
   room: RoomSize,
 ): Map<number, FloorPoint> {
@@ -55,6 +57,33 @@ export function findPresenter(gathering: StageGathering | null, serverTime: numb
 export function findWinner(gathering: StageGathering | null, serverTime: number): number | null {
   if (gathering?.kind === CEREMONY && serverTime < gathering.ends_at) return gathering.winner_id;
   return findPresenter(gathering, serverTime);
+}
+
+/**
+ * Returns the moves as the stage plays them at a server time, the one place that decides it: the
+ * moves of the server, except the `news` move of the presenter of running news. The server sends
+ * the presenter to the stage at walking pace, which takes most of a show in a large hall, so the
+ * stage plays that move as finished: from the first moment of the show the presenter stands where
+ * it ends, as if it had stood there all along, on every screen and also on one that loads late.
+ * Everything that reads moves reads these, so jellies, camera, desk and towers agree. Once the show
+ * is over the move of the server counts again, and the move back starts where the server says.
+ */
+export function playMoves(
+  moves: ReadonlyMap<number, StageMove>,
+  gathering: StageGathering | null,
+  serverTime: number,
+): ReadonlyMap<number, StageMove> {
+  const presenterId = findPresenter(gathering, serverTime);
+  const move = presenterId === null ? undefined : moves.get(presenterId);
+  const end = move?.points.at(-1);
+  if (!move || !end || move.kind !== NEWS_WALK) return moves;
+  const played = new Map(moves);
+  played.set(move.player_id, {
+    ...move,
+    start_at: Number.NEGATIVE_INFINITY,
+    points: [{ ...end, t: 0 }],
+  });
+  return played;
 }
 
 /** Forgets the moves of jellies that left the stage. */
