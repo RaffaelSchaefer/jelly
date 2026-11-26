@@ -11,7 +11,7 @@
 export const EN: Readonly<Record<string, string>> = {
   "meta.title": "Jelly · Your companion for your LAN",
   "meta.description":
-    "Jelly is a small desktop companion for LAN parties: your own 3D jelly, the hall with everyone else, XP, levels and a wizard's shop. For Windows, macOS and Linux.",
+    "Jelly is a small desktop companion for LAN parties: your own 3D jelly, the hall with everyone else, XP, levels, a wizard's shop and the Jelly News. For Windows, macOS and Linux.",
   "nav.skip": "Skip to content",
   "nav.label": "Main navigation",
   "nav.features": "Features",
@@ -70,6 +70,28 @@ export const EN: Readonly<Record<string, string>> = {
   "shop.purse": "Coins",
   "shop.purseText": "The top left shows how many you have.",
 
+  "news.title": "In the Jelly News",
+  "news.text":
+    "When the organisers schedule it, a short news broadcast about the last hour runs on the stage. The tone is serious. The news is not.",
+  "news.alt":
+    "The Jelly News on the map: a jelly with a headset presents at the news desk and points at a screen showing a medal. Below it the headline “Wasserwerke schlagen Alarm: Jelly 4 ist gut hydriert.” (Waterworks raise the alarm: Jelly 4 is well hydrated.)",
+  "news.presenter": "A jelly presents",
+  "news.presenterText":
+    "The server picks one at random from everyone in the hall. It goes to the news desk, everyone else lines up in front of the stage.",
+  "news.reports": "The reports",
+  "news.reportsText":
+    "Most XP, new achievements, the tallest tower and the next item on the schedule, plus odds and ends from the hall. Each kind of report has its own picture.",
+  "news.watch": "Watch",
+  "news.watchText":
+    "On the map, the button at the top or the N key switches to the news camera. The same button, Escape or a click into the picture takes you back.",
+  "news.sound":
+    "On your desktop the show opens with its jingle, then the presenting jelly babbles every report in the tone of a newsreader, with quiet music underneath. If your jelly makes the news, it hops.",
+  "news.titleAlt": "The opening titles: a globe with orbiting rings above the “Jelly News” logo.",
+  "news.titleCaption": "Opening titles",
+  "news.voiceAlt":
+    "Close-up in the hall: a purple jelly with a headset and a chicken in its arms, captioned “Hauptsache Gulasch.” (As long as there's goulash.)",
+  "news.voiceCaption": "Voices from the hall",
+
   "more.title": "And also",
   "more.emotes": "Emotes",
   "more.emotesText": "Twelve gestures from waving to dancing, also as a duet.",
@@ -83,6 +105,13 @@ export const EN: Readonly<Record<string, string>> = {
   "more.achievementsText": "Small goals for the whole weekend.",
   "more.schedule": "Schedule",
   "more.scheduleText": "The LAN timetable in the dock. Jelly reminds you ten minutes ahead.",
+  "more.stacks": "Towers",
+  "more.stacksText": "On the map you stack your jellies until the tower falls apart after a while.",
+  "more.touch": "Boops",
+  "more.touchText": "Boop your jelly on the nose or stroke its head.",
+  "more.hat": "Wizard's hat",
+  "more.hatText":
+    "Pester Funkelbart in his shop until he loses his hat. Then your jelly wears it for a few minutes.",
 
   "start.title": "Get started",
   "start.os": "Operating system",
