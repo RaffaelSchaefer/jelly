@@ -81,6 +81,23 @@ test("a walking jelly looks where it goes and hops, a standing one looks at the 
   assert.ok(Math.abs(walker.yaw - toViewer) < 0.01, "looks at the camera");
 });
 
+test("a jelly put far away stands there at once, looking where a standing jelly looks", () => {
+  const walker = createWalker({ x: 0, z: 0 });
+  walker.yaw = Math.PI;
+  assert.equal(stepWalker(walker, { target: { x: 0.04, z: 0 }, viewer, seconds: 1 / 30 }), false);
+  const { stride, gait } = walker;
+  const stage = { x: -6, z: -14 };
+  assert.equal(stepWalker(walker, { target: stage, viewer, seconds: 1 / 30 }), true);
+  assert.deepEqual(walker.position, stage);
+  const toViewer = Math.atan2(viewer.x - stage.x, viewer.z - stage.z);
+  assert.ok(Math.abs(walker.yaw - toViewer) < 1e-9, "faces the camera, not the way it jumped");
+  assert.equal(walker.stride, stride);
+  assert.equal(walker.gait, gait);
+  // From there it stands and keeps looking.
+  assert.equal(stepWalker(walker, { target: stage, viewer, seconds: 1 / 30 }), false);
+  assert.ok(Math.abs(walker.yaw - toViewer) < 1e-9);
+});
+
 test("a move arrives at the time of its last point", () => {
   assert.equal(findArrival(move), 4000);
   assert.equal(findArrival({ ...move, points: [] }), 1000);

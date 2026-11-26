@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import type { StageMove, StagePlayer } from "./types.ts";
+import type { NewsShow } from "./news.ts";
+import type { NewsPose } from "./newsCamera.ts";
+import type { StageGathering, StageMove, StagePlayer } from "./types.ts";
 
 import { createDemoRoom, DEMO_HALL } from "./demoRoom.fixture.ts";
+import { findPositions, playMoves } from "./moves.ts";
+import { findMoment, planShow } from "./news.ts";
 import { castNews, type NewsCastInput } from "./newsCameraCast.ts";
+import { planNewsShot, type NewsShotScene } from "./newsShots.ts";
+import { findReady } from "./newsShotsStudio.ts";
 import { measureRoom, toFloorPoint } from "./world.ts";
 import { listPlatforms } from "./zones.ts";
 
@@ -94,4 +100,86 @@ test("the set of the demo hall has its stage at the back and two screens on it",
 test("a room without a stage has no set", () => {
   const input = { ...createInput(), areas: [], platforms: [] };
   assert.deepEqual(castNews(input).set, { stage: null, screens: [] });
+});
+
+/**
+ * News as the server starts them in the demo hall: the gathering at `SHOW_AT` without `starts_at`,
+ * the presenter sent from a desk at the back over the aisle at the wall to the stage, its move
+ * starting 1.5 seconds into the show and arriving after 47 seconds.
+ */
+const SHOW_AT = 100_000;
+const NEWS: StageGathering = {
+  kind: "news",
+  winner_id: null,
+  ends_at: SHOW_AT + 90_000,
+  presenter_id: 1,
+  news: {
+    top_xp: { player_id: 2, xp: 420 },
+    achievements: [{ player_id: 3, key: "hydrated" }],
+    tallest_stack: [],
+    next_item: null,
+  },
+};
+const TO_STAGE = move(1, "news", [
+  [19.6, 82.7, 0],
+  [2.6, 79.1, 5000],
+  [2.6, 28.2, 30_000],
+  [50, 8.5, 47_000],
+]);
+const SHOW = planShow(NEWS) as NewsShow;
+const HOME: NewsPose = {
+  position: { x: 0, y: 60, z: 60 },
+  target: { x: 0, y: 0, z: 0 },
+  fov: 32,
+  lift: 0,
+};
+
+/** The scene the news camera films at a server time, with the moves as the stage plays them. */
+function filmAt(serverTime: number, isPlayed = true): NewsShotScene {
+  const players = [player(1, 19.6, 82.7), player(2, 30, 20), player(3, 70, 20)];
+  const raw = new Map([[1, { ...TO_STAGE, start_at: SHOW_AT + 1500 }]]);
+  const moves = isPlayed ? playMoves(raw, NEWS, serverTime) : raw;
+  const cast = castNews({
+    ...createInput(),
+    players,
+    moves,
+    stacks: [],
+    positions: findPositions(players, moves, serverTime, ROOM),
+  });
+  const moment = findMoment(SHOW, serverTime);
+  assert.ok(moment);
+  const card = { playerIds: [], isLive: false, rubric: "JELLY NEWS" };
+  return {
+    ...cast,
+    presenterId: 1,
+    home: HOME,
+    view: { aspect: 16 / 9, top: 0, bottom: 1 },
+    live: { show: SHOW, moment, card },
+    reducedMotion: false,
+  };
+}
+
+test("the presenter put on the stage counts as arrived there from the first frame of the show", () => {
+  const presenter = filmAt(SHOW_AT + 600).actors.get(1)!;
+  const onStage = toFloorPoint({ x: 50, y: 8.5 }, ROOM);
+  assert.deepEqual(presenter.now, onStage);
+  assert.deepEqual(presenter.goal, onStage);
+  assert.deepEqual(presenter.walk(SHOW_AT), onStage);
+  assert.equal(presenter.arrival, Number.NEGATIVE_INFINITY);
+  assert.equal(presenter.floor, 0.35);
+});
+
+test("the studio films the presenter from the first report: the intro cranes down to its desk", () => {
+  const intro = SHOW.marks[1]!;
+  for (let at = SHOW_AT + 600; at < SHOW.endsAt; at += 2000) {
+    assert.ok(findReady(filmAt(at)) <= 0, `ready for the studio at ${at - SHOW_AT}`);
+  }
+  // At the end of the intro the camera stands low in front of the presenter, not high over the hall.
+  const { pose } = planNewsShot(filmAt(SHOW_AT + 0.95 * intro));
+  const presenter = filmAt(SHOW_AT).actors.get(1)!;
+  assert.ok(pose.position.y < presenter.floor + presenter.height, `camera at ${pose.position.y}`);
+  // Played as the server sends it, the presenter would still be in the hall: the stand-in films.
+  assert.ok(findReady(filmAt(SHOW_AT + 600, false)) > 1);
+  const standIn = planNewsShot(filmAt(SHOW_AT + 0.95 * intro, false)).pose;
+  assert.ok(standIn.position.y > presenter.floor + presenter.height);
 });
