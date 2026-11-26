@@ -59,10 +59,10 @@ func TestPartnerEmoteFlow(t *testing.T) {
 
 	response = testFixture.answerInvite(second, inviteID, "accepted")
 	result := decodeBody[store.PartnerInviteResult](t, response)
-	if result.XPGained != 2 || result.PartnerEmote.State != "accepted" {
+	if result.XPGained != 50 || result.PartnerEmote.State != "accepted" {
 		t.Fatalf("result: %s", response.body)
 	}
-	if got := testFixture.loadMe(first).XP; got != 2 {
+	if got := testFixture.loadMe(first).XP; got != 50 {
 		t.Fatalf("XP of the one who asked = %d", got)
 	}
 	requireProblem(t, testFixture.answerInvite(second, inviteID, "accepted"),

@@ -28,7 +28,7 @@ func TestClientsReadTheRulesButNotTheLimitsOfTheServer(t *testing.T) {
 	if strings.Contains(string(response.body), "max_streams") {
 		t.Fatalf("limits of the server are not for clients: %s", response.body)
 	}
-	if before := testFixture.loadLANStatus(token).Rules; before.XPPerLevel != 100 {
+	if before := testFixture.loadLANStatus(token).Rules; before.XPPerLevel != 50 {
 		t.Fatalf("rules: %+v", before)
 	}
 	changed := testFixture.callAdmin("PUT", "/admin/api/lans/1/rules", `{"near_distance":9}`)
@@ -53,7 +53,7 @@ func TestXPPerLevelIsFixedOnceTheLANRuns(t *testing.T) {
 	testFixture := newFixture(t)
 	requireProblem(
 		t,
-		testFixture.callAdmin("PUT", "/admin/api/lans/1/rules", `{"xp_per_level":50}`),
+		testFixture.callAdmin("PUT", "/admin/api/lans/1/rules", `{"xp_per_level":80}`),
 		http.StatusBadRequest,
 		"invalid_rules",
 	)
@@ -61,7 +61,11 @@ func TestXPPerLevelIsFixedOnceTheLANRuns(t *testing.T) {
 		http.StatusBadRequest, "invalid_rules")
 
 	testFixture.createFutureLAN()
-	response := testFixture.callAdmin("PUT", "/admin/api/lans/2/rules", `{"xp_per_level":2}`)
+	response := testFixture.callAdmin(
+		"PUT",
+		"/admin/api/lans/2/rules",
+		`{"xp_per_level":2,"achievement_xp":0}`,
+	)
 	if response.status != http.StatusOK {
 		t.Fatalf("a LAN that has not started can change: %d %s", response.status, response.body)
 	}
@@ -69,11 +73,11 @@ func TestXPPerLevelIsFixedOnceTheLANRuns(t *testing.T) {
 	joined := testFixture.callAPI("POST", "/v1/auth/redeem", "",
 		`{"code":"next-code","name":"Schnell","color":"mint"}`)
 	token := decodeBody[registerResponse](t, joined).Token
-	if xp := testFixture.pokePlayer(token); xp != 3 {
+	if xp := testFixture.pokePlayer(token); xp != 6 {
 		t.Fatalf("poke = %d XP", xp)
 	}
 	if level := testFixture.loadMe(token).Level; level != 2 {
-		t.Fatalf("3 XP at 2 XP per level is level 2, got %d", level)
+		t.Fatalf("6 XP at 2 XP for the first level is level 2, got %d", level)
 	}
 	listing := decodeBody[store.PlayerList](t, testFixture.callAPI("GET", "/v1/players", token, ""))
 	if len(listing.Items) != 1 || listing.Items[0].Level != 2 {
@@ -112,8 +116,13 @@ func TestPatchIsCheckedLikeEveryOtherChangeOfTheRules(t *testing.T) {
 	const path = "/admin/api/lans/1/rules"
 	requireProblem(t, testFixture.callAdmin("PATCH", path, `{"poke_interval":0}`),
 		http.StatusBadRequest, "invalid_rules")
-	requireProblem(t, testFixture.callAdmin("PATCH", path, `{"xp_per_level":50}`),
-		http.StatusBadRequest, "invalid_rules")
+	for _, levelRule := range []string{
+		`{"xp_per_level":80}`, `{"xp_curve":"linear"}`,
+		`{"xp_per_level_step":10}`, `{"xp_per_level_max":200}`,
+	} {
+		requireProblem(t, testFixture.callAdmin("PATCH", path, levelRule),
+			http.StatusBadRequest, "invalid_rules")
+	}
 	requireProblem(t, testFixture.callAdmin("PATCH", path, `{"walk_fast":true}`),
 		http.StatusBadRequest, "invalid_request")
 	requireProblem(
@@ -135,7 +144,13 @@ func TestRuleErrorsSayWhatToFix(t *testing.T) {
 		{"too low", `{"trip_seconds":0}`, "trip_seconds muss zwischen 1 und 2592000 liegen."},
 		{"too high", `{"trip_seconds":9223372036854775807}`, "trip_seconds muss zwischen"},
 		{"decimals", `{"walk_speed":0}`, "walk_speed muss zwischen 0,01 und 100 liegen."},
-		{"after the start", `{"xp_per_level":50}`, "xp_per_level lässt sich nach dem Start"},
+		{"after the start", `{"xp_per_level":80}`, "xp_per_level lässt sich nach dem Start"},
+		{"curve after the start", `{"xp_curve":"linear"}`, "xp_curve lässt sich nach dem Start"},
+		{
+			"unknown curve",
+			`{"xp_curve":"cubic"}`,
+			"xp_curve muss eines von linear, quadratic sein.",
+		},
 	}
 	for _, testCase := range cases {
 		response := testFixture.callAdmin("PATCH", path, testCase.body)
@@ -153,4 +168,28 @@ func TestRoomSizeRulesStayInTheirRange(t *testing.T) {
 		requireProblem(t, testFixture.callAdmin("PATCH", "/admin/api/lans/1/rules", body),
 			http.StatusBadRequest, "invalid_rules")
 	}
+}
+
+func TestThePreviewShowsTheCurveBeforeItIsSaved(t *testing.T) {
+	testFixture := newFixture(t)
+	response := testFixture.callAdmin("POST", "/admin/api/level-preview",
+		`{"xp_curve":"quadratic","xp_per_level":10,"xp_per_level_step":5,"xp_per_level_max":20}`)
+	preview := decodeBody[struct {
+		Levels []rules.LevelStep `json:"levels"`
+	}](t, response)
+	if len(preview.Levels) != 20 ||
+		preview.Levels[3] != (rules.LevelStep{Level: 4, StartXP: 45, XP: 20}) {
+		t.Fatalf("preview: %s", response.body)
+	}
+	if saved := testFixture.loadLANStatus(
+		testFixture.registerPlayer("A"),
+	).Rules; saved.XPPerLevel != 50 {
+		t.Fatalf("a preview must not save: %+v", saved)
+	}
+	requireProblem(
+		t,
+		testFixture.callAdmin("POST", "/admin/api/level-preview", `{"xp_per_level":0}`),
+		http.StatusBadRequest,
+		"invalid_rules",
+	)
 }

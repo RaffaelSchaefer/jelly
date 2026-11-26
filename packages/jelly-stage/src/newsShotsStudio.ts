@@ -1,11 +1,12 @@
 /**
- * The studio while the presenter may still be on its way. On the server it walks from its desk to
- * the stage at walking pace, in a large hall for most of a show, and faces where it walks: from the
- * hall the studio would film its back. So the studio films it only once its move has ended and it
- * has turned to the hall. Until then an establishing shot of the stage and the hall stands in, where
- * the screens already show the broadcast, also for the announcement of a report before the usual cut
- * to its jellies. All of it follows from the move of the presenter and the server time. Without
- * three.
+ * The studio while the presenter may still be on its way. The stage plays its walk to the stage as
+ * finished (`playMoves` in `moves.ts`), so it stands there from the first moment of the show. It is
+ * still on its way while another walk of it runs until that walk comes in. A walking jelly faces
+ * where it walks: from the hall the studio would film its back. So the studio films it only once its
+ * move has ended and it has turned to the hall. Until then an establishing shot of the stage and the
+ * hall stands in, where the screens already show the broadcast, also for the announcement of a
+ * report before the usual cut to its jellies. All of it follows from the move of the presenter and
+ * the server time. Without three.
  *
  * @module
  */

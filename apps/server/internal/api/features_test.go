@@ -112,14 +112,14 @@ func TestReports(t *testing.T) {
 	token := testFixture.registerPlayer("A")
 
 	response := testFixture.callAPI("POST", "/v1/reports", token, `{"kind":"food"}`)
-	if got := decodeBody[pokeResponse](t, response).XPGained; got != 15 {
-		t.Fatalf("food = %d XP, want 15", got)
+	if got := decodeBody[pokeResponse](t, response).XPGained; got != 30 {
+		t.Fatalf("food = %d XP, want 30", got)
 	}
 	response = testFixture.callAPI("POST", "/v1/reports", token, `{"kind":"food"}`)
 	requireProblem(t, response, http.StatusConflict, "report_cooldown")
 	response = testFixture.callAPI("POST", "/v1/reports", token, `{"kind":"drink"}`)
-	if got := decodeBody[pokeResponse](t, response).XPGained; got != 10 {
-		t.Fatalf("drink = %d XP, want 10", got)
+	if got := decodeBody[pokeResponse](t, response).XPGained; got != 30 {
+		t.Fatalf("drink = %d XP, want 30", got)
 	}
 	state := testFixture.loadMe(token)
 	if state.Reports == nil || state.Reports.ReportsLeft != 6 {
@@ -127,13 +127,13 @@ func TestReports(t *testing.T) {
 	}
 }
 
-func TestPokeCatchUpReachesOneHour(t *testing.T) {
+func TestPokeCatchUpReachesTwoHours(t *testing.T) {
 	testFixture := newFixture(t)
 	token := testFixture.registerPlayer("A")
 	testFixture.pokePlayer(token)
 	testFixture.advanceClock(5 * time.Hour)
-	if got := testFixture.pokePlayer(token); got != 12 {
-		t.Fatalf("poke after 5 hours = %d XP, want 12", got)
+	if got := testFixture.pokePlayer(token); got != 48 {
+		t.Fatalf("poke after 5 hours = %d XP, want 48", got)
 	}
 }
 
@@ -197,11 +197,14 @@ func TestCosmeticsRequireUnlock(t *testing.T) {
 	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
 		`{"slot":"head","key":"sprout","color":"#ffffff"}`),
 		http.StatusBadRequest, "invalid_cosmetic_color")
+	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"head","key":"party-hat","skin":"ucb"}`),
+		http.StatusBadRequest, "unknown_skin")
 	response = testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
 		`{"slot":"head","key":"party-hat","color":"#ffd45c"}`)
-	tinted := decodeBody[store.PlayerState](t, response).Equipped["head"].Color
-	if tinted == nil || *tinted != "#ffd45c" {
-		t.Fatalf("color: %s", response.body)
+	worn := decodeBody[store.PlayerState](t, response).Equipped["head"]
+	if worn.Color == nil || *worn.Color != "#ffd45c" || worn.Skin != nil {
+		t.Fatalf("color and skin: %s", response.body)
 	}
 }
 
@@ -219,7 +222,7 @@ func TestNewLANRestartsXPAndKeepsHistory(t *testing.T) {
 		t.Fatalf("the account has to keep its secret, got %q", secret)
 	}
 	state := testFixture.loadMe(secret)
-	if state.XP != 0 || state.Level != 1 || state.TotalXP != 3 || len(state.Badges) != 2 {
+	if state.XP != 0 || state.Level != 1 || state.TotalXP != 6 || len(state.Badges) != 2 {
 		t.Fatalf("state in the new LAN: %+v", state)
 	}
 }
@@ -379,7 +382,7 @@ func TestModeration(t *testing.T) {
 	if got := len(testFixture.loadStage().Players); got != 0 {
 		t.Fatalf("hidden jelly stays on the stage: %d", got)
 	}
-	if got := testFixture.pokePlayer(token); got != 3 {
+	if got := testFixture.pokePlayer(token); got != 6 {
 		t.Fatalf("a hidden player keeps playing, got %d XP", got)
 	}
 	testFixture.callAdmin("POST", base+"/show", "")

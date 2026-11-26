@@ -12,6 +12,11 @@ import { FULL_CIRCLE, measureDistance, measureServerDistance, toFloorPoint } fro
 
 /** Closer than this, a jelly counts as standing. */
 const ARRIVE_DISTANCE = 0.0005;
+/**
+ * Farther than this in one frame, a jelly was put there instead of walking: about two seconds of
+ * walking, far more than one frame covers. The presenter of the news is put on the stage like this.
+ */
+const PLACED_DISTANCE = 3;
 /** A jelly closer than this to its look target keeps its direction. */
 const LOOK_DISTANCE = 0.02;
 /** Distance of one hop while walking. */
@@ -95,7 +100,7 @@ export function findArrival(move: StageMove): number {
 }
 
 /** Returns the jellies on a snack run. */
-export function findSnackRunners(moves: Map<number, StageMove>): Set<number> {
+export function findSnackRunners(moves: ReadonlyMap<number, StageMove>): Set<number> {
   const runners = [...moves.values()].filter((move) => move.kind === SNACK_KIND);
   return new Set(runners.map((move) => move.player_id));
 }
@@ -129,11 +134,18 @@ function turnToward(current: number, wanted: number, seconds: number): number {
   return current + difference * (1 - Math.exp(-TURN_RATE * seconds));
 }
 
-/** Moves a jelly for one frame: goes to the target, turns and hops. */
-export function stepWalker(walker: Walker, step: WalkStep): void {
+/**
+ * Moves a jelly for one frame: goes to the target, turns and hops. A jelly that was put somewhere
+ * far away stands there at once, looking where a standing jelly looks. Returns whether it was put.
+ */
+export function stepWalker(walker: Walker, step: WalkStep): boolean {
   const before = walker.position;
   const moved = measureDistance(before, step.target);
   walker.position = step.target;
+  if (moved > PLACED_DISTANCE) {
+    walker.yaw = calculateYawToward(step.target, step.viewer, walker.yaw);
+    return true;
+  }
   walker.stride += moved / STRIDE_LENGTH;
   const isMoving = moved > ARRIVE_DISTANCE;
   const wantedYaw = isMoving
@@ -142,6 +154,7 @@ export function stepWalker(walker: Walker, step: WalkStep): void {
   walker.yaw = turnToward(walker.yaw, wantedYaw, step.seconds);
   const wantedGait = isMoving ? 1 : 0;
   walker.gait += (wantedGait - walker.gait) * (1 - Math.exp(-GAIT_RATE * step.seconds));
+  return false;
 }
 
 /** Returns the hop and lean of a walking jelly. */

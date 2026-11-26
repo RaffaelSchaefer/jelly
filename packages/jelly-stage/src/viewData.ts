@@ -5,13 +5,13 @@
  * @module
  */
 
-import type { StageEvent, StageState } from "./types.ts";
+import type { StageEvent, StageMove, StageState } from "./types.ts";
 import type { StageMemory } from "./viewMemory.ts";
 
 import { createEffects, isFreshEvent, isPulseEvent, updateEffects } from "./effects.ts";
 import { rebuildHall } from "./hall.ts";
 import { pulseJelly, syncJellies } from "./jellies.ts";
-import { findPositions, pruneMoves } from "./moves.ts";
+import { findPositions, playMoves, pruneMoves } from "./moves.ts";
 import { flashNews, noteNewsStart } from "./newsDirector.ts";
 import { resizeStageScene } from "./scene.ts";
 import { ANIMATION_EVENTS, STATE_EVENTS } from "./source.ts";
@@ -36,6 +36,15 @@ function applyHall(memory: StageMemory, state: StageState): void {
   }
 }
 
+/**
+ * Returns the moves as the stage plays them at local time `now`, see {@link playMoves}. The view
+ * keeps the moves as the server sent them and reads them only through this.
+ */
+export function readMoves(memory: StageMemory, now: number): ReadonlyMap<number, StageMove> {
+  const gathering = memory.state?.gathering ?? null;
+  return playMoves(memory.moves, gathering, now + memory.clockOffset);
+}
+
 /** Takes over a new state. */
 function applyState(memory: StageMemory, state: StageState): void {
   memory.state = state;
@@ -45,11 +54,10 @@ function applyState(memory: StageMemory, state: StageState): void {
   }
   pruneMoves(memory.moves, state.players);
   applyHall(memory, state);
-  syncJellies(
-    memory.cast,
-    state.players,
-    findPositions(state.players, memory.moves, Date.now() + memory.clockOffset, memory.hall.size),
-  );
+  const now = Date.now();
+  const moves = readMoves(memory, now);
+  const positions = findPositions(state.players, moves, now + memory.clockOffset, memory.hall.size);
+  syncJellies(memory.cast, state.players, positions);
 }
 
 /** Hands an event to the Jelly-News: a fresh award is breaking news, and their own start tells the time. */

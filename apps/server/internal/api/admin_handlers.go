@@ -25,6 +25,7 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"POST /admin/api/lans":                                server.handleCreateLAN,
 		"PUT /admin/api/lans/{id}/rules":                      server.handleUpdateRules,
 		"PATCH /admin/api/lans/{id}/rules":                    server.handlePatchRules,
+		"POST /admin/api/level-preview":                       server.handlePreviewLevels,
 		"PUT /admin/api/lans/{id}/join-code":                  server.handleUpdateJoinCode,
 		"GET /admin/api/lans/{id}/event-codes":                server.handleListEventCodes,
 		"POST /admin/api/event-codes":                         server.handleCreateEventCode,
@@ -49,6 +50,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"GET /admin/api/achievements":                         server.handleListAchievements,
 		"GET /admin/api/lans/{id}/schedule":                   server.handleLoadLANSchedule,
 		"PUT /admin/api/lans/{id}/schedule":                   server.handleReplaceLANSchedule,
+		"POST /admin/api/lans/{id}/reset":                     server.handleResetLAN,
+		"POST /admin/api/lans/{id}/players/{player}/reset":    server.handleResetPlayerProgress,
 		"GET /admin/api/stage-link":                           server.handleStageLink,
 	}
 	maps.Copy(routes, server.listBotRoutes())
@@ -105,7 +108,7 @@ func (server *apiServer) handleResetName(writer http.ResponseWriter, request *ht
 	playerID, valid := server.readPathID(writer, request)
 	if valid {
 		err := server.Store.ResetPlayerName(request.Context(), playerID, server.currentMillis())
-		server.writeOutcome(writer, request, map[string]bool{"reset": true}, err)
+		server.writeOutcome(writer, request, map[string]bool{fieldReset: true}, err)
 	}
 }
 
@@ -157,39 +160,6 @@ func (server *apiServer) handleDeleteLAN(writer http.ResponseWriter, request *ht
 	}
 	err := server.Store.DeleteLAN(request.Context(), lanID, server.currentMillis())
 	server.writeOutcome(writer, request, map[string]bool{fieldDeleted: true}, err)
-}
-
-// handlePatchRules changes only the rules that the body names, also while the LAN is running.
-func (server *apiServer) handlePatchRules(writer http.ResponseWriter, request *http.Request) {
-	lanID, valid := server.readPathID(writer, request)
-	if !valid {
-		return
-	}
-	body, err := server.Store.LoadLANRules(request.Context(), lanID)
-	if err != nil {
-		server.writeError(writer, request, err)
-		return
-	}
-	if !server.readJSON(writer, request, &body) {
-		return
-	}
-	err = server.Store.UpdateLANRules(request.Context(), lanID, body, server.currentMillis())
-	server.writeOutcome(writer, request, body, err)
-}
-
-// handleUpdateRules replaces all rules of a LAN, also while it is running.
-func (server *apiServer) handleUpdateRules(writer http.ResponseWriter, request *http.Request) {
-	lanID, valid := server.readPathID(writer, request)
-	if !valid {
-		return
-	}
-	// What a body leaves out goes back to its default. Use PATCH to change single rules.
-	body := rules.DefaultRules()
-	if !server.readJSON(writer, request, &body) {
-		return
-	}
-	err := server.Store.UpdateLANRules(request.Context(), lanID, body, server.currentMillis())
-	server.writeOutcome(writer, request, body, err)
 }
 
 // handleListEventCodes returns the event codes of a LAN.
@@ -378,7 +348,7 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 		})
 		return
 	}
-	if request.URL.Query().Get(queryDryRun) == "true" {
+	if isQueryFlagSet(request, queryDryRun) {
 		preview, previewErr := server.Store.PreviewMap(request.Context(), lanID, roomMap)
 		server.writeOutcome(writer, request, preview, previewErr)
 		return

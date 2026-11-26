@@ -82,7 +82,8 @@ func (store *Store) StartScheduledNews(ctx context.Context, now int64) error {
 		if workErr != nil {
 			return fmt.Errorf("mark news: %w", workErr)
 		}
-		gathering, workErr := prepareNews(ctx, transaction, lan.id, schedule, now)
+		since := rules.FindNewsWindowStart(schedule, item.StartsAt)
+		gathering, workErr := prepareNews(ctx, transaction, lan.id, schedule, since, now)
 		if workErr != nil || gathering.News.isEmpty() {
 			return workErr
 		}
@@ -95,7 +96,8 @@ func (store *Store) StartScheduledNews(ctx context.Context, now int64) error {
 	})
 }
 
-// loadNewsSchedule reads the program of a LAN and the start of its last news that began.
+// loadNewsSchedule reads the program of a LAN with every repeat written out, and the start of its
+// last news that began.
 func loadNewsSchedule(
 	ctx context.Context, database querier, lanID int64,
 ) ([]rules.ScheduleItem, int64, error) {
@@ -108,7 +110,7 @@ func loadNewsSchedule(
 		return nil, 0, fmt.Errorf("load news schedule: %w", err)
 	}
 	schedule, err := parseSchedule(scheduleJSON)
-	return schedule, startedFor, err
+	return rules.ExpandSchedule(schedule), startedFor, err
 }
 
 // prepareLANNews prepares news a LAN starts by hand, with the next point of its program.
@@ -122,14 +124,16 @@ func prepareLANNews(
 	if err != nil {
 		return Gathering{}, err
 	}
-	return prepareNews(ctx, transaction, lanID, schedule, now)
+	since := rules.FindNewsWindowStart(schedule, now)
+	return prepareNews(ctx, transaction, lanID, schedule, since, now)
 }
 
-// prepareNews collects the news of the last hour and picks who presents them.
+// prepareNews collects the news since `since` and picks who presents them.
 func prepareNews(
-	ctx context.Context, transaction *sql.Tx, lanID int64, schedule []rules.ScheduleItem, now int64,
+	ctx context.Context, transaction *sql.Tx, lanID int64, schedule []rules.ScheduleItem,
+	since, now int64,
 ) (Gathering, error) {
-	news, err := collectNews(ctx, transaction, lanID, now-rules.NewsWindowMillis)
+	news, err := collectNews(ctx, transaction, lanID, since)
 	if err != nil {
 		return Gathering{}, err
 	}

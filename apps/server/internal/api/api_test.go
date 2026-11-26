@@ -103,9 +103,10 @@ func (testFixture *fixture) openDatabase() {
 
 func (testFixture *fixture) createLAN(slug string, startsAt time.Time) {
 	testFixture.t.Helper()
-	// Most tests do not care where their jellies stand.
+	// Most tests do not care where their jellies stand, and count only the XP of their own action.
 	gameRules := rules.DefaultRules()
 	gameRules.NearDistance = 1000
+	gameRules.AchievementXP = 0
 	err := testFixture.database.CreateLAN(testFixture.t.Context(), store.NewLAN{
 		Slug: slug, Name: slug, Timezone: "Europe/Berlin", JoinCode: joinCode,
 		StartsAt: startsAt.UnixMilli(), EndsAt: startsAt.Add(96 * time.Hour).UnixMilli(),
@@ -200,8 +201,8 @@ func TestRegisterMePokeFlow(t *testing.T) {
 		t.Fatalf("entry is missing: %+v", state)
 	}
 
-	if got := testFixture.pokePlayer(token); got != 3 {
-		t.Fatalf("first poke = %d XP, want 3", got)
+	if got := testFixture.pokePlayer(token); got != 6 {
+		t.Fatalf("first poke = %d XP, want 6", got)
 	}
 	if got := testFixture.pokePlayer(token); got != 0 {
 		t.Fatalf("immediate second poke = %d XP, want 0", got)
@@ -211,13 +212,15 @@ func TestRegisterMePokeFlow(t *testing.T) {
 		t.Fatalf("poke just too early = %d XP, want 0", got)
 	}
 	testFixture.advanceClock(time.Second)
-	if got := testFixture.pokePlayer(token); got != 3 {
-		t.Fatalf("poke after 15 minutes = %d XP, want 3", got)
+	if got := testFixture.pokePlayer(token); got != 6 {
+		t.Fatalf("poke after 15 minutes = %d XP, want 6", got)
 	}
 
 	state = testFixture.loadMe(token)
 	want := testFixture.clock.Load() + (15 * time.Minute).Milliseconds()
-	if state.XP != 6 || state.NextPokeAt == nil || *state.NextPokeAt != want {
+	if state.XP != 12 || state.XPInLevel != 12 || state.XPForNextLevel != 50 ||
+		state.NextPokeAt == nil ||
+		*state.NextPokeAt != want {
 		t.Fatalf("state after pokes: %+v, want next poke at %d", state, want)
 	}
 }
@@ -271,7 +274,7 @@ func TestNoActiveLAN(t *testing.T) {
 
 	// The last state stays readable while no LAN is running.
 	state := testFixture.loadMe(token)
-	if state.XP != 3 || state.LAN == nil || state.LAN.Active || state.NextPokeAt != nil {
+	if state.XP != 6 || state.LAN == nil || state.LAN.Active || state.NextPokeAt != nil {
 		t.Fatalf("state after the LAN: %+v", state)
 	}
 }
@@ -320,8 +323,8 @@ func TestConcurrentPokesGrantOnce(t *testing.T) {
 		})
 	}
 	waitGroup.Wait()
-	if grantedXP.Load() != 3 {
-		t.Fatalf("%d XP in total, want 3", grantedXP.Load())
+	if grantedXP.Load() != 6 {
+		t.Fatalf("%d XP in total, want 6", grantedXP.Load())
 	}
 }
 
@@ -335,7 +338,7 @@ func TestStatePersistsAcrossRestart(t *testing.T) {
 	}
 	testFixture.openDatabase()
 
-	if state := testFixture.loadMe(token); state.XP != 3 {
+	if state := testFixture.loadMe(token); state.XP != 6 {
 		t.Fatalf("state after restart: %+v", state)
 	}
 	if got := testFixture.pokePlayer(token); got != 0 {

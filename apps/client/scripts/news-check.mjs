@@ -10,13 +10,20 @@
  * `tournament`), `nonext`, `noxp`, `nopresenter`, `gone` (das Jelly mit den meisten XP ist nicht
  * mehr im Raum), `long` (lange Namen, Titel mit 80 und Hinweis mit 200 Zeichen), `crowd`
  * (Zuschauer, sonst 24), `signs`, `follow` und `hat` (Stoff für „Vermischtes“), `still` für weniger
- * Bewegung und `loop`: Nach dem Ende beginnen die News von vorn.
+ * Bewegung und `loop`: Nach dem Ende beginnen die News von vorn. `delay=<Sekunden>` beginnt die
+ * Sendung erst so lange nach dem Laden, wie auf der Karte. Nach dem Ende gehen alle, die zur
+ * Sendung gegangen sind, wie beim Server zurück, von der Stelle ihres Wegs, wo der Server sie dann
+ * sieht.
  *
- * Zum Studio: `walk=<Sekunden>` lässt den Vorleser erst mit der Sendung von vorn links auf die
- * Bühne gehen und so viele Sekunden später ankommen, der Nachrichtentisch fährt erst dann hoch.
- * `hold=<Schlüssel>` gibt ihm ein Cosmetic in die Hände, etwa `golden-cup`, `bfg` oder
- * `kite-shield`. `beside` stellt zwei Gäste an den Tisch, für die Reihenfolge beim Zeichnen: einen
- * auf der Bühne halb hinter sein rechtes Ende, einen im Saal direkt vor ihn.
+ * Zum Studio: `walk=<Sekunden>` schickt den Vorleser mit der Sendung von vorn links auf die Bühne,
+ * so viele Sekunden lang. Die Bühne stellt ihn wie jeden Weg der Art `news` des Vorlesers sofort an
+ * dessen Ende (`playMoves` in `moves.ts` von `@jelly/stage`), erst nach der Sendung zählt der Weg
+ * wieder. `late=<Sekunden>` lässt den Weg so viel später beginnen und eine Sekunde vorher über den
+ * Strom kommen, wie der Server ihn plant: `late=1.5` kommt dem Server nahe, bis dahin steht der
+ * Vorleser noch an seinem Platz. `hold=<Schlüssel>` gibt ihm ein Cosmetic in die Hände, etwa
+ * `golden-cup`, `bfg` oder `kite-shield`. `beside` stellt zwei Gäste an den Tisch, für die
+ * Reihenfolge beim Zeichnen: einen auf der Bühne halb hinter sein rechtes Ende, einen im Saal
+ * direkt vor ihn.
  *
  * Dazu für den Look: `map` zeigt die Bühne wie im Kartenfenster (Ränder oben 44 und unten 70 Pixel,
  * halb durchsichtig markiert, und die Maske, mit der die Karte zum Rand hin ausläuft). `noshow`
@@ -45,9 +52,10 @@
  * meisten XP geht hinter die Rückwand der Lounge, das erste Achievement hinter die Snackbar, das
  * zweite in die Lücke dazwischen. Mit `achievements=5` bleibt das dritte auf dem Teppich der Lounge
  * stehen, das vierte direkt hinter dem Tresen und das fünfte zwischen den Tischreihen. Der Vorleser
- * kommt wie beim Demo-Server von einem Tisch hinten links den Gang an der Wand entlang und steht
- * nach gut 45 Sekunden auf der Bühne. `walk=<Sekunden>` nimmt stattdessen den kurzen Weg von vorn
- * links.
+ * sitzt an einem Tisch hinten links und bekommt wie beim Demo-Server einen Weg den Gang an der Wand
+ * entlang, gut 45 Sekunden lang, steht aber vom Beginn der Sendung an auf der Bühne. Mit
+ * `seconds=30` endet die Sendung vor seinem Weg: Dann steht er danach wieder im Gang und geht von
+ * dort zurück. `walk=<Sekunden>` nimmt stattdessen den kurzen Weg von vorn links.
  *
  * @module
  */
@@ -183,7 +191,7 @@ function createPlayers() {
   }
   const cast = PARAMS.has("nopresenter")
     ? [...guests, ...watchers]
-    : [{ id: PRESENTER_ID, name: "Anchor", spot: PRESENTER_SPOT }, ...guests, ...watchers];
+    : [{ id: PRESENTER_ID, name: "Anchor", spot: PRESENTER_HOME }, ...guests, ...watchers];
   return cast.map(({ id, name, spot }, index) => ({
     id,
     name,
@@ -200,6 +208,11 @@ function createPlayers() {
   }));
 }
 
+/** Mit `walk` oder `hall` sitzt der Vorleser vor der Sendung am Anfang seines Wegs. */
+const PRESENTER_WAY = planPresenterWay();
+const PRESENTER_HOME = PRESENTER_WAY
+  ? { x: PRESENTER_WAY[0].x, y: PRESENTER_WAY[0].y }
+  : PRESENTER_SPOT;
 const players = createPlayers();
 /** Die Jellies des Turms sind die letzten Zuschauer, damit vorn niemand fehlt. */
 const towerIds = players.slice(players.length - STACK).map((player) => player.id);
@@ -233,9 +246,20 @@ function createGathering(intoMs) {
   };
 }
 
-let gathering = PARAMS.has("noshow") ? null : createGathering(INTO_MS);
+/** Mit `delay` beginnt die Sendung erst so viele Sekunden nach dem Laden, wie auf der Karte. */
+const DELAY_MS = count("delay", 0) * 1000;
+/**
+ * Mit `late` plant der Server den Weg des Vorlesers erst nach der Sendung: Er beginnt so viele
+ * Sekunden nach ihr und kommt eine Sekunde vorher über den Strom, wie `moveLeadMillis` des
+ * Servers.
+ */
+const LATE_MS = count("late", 0) * 1000;
+const LEAD_MS = 1000;
+let gathering = PARAMS.has("noshow") || DELAY_MS > 0 ? null : createGathering(INTO_MS);
 let listener = null;
 let eventId = 0;
+/** Nach dem Ende die Wege zurück an den Platz, wie der Server sie dann schickt. */
+let backs = [];
 
 /** Meldet Anfang oder Ende wie der Server: Die Bühne liest danach den Stand neu. */
 function sendGathering() {
@@ -263,22 +287,41 @@ function runAward() {
   }, atMs);
 }
 
-/** Beendet die News zu ihrer Zeit und beginnt sie mit `loop` nach einer Pause neu. */
+/**
+ * Beendet die News zu ihrer Zeit und schickt alle, die zur Sendung gegangen sind, zurück. Mit
+ * `loop` beginnen sie nach einer Pause neu.
+ */
 function runShow() {
   if (!gathering) return;
   setTimeout(
     () => {
+      const endsAt = gathering.ends_at;
+      const walked = [...walkIn(), ...walkNews(listStanding().moves)];
       gathering = null;
+      backs = walked.map((move) => walkBack(move, endsAt));
       sendGathering();
-      if (!PARAMS.has("loop")) return;
-      setTimeout(() => {
-        gathering = createGathering(0);
-        sendGathering();
-        runShow();
-      }, PAUSE_MS);
+      for (const move of backs) listener?.onMove(move);
+      if (PARAMS.has("loop")) setTimeout(beginShow, PAUSE_MS);
     },
     Math.max(0, gathering.ends_at - Date.now()),
   );
+}
+
+/** Beginnt eine Sendung jetzt, wie mit `delay` und `loop`. */
+function beginShow() {
+  gathering = createGathering(0);
+  backs = [];
+  sendGathering();
+  sendLateWalk();
+  runShow();
+}
+
+/** Schickt mit `late` den Weg des Vorlesers über den Strom, sobald ihn der Server plant. */
+function sendLateWalk() {
+  const move = gathering && presenterWalk();
+  const dueIn = move ? move.start_at - LEAD_MS - Date.now() : 0;
+  if (dueIn <= 0) return;
+  setTimeout(() => listener?.onMove(move), dueIn);
 }
 
 /** Die Jellies des Turms, mit `standing` noch aufeinander, sonst im Publikum. */
@@ -309,26 +352,64 @@ function timeWay(points) {
   });
 }
 
+/** Der Weg des Vorlesers zur Sendung, mit Zeiten: mit `walk` von vorn links, mit `hall` vom Tisch. */
+function planPresenterWay() {
+  if (PARAMS.has("walk")) {
+    return [
+      { ...WALK_FROM, t: 0 },
+      { ...PRESENTER_SPOT, t: count("walk", 6) * 1000 },
+    ];
+  }
+  return HALL ? timeWay(HALL_WAY) : null;
+}
+
+/** Der Weg der Art `news` des Vorlesers zur laufenden Sendung, null ohne. */
+function presenterWalk() {
+  if (!gathering || PARAMS.has("nopresenter") || !PRESENTER_WAY) return null;
+  const start_at = gathering.ends_at - WINDOW_MS + LATE_MS;
+  return { player_id: PRESENTER_ID, kind: "news", start_at, stack_level: 0, points: PRESENTER_WAY };
+}
+
 /**
  * Mit `walk` oder `hall` geht der Vorleser mit dem Beginn der Sendung auf die Bühne, wie beim
- * Server.
+ * Server. Im Stand steht der Weg erst, wenn der Server ihn geplant hat.
  */
 function walkIn() {
-  if (!gathering || PARAMS.has("nopresenter") || !(PARAMS.has("walk") || HALL)) return [];
-  const points = PARAMS.has("walk")
-    ? [
-        { ...WALK_FROM, t: 0 },
-        { ...PRESENTER_SPOT, t: count("walk", 6) * 1000 },
-      ]
-    : timeWay(HALL_WAY);
-  const start_at = gathering.ends_at - WINDOW_MS;
-  return [{ player_id: PRESENTER_ID, kind: "news", start_at, stack_level: 0, points }];
+  const move = presenterWalk();
+  return move && Date.now() >= move.start_at - LEAD_MS ? [move] : [];
+}
+
+/** Wo ein Weg das Jelly bis `at` entlanggeführt hat: seine Punkte bis zu der Stelle, wo es dann ist. */
+function walkedPart(move, at) {
+  const elapsed = at - move.start_at;
+  const walked = [];
+  for (const [index, point] of move.points.entries()) {
+    const last = move.points[index - 1];
+    if (point.t <= elapsed || !last) {
+      walked.push({ x: point.x, y: point.y });
+      continue;
+    }
+    const share = Math.max(0, (elapsed - last.t) / (point.t - last.t));
+    walked.push({ x: last.x + (point.x - last.x) * share, y: last.y + (point.y - last.y) * share });
+    break;
+  }
+  return walked;
+}
+
+/**
+ * Der Weg zurück nach der Sendung, wie ihn der Server schickt: eine Sekunde im Voraus geplant, von
+ * der Stelle seines Wegs, wo der Server das Jelly dann sieht, denselben Weg zurück an den Platz.
+ */
+function walkBack(move, endsAt) {
+  const start_at = endsAt + LEAD_MS;
+  const points = timeWay(walkedPart(move, start_at).reverse());
+  return { ...move, kind: "wander", start_at, points };
 }
 
 /** Mit `hall` geht das Publikum mit Beginn der Sendung ins Zuschauerband, mit 0,4 m/s. */
 function walkNews(others) {
   if (!HALL || !gathering) return [];
-  const start_at = gathering.ends_at - WINDOW_MS;
+  const start_at = gathering.ends_at - WINDOW_MS + LATE_MS;
   const moved = new Set(others.map((move) => move.player_id));
   return players.flatMap((player, index) => {
     if (player.id === PRESENTER_ID || STAYING[player.id] || moved.has(player.id)) return [];
@@ -354,7 +435,7 @@ const source = {
       room: { width: 100, height: 100, unit: "percent", ...DEMO_HALL },
       areas,
       players,
-      moves: [...moves, ...walkIn(), ...walkNews(moves)],
+      moves: [...moves, ...walkIn(), ...walkNews(moves), ...backs],
       stacks,
       gathering,
     });
@@ -363,7 +444,12 @@ const source = {
   subscribe: (_firstEventId, next) => {
     listener = next;
     next.onConnectionChange(true);
-    runShow();
+    if (DELAY_MS > 0 && !PARAMS.has("noshow")) {
+      setTimeout(beginShow, DELAY_MS);
+    } else {
+      sendLateWalk();
+      runShow();
+    }
     runAward();
   },
 };

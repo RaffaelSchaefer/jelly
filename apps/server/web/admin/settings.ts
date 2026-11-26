@@ -4,7 +4,7 @@
  * @module
  */
 
-import { deleteLAN, type LANSummary } from "./api.ts";
+import { deleteLAN, resetLANAccounts, type LANSummary } from "./api.ts";
 import { createConfirmButton, createElement, createMessage } from "./dom.ts";
 import { createJoinCodeForm } from "./joinCodeForm.ts";
 import type { LANActions, SectionContext } from "./lanContext.ts";
@@ -34,6 +34,34 @@ export function createDangerZone(lan: LANSummary, actions: LANActions): HTMLElem
   );
 }
 
+/** Creates the section that sends all accounts of the LAN back to level one. */
+export function createResetSection(lan: LANSummary, actions: LANActions): HTMLElement {
+  const message = createMessage();
+  const reset = createConfirmButton(
+    "Alle Accounts zurücksetzen",
+    `Wirklich alle Accounts in „${lan.name}“ zurücksetzen?`,
+    () => {
+      resetLANAccounts(lan.id)
+        .then(() => message.showGood("Alle Accounts dieser LAN fangen wieder bei null an."))
+        .catch((error: unknown) => actions.onFailure(error, message.showBad));
+    },
+  );
+  reset.classList.add("danger");
+  return createElement(
+    "section",
+    "panel danger-zone",
+    createElement("h3", "", "Accounts zurücksetzen"),
+    createElement(
+      "p",
+      "hint",
+      "Achtung: Setzt XP, Level, Münzen, Käufe dieser LAN, Erfolge dieser LAN und getragene Cosmetics " +
+        "aller Spieler zurück. Das lässt sich nicht rückgängig machen. Konten, Namen und Plätze bleiben.",
+    ),
+    message.root,
+    createElement("div", "actions", reset),
+  );
+}
+
 /** Creates the section. */
 export function createSettingsSection(context: SectionContext): HTMLElement {
   return createElement(
@@ -42,6 +70,7 @@ export function createSettingsSection(context: SectionContext): HTMLElement {
     createJoinCodeForm(context.lan, context),
     createLANEditForm(context.lan, context),
     createRulesForm(context.lan, context.onFailure),
+    createResetSection(context.lan, context),
     createDangerZone(context.lan, context),
   );
 }

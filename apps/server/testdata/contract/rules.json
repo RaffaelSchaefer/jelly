@@ -1,19 +1,23 @@
 {
   "rules": {
-    "xp_per_level": 100,
+    "xp_curve": "quadratic",
+    "xp_per_level": 50,
+    "xp_per_level_step": 25,
+    "xp_per_level_max": 300,
     "coins_per_level": 1,
     "poke_interval": 900,
-    "poke_xp": 3,
-    "poke_max_ticks": 4,
-    "food_xp": 15,
-    "drink_xp": 10,
+    "poke_xp": 6,
+    "poke_max_ticks": 8,
+    "food_xp": 30,
+    "drink_xp": 30,
     "report_cooldown": 1800,
     "report_window": 86400,
     "reports_per_window": 8,
     "presence_window": 5400,
     "emote_cooldown": 3,
     "partner_invite_seconds": 120,
-    "partner_xp": 2,
+    "partner_xp": 50,
+    "achievement_xp": 25,
     "full_house_percent": 33,
     "max_players": 120,
     "max_streams": 200,
@@ -34,13 +38,13 @@
     "jelly_width": 0.5
   },
   "poke": [
-    { "name": "first poke counts immediately", "elapsed_seconds": null, "xp": 3 },
+    { "name": "first poke counts immediately", "elapsed_seconds": null, "xp": 6 },
     { "name": "right after earns nothing", "elapsed_seconds": 0, "xp": 0 },
     { "name": "just too early", "elapsed_seconds": 899, "xp": 0 },
-    { "name": "exactly after the interval", "elapsed_seconds": 900, "xp": 3 },
-    { "name": "catch-up counts only full intervals", "elapsed_seconds": 2000, "xp": 6 },
-    { "name": "catch-up reaches one hour", "elapsed_seconds": 3600, "xp": 12 },
-    { "name": "catch-up stops at one hour", "elapsed_seconds": 7200, "xp": 12 },
+    { "name": "exactly after the interval", "elapsed_seconds": 900, "xp": 6 },
+    { "name": "catch-up counts only full intervals", "elapsed_seconds": 2000, "xp": 12 },
+    { "name": "catch-up reaches two hours", "elapsed_seconds": 7200, "xp": 48 },
+    { "name": "catch-up stops at two hours", "elapsed_seconds": 14400, "xp": 48 },
     {
       "name": "without catch-up only one interval counts",
       "rules": { "poke_interval": 900, "poke_xp": 3, "poke_max_ticks": 1 },
@@ -50,10 +54,36 @@
     { "name": "clock runs backwards", "elapsed_seconds": -60, "xp": 0 }
   ],
   "level": [
-    { "xp": 0, "level": 1 },
-    { "xp": 99, "level": 1 },
-    { "xp": 100, "level": 2 },
-    { "xp": 900, "level": 10 }
+    { "xp": 0, "level": 1, "xp_in_level": 0, "xp_for_next_level": 50 },
+    { "xp": 49, "level": 1, "xp_in_level": 49, "xp_for_next_level": 50 },
+    { "xp": 50, "level": 2, "xp_in_level": 0, "xp_for_next_level": 75 },
+    { "xp": 124, "level": 2, "xp_in_level": 74, "xp_for_next_level": 75 },
+    { "xp": 125, "level": 3, "xp_in_level": 0, "xp_for_next_level": 100 },
+    { "xp": 1624, "level": 10, "xp_in_level": 274, "xp_for_next_level": 275 },
+    { "xp": 1625, "level": 11, "xp_in_level": 0, "xp_for_next_level": 300 },
+    { "xp": 1925, "level": 12, "xp_in_level": 0, "xp_for_next_level": 300 },
+    { "xp": 4925, "level": 22, "xp_in_level": 0, "xp_for_next_level": 300 },
+    {
+      "name": "linear takes the same XP for every level",
+      "rules": { "xp_curve": "linear", "xp_per_level": 100 },
+      "xp": 950,
+      "level": 10,
+      "xp_in_level": 50,
+      "xp_for_next_level": 100
+    },
+    {
+      "name": "a ceiling below the first level keeps every level at the first",
+      "rules": {
+        "xp_curve": "quadratic",
+        "xp_per_level": 100,
+        "xp_per_level_step": 25,
+        "xp_per_level_max": 10
+      },
+      "xp": 250,
+      "level": 3,
+      "xp_in_level": 50,
+      "xp_for_next_level": 100
+    }
   ],
   "name": [
     { "input": "  Glibber  ", "output": "Glibber" },

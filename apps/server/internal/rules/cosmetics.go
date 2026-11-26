@@ -84,6 +84,8 @@ type Cosmetic struct {
 	Slot  string `json:"slot"`
 	// Colorable cosmetics take a color from the palette, the others always look the same.
 	Colorable bool `json:"colorable"`
+	// Skins are the looks a wearer can choose from, empty for a cosmetic with one look.
+	Skins []Skin `json:"skins,omitempty"`
 	// Unlock says how a player gets it. Price is only set when that is in the shop.
 	Unlock string `json:"unlock"`
 	Price  int    `json:"price,omitempty"`
@@ -313,7 +315,7 @@ func ListCosmeticColors() []string {
 }
 
 // ValidateEquip checks a change to one slot. An empty key takes off what is in the slot.
-func ValidateEquip(slot, key string, color *string) error {
+func ValidateEquip(slot, key string, color, skin *string) error {
 	if !containsKey(ListCosmeticSlots(), slot) {
 		return ErrUnknownSlot
 	}
@@ -326,14 +328,11 @@ func ValidateEquip(slot, key string, color *string) error {
 	if index < 0 {
 		return ErrUnknownCosmetic
 	}
-	if color == nil {
-		return nil
-	}
-	isAllowed := ListCosmetics()[index].Colorable && slices.Contains(ListCosmeticColors(), *color)
-	if !isAllowed {
+	cosmetic := ListCosmetics()[index]
+	if color != nil && (!cosmetic.Colorable || !slices.Contains(ListCosmeticColors(), *color)) {
 		return ErrInvalidCosmeticColor
 	}
-	return nil
+	return ValidateSkin(cosmetic, skin)
 }
 
 // FindCosmetic returns the catalog entry for a key.

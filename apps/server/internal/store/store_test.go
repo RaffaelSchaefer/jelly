@@ -103,3 +103,49 @@ func TestLoadCurrentRulesFallsBackToTheDefaultsBetweenLANs(t *testing.T) {
 		t.Errorf("rules = %+v", got)
 	}
 }
+
+// LANs stored before the level curves have no `xp_curve` and must keep their linear levels.
+func TestRulesWithoutACurveStayLinear(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "jelly.db")
+	database, err := store.Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	startsAt := time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)
+	err = database.CreateLAN(t.Context(), store.NewLAN{
+		Slug: "old", Name: "Old", Timezone: "Europe/Berlin", JoinCode: "old-code",
+		StartsAt: startsAt.UnixMilli(), EndsAt: startsAt.Add(96 * time.Hour).UnixMilli(),
+		Rules: rules.DefaultRules(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = database.Close()
+	raw, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = raw.ExecContext(t.Context(), `UPDATE lans SET rules = '{"xp_per_level":100}'`)
+	_ = raw.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	database = openExisting(t, path)
+	got, err := database.LoadCurrentRules(t.Context(), startsAt.Add(time.Hour).UnixMilli())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.XPCurve != rules.CurveLinear || rules.CalculateLevel(got, 950) != 10 {
+		t.Fatalf("old rules = %+v", got.PublicRules)
+	}
+}
+
+func openExisting(t *testing.T, path string) *store.Store {
+	t.Helper()
+	database, err := store.Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	return database
+}

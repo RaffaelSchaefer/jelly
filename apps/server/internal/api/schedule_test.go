@@ -58,3 +58,27 @@ func TestScheduleIsEmptyWithoutAProgram(t *testing.T) {
 		t.Fatalf("schedule = %+v", read.Items)
 	}
 }
+
+func TestAppsReadEveryRepeatAndTheOrgaKeepsOneItem(t *testing.T) {
+	testFixture := newFixture(t)
+	start := readLANStart().Add(2 * time.Hour)
+	until := strconv.FormatInt(start.Add(2*time.Hour).UnixMilli(), 10)
+	response := testFixture.callAdmin("PUT", schedulePath, `{"items":[{"starts_at":`+
+		strconv.FormatInt(start.UnixMilli(), 10)+`,"ends_at":null,"title":"Jelly-News",`+
+		`"detail":null,"kind":"news","repeat":{"every_minutes":30,"until":`+until+`}}]}`)
+	if response.status != http.StatusOK {
+		t.Fatalf("replace: %d %s", response.status, response.body)
+	}
+	read := decodeBody[api.Schedule](
+		t,
+		testFixture.callAPI("GET", "/v1/lans/current/schedule", "", ""),
+	)
+	if len(read.Items) != 5 || read.Items[4].StartsAt != start.Add(2*time.Hour).UnixMilli() ||
+		read.Items[0].Repeat != nil {
+		t.Fatalf("apps read %+v", read.Items)
+	}
+	admin := decodeBody[api.Schedule](t, testFixture.callAdmin("GET", schedulePath, ""))
+	if len(admin.Items) != 1 || admin.Items[0].Repeat == nil {
+		t.Fatalf("admin schedule = %+v", admin.Items)
+	}
+}

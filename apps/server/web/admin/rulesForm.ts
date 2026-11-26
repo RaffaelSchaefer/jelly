@@ -7,13 +7,21 @@
 
 import { patchRules, type GameRules, type LANSummary } from "./api.ts";
 import type { FailureHandler } from "./failure.ts";
-import { createElement, createField, createMessage, type Field, type Message } from "./dom.ts";
+import {
+  createElement,
+  createField,
+  createLabelled,
+  createMessage,
+  createSelect,
+  type Message,
+} from "./dom.ts";
+import { createLevelPreview, type LevelPreview } from "./levelPreview.ts";
 import {
   allowsDecimals,
   findRuleChanges,
   formatDuration,
   groupRules,
-  RULE_XP_PER_LEVEL,
+  isRuleShown,
   type RuleText,
 } from "./rules.ts";
 
@@ -23,7 +31,9 @@ const CLASS_CHANGED = "is-changed";
 /** One rule on the page. */
 interface RuleField {
   rule: RuleText;
-  field: Field;
+  root: HTMLElement;
+  control: HTMLInputElement | HTMLSelectElement;
+  hint: HTMLElement;
   /** The readable length of a number of seconds, right beside the field. */
   duration: HTMLElement;
 }
@@ -35,6 +45,9 @@ interface RulesFormParts {
   message: Message;
   save: HTMLButtonElement;
   discard: HTMLButtonElement;
+  preview: LevelPreview;
+  /** Unlocks the level rules of a running LAN, `null` before its start. */
+  relevel: HTMLInputElement | null;
 }
 
 /** Names the unit shown inside the field, if the label does not say it already. */
@@ -50,56 +63,127 @@ function nameUnit(rule: RuleText): string {
 }
 
 /** Writes how long a number of seconds is, and the help line. */
-function writeHint({ rule, field, duration }: RuleField): void {
+function writeHint({ rule, control, hint, duration }: RuleField): void {
   duration.textContent =
-    rule.unit === "seconds" && field.input.value !== ""
-      ? `= ${formatDuration(Number(field.input.value))}`
+    rule.unit === "seconds" && control.value !== ""
+      ? `= ${formatDuration(Number(control.value))}`
       : "";
-  field.hint.textContent = rule.hint ?? "";
-  field.hint.hidden = rule.hint === undefined;
+  hint.textContent = rule.hint ?? "";
+  hint.hidden = rule.hint === undefined;
+}
+
+/** Reads one field, a choice as text and everything else as a number. */
+function readValue({ rule, control }: RuleField): number | string {
+  return rule.choices === undefined ? Number(control.value) : control.value;
 }
 
 /** Reads all fields. Gives `null` when one is empty. */
 function readRules(entries: RuleField[]): GameRules | null {
-  const values = entries.map(({ rule, field }) => [rule.key, field.input.value] as const);
-  if (values.some(([, value]) => value.trim() === "")) {
+  if (entries.some(({ control }) => control.value.trim() === "")) {
     return null;
   }
-  return Object.fromEntries(values.map(([key, value]) => [key, Number(value)]));
+  return Object.fromEntries(entries.map((entry) => [entry.rule.key, readValue(entry)]));
 }
 
-/** Creates the field of one rule. */
-function createRuleField(rule: RuleText, lan: LANSummary): RuleField {
+/** Reads the fields that hold a value, for a preview while someone types. */
+function readFilledRules(entries: RuleField[]): GameRules {
+  const filled = entries.filter(({ control }) => control.value.trim() !== "");
+  return Object.fromEntries(filled.map((entry) => [entry.rule.key, readValue(entry)]));
+}
+
+/** Creates the dropdown of a choice. */
+function createChoiceField(rule: RuleText, lan: LANSummary): RuleField {
+  const id = `rule-${rule.key}`;
+  const control = createSelect(id, rule.choices ?? [], String(lan.rules[rule.key] ?? ""));
+  const hint = createElement("p", "hint");
+  const root = createLabelled(id, rule.label, control);
+  root.append(hint);
+  return { rule, root, control, hint, duration: createElement("span", "duration") };
+}
+
+/** Creates the number field of one rule. */
+function createNumberField(rule: RuleText, lan: LANSummary): RuleField {
   const field = createField({ id: `rule-${rule.key}`, label: rule.label, type: "number" });
   field.input.step = allowsDecimals(rule) ? "any" : "1";
   field.input.value = String(lan.rules[rule.key] ?? "");
-  field.input.disabled = rule.key === RULE_XP_PER_LEVEL && Date.now() >= lan.starts_at;
   const duration = createElement("span", "duration");
   const box = createElement("div", "unit-box");
   field.input.replaceWith(box);
   box.append(field.input, createElement("span", "unit", nameUnit(rule)), duration);
-  return { rule, field, duration };
+  return { rule, root: field.root, control: field.input, hint: field.hint, duration };
+}
+
+/** Reports whether the level rules of a LAN are locked, because it has started. */
+function isLevelLocked(lan: LANSummary): boolean {
+  return Date.now() >= lan.starts_at;
+}
+
+/** Creates the field of one rule. */
+function createRuleField(rule: RuleText, lan: LANSummary): RuleField {
+  const entry =
+    rule.choices === undefined ? createNumberField(rule, lan) : createChoiceField(rule, lan);
+  entry.control.disabled = rule.locked === true && isLevelLocked(lan);
+  return entry;
+}
+
+/** Locks or unlocks the level rules, as the switch says. */
+function applyRelevel({ entries, relevel }: RulesFormParts): void {
+  if (relevel === null) {
+    return;
+  }
+  for (const { rule, control } of entries) {
+    control.disabled = rule.locked === true && !relevel.checked;
+  }
+}
+
+/** Creates the switch that changes the level rules of a running LAN anyway. */
+function createRelevelSwitch(
+  lan: LANSummary,
+): { root: HTMLElement; input: HTMLInputElement } | null {
+  if (!isLevelLocked(lan)) {
+    return null;
+  }
+  const input = createElement("input", "");
+  input.type = "checkbox";
+  const root = createElement(
+    "div",
+    "relevel",
+    createElement("label", "checkbox", input, "Levelkurve trotz Start ändern"),
+    createElement(
+      "p",
+      "hint",
+      "Alle behalten ihre XP und bekommen das Level der neuen Kurve. Fehlende Level-Münzen " +
+        "schreibt der Server gut, schon gezahlte bleiben.",
+    ),
+  );
+  return { root, input };
 }
 
 /** Shows which fields differ from the saved rules and what can be done about it. */
-function refresh({ lan, entries, save, discard }: RulesFormParts): void {
+function refresh({ lan, entries, save, discard, preview }: RulesFormParts): void {
+  const current = readFilledRules(entries);
   let isAnyChanged = false;
   for (const entry of entries) {
     writeHint(entry);
-    const { value } = entry.field.input;
-    const isChanged = value === "" || Number(value) !== lan.rules[entry.rule.key];
-    entry.field.root.classList.toggle(CLASS_CHANGED, isChanged);
+    entry.root.hidden = !isRuleShown(entry.rule, current);
+    const isChanged = entry.control.value === "" || readValue(entry) !== lan.rules[entry.rule.key];
+    entry.root.classList.toggle(CLASS_CHANGED, isChanged);
     isAnyChanged ||= isChanged;
   }
   save.disabled = !isAnyChanged;
   discard.disabled = !isAnyChanged;
+  preview.update({ ...lan.rules, ...current });
 }
 
 /** Puts the saved values back into the fields. */
 function restoreSaved(parts: RulesFormParts): void {
-  for (const { rule, field } of parts.entries) {
-    field.input.value = String(parts.lan.rules[rule.key]);
+  for (const { rule, control } of parts.entries) {
+    control.value = String(parts.lan.rules[rule.key]);
   }
+  if (parts.relevel !== null) {
+    parts.relevel.checked = false;
+  }
+  applyRelevel(parts);
   parts.message.clear();
   refresh(parts);
 }
@@ -113,9 +197,9 @@ function nameRules(entries: RuleField[], changes: GameRules): string {
 }
 
 /** Puts the label in place of the technical name that starts the error of the server. */
-function explainRuleError(text: string, entries: RuleField[]): string {
-  const entry = entries.find(({ rule }) => text.startsWith(`${rule.key} `));
-  return entry === undefined ? text : entry.rule.label + text.slice(entry.rule.key.length);
+function explainRuleError(text: string, rules: RuleText[]): string {
+  const rule = rules.find(({ key }) => text.startsWith(`${key} `));
+  return rule === undefined ? text : rule.label + text.slice(rule.key.length);
 }
 
 /** Sends the changes and takes over what the server saved. */
@@ -128,7 +212,7 @@ function submitRules(parts: RulesFormParts, onFailure: FailureHandler): void {
   }
   const changes = findRuleChanges(lan.rules, edited);
   save.disabled = true;
-  patchRules(lan.id, changes)
+  patchRules(lan.id, changes, parts.relevel?.checked === true)
     .then((saved) => {
       lan.rules = saved;
       restoreSaved(parts);
@@ -136,44 +220,69 @@ function submitRules(parts: RulesFormParts, onFailure: FailureHandler): void {
     })
     .catch((error: unknown) => {
       save.disabled = false;
-      onFailure(error, (text) => message.showBad(explainRuleError(text, entries)));
+      const rules = entries.map(({ rule }) => rule);
+      onFailure(error, (text) => message.showBad(explainRuleError(text, rules)));
     });
+}
+
+/** Folds the fields of one group, with the preview of the levels below them if it has one. */
+function createGroupFold(
+  title: string,
+  entries: RuleField[],
+  extras: HTMLElement[],
+): HTMLDetailsElement {
+  const fields = createElement("div", "rule-fields", ...entries.map((entry) => entry.root));
+  return createElement(
+    "details",
+    "rule-group",
+    createElement("summary", "", title),
+    ...extras,
+    fields,
+  );
 }
 
 /** Creates the panel with all rules. `lan.rules` follows what the server saved. */
 export function createRulesForm(lan: LANSummary, onFailure: FailureHandler): HTMLElement {
   const groups = groupRules(lan.rules).map((group) => ({
-    title: group.title,
+    ...group,
     entries: group.rules.map((rule) => createRuleField(rule, lan)),
   }));
   const discard = createElement("button", "quiet", "Verwerfen");
   discard.type = "button";
+  const relevel = createRelevelSwitch(lan);
   const parts: RulesFormParts = {
     lan,
     entries: groups.flatMap((group) => group.entries),
     message: createMessage(),
     save: createElement("button", "", "Änderungen speichern"),
     discard,
+    preview: createLevelPreview(),
+    relevel: relevel?.input ?? null,
   };
+  const levelExtras = relevel === null ? [] : [relevel.root];
+  const folds = groups.map((group) => {
+    const fold = createGroupFold(
+      group.title,
+      group.entries,
+      group.previewsLevels ? levelExtras : [],
+    );
+    if (group.previewsLevels) {
+      fold.append(parts.preview.root);
+    }
+    return fold;
+  });
+  // Only the first group is open, the others wait folded until someone needs them.
+  folds[0]?.setAttribute("open", "");
   const form = createElement(
     "form",
     "panel",
     createElement("h3", "", "Regeln"),
-    // Only the first group is open, the others wait folded until someone needs them.
-    ...groups.map((group, index) => {
-      const fold = createElement(
-        "details",
-        "rule-group",
-        createElement("summary", "", group.title),
-        createElement("div", "rule-fields", ...group.entries.map((entry) => entry.field.root)),
-      );
-      fold.open = index === 0;
-      return fold;
-    }),
+    ...folds,
     parts.message.root,
     createElement("div", "actions", parts.save, discard),
   );
   discard.addEventListener("click", () => restoreSaved(parts));
+  relevel?.input.addEventListener("change", () => applyRelevel(parts));
   form.addEventListener("input", () => refresh(parts));
   form.addEventListener("submit", (event) => {
     event.preventDefault();

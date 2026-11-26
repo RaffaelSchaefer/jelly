@@ -6,7 +6,7 @@ Abweichungen, und laufende Server liefern ihn unter `GET /v1/openapi-3.0.json`. 
 Mittesten stehen in [`testdata/contract/rules.json`](../testdata/contract/rules.json). Die Datei kann auch von
 Tests in anderen Sprachen gelesen werden.
 
-Aktuelle Version: **1.41.5**
+Aktuelle Version: **1.41.6**
 
 ## Versionen
 
@@ -27,6 +27,13 @@ Aktuelle Version: **1.41.5**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.47.0  | Admin: `POST /admin/api/lans/{id}/players/{player}/reset` und `POST /admin/api/lans/{id}/reset` setzen den Fortschritt eines oder aller Konten einer LAN zurück. Der Vertrag unter `/v1` bleibt gleich, Apps hören `player.updated` |
+| 1.46.0  | Admin: `?relevel=true` an `PATCH` und `PUT /admin/api/lans/{id}/rules` ändert Level-Kurve und `coins_per_level` auch nach dem Start, rechnet die Level neu und zahlt fehlende Level-Münzen |
+| 1.45.0  | XP für Achievements: Regel `achievement_xp` (Standard 25, 0 schaltet ab), jedes neu verdiente Achievement zahlt sie mit `xp.gained` und `source: achievement`. Lässt sich auch während der LAN ändern |
+| 1.44.0  | Wiederholte Programmpunkte: Ein Punkt in `PUT /admin/api/lans/{id}/schedule` kann `repeat: {every_minutes, until}` tragen. `GET /lans/current/schedule` listet jeden Termin einzeln, Apps sehen kein `repeat`. Die Jelly-News zählen die Zeit seit den News davor, die ersten weiter eine Stunde |
+| 1.43.0  | Skins: Ein Cosmetic kann im Katalog `skins` mit `{key, name}` haben, wählbare Looks wie die Flaggen am Flaggenmast. `PUT /cosmetics/equipped` nimmt `skin`, `equipped` nennt ihn je Platz, `null` für das schlichte Aussehen. Fehler `unknown_skin`. Noch hat kein Cosmetic Skins |
+| 1.42.0  | Level-Kurve: Regeln `xp_curve` (`linear` oder `quadratic`), `xp_per_level_step` und `xp_per_level_max`, alle nach dem Start der LAN fest. `xp_in_level` und `xp_for_next_level` im Stand. Admin: `POST /admin/api/level-preview`. Neue Standards: Kurve `quadratic` 50 / 25 / 300, `poke_xp` 6, `poke_max_ticks` 8, `food_xp` und `drink_xp` 30, `partner_xp` 50. Gespeicherte LANs behalten ihre Werte, LANs ohne `xp_curve` rechnen `linear` |
+| 1.41.6  | Ohne Änderung am Vertrag: Auf der Bühne der Server-Seite steht der Vorleser der Jelly-News vom ersten Bild an am Tisch |
 | 1.41.5  | Ohne Änderung am Vertrag: Die Bühne der Server-Seite zeigt die Jelly-News als Sendung |
 | 1.41.4  | Fehlerbehebung: `POST /admin/api/event-codes/{id}/end` beendet auch einen Code, der noch nicht begonnen hat, statt mit `500` zu scheitern. Er war dann nie einlösbar |
 | 1.41.3  | Fehlerbehebung: Wer länger als `presence_window` weg war, bekommt beim ersten Stapel oder Partner-Emote nicht mehr `409 too_far`. Das Jelly kommt vor der Prüfung der Nähe zurück auf die Bühne |
@@ -118,12 +125,12 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 | 415    | `invalid_request`                            | `Content-Type` ist nicht JSON             |
 | 422    | `invalid_request`                            | Unbekanntes oder fehlendes Feld, falscher Typ |
 | 400    | `invalid_request`                         | Admin-Angaben, `since`, `cursor` oder `topics` sind ungültig |
-| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, oder `xp_per_level` oder `coins_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
+| 400    | `invalid_rules`                           | Ein Wert liegt außerhalb seines Bereichs, `xp_curve` ist kein bekanntes Modell, oder eine Regel der Level-Kurve oder `coins_per_level` wurde nach dem Start der LAN geändert. `message` nennt die Regel |
 | 400    | `invalid_area`                            | Bereich passt nicht auf die Bühne oder hat keine bekannte Art |
 | 400    | `invalid_schedule`                        | Zeitplan mit Punkt außerhalb der LAN, ohne Titel oder mit unbekannter Art |
 | 400    | `invalid_map`                             | Kartenformat unbekannt, Karte zu groß oder einzelne Zonen ungültig, `message` nennt sie |
 | 400    | `invalid_name`, `invalid_color`           | Name oder Farbe sind ungültig             |
-| 400    | `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color` | Cosmetic passt nicht |
+| 400    | `unknown_slot`, `unknown_cosmetic`, `invalid_cosmetic_color`, `unknown_skin` | Cosmetic passt nicht |
 | 400    | `unknown_report_kind`, `unknown_emote`         | Eintrag steht nicht in der festen Liste   |
 | 400    | `unknown_partner_emote`, `unknown_sign`   | Eintrag steht nicht in der festen Liste   |
 | 400    | `invalid_follow`                          | Zu diesem Jelly kann man sich nicht stellen |
@@ -162,11 +169,14 @@ Jeder Fehler vom Server hat diese Form, nur ein Proxy davor kann anders antworte
 
 `GET /lans/current` liefert in `rules` die Regeln der laufenden LAN, sonst der nächsten, sonst die Standardwerte. Nur die
 Betriebsgrenzen `max_players`, `max_streams` und `max_player_streams` fehlen. Die App zeigt damit an, was der Server
-entscheiden wird, zum Beispiel die Reichweite `near_distance` in Metern oder den Fortschritt zum nächsten Level mit
-`xp_per_level`. Geprüft wird trotzdem immer auf dem Server. Ändert die Orga etwas, kommt `rules.changed`.
+entscheiden wird, zum Beispiel die Reichweite `near_distance` in Metern. Den Fortschritt zum nächsten Level liefert der
+Stand fertig gerechnet (`xp_in_level`, `xp_for_next_level`). Geprüft wird trotzdem immer auf dem Server. Ändert die Orga etwas, kommt `rules.changed`.
 
-`xp_per_level` gilt linear für jedes Level, Standard 100, und lässt sich nur bis zum Start der LAN ändern. Sonst würden
-Level und Cosmetics für alle springen. `coins_per_level` zahlt bei jedem Level-Aufstieg Münzen für den Shop, Standard 1,
+`xp_curve` wählt die Level-Kurve. Bei `linear` kostet jedes Level `xp_per_level`. Bei `quadratic` kostet der Schritt von
+Level L zu L + 1 `min(xp_per_level + xp_per_level_step · (L − 1), xp_per_level_max)`, mit den Standards also 50, 75,
+100 und so weiter bis höchstens 300 XP. Die Summe wächst damit quadratisch, bis der Deckel greift, danach linear. LANs,
+die vor der Kurve gespeichert wurden, rechnen `linear`. Alle vier Regeln lassen sich nur bis zum Start der LAN ändern,
+sonst würden Level und Cosmetics für alle springen. `coins_per_level` zahlt bei jedem Level-Aufstieg Münzen für den Shop, Standard 1,
 und ist ebenfalls nach dem Start der LAN fest. Ein Kauf senkt kein Level.
 
 ### Zeitplan
@@ -182,6 +192,11 @@ Die Orga pflegt den Plan mit `PUT /admin/api/lans/{id}/schedule` und `{"items":[
 Server ersetzt den ganzen Plan, sortiert nach Beginn, entfernt leere Details und antwortet mit dem gespeicherten Plan.
 Jeder Punkt muss in der LAN liegen und braucht Titel und bekannte Art, sonst folgt `400 invalid_schedule`. Danach
 kommt `schedule.changed`.
+
+Ein Punkt kann sich wiederholen: `"repeat": {"every_minutes": 30, "until": …}` bringt ihn alle 5 bis 1440 Minuten
+zurück, bis zum letzten Beginn `until`. Jeder Termin behält die Länge des ersten und muss in der LAN liegen, zusammen
+höchstens 2000 Termine. Gespeichert bleibt der eine Punkt, `GET /admin/api/lans/{id}/schedule` zeigt ihn so.
+`GET /lans/current/schedule` listet dagegen jeden Termin einzeln und ohne `repeat`, Apps und Bühne rechnen nichts aus.
 
 ### Stand eines Spielers
 
@@ -199,6 +214,8 @@ kommt `schedule.changed`.
   "lan": { "slug": "ucb-2026", "name": "UCB LAN 2026", "active": true },
   "xp": 3,
   "level": 1,
+  "xp_in_level": 0,
+  "xp_for_next_level": 50,
   "coins": 3,
   "total_xp": 3,
   "next_poke_at": 1795000900000,
@@ -217,6 +234,7 @@ kommt `schedule.changed`.
 
 - `lan` ist die jüngste LAN des Kontos, nicht unbedingt die laufende. Ob eine läuft, sagt
   `GET /lans/current`. `xp` und `level` gelten für diese LAN, `total_xp` über alle LANs.
+- `xp_in_level` sind die XP seit Beginn des Levels, `xp_for_next_level` kostet das ganze Level. Ohne LAN sind beide `0`.
 - `coins` sind die Münzen für den Shop. Jeder Level-Aufstieg zahlt `coins_per_level`, sie gelten
   je LAN und sind außerhalb einer aktiven LAN `0`.
 - `next_poke_at`, `reports`, `sign`, `trip`, `follow` und `wizard_hat` sind außerhalb einer aktiven LAN `null`.
@@ -271,7 +289,7 @@ Nach der LAN darf das Secret den eigenen Stand, Profil und Katalog lesen sowie N
 | `POST /auth/recover`      | `{"code"}`                                 | `{"secret","me"}`              |
 | `GET /players/me`         |                                            | Stand                          |
 | `PATCH /players/me`       | `{"name","color"}`, alle optional          | Stand                          |
-| `PUT /cosmetics/equipped` | `{"slot","key","color"}`, ohne `key` leert den Platz | Stand                |
+| `PUT /cosmetics/equipped` | `{"slot","key","color","skin"}`, ohne `key` leert den Platz | Stand                |
 | `POST /purchases`         | `{"key"}` aus dem Katalog mit `unlock: shop` | `{"cosmetic_key","coins_spent","me"}` |
 | `GET /players`            | `?cursor=&limit=`                          | `{"items","next_cursor"}`      |
 | `GET /players/{id}`       |                                            | Profil: XP, Achievements, Cosmetics |
@@ -296,7 +314,9 @@ Ein neues Secret gibt es nur in der Antwort von `POST /auth/redeem` und `POST /a
 
 Namen haben 1 bis 24 Zeichen aus lateinischen Buchstaben, Umlauten, `ß`, Ziffern, Leerzeichen und
 `. _ ' -`, darunter mindestens ein Buchstabe oder eine Ziffer. Der Präfix `Jelly-` ist für den Admin
-reserviert. Plätze für Cosmetics sind `head`, `hands`, `body`, `face` und `aura`, je Platz eines. Einfärbbare Cosmetics (`colorable`) nehmen eine Farbe aus `cosmetic_colors`. Ein leeres `PATCH /players/me`
+reserviert. Plätze für Cosmetics sind `head`, `hands`, `body`, `face` und `aura`, je Platz eines. Einfärbbare Cosmetics (`colorable`) nehmen eine Farbe aus `cosmetic_colors`. Ein Cosmetic mit `skins` nimmt
+einen davon als `skin`, alle kommen mit dem Cosmetic. Ohne `skin` sieht es schlicht aus, was ein Skin zeigt, entscheidet
+der Renderer. Ein leeres `PATCH /players/me`
 ändert nichts und sendet nichts.
 
 **Anwesenheit:** XP gibt es nur per `POST /pokes`, also per Klick. Solange die App läuft, sendet sie
@@ -444,7 +464,8 @@ mit `kind`, `winner_id` und `ends_at`, Änderungen meldet `gathering.changed`.
 
 ### Jelly-News
 
-Die News stellen auf der Bühne vor, was in der letzten Stunde passiert ist. Sie sind ein `gathering` der Art `news`: Alle
+Die News stellen auf der Bühne vor, was seit den News davor passiert ist, bei den ersten News einer LAN in der letzten
+Stunde. Sie sind ein `gathering` der Art `news`: Alle
 gehen zu `spectators`, der Vorleser `presenter_id` zu `winner`. `winner_id` bleibt dabei `null`.
 
 - Den Vorleser wählt der Server zufällig unter den anwesenden, sichtbaren Jellies, möglichst eines, das die News nicht
@@ -550,7 +571,7 @@ Ereignisse tragen IDs und Schlüssel, aber keine Namen. Die Nutzlast `payload` h
 Ausflug, Folgen, Stapel, Gathering und Funkelbarts Hut melden ihr Ende immer, auch wenn nur die Zeit abläuft. Der Server prüft das jede
 Sekunde. Eine App braucht dafür keine eigenen Timer. Das Bild bleibt schon vorher überall gleich, weil alle Wege vom Server kommen.
 
-`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code) oder `partner`. Ein Level-Aufstieg zahlt
+`source` von `xp.gained` ist `poke`, `food`, `drink`, `event` (Event-Code), `partner` oder `achievement`. Ein Level-Aufstieg zahlt
 Münzen getrennt vom `level.up` per `coins.gained`, ein Kauf nimmt sie ohne Ereignis.
 
 ## Admin
@@ -569,6 +590,8 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/xp`                | `{"xp"}` von 1 bis 10000 in der laufenden LAN, wie verdient, mit Ereignis `xp.gained`. XP werden nie abgezogen. Ohne Teilnahme `409 not_joined` |
 | `POST /admin/api/players/{id}/coins`             | `{"coins"}` von 1 bis 1000 in der laufenden LAN, mit Ereignis `coins.gained` und `source: admin`. Ohne Teilnahme `409 not_joined` |
 | `DELETE /admin/api/players/{id}/purchases/{purchase}` | Nimmt genau diesen Kauf zurück (die `id` aus der Spielerliste), erstattet seinen Preis per `coins.gained` mit `source: refund` und legt das Cosmetic ab, falls getragen. Nicht gekauft: `404 purchase_not_found` |
+| `POST /admin/api/lans/{id}/players/{player}/reset` | Setzt das Konto in dieser LAN auf ein frisch beigetretenes Jelly zurück: XP und Verlauf, Münzen und Buchungen, Käufe dieser LAN, Erfolge dieser LAN und getragene Cosmetics. Konto, Name, Farbe, Token, Eintrag, Platz, dauerhafte Käufe, Preise und lebenslange Erfolge bleiben. Ereignis `player.updated`. Unbekannt: `404 lan_not_found`, `player_not_found` |
+| `POST /admin/api/lans/{id}/reset`                | Dasselbe für alle Konten der LAN in einer Transaktion |
 | `POST /admin/api/players/{id}/achievements`      | `{"key"}` aus dem Katalog, auch geheime, für die laufende LAN wie verdient. Ein vorhandenes bleibt, wie es ist |
 | `GET /admin/api/achievements`                    | Alle Achievements mit `key`, `title`, `description`, auch die geheimen |
 | `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |
@@ -578,6 +601,7 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `DELETE /admin/api/lans/{id}`                    | Nur ohne Spieler, sonst `409 lan_has_players`. Zonen und Codes verschwinden mit |
 | `PATCH /admin/api/lans/{id}/rules`               | Ändert nur die genannten Regeln, siehe unten |
 | `PUT /admin/api/lans/{id}/rules`                 | **Ersetzt alle Regeln**, siehe unten      |
+| `POST /admin/api/level-preview`                  | Regeln wie bei `PUT`, ohne zu speichern. Antwort: `{"levels"}` mit `level`, `start_xp` und `xp` der ersten 20 Level |
 | `PUT /admin/api/lans/{id}/join-code`             | `{"join_code"}`. `GET /admin/api/lans` zeigt ihn danach in `join_code`, bei älteren LANs steht dort bis zum Ersetzen `null` |
 | `GET /admin/api/lans/{id}/event-codes`           |                                           |
 | `POST /admin/api/event-codes`                    | `{"lan_id","title","code","xp","valid_from","valid_until"}` |
@@ -626,14 +650,20 @@ lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Serv
 - **`PATCH` für einzelne Regeln:** `{"trip_seconds":60}` ändert nur diesen Wert, alles andere bleibt. Das ist der Normalfall.
 - **`PUT` ersetzt alle Regeln:** Jedes Feld, das im Körper fehlt, fällt auf seinen Standardwert zurück, auch wenn es vorher
   anders eingestellt war. `PUT` mit `{"trip_seconds":60}` setzt also alle anderen Regeln zurück.
-- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. `xp_per_level` und `coins_per_level`
-  lassen sich nach dem Start der LAN mit keinem von beiden ändern.
+- Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. Die Regeln der Level-Kurve und
+  `coins_per_level` lassen sich nach dem Start der LAN nur mit `?relevel=true` ändern.
+- **`?relevel=true`** gibt diese Regeln auch nach dem Start frei. Jedes Jelly behält seine XP und bekommt das Level der
+  neuen Kurve, ein höheres mit `level.up`. Fehlende Level-Münzen schreibt der Server mit `coins.gained` und
+  `source: level` gut, schon gezahlte bleiben, auch wenn das Level sinkt. Alles geschieht in einer Transaktion.
 
 Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, höchstens 30 Tage:
 
 | Regel                    | Erlaubt          | Bedeutung                                                   |
 | ------------------------ | ---------------- | ----------------------------------------------------------- |
-| `xp_per_level`           | 1 bis 1000000    | XP pro Level, nach dem Start der LAN fest                   |
+| `xp_curve`               | `linear`, `quadratic` | Modell der Level-Kurve, nach dem Start der LAN fest    |
+| `xp_per_level`           | 1 bis 1000000    | XP für das erste Level, bei `linear` für jedes, nach dem Start der LAN fest |
+| `xp_per_level_step`      | 0 bis 1000000    | So viel mehr XP je weiterem Level, nur `quadratic`, nach dem Start der LAN fest |
+| `xp_per_level_max`       | 1 bis 1000000    | Höchstens so viele XP je Level, nur `quadratic`, nach dem Start der LAN fest |
 | `coins_per_level`        | 0 bis 100        | Münzen pro Level-Aufstieg, nach dem Start der LAN fest, 0 schaltet den Shop-Werbelohn ab |
 | `poke_interval`          | 1 bis 2592000    | Mindestzeit zwischen zwei Stupsern, die XP geben            |
 | `poke_xp`                | 0 bis 10000      | XP pro Stupser                                              |
@@ -647,6 +677,7 @@ Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, 
 | `emote_cooldown`         | 0 bis 2592000    | Zeit zwischen zwei Emotes, 0 schaltet sie ab                |
 | `partner_invite_seconds` | 1 bis 2592000    | So lange lässt sich ein Partner-Emote beantworten           |
 | `partner_xp`             | 0 bis 10000      | XP für ein Partner-Emote mit jemand Neuem in dieser LAN     |
+| `achievement_xp`         | 0 bis 10000      | XP für jedes neu verdiente Achievement, 0 schaltet ab       |
 | `full_house_percent`     | 1 bis 100        | Anteil der Spieler, die denselben Event-Code einlösen müssen |
 | `snack_run_seconds`      | 1 bis 2592000    | So lange bleibt ein Jelly nach einer Meldung an der Theke   |
 | `trip_seconds`           | 1 bis 2592000    | So lange bleibt ein Jelly am Ziel eines Ausflugs            |

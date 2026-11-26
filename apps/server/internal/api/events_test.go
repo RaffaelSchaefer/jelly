@@ -16,7 +16,7 @@ func TestXPEventsNameTheirSource(t *testing.T) {
 	}
 	for _, event := range events {
 		if event.Type == store.EventXPGained {
-			if string(event.Payload) != `{"amount":15,"source":"food"}` {
+			if string(event.Payload) != `{"amount":30,"source":"food"}` {
 				t.Fatalf("payload = %s", event.Payload)
 			}
 			return

@@ -67,7 +67,15 @@
         "ends_at": "End in Unix milliseconds, or null: then the point lasts until the next one starts.",
         "title": "Short title, at most 80 characters.",
         "detail": "Game, dish or note, at most 200 characters, or null.",
-        "kind": "`orga`, `food`, `yoga`, `tournament`, `together` or `news`. A `news` point starts the Jelly-News on the stage once it begins, for its own time or `news_seconds`. Other values can be added in any version and are drawn neutrally."
+        "kind": "`orga`, `food`, `yoga`, `tournament`, `together` or `news`. A `news` point starts the Jelly-News on the stage once it begins, for its own time or `news_seconds`. Other values can be added in any version and are drawn neutrally.",
+        "repeat": "Only on the admin page: brings the point back. This program always lists every single time, so apps never see it."
+      }
+    },
+    "ScheduleRepeat": {
+      "description": "How a point of the program comes back.",
+      "fields": {
+        "every_minutes": "Minutes from one start to the next, 5 to 1440.",
+        "until": "The last start, in Unix milliseconds. Every repeat has to end within the LAN."
       }
     },
     "Catalog": {
@@ -104,6 +112,7 @@
         "scope": "`permanent` counts progress over all LANs, `lan` only counts the current LAN.",
         "slot": "The place on the jelly that wears it, one of `cosmetic_slots`.",
         "colorable": "Whether it takes a color from `cosmetic_colors`. The others always look the same.",
+        "skins": "The looks a wearer can choose from, missing for a cosmetic with one look. Every skin comes with the cosmetic.",
         "unlock": "How a player gets it: `shop` for coins, `event` from an event code, `award` as a prize from the orga, `none` not at all. Treat new values like `none`.",
         "price": "The price in coins, only with `unlock` `shop`. Buy it with `POST /v1/purchases`."
       }
@@ -119,19 +128,28 @@
         "record_unit": "German unit of the record, only for record achievements."
       }
     },
+    "Skin": {
+      "description": "One look of a cosmetic, such as one flag of the flagpole.",
+      "fields": {
+        "key": "Stable key of the skin within its cosmetic.",
+        "name": "German name to show."
+      }
+    },
     "EquipBody": {
       "description": "Changes one cosmetic slot.",
       "fields": {
         "slot": "The slot to change, one of `cosmetic_slots`.",
         "key": "The cosmetic to put on, out of `cosmetics` in the state. Without it, the slot is emptied.",
-        "color": "Hex color from `cosmetic_colors`, only for colorable cosmetics."
+        "color": "Hex color from `cosmetic_colors`, only for colorable cosmetics.",
+        "skin": "Key out of `skins` of the cosmetic. Without it, the cosmetic keeps its plain look."
       }
     },
     "EquippedCosmetic": {
       "description": "What a jelly wears in one slot.",
       "fields": {
         "key": "Key of the cosmetic.",
-        "color": "The chosen hex color, null for cosmetics that are not colorable."
+        "color": "The chosen hex color, null for cosmetics that are not colorable.",
+        "skin": "The chosen key out of `skins` of the cosmetic, null for its plain look."
       }
     },
     "ErrorDetails": {
@@ -328,6 +346,8 @@
         "lan": "The newest LAN of the account, which does not have to be the running one. Null without any. `GET /v1/lans/current` says whether one runs.",
         "xp": "XP in the LAN of `lan`.",
         "level": "Level in the LAN of `lan`.",
+        "xp_in_level": "XP earned since the start of `level`, 0 without a LAN.",
+        "xp_for_next_level": "XP that `level` takes in total, so the next level comes at `xp_in_level` = this. 0 without a LAN.",
         "total_xp": "XP over all LANs.",
         "next_poke_at": "When the next poke can earn XP. Null outside an active LAN.",
         "reports": "What the player can report now. Null outside an active LAN.",
@@ -460,7 +480,10 @@
     "PublicRules": {
       "description": "The values a client needs to show what the server will decide. The server still checks every action. Times are seconds.",
       "fields": {
-        "xp_per_level": "XP that one level takes, the same for every level. Fixed once a LAN has started.",
+        "xp_curve": "Model of the level curve: `linear` or `quadratic`. Fixed once a LAN has started.",
+        "xp_per_level": "XP that the first level takes, with `linear` every level. Fixed once a LAN has started.",
+        "xp_per_level_step": "With `quadratic`, how much more XP each further level takes. Fixed once a LAN has started.",
+        "xp_per_level_max": "With `quadratic`, the most XP one level takes. Fixed once a LAN has started.",
         "coins_per_level": "Coins that every reached level pays. 0 pays nothing. Fixed once a LAN has started.",
         "poke_interval": "Minimum time between two XP pokes.",
         "poke_xp": "XP per interval.",
@@ -474,6 +497,7 @@
         "emote_cooldown": "Time between two emotes of one player.",
         "partner_invite_seconds": "How long a partner emote can be answered.",
         "partner_xp": "XP for both players for a partner emote with someone new in this LAN.",
+        "achievement_xp": "XP for every achievement a player earns in a LAN, with `source` `achievement`. 0 switches it off. It can change while the LAN runs.",
         "full_house_percent": "The share of the players of a LAN that must redeem one event code together.",
         "snack_run_seconds": "How long a jelly stays in a queue zone after a report.",
         "trip_seconds": "How long a jelly stays at the point of a trip.",

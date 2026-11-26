@@ -7,6 +7,7 @@
 import { patchRules, replaceRules, type GameRules, type LANSummary } from "./api.ts";
 import { createButton, createConfirmButton, createElement, createMessage } from "./dom.ts";
 import type { LANActions } from "./lanContext.ts";
+import { pickLockedRules } from "./rules.ts";
 
 /** Times short enough to watch a whole trip, follow or stack while testing. */
 function listTestRules(): GameRules {
@@ -41,8 +42,9 @@ export function createTestRulesPanel(lan: LANSummary, actions: LANActions): HTML
     "Auf Standard zurücksetzen",
     "Alle Regeln zurücksetzen?",
     () => {
-      // An empty body gives every rule its default value.
-      replaceRules(lan.id, {})
+      // A missing rule goes back to its default. Once the LAN runs, the level rules cannot.
+      const kept = Date.now() >= lan.starts_at ? pickLockedRules(lan.rules) : {};
+      replaceRules(lan.id, kept)
         .then(actions.onChanged)
         .catch((error: unknown) => actions.onFailure(error, message.showBad));
     },
@@ -57,7 +59,7 @@ export function createTestRulesPanel(lan: LANSummary, actions: LANActions): HTML
       "Kurze Testzeiten verkürzen Ausflug, Folgen, Stapel, Theke, Hervorheben und Funkelbarts Hut " +
         "auf Sekunden und " +
         "schalten Abklingzeiten ab. Zurücksetzen stellt alle Regeln auf die Standardwerte, auch " +
-        "eigene Einstellungen.",
+        "eigene Einstellungen. Nach dem Start bleiben Level-Kurve und Münzen, wie sie sind.",
     ),
     message.root,
     createElement("div", "actions", shorten, reset),

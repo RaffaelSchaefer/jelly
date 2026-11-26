@@ -17,24 +17,28 @@ const (
 	// NoStackLimit lets stacks grow as high as the players can build them.
 	NoStackLimit = 0
 
-	defaultXPPerLevel    = 100
-	defaultCoinsPerLevel = 1
+	defaultXPCurve        = CurveQuadratic
+	defaultXPPerLevel     = 50
+	defaultXPPerLevelStep = 25
+	defaultXPPerLevelMax  = 300
+	defaultCoinsPerLevel  = 1
 	// maxCoinsPerLevel keeps one level-up from flooding one wallet.
 	maxCoinsPerLevel = 100
 	millisPerSecond  = 1000
 
 	defaultPokeIntervalSeconds   = 900
-	defaultPokeXP                = 3
-	defaultPokeMaxTicks          = 4
-	defaultFoodXP                = 15
-	defaultDrinkXP               = 10
+	defaultPokeXP                = 6
+	defaultPokeMaxTicks          = 8
+	defaultFoodXP                = 30
+	defaultDrinkXP               = 30
 	defaultReportCooldownSeconds = 1800
 	defaultReportWindowSeconds   = 86400
 	defaultReportsPerWindow      = 8
 	defaultPresenceWindowSeconds = 5400
 	defaultEmoteCooldownSeconds  = 3
 	defaultPartnerInviteSeconds  = 120
-	defaultPartnerXP             = 2
+	defaultPartnerXP             = 50
+	defaultAchievementXP         = 25
 	defaultFullHousePercent      = 33
 	defaultMaxPlayers            = 120
 	defaultMaxStreams            = 200
@@ -84,8 +88,14 @@ type Rules struct {
 // PublicRules are the rules that clients read, so they show the same as the server decides. The
 // server still checks every action itself.
 type PublicRules struct {
-	// XPPerLevel is how much XP a level takes, the same for every level.
+	// XPCurve is the model of the level curve, [CurveLinear] or [CurveQuadratic].
+	XPCurve string `json:"xp_curve" enum:"linear,quadratic"`
+	// XPPerLevel is how much XP the first level takes, with [CurveLinear] every level.
 	XPPerLevel int `json:"xp_per_level"`
+	// XPPerLevelStep is how much more XP each further level takes with [CurveQuadratic].
+	XPPerLevelStep int `json:"xp_per_level_step"`
+	// XPPerLevelMax is the most XP one level takes with [CurveQuadratic].
+	XPPerLevelMax int `json:"xp_per_level_max"`
 	// CoinsPerLevel is how many coins every reached level gives to spend in the shop.
 	CoinsPerLevel int `json:"coins_per_level"`
 	// PokeIntervalSeconds is the minimum time between two XP pokes.
@@ -112,6 +122,8 @@ type PublicRules struct {
 	PartnerInviteSeconds int64 `json:"partner_invite_seconds"`
 	// PartnerXP is the XP both players get for a partner emote with someone new in this LAN.
 	PartnerXP int `json:"partner_xp"`
+	// AchievementXP is the XP for every achievement a player earns in a LAN. 0 switches it off.
+	AchievementXP int `json:"achievement_xp"`
 	// FullHousePercent is the share of the LAN's players that must redeem one event code together.
 	FullHousePercent int `json:"full_house_percent"`
 	// SnackRunSeconds is how long a jelly stays at the snack bar after a food or drink report.
@@ -148,7 +160,10 @@ type PublicRules struct {
 // DefaultRules returns the starting values of a new LAN.
 func DefaultRules() Rules {
 	return Rules{
+		XPCurve:                  defaultXPCurve,
 		XPPerLevel:               defaultXPPerLevel,
+		XPPerLevelStep:           defaultXPPerLevelStep,
+		XPPerLevelMax:            defaultXPPerLevelMax,
 		CoinsPerLevel:            defaultCoinsPerLevel,
 		PokeIntervalSeconds:      defaultPokeIntervalSeconds,
 		PokeXP:                   defaultPokeXP,
@@ -162,6 +177,7 @@ func DefaultRules() Rules {
 		EmoteCooldownSeconds:     defaultEmoteCooldownSeconds,
 		PartnerInviteSeconds:     defaultPartnerInviteSeconds,
 		PartnerXP:                defaultPartnerXP,
+		AchievementXP:            defaultAchievementXP,
 		FullHousePercent:         defaultFullHousePercent,
 		SnackRunSeconds:          defaultSnackRunSeconds,
 		TripSeconds:              defaultTripSeconds,
@@ -201,11 +217,6 @@ func StopsRunningLAN(startsAt, endsAt, newStartsAt, newEndsAt, now int64) bool {
 func IsEventCodeValid(xp int, validFrom, validUntil int64) bool {
 	return xp >= 0 && xp <= MaxGivenXP && validFrom < validUntil &&
 		validUntil-validFrom <= maxLANMillis
-}
-
-// CalculateLevel returns the level for the XP of a LAN, starting at [FirstLevel].
-func CalculateLevel(gameRules Rules, xp int) int {
-	return xp/gameRules.XPPerLevel + FirstLevel
 }
 
 // CalculateCoinsForLevels returns the coins for reaching `levels` new levels at once. A jump over
