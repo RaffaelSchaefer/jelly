@@ -6,6 +6,11 @@ Zeilen. Je Version eine Überschrift `## X.Y.Z` wie in `tauri.conf.json`, darunt
 `Neu:`, `Besser:` oder `Weg:`, je höchstens etwa 40 Zeichen, damit sie in eine Zeile der Karte
 passen. Ohne Abschnitt für die Version bricht das Release ab.
 
+## 0.6.2
+
+- Besser: Zeitplan kommt vom Server
+- Besser: Änderungen am Plan sofort da
+
 ## 0.6.1
 
 - Besser: Vorleser steht sofort am Tisch
