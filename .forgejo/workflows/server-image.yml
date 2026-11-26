@@ -19,14 +19,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      # A tag event does not know its branch, so only tags on main are built.
-      - name: Require tagged commit on main
+      # A tag event does not know its branch, so only tags on main or on the release branch of
+      # their minor version are built: a backport server-v1.41.6 lives on release/1.41.
+      - name: Require tagged commit on main or its release branch
         run: |
+          set -eu
+          VERSION="${GITHUB_REF_NAME#server-v}"
+          RELEASE_BRANCH="release/${VERSION%.*}"
           git fetch origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "Tag $GITHUB_REF_NAME is not on main, skipping."
-            exit 1
+          if git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag $GITHUB_REF_NAME is on main."
+            exit 0
           fi
+          if git fetch origin "$RELEASE_BRANCH" 2>/dev/null \
+            && git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "Tag $GITHUB_REF_NAME is on $RELEASE_BRANCH."
+            exit 0
+          fi
+          echo "Tag $GITHUB_REF_NAME is neither on main nor on $RELEASE_BRANCH, skipping."
+          exit 1
 
       # The image is named after the tag, and /version reports APIVersion, so both must match.
       - name: Require tag to match APIVersion
@@ -60,11 +71,28 @@ jobs:
       - name: Log in to the registry
         run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.repository_owner }}" --password-stdin
 
+      # A backport to an older version must not move latest back, so only the highest version
+      # of all server tags gets it.
+      - name: Decide whether latest moves
+        run: |
+          set -eu
+          VERSION="${GITHUB_REF_NAME#server-v}"
+          HIGHEST="$(git tag --list 'server-v*' | sed 's/^server-v//' | sort -V | tail -n 1)"
+          if [ "$VERSION" = "$HIGHEST" ]; then
+            echo "Version $VERSION is the highest, latest moves to it."
+            echo "IMAGE_TAGS=-t $IMAGE:$VERSION -t $IMAGE:latest" >> "$GITHUB_ENV"
+          else
+            echo "Version $VERSION is below $HIGHEST, latest stays."
+            echo "IMAGE_TAGS=-t $IMAGE:$VERSION" >> "$GITHUB_ENV"
+          fi
+
       - name: Build and push
         run: |
           VERSION="${GITHUB_REF_NAME#server-v}"
+          # IMAGE_TAGS holds several arguments, so it stays unquoted.
+          # shellcheck disable=SC2086
           docker buildx build --platform linux/amd64 --push -f apps/server/Dockerfile \
             --build-arg "SERVER_VERSION=$VERSION" --build-arg "SERVER_REVISION=$GITHUB_SHA" \
-            -t "$IMAGE:$VERSION" -t "$IMAGE:latest" \
+            $IMAGE_TAGS \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --label "org.opencontainers.image.version=$VERSION" .
