@@ -303,3 +303,77 @@ fn climbing_down_reaches_the_pet_even_from_a_stack_the_stream_missed() {
     assert!(own.track(&left(Some(7)), 7));
     assert!(!own.track(&event("xp.gained", Some(7), json!({ "id": 4 })), 7));
 }
+
+/// `follower` stellt sich zu `target`, oder geht mit `None` wieder.
+fn followed(follower: i64, target: Option<i64>) -> ServerEvent {
+    event(
+        FOLLOW_CHANGED,
+        Some(follower),
+        json!({ "target_id": target }),
+    )
+}
+
+#[test]
+fn follows_in_the_own_line_reach_the_pet() {
+    let mut follows = Follows::default();
+    assert!(
+        follows.track(&followed(7, Some(1)), 7),
+        "selbst dazugestellt"
+    );
+    assert!(follows.track(&followed(8, Some(1)), 7), "noch wer am Ziel");
+    assert!(
+        follows.track(&followed(9, Some(8)), 7),
+        "wer folgt, dem folgt wer"
+    );
+    assert!(
+        follows.track(&followed(1, Some(2)), 7),
+        "das Ziel folgt selbst"
+    );
+    assert!(
+        follows.track(&followed(9, None), 7),
+        "wer geht, war noch dabei"
+    );
+    assert!(
+        !follows.track(&followed(9, Some(5)), 7),
+        "danach ist er fremd"
+    );
+    assert!(
+        follows.track(&followed(9, Some(7)), 7),
+        "wer sich zum eigenen Jelly stellt"
+    );
+}
+
+#[test]
+fn a_follow_that_moves_away_reaches_the_pet_once() {
+    let mut follows = Follows::of([(7, 1), (8, 1)]);
+    assert!(
+        follows.track(&followed(8, Some(5)), 7),
+        "war noch verbunden"
+    );
+    assert!(!follows.track(&followed(8, None), 7));
+    assert!(follows.track(&followed(7, None), 7), "das eigene Ende");
+    assert!(
+        !follows.track(&followed(8, Some(1)), 7),
+        "das Ziel von früher"
+    );
+}
+
+#[test]
+fn other_follows_stay_away_from_the_pet() {
+    let mut follows = Follows::of([(3, 4)]);
+    assert!(!follows.track(&followed(5, Some(4)), 7));
+    assert!(!follows.track(&followed(3, None), 7));
+    assert!(!follows.track(&followed(5, None), 7));
+    assert!(!follows.track(&event("xp.gained", Some(5), json!({})), 7));
+    assert!(!follows.track(&event(FOLLOW_CHANGED, None, json!({})), 7));
+}
+
+#[test]
+fn follows_from_the_stage_count_from_the_start() {
+    let mut follows = Follows::of([(8, 7), (9, 8)]);
+    assert!(
+        follows.track(&followed(9, None), 7),
+        "das Ende der Polonaise von vor dem Stream"
+    );
+    assert!(!follows.track(&followed(9, Some(3)), 7));
+}

@@ -31,6 +31,7 @@ import {
   type ServerEvent,
   type Settings,
 } from "./pet";
+import { useConga } from "./useConga";
 import { useEmotes } from "./useEmotes";
 import { useFollow } from "./useFollow";
 import {
@@ -306,7 +307,8 @@ export function usePet(onLevelUp: () => void) {
   const look = useLook({ patchGame, setGame, run, inFlight, setMessage });
   const emotes = useEmotes(state, account, ready);
   const signs = useSigns(state, account, ready, hopAndSay);
-  useFollow(state, ready, hopAndSay);
+  const { conga, saysFollow } = useConga(state, ready, hopAndSay, setMessage);
+  useFollow(state, ready, saysFollow);
   useStack(state, ready, hopAndSay, setMessage);
   const news = useNews(state, ready, hopAndSay, setMessage);
   // Ohne Hüpfer: Er stapelte sich mit dem Duett und holte die Hände heraus.
@@ -319,6 +321,7 @@ export function usePet(onLevelUp: () => void) {
     offset: state.offset,
     pulse,
     touched,
+    conga,
     hopAndSay,
     interact,
     redeem,

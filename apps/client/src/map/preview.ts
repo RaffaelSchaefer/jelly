@@ -1,7 +1,7 @@
 /**
  * Daten der Karte für die Browser-Vorschau, ohne Backend: die Halle der Server-Demo mit ein paar
- * Jellies, in ihrer echten Größe, und einem Turm (`previewStacks.ts`). Die Desktop-App lädt diese
- * Datei nie.
+ * Jellies, in ihrer echten Größe, einem Turm (`previewStacks.ts`) und einer Polonaise aus drei
+ * Jellies (`previewConga.ts`). Die Desktop-App lädt diese Datei nie.
  *
  * Abfragen und Hash: `map.html?optimized` zeigt den optimierten Modus, `?fps=60` oder `?fps=max`
  * eine andere Bildrate. `map.html#news` spielt die Jelly-News, wiederholt mit Pause
@@ -25,6 +25,7 @@ import { createDemoRoom, DEMO_HALL } from "@jelly/stage/demo-room";
 import type { MapSource } from "./source";
 
 import { FRAME_RATE, PREVIEW_CATALOG, PREVIEW_ME, PREVIEW_RULES, type PartnerInvite } from "../pet";
+import { createCongaPreview, type CongaPreview } from "./previewConga";
 import { createNewsPreview } from "./previewNews";
 import { positionAt } from "./previewNewsWalks";
 import { createStackPreview } from "./previewStacks";
@@ -69,6 +70,13 @@ const ANSWER_MS = 2000;
 const INVITE_MS = 120_000;
 /** So lange dauert hier ein Ausflug und so lange leuchtet ein Jelly. */
 const TRIP_MS = 20_000;
+/**
+ * So lange gilt das Dazustellen, wie `follow_seconds` des Servers.
+ *
+ * Ponytail: Die Vorschau beendet es nie von selbst. Nach dieser Zeit zeigt nur die Bühne keine
+ * Polonaise mehr mit dem eigenen Jelly.
+ */
+const FOLLOW_MS = 1_800_000;
 const HIGHLIGHT_MS = 10_000;
 
 /** Die Bildrate aus der Adresse: `fps=60` oder `fps=max` für unbegrenzt. */
@@ -262,18 +270,23 @@ type PreviewSend = Parameters<typeof createStackPreview>[2];
  * Was das eigene Jelly in der Vorschau tut: dazustellen, Ausflug und Stapel. Losgehen nimmt es wie
  * beim Server vom Stapel, Klettern und Beginnen beenden Ausflug und Dazustellen. Ein neuer Weg
  * beginnt, wo der letzte (`lastMove`) es gerade hinstellt, etwa mitten auf dem Weg zu den News.
+ * Neben ein Jelly der Polonaise stellt es sich wie beim Server, so reiht es sich ein. Wer zu ihr
+ * gehört, bummelt nicht: Das Bummeln der Vorschau kennt keinen Abstand zu anderen.
  */
 function createOwnPreview(
   players: StagePlayer[],
   send: PreviewSend,
   lastMove: (playerId: number) => StageMove | undefined,
+  conga: CongaPreview,
 ) {
   const own = players[0];
   const trips = createTrips(own, send.move);
   const followed = () => players.find((player) => player.id === own.follow?.player_id);
   const besideOrHome = () => {
     const target = followed();
-    return target ? { x: target.home_x - FOLLOW_GAP, y: target.home_y } : homeOf(own);
+    if (!target) return homeOf(own);
+    const beside = { x: target.home_x - FOLLOW_GAP, y: target.home_y };
+    return conga.joinSpot(own.id, target.id) ?? beside;
   };
   // Ein Ausflug geht vor, Dazustellen und Stapel schließen sich mit ihm aus.
   const ownSpot = (): StagePoint => trips.current() ?? stacks.spotOf(own.id) ?? besideOrHome();
@@ -289,7 +302,7 @@ function createOwnPreview(
       endWalks();
       stacks.drop(own.id);
       own.follow =
-        playerId === null ? null : { player_id: playerId, ends_at: Date.now() + TRIP_MS };
+        playerId === null ? null : { player_id: playerId, ends_at: Date.now() + FOLLOW_MS };
       send.move(createWalk(own.id, from, besideOrHome(), playerId === null ? "wander" : "follow"));
       return Promise.resolve(playerId);
     },
@@ -302,6 +315,7 @@ function createOwnPreview(
   };
   const isBusy = (player: StagePlayer) =>
     stacks.spotOf(player.id) !== undefined ||
+    conga.spotOf(player.id) !== undefined ||
     (player === own && (own.follow !== null || trips.current() !== null));
   return { trips, stacks, isBusy, actions };
 }
@@ -324,14 +338,15 @@ function createSend(readListener: () => StreamListener | null) {
 
 /**
  * Eine Bühne, die nur im Speicher lebt. Ereignisse gibt es hier nur für Aufforderungen, Licht,
- * Stapel und die Jelly-News.
+ * Stapel, das Ende der Polonaise und die Jelly-News.
  */
 export function createPreviewSource(): MapSource {
   const areas = createDemoRoom();
   const players = listPlayers(areas);
   let listener: StreamListener | null = null;
   const { send, lastMove } = createSend(() => listener);
-  const { trips, stacks, isBusy, actions } = createOwnPreview(players, send, lastMove);
+  const conga = createCongaPreview(players, areas, send);
+  const { trips, stacks, isBusy, actions } = createOwnPreview(players, send, lastMove, conga);
   const news = createNewsPreview(location.hash, {
     players,
     areas,
@@ -354,7 +369,7 @@ export function createPreviewSource(): MapSource {
         room: { width: 100, height: 100, unit: "percent", ...DEMO_HALL },
         areas,
         players,
-        moves: [...stacks.moves(), ...news.moves()],
+        moves: [...stacks.moves(), ...conga.moves(), ...news.moves()],
         stacks: stacks.list(),
         gathering: news.gathering(),
       }),

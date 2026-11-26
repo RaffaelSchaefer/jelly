@@ -6,7 +6,8 @@
  * Abfragen `?optimized`, `?ruhig` und `?fps=30` andere Einstellungen. Mit `#shop-nerven` spielt die
  * Vorschau den Diebstahl von Funkelbarts Hut, mit `#shop-hutlos` trägt ihn gerade Mo. `#news`,
  * `#news-tower`, `#news-achievement`, `#news-presenter` und `#news-watching` lassen die Jelly-News
- * beginnen ({@link previewNewsEvent}).
+ * beginnen ({@link previewNewsEvent}), `#conga` eine Polonaise (`previewCongaPlayers` in
+ * `conga.ts`).
  *
  * @module
  */

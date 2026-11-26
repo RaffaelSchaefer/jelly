@@ -81,8 +81,8 @@ html[data-glass] #dock .tool svg { filter: drop-shadow(0 1px 2px #0b1a2bb3); }
 #partner-menu, #jelly-menu { position: absolute; z-index: 3; display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 #jelly-menu { align-items: center; }
 #partner-menu[hidden], #jelly-menu[hidden] { display: none; }
-.follow-leave, #jelly-follow[data-target] .follow-join { display: none; }
-#jelly-follow[data-target] .follow-leave { display: block; }
+.follow-leave, .follow-conga, #jelly-follow[data-target] .follow-join, #jelly-follow[data-conga] .follow-join { display: none; }
+#jelly-follow[data-target] .follow-leave, #jelly-follow[data-conga]:not([data-target]) .follow-conga { display: block; }
 /* Der Stapel-Knopf zeigt, was er tut: beginnen, draufklettern oder absteigen. `.icon-pill` hebt sonst `hidden` auf. */
 #jelly-stack[hidden] { display: none; }
 .stack-join, .stack-down, #jelly-stack[data-join] .stack-start, #own-stack[data-on-stack] .stack-start { display: none; }

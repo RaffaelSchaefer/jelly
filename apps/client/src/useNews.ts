@@ -42,6 +42,20 @@ const PREVIEW_DELAY_MS = 1500;
 /** Was in der Vorschau als erste Geste zählt, wie für die Stimme in `useJellyVoice.ts`. */
 const PREVIEW_GESTURES = ["pointerdown", "keydown"] as const;
 
+/**
+ * Ob die Jelly-News gerade laufen, vom Jingle bis zu ihrem Ende. `bed` bleibt nach einem regulären
+ * Ende stehen, denn das meldet der Server nicht: Darum zählt hier die Uhr.
+ */
+function useNewsOnAir(bed: { show: number; seconds: number } | null) {
+  const [over, setOver] = useState<number | null>(null);
+  useEffect(() => {
+    if (!bed) return;
+    const timer = window.setTimeout(() => setOver(bed.show), bed.seconds * 1000);
+    return () => window.clearTimeout(timer);
+  }, [bed]);
+  return bed !== null && over !== bed.show;
+}
+
 /** Lässt die News der Vorschau kurz nach dem Laden und nach der ersten Geste beginnen. */
 function usePreviewNews(ownId: number | undefined, onEvent: (event: ServerEvent) => void) {
   useEffect(() => {
@@ -73,7 +87,8 @@ function usePreviewNews(ownId: number | undefined, onEvent: (event: ServerEvent)
  * @param say - Nur der Satz. Sollte stabil sein.
  * @returns `newsJingle` ist die zuletzt begonnene Sendung mit Jingle, für Jingle und Stimme,
  *   `newsAnchor` der Satz, den ihr Vorleser gerade beginnt, `newsBed` die Musik unter der laufenden
- *   Sendung mit ihrer Restdauer in Sekunden, `null` ohne oder nach einem vorzeitigen Ende.
+ *   Sendung mit ihrer Restdauer in Sekunden, `null` ohne oder nach einem vorzeitigen Ende, und
+ *   `newsOnAir`, ob die Sendung gerade läuft: Dann schweigen Musik und Tanz der Polonaise.
  */
 export function useNews(
   state: ReturnType<typeof useGameState>,
@@ -116,5 +131,6 @@ export function useNews(
   useServerEvents(desktop && ready, onEvent);
   usePreviewNews(ready ? ownId : undefined, onEvent);
   const newsAnchor = useNewsVoice(plan, ownId, serverNow);
-  return { newsJingle, newsAnchor, newsBed };
+  const newsOnAir = useNewsOnAir(newsBed);
+  return { newsJingle, newsAnchor, newsBed, newsOnAir };
 }

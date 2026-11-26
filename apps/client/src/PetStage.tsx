@@ -8,6 +8,7 @@ import { EMOTE_GLYPHS, isEmoteKey } from "@jelly/scene/emotes";
 import { isPartnerMotionKey } from "@jelly/scene/partner-emotes";
 import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from "react";
 
+import type { CongaDance } from "./scene/congaStep";
 import type { ActiveEmote } from "./useEmotes";
 import type { PetGame } from "./usePet";
 
@@ -142,6 +143,7 @@ function PetVisual({
   emote,
   equipped,
   voiced,
+  conga,
   focus,
   anchors,
   onSlowDevice,
@@ -155,6 +157,7 @@ function PetVisual({
   emote: ActiveEmote | null;
   equipped: Me["equipped"];
   voiced: RefObject<ActiveVoice | null>;
+  conga: CongaDance | null;
   focus?: CameraFocus;
   anchors?: RefObject<HTMLElement | null>;
   onSlowDevice?: () => void;
@@ -178,7 +181,7 @@ function PetVisual({
             color={me.color}
             pulse={game.pulse}
             touch={{ boopedAt: touched?.touch === "boop" ? touched.at : null, petting, lean }}
-            {...{ emote, equipped, reducedMotion, rendering, frameLimit, sign, voiced }}
+            {...{ emote, equipped, reducedMotion, rendering, frameLimit, sign, voiced, conga }}
             {...{ focus, anchors, onSlowDevice, probe }}
           />
         ) : (
@@ -334,6 +337,15 @@ function stageTitle(me: Me, isNew: boolean) {
   return isNew ? "Dein neuer Begleiter" : `${me.name}, Level ${me.level}`;
 }
 
+/**
+ * Wie das Jelly in seiner Polonaise mittanzt, `null` ohne. Im Studio steht es still: Dessen Tropfen
+ * hängen am Jelly und schwängen sonst mit jedem Schritt mit. Während der Jelly-News auch, wie auf
+ * der Bühne, und wie die Musik der Polonaise in `useUiSounds.ts`.
+ */
+function congaDance({ conga, offset, newsOnAir }: PetGame, studio: boolean): CongaDance | null {
+  return conga && !studio && !newsOnAir ? { rank: conga.rank, serverOffset: offset } : null;
+}
+
 /** Sprechblase, Jelly und das gerade zugängliche Overlay. */
 export default function PetStage(props: PetStageProps) {
   const { game, me, panel, joining, reducedMotion, rendering, frameLimit, onToggle, onClose } =
@@ -356,6 +368,7 @@ export default function PetStage(props: PetStageProps) {
         sign={studio ? null : signLabel(preview ?? me.sign, game.catalog)}
         emote={game.activeEmote ?? cheer ?? wave}
         equipped={me.equipped}
+        conga={congaDance(game, studio)}
         focus={cameraFocus(hatch, levelUp, region)}
         anchors={glass ? stage : undefined}
         onSlowDevice={props.onSlowDevice}

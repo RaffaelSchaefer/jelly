@@ -18,11 +18,12 @@ import { desktop, windowAction } from "../backend";
 import { knownPetColor, pointerTypeOf, reachOf } from "../pet";
 import { createJellyMenu } from "./actions";
 import { flyToJelly, follow, goTo, highlight } from "./commands";
+import { chooseFollow } from "./conga";
 import { createDock } from "./dock";
 import { startGlass } from "./glass";
 import { createNewsWatch } from "./newsWatch";
 import { createNotice } from "./notice";
-import { applyAway, applyMarks, findName, type MapPage } from "./page";
+import { applyAway, applyMarks, findName, readCongaScene, type MapPage } from "./page";
 import {
   cancelFlow,
   handleEscape,
@@ -108,6 +109,8 @@ function applyState(page: MapPage, state: StageState) {
   page.players = state.players;
   page.clockOffset = state.server_time - Date.now();
   applyAway(page, own, trip);
+  // Stellt sich ein anderes Jelly dazu, wird am offenen Fenster aus Dazustellen die Polonaise.
+  page.menu.refresh();
   applySettings(page);
   if (own) page.glass?.setLook(knownPetColor(own.color));
   page.notice.setNote(state.areas.length === 0 && state.players.length === 0 ? TEXT_NO_LAN : "");
@@ -336,6 +339,7 @@ function createPage(source: MapPage["source"]): MapPage {
     glassFailed: false,
     menu: createJellyMenu({
       follow: (playerId) => void follow(page, playerId),
+      chooseFollow: (playerId, isTarget) => chooseFollow(readCongaScene(page), playerId, isTarget),
       highlight: (playerId) => void highlight(page, playerId),
       chooseStack: (playerId) =>
         chooseStack(page.view?.readStacks() ?? [], page.source.readOwn().id, playerId),

@@ -15,6 +15,8 @@ import type { Notice } from "./notice";
 import type { JellySearch } from "./search";
 import type { MapSource } from "./source";
 
+import { countConga, type CongaScene } from "./conga";
+
 /** Ein Jelly, dessen Namen die Karte nicht kennt. */
 export const TEXT_UNKNOWN_JELLY = "dem Jelly";
 
@@ -80,6 +82,15 @@ export function findName(page: MapPage, playerId: number): string {
   return page.players.find((player) => player.id === playerId)?.name ?? TEXT_UNKNOWN_JELLY;
 }
 
+/** Was die Polonaise-Rechnung braucht (`conga.ts`): die Jellies vom letzten Lesen, jetzt. */
+export function readCongaScene(page: MapPage): CongaScene {
+  return {
+    players: page.players,
+    ownId: page.source.readOwn().id,
+    serverTime: Date.now() + page.clockOffset,
+  };
+}
+
 /** Gibt Ziel, Leuchten und das Ziel des Ausflugs an die Bühne. */
 export function applyMarks(page: MapPage) {
   page.view?.setMarks({
@@ -99,6 +110,7 @@ export function showOwnPlace(page: MapPage) {
       ? {
           color: own.color,
           targetName: page.targetId === null ? null : findName(page, page.targetId),
+          isConga: countConga(readCongaScene(page), page.targetId) > 0,
           isOnTrip: page.destination !== null,
         }
       : null,

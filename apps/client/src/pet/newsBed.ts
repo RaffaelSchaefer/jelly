@@ -5,7 +5,8 @@
  *
  * Die Datei ist der gleichmäßige Mittelteil des gelieferten Stücks. Die Schleife springt am Ende
  * zurück an eine Stelle, an der die Musik im selben Takt weiterläuft, mit einer Überblendung von
- * drei Sekunden. Gespielt wird der Plan in `uiBed.ts`, live wie beim Rendern.
+ * drei Sekunden. Gespielt wird der Plan in `uiBed.ts`, live wie beim Rendern. Die Musik zur
+ * Polonaise (`conga.ts`) läuft mit derselben Rechnung ({@link loopSegments}).
  *
  * @module
  */
@@ -22,19 +23,28 @@ export interface SoundSegment {
   fadeOut: number;
 }
 
-/** Wo die Musik in ihrer Datei in Schleife läuft und wie sie ein- und ausblendet, in Sekunden. */
-export const NEWS_BED = {
+/** Wo eine Musik in ihrer Datei in Schleife läuft und wie sie ein- und ausblendet, in Sekunden. */
+export interface SoundLoop {
   /** Die Schleife springt am Ende hierher zurück. */
-  loopStart: 4.35,
+  loopStart: number;
   /** Hier beginnt die Überblendung zurück an den Anfang der Schleife. */
-  loopEnd: 36.43,
+  loopEnd: number;
   /** Länge der Überblendung. Die Datei reicht so weit über das Ende der Schleife hinaus. */
+  crossfade: number;
+  /** So lange blendet sie am Anfang ein. */
+  fadeIn: number;
+  /** So lange blendet sie am Ende aus. */
+  fadeOut: number;
+}
+
+/** Die Schleife der Musik unter den Jelly-News. Sie blendet unter dem Jingle ein. */
+export const NEWS_BED = {
+  loopStart: 4.35,
+  loopEnd: 36.43,
   crossfade: 3,
-  /** So lange blendet sie unter dem Jingle ein. */
   fadeIn: 2,
-  /** So lange blendet sie am Ende der Sendung aus. */
   fadeOut: 2,
-} as const;
+} as const satisfies SoundLoop;
 
 /**
  * So viele Sekunden nach dem Beginn der Sendung setzt die Musik ein: kurz bevor der Jingle nach
@@ -43,25 +53,28 @@ export const NEWS_BED = {
  */
 export const BED_ENTRY_SECONDS = 12.5;
 
-/** Ein Abschnitt, der vor `end` endet: Was darüber hinausginge, blendet bis `end` aus. */
-function clip(segment: SoundSegment, end: number): SoundSegment {
+/**
+ * Ein Abschnitt, der vor `end` endet: Was darüber hinausginge, blendet bis `end` in höchstens
+ * `fadeOut` Sekunden aus.
+ */
+function clip(segment: SoundSegment, end: number, fadeOut: number): SoundSegment {
   if (segment.at + segment.duration <= end) return segment;
   const duration = end - segment.at;
   return {
     ...segment,
     duration,
     fadeIn: Math.min(segment.fadeIn, duration / 2),
-    fadeOut: Math.min(NEWS_BED.fadeOut, duration / 2),
+    fadeOut: Math.min(fadeOut, duration / 2),
   };
 }
 
 /**
- * Die Abschnitte der Musik für `seconds` Sekunden ab ihrem Einsatz. Der erste spielt die Datei von
- * vorn bis zum Ende der Schleife, jeder weitere die Schleife, und je zwei überblenden sich. Alles
- * endet mit `seconds`, das letzte Stück blendet dabei aus.
+ * Die Abschnitte einer Musik in Schleife für `seconds` Sekunden ab ihrem Einsatz. Der erste spielt
+ * die Datei von vorn bis zum Ende der Schleife, jeder weitere die Schleife, und je zwei überblenden
+ * sich. Alles endet mit `seconds`, das letzte Stück blendet dabei aus.
  */
-export function bedSegments(seconds: number): SoundSegment[] {
-  const { loopStart, loopEnd, crossfade, fadeIn } = NEWS_BED;
+export function loopSegments(bed: SoundLoop, seconds: number): SoundSegment[] {
+  const { loopStart, loopEnd, crossfade, fadeIn, fadeOut } = bed;
   if (seconds <= 0) return [];
   const loop = loopEnd - loopStart;
   const segments: SoundSegment[] = [
@@ -76,5 +89,10 @@ export function bedSegments(seconds: number): SoundSegment[] {
       fadeOut: crossfade,
     });
   }
-  return segments.map((segment) => clip(segment, seconds));
+  return segments.map((segment) => clip(segment, seconds, fadeOut));
+}
+
+/** Die Abschnitte der Musik unter den Jelly-News für `seconds` Sekunden ab ihrem Einsatz. */
+export function bedSegments(seconds: number): SoundSegment[] {
+  return loopSegments(NEWS_BED, seconds);
 }

@@ -43,6 +43,7 @@ import {
   type Equipped,
   type PetColor,
 } from "../pet";
+import { createCongaStep, danceConga, type CongaDance } from "./congaStep";
 import Cosmetic from "./Cosmetic";
 import HandHeld, { HandWorn } from "./HandHeld";
 import SignBoard from "./SignBoard";
@@ -135,6 +136,30 @@ function poseStand(
 }
 
 /**
+ * Die Hülle um das Jelly: Sie trägt die Aufstellung eines Partner-Emotes und darauf den Schritt der
+ * Polonaise. Liefert ihr Ref und was sie je Bild aufstellt, mit der Zeit seit dem letzten.
+ */
+function useStand({
+  emote,
+  role = "own",
+  reducedMotion,
+  conga = null,
+}: Pick<CharacterProps, "emote" | "role" | "reducedMotion" | "conga">) {
+  const stand = useRef<Group>(null);
+  const step = useRef(createCongaStep());
+  const poseFrame = (seconds: number) => {
+    if (!stand.current) return;
+    poseStand(stand.current, emote, role, reducedMotion);
+    // Bei reduzierter Bewegung steht die Uhr: Ein Tanz, der erst ausblendet, bliebe schief stehen.
+    if (reducedMotion) step.current.presence = 0;
+    // Ein Partner-Emote stellt beide Jellies zueinander auf, da tanzt keines aus der Reihe.
+    const dances = !reducedMotion && !(emote && isPartnerMotionKey(emote.key));
+    danceConga(stand.current, step.current, dances ? conga : null, seconds);
+  };
+  return { stand, poseFrame };
+}
+
+/**
  * Gehaltenes liegt vor dem Körper: eine Malschicht höher, so deckt es Schal oder Flügel ganz ab,
  * mit eigenem Tintenrand.
  */
@@ -223,6 +248,8 @@ export interface CharacterProps {
   quality?: JellyQuality;
   /** Nasenstupser und Streicheln am eigenen Jelly. Ohne Wert bleibt es bei Stupser und Gesten. */
   touch?: CharacterTouch;
+  /** Die Polonaise, in der es mittanzt. Bei reduzierter Bewegung steht es still. */
+  conga?: CongaDance | null;
 }
 
 /** Das Pet mit allen Teilen. Muss innerhalb von `<Canvas>` stehen. */
@@ -239,13 +266,14 @@ export default function Character({
   role = "own",
   quality = "full",
   touch,
+  conga,
 }: CharacterProps) {
   const worn = wornCosmetics(equipped);
   const { holding, hold } = holdingOf(worn, Boolean(sign));
   const palette = custom ?? PET_COLORS[color];
   const jelly = useMemo(() => createJelly(palette, quality), [palette, quality]);
   const motion = useRef(createMotion(pulse));
-  const stand = useRef<Group>(null);
+  const { stand, poseFrame } = useStand({ emote, role, reducedMotion, conga });
   const invalidate = useThree((state) => state.invalidate);
 
   // Jede Änderung auch zeichnen, wenn reduzierte Bewegung die Animationsuhr anhält.
@@ -282,7 +310,7 @@ export default function Character({
       touch: touch && touchFrame(touch),
     });
     pulseCosmetics(jelly.root, clock.elapsedTime, reducedMotion);
-    if (stand.current) poseStand(stand.current, emote, role, reducedMotion);
+    poseFrame(rawDelta);
   }, -1);
 
   return (

@@ -144,6 +144,33 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   Im Turm stehen Namen rechts und Schilder links neben dem Jelly (`labels.ts`). Mit weniger Bewegung gibt es
   nur das weiche Heben. Ansehen ohne Server: `/scripts/stack-check.html?members=4&zoom=8&play=climb,light,leave,decay`
   in der Browser-Vorschau, die Parameter stehen im Kopf von `apps/client/scripts/stack-check.mjs`.
+- Polonaise auf der Bühne (Erfolg `conga`): Folgen mindestens drei Jellies einander (mehrere demselben, oder einem,
+  der selbst folgt), hängt von Kopf zu Kopf eine Lichterkette in ihren Farben, und alle tanzen im selben Takt: drei
+  Schritte, dann ein Kick. `congaLines.ts` rechnet rein aus `players[].follow`, Positionen und Serverzeit, wer
+  dazugehört (`findCongaLines`), was davon zu sehen ist (`gatherCongas`: Wer noch quer durch die Halle unterwegs ist,
+  hat keine Kette und tanzt nicht) und den Tanz (`calculateCongaPose`). `view.ts` rechnet das einmal je Bild,
+  `jellies.ts` legt den Tanz auf die Haltung, `conga.ts` und `shaders/conga.*.glsl` zeichnen alle Ketten in einem
+  Aufruf über `roomMarks.ts`. Damit sie auch aus der Ferne auffällt, legt `congaFloor.ts` unter jeden Tänzer einen
+  weichen Lichtfleck in seiner Farbe, der mit der Birne auf seinem Kopf blinkt (`calculateCongaPulse`), von fern mit
+  einer kleinsten Größe in Pixeln und kräftiger, nah blasser. Zwischen den Köpfen liegt die Kette in der Tiefe weiter hinten (`DEPTH_PUSH`), damit sie
+  kein Gesicht kreuzt. Mit weniger Bewegung hängt sie still und leuchtet gleichmäßig, niemand tanzt. Während der
+  Jelly-News gibt es keine Polonaise (`readCongas` in `view.ts`), ihre Kamera will ruhige Köpfe. Der Server stellt
+  Folgende noch neben ihr Ziel statt in eine Reihe (Issue #18), die Kette folgt deshalb nur den `follow`-Verweisen, nie
+  den Plätzen. Ansehen ohne Server: `/scripts/conga-check.html?shape=star&members=5&play=join,walk,leave` in der
+  Browser-Vorschau (Parameter im Kopf von `apps/client/scripts/conga-check.mjs`, `row` stellt eine echte Reihe), auf
+  der Karte stehen drei Jellies als Polonaise (`src/map/previewConga.ts`), sie endet nach 90 Sekunden.
+- Polonaise auf der Karte und im Pet: Auslöser bleibt „Dazustellen“. `src/map/conga.ts` (rein, mit `findCongaLines` aus
+  `@jelly/stage/conga`) entscheidet, ob der Knopf am fremden Jelly „Polonaise mitmachen“ oder „Polonaise verlassen“
+  heißt, was die Statuszeile meldet („Polonaise! Ihr seid zu viert.“) und was im Dock steht. Fürs Pet lässt `Follows`
+  in `src-tauri/src/events.rs` auch `follow.changed` der anderen durch, die mit dem eigenen Jelly verbunden sind
+  (Stand aus `GET /v1/stage` beim Start des Streams und nach `reset`). `src/useConga.ts` liest dann die Bühne
+  (`get_stage`) und rechnet die eigene Polonaise, `src/pet/conga.ts` sagt, was das Jelly meint. Solange es in einer
+  steht, tanzt es mit (`src/scene/congaStep.ts`, nicht bei weniger Bewegung, im Studio oder beim Partner-Emote) und
+  spielt ganz leise Musik (`congaBed`, `src/congaBedSound.ts`, `src/sounds/conga/`, gut 7 dB unter der Musik der
+  News). Die Jelly-News gehen vor: Solange sie laufen (`newsOnAir` aus `useNews.ts`), schweigt die Musik und das Jelly
+  tanzt nicht, wie auf der Bühne. Verpasst das Pet das Ende, endet
+  sie mit dem letzten `ends_at` der Polonaise. `CONGA_BEAT_MS` im Paket ist der Schlag dieser Musik (gut 130 je
+  Minute): Wer die Musik tauscht, misst ihn neu. In der Browser-Vorschau `/#conga`, hörbar nach dem ersten Klick.
 - Jelly-News (`gathering` der Art `news`, Plan in `apps/client/docs/superpowers/plans/2026-11-25-jelly-news.md`): Alles
   steht in `packages/jelly-stage/src/` und rechnet nur aus Gathering und Serverzeit, damit jeder Bildschirm dasselbe
   zeigt, auch wer mitten in der Sendung lädt. `news.ts` plant die Sendung (Beiträge, Takt, Wiederholung, Zufall aus
