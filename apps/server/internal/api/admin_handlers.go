@@ -50,6 +50,8 @@ func (server *apiServer) addAdminRoutes(mux *http.ServeMux) {
 		"GET /admin/api/achievements":                         server.handleListAchievements,
 		"GET /admin/api/lans/{id}/schedule":                   server.handleLoadLANSchedule,
 		"PUT /admin/api/lans/{id}/schedule":                   server.handleReplaceLANSchedule,
+		"POST /admin/api/lans/{id}/reset":                     server.handleResetLAN,
+		"POST /admin/api/lans/{id}/players/{player}/reset":    server.handleResetPlayerProgress,
 		"GET /admin/api/stage-link":                           server.handleStageLink,
 	}
 	maps.Copy(routes, server.listBotRoutes())
@@ -106,7 +108,7 @@ func (server *apiServer) handleResetName(writer http.ResponseWriter, request *ht
 	playerID, valid := server.readPathID(writer, request)
 	if valid {
 		err := server.Store.ResetPlayerName(request.Context(), playerID, server.currentMillis())
-		server.writeOutcome(writer, request, map[string]bool{"reset": true}, err)
+		server.writeOutcome(writer, request, map[string]bool{fieldReset: true}, err)
 	}
 }
 

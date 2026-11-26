@@ -29,6 +29,9 @@ const (
 	AdminActionLANUpdate   = "lan.update"
 	AdminActionLANDelete   = "lan.delete"
 	AdminActionSchedule    = "lan.schedule"
+	AdminActionResetPlayer = "player.reset_progress"
+	// AdminActionResetLAN targets the LAN, not a player.
+	AdminActionResetLAN = "lan.reset_accounts"
 	// AdminActionEventCodeEnd targets the event code, not the LAN.
 	AdminActionEventCodeEnd = "event_code.end"
 
