@@ -99,8 +99,8 @@ jobs:
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --label "org.opencontainers.image.version=$VERSION" .
 
-      # The stack runs :latest, so only an image that moved latest is deployed. The Komodo webhook
-      # checks a GitHub-style signature and the branch in the body.
+      # The stack runs :latest, so only an image that moved latest is deployed. The webhook of the
+      # Komodo action checks a GitHub-style signature, `/__ANY__` in its URL accepts any branch.
       - name: Redeploy the server
         if: env.MOVES_LATEST == 'true'
         env:

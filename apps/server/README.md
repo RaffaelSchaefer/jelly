@@ -176,8 +176,9 @@ Sekunden und damit weniger als die 10 Sekunden von `docker stop`. Die Datenbank 
 laufenden Betrieb einfach kopiert werden. Backups entstehen mit `sqlite3 jelly.db "VACUUM INTO 'backup.db'"` und gehören auf ein anderes System.
 
 Ein Tag `server-v<APIVersion>` auf `main` baut auf der Forge das Image (`.forgejo/workflows/server-image.yml`). Bewegt es
-`:latest`, ruft der Workflow danach den Webhook des Stacks in Komodo auf, und der Server startet mit dem neuen Image.
-Dafür braucht die Forge die Secrets `DEPLOY_WEBHOOK_URL` und, wenn der Webhook signiert, `DEPLOY_WEBHOOK_SECRET`. Fehlt
+`:latest`, ruft der Workflow danach den Webhook einer Action in Komodo auf, die den Stack mit dem neuen Image neu
+startet. Die URL hat die Form `https://<komodo>/listener/github/action/<action-id>/__ANY__`, ihr Secret ist
+`KOMODO_WEBHOOK_SECRET`. Dafür braucht die Forge die Secrets `DEPLOY_WEBHOOK_URL` und `DEPLOY_WEBHOOK_SECRET`. Fehlt
 die URL, warnt der Lauf nur, und der Stack wird von Hand neu gestartet. Ein Backport auf eine ältere Version deployt nie.
 
 Beim Start loggt der Server Version, Commit, API-Version und Log-Level. Version und Commit setzt der Image-Workflow per
