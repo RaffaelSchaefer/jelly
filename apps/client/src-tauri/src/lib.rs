@@ -71,6 +71,7 @@ pub fn run() {
             commands::set_sign,
             commands::set_follow,
             commands::stage::get_stage,
+            commands::stage::get_schedule,
             commands::stage::get_map_state,
             commands::stage::go_to,
             commands::stage::highlight_player,

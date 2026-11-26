@@ -1,33 +1,26 @@
 /**
- * Der Zeitplan der LAN: das Programm der Orga und reine Rechnungen für Panel und Erinnerung.
- *
- * Der Server kennt nur den Zeitraum der LAN (`LanPeriod`), daran bekommen die Tage ihr Datum.
+ * Der Zeitplan der LAN: reine Rechnungen für Panel und Erinnerung. Das Programm pflegt die Orga auf
+ * dem Server (`GET /v1/lans/current/schedule`), `src/useSchedule.ts` liest es.
  *
  * @module
  */
 
-/** Art eines Programmpunkts. Bestimmt Farbe und Symbol wie im Plan der Orga. */
-export type ScheduleKind = "orga" | "food" | "yoga" | "tournament" | "together";
+import type { StageScheduleItem } from "@jelly/stage";
 
-/** Ein Programmpunkt, wie ihn die Orga plant. */
-export interface ScheduleItem {
-  /** Beginn als `HH:MM`. Über Mitternacht hinaus zählt er weiter: `24:00` ist das Ende des Tags. */
-  time: string;
+/** Ein Programmpunkt mit seinem Tag. */
+export interface ScheduleEvent {
   title: string;
   /** Spiel, Köche oder Hinweis. */
-  detail?: string;
-  kind: ScheduleKind;
-}
-
-/** Ein Programmpunkt mit Datum. */
-export interface ScheduleEvent extends ScheduleItem {
+  detail: string | null;
+  /** Art wie `orga`, `food` oder `tournament`. Der Server darf neue ergänzen. */
+  kind: string;
   /** Beginn in Unix-Millisekunden. */
   at: number;
-  /** Mitternacht des Tags, unter dem er im Plan steht. Bei `24:00` liegt `at` schon danach. */
+  /** Mitternacht des Tags, unter dem er im Plan steht, Ortszeit. Nachts liegt `at` schon danach. */
   day: number;
   /**
-   * Ende in Unix-Millisekunden: der Beginn des nächsten Punkts am selben Tag, sonst
-   * {@link LAST_RUNS_MS} später.
+   * Ende in Unix-Millisekunden: das des Servers, sonst der Beginn des nächsten Punkts am selben
+   * Tag, sonst {@link LAST_RUNS_MS} später.
    */
   end: number;
 }
@@ -39,47 +32,13 @@ export interface ScheduleDay {
   events: ScheduleEvent[];
 }
 
-/** Wochentag des ersten Tags im Plan wie bei `Date.getDay()`: Donnerstag. */
-const FIRST_WEEKDAY = 4;
-
-// ponytail: fest im Client, jede Änderung braucht ein Release. Soll die Orga ihn selbst pflegen,
-// gehört er auf den Server (neue API, vorher absprechen).
-/** Das Programm der Orga, ein Eintrag je Tag ab {@link FIRST_WEEKDAY}. */
-const PLAN: ScheduleItem[][] = [
-  [
-    { time: "10:00", title: "Einlass", kind: "orga" },
-    { time: "11:00", title: "Begrüßung", detail: "Infos zum Ablauf", kind: "orga" },
-    { time: "16:00", title: "Let’s Play Together", detail: "Spiel folgt", kind: "together" },
-    { time: "20:00", title: "Let’s Play Together", detail: "Stumble Guys", kind: "together" },
-  ],
-  [
-    { time: "10:30", title: "Frühstück", kind: "food" },
-    { time: "13:00", title: "Yoga", kind: "yoga" },
-    { time: "15:00", title: "Racing-Sim-Turnier", kind: "tournament" },
-    { time: "17:30", title: "Fooden", detail: "Kichererbsen-Curry", kind: "food" },
-    { time: "20:00", title: "CS2-Turnier", kind: "tournament" },
-    { time: "24:00", title: "Let’s Play Together", detail: "Among Us", kind: "together" },
-  ],
-  [
-    { time: "10:30", title: "Frühstück", kind: "food" },
-    { time: "13:00", title: "Yoga", kind: "yoga" },
-    { time: "17:30", title: "Fooden", detail: "Gulasch", kind: "food" },
-    { time: "20:00", title: "Mario-Kart-Turnier", kind: "tournament" },
-    { time: "22:00", title: "Let’s Play Together", detail: "GeoGuessr", kind: "together" },
-  ],
-  [
-    { time: "10:30", title: "Frühstück", kind: "food" },
-    { time: "13:00", title: "Abbau", kind: "orga" },
-  ],
-];
-
-/** Was das Jelly nach der Erinnerung noch fragt, je Art. */
-const CUES: Record<ScheduleKind, string> = {
-  orga: "",
+/** Was das Jelly nach der Erinnerung noch fragt, je Art. Unbekannte Arten bleiben ohne Frage. */
+const CUES: Record<string, string> = {
   food: "Hunger?",
   yoga: "Kurz strecken?",
   tournament: "Bist du dabei?",
   together: "Spielst du mit?",
+  news: "Schaust du zu?",
 };
 
 /** So lange vor einem Programmpunkt erinnert das Jelly daran, in Millisekunden. */
@@ -87,9 +46,7 @@ export const REMIND_BEFORE_MS = 10 * 60_000;
 
 const DAY_MS = 86_400_000;
 
-// ponytail: Der Plan kennt keine Enden. Ein Punkt läuft bis zum nächsten am selben Tag, der letzte
-// des Tags zwei Stunden. Nennt die Orga echte Enden, gehören sie als `until` in den Plan.
-/** So lange läuft der letzte Punkt eines Tags, in Millisekunden. */
+/** So lange läuft der letzte Punkt eines Tags, wenn der Server kein Ende nennt, in Millisekunden. */
 const LAST_RUNS_MS = 2 * 3_600_000;
 const WEEKDAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
@@ -100,35 +57,29 @@ function midnight(at: number) {
   return date;
 }
 
-/** `HH:MM` am Tag `day`. `setHours` rechnet `24:00` und Sommerzeit selbst um. */
-function timeOn(day: Date, time: string) {
-  const [hours, minutes] = time.split(":").map(Number);
-  return new Date(day).setHours(hours, minutes);
-}
-
 /**
- * Die Tage der LAN mit Datum. Der Plan beginnt am ersten Donnerstag ab dem Start der LAN: Öffnet
- * die Orga die LAN schon am Vortag, verrutscht er so nicht.
- *
- * @param lanStart - Beginn der LAN in Unix-Millisekunden.
+ * Bis zu dieser Uhrzeit zählt ein Punkt noch zum Vortag, in Millisekunden ab Mitternacht: Was um
+ * Mitternacht beginnt, gehört für alle auf der LAN zum Abend davor.
  */
-export function scheduleDays(lanStart: number): ScheduleDay[] {
-  const first = midnight(lanStart);
-  first.setDate(first.getDate() + ((FIRST_WEEKDAY - first.getDay() + 7) % 7));
-  return PLAN.map((items, index) => {
-    const day = new Date(first);
-    day.setDate(first.getDate() + index);
-    const date = day.getTime();
-    return {
-      date,
-      events: items.map((item, at) => {
-        const start = timeOn(day, item.time);
-        const following = items[at + 1];
-        const end = following ? timeOn(day, following.time) : start + LAST_RUNS_MS;
-        return { ...item, at: start, day: date, end };
-      }),
-    };
-  });
+const NIGHT_MS = 5 * 3_600_000;
+
+/** Mitternacht des Tags, unter dem ein Punkt mit Beginn `at` im Plan steht. */
+const planDay = (at: number) => midnight(at - NIGHT_MS).getTime();
+
+/** Das Programm des Servers nach Tagen, in Ortszeit. */
+export function scheduleDays(items: StageScheduleItem[]): ScheduleDay[] {
+  const sorted = [...items].sort((first, second) => first.starts_at - second.starts_at);
+  const days: ScheduleDay[] = [];
+  for (const [index, item] of sorted.entries()) {
+    const date = planDay(item.starts_at);
+    if (days.at(-1)?.date !== date) days.push({ date, events: [] });
+    const following = sorted[index + 1];
+    const sameDay = following && planDay(following.starts_at) === date;
+    const end = item.ends_at ?? (sameDay ? following.starts_at : item.starts_at + LAST_RUNS_MS);
+    const { title, detail, kind, starts_at: at } = item;
+    days.at(-1)!.events.push({ title, detail, kind, at, day: date, end });
+  }
+  return days;
 }
 
 /** Der zuletzt begonnene und der nächste Programmpunkt, `null`, wo es keinen gibt. */
@@ -150,7 +101,7 @@ export function dueReminder(days: ScheduleDay[], now: number) {
 
 /** Was das Jelly kurz vor einem Programmpunkt sagt. */
 export function reminderLine({ title, detail, kind }: ScheduleEvent) {
-  return `Gleich geht’s los: ${title}${detail ? ` (${detail})` : ""}. ${CUES[kind]}`.trim();
+  return `Gleich geht’s los: ${title}${detail ? ` (${detail})` : ""}. ${CUES[kind] ?? ""}`.trim();
 }
 
 /** Wie lange es bis `at` noch dauert, ohne Präposition: „25 Min.“, „2 Std. 5 Min.“, „3 Tagen“. */

@@ -5,7 +5,7 @@ use tauri::{AppHandle, State};
 
 use super::{session::session, Game, GameState};
 use crate::{
-    api::{Stage, Trip},
+    api::{Schedule, Stage, Trip},
     error::{Error, Result},
     popout,
 };
@@ -40,6 +40,22 @@ pub async fn get_stage(app: AppHandle, state: State<'_, GameState>) -> Result<St
     };
     // Ohne Lock: Hinge diese Anfrage, warteten alle Aktionen des Pets mit.
     api.stage().await
+}
+
+/// Liest das Programm der laufenden, sonst der nächsten LAN. Das geht auch ohne Konto.
+///
+/// # Fehler
+///
+/// Sitzungs-, Netzwerk- oder Serverfehler.
+#[tauri::command]
+pub async fn get_schedule(app: AppHandle, state: State<'_, GameState>) -> Result<Schedule> {
+    let api = {
+        let mut slot = state.0.lock().await;
+        // Ohne Secret: Ein abgelehntes Secret soll den Zeitplan nicht verhindern.
+        session(&app, &mut slot).await?.api.anonymous()
+    };
+    // Ohne Lock, wie `get_stage`.
+    api.schedule().await
 }
 
 /// Schickt das Jelly auf einen Ausflug zu einem Punkt der Bühne, in Prozent.

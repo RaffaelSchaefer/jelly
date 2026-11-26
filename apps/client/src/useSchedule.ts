@@ -5,14 +5,56 @@
  * @module
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { StageScheduleItem } from "@jelly/stage";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { PetGame } from "./usePet";
 
-import { dueReminder, reminderLine, scheduleDays, type ScheduleEvent } from "./pet";
+import { desktop, getSchedule } from "./backend";
+import {
+  dueReminder,
+  reminderLine,
+  scheduleDays,
+  type ScheduleEvent,
+  type ServerEvent,
+} from "./pet";
+import { previewSchedule } from "./pet/previewSchedule";
+import { useServerEvents, useStreamReset } from "./useGame";
 
 /** Wie oft nachgesehen wird, ob ein Programmpunkt bevorsteht, in Millisekunden. */
 const CHECK_MS = 30_000;
+
+/**
+ * Das Programm vom Server für die LAN `lan` (ihr Slug, `undefined` ohne LAN), in der Vorschau ein
+ * festes ab `start`. Liest neu, wenn die LAN wechselt, die Orga den Plan ändert
+ * (`schedule.changed`) oder der Stream Ereignisse verworfen hat.
+ */
+function useScheduleItems(lan: string | undefined, start: number | undefined) {
+  const [items, setItems] = useState<StageScheduleItem[]>([]);
+  // Scheitert das Lesen, bleibt der letzte Plan stehen.
+  const load = useCallback(() => {
+    void getSchedule().then(
+      (schedule) => setItems(schedule.items),
+      () => null,
+    );
+  }, []);
+  useEffect(() => {
+    if (desktop) load();
+  }, [load, lan, start]);
+  const onEvent = useCallback(
+    (event: ServerEvent) => {
+      if (event.type === "schedule.changed") load();
+    },
+    [load],
+  );
+  useServerEvents(desktop, onEvent);
+  useStreamReset(desktop, load);
+  return useMemo(() => {
+    if (start === undefined) return [];
+    return desktop ? items : previewSchedule(start);
+  }, [items, start]);
+}
 
 /**
  * Der Plan an der laufenden LAN, sonst an der nächsten, ohne LAN leer. Dazu der Programmpunkt, der
@@ -22,8 +64,9 @@ const CHECK_MS = 30_000;
  */
 export function useSchedule(game: PetGame, remind: boolean) {
   const { lan } = game.game;
-  const start = (lan.current ?? lan.next)?.starts_at;
-  const days = useMemo(() => (start === undefined ? [] : scheduleDays(start)), [start]);
+  const period = lan.current ?? lan.next;
+  const items = useScheduleItems(period?.slug, period?.starts_at);
+  const days = useMemo(() => scheduleDays(items), [items]);
   const { offset, hopAndSay } = game;
 
   const [due, setDue] = useState<ScheduleEvent | null>(null);
