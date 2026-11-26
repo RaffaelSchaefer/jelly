@@ -70,7 +70,10 @@ export interface StageMemory {
   options: StageViewOptions;
   state: StageState | null;
   catalog: StageCatalog | null;
-  /** The newest move of each jelly, by player ID. */
+  /**
+   * The newest move of each jelly, by player ID, as the server sent it. The stage plays them as
+   * `readMoves` of `viewData.ts` returns them.
+   */
   moves: Map<number, StageMove>;
   clockOffset: number;
   signLabels: Map<string, string>;

@@ -162,39 +162,6 @@ func (server *apiServer) handleDeleteLAN(writer http.ResponseWriter, request *ht
 	server.writeOutcome(writer, request, map[string]bool{fieldDeleted: true}, err)
 }
 
-// handlePatchRules changes only the rules that the body names, also while the LAN is running.
-func (server *apiServer) handlePatchRules(writer http.ResponseWriter, request *http.Request) {
-	lanID, valid := server.readPathID(writer, request)
-	if !valid {
-		return
-	}
-	body, err := server.Store.LoadLANRules(request.Context(), lanID)
-	if err != nil {
-		server.writeError(writer, request, err)
-		return
-	}
-	if !server.readJSON(writer, request, &body) {
-		return
-	}
-	err = server.Store.UpdateLANRules(request.Context(), lanID, body, server.currentMillis())
-	server.writeOutcome(writer, request, body, err)
-}
-
-// handleUpdateRules replaces all rules of a LAN, also while it is running.
-func (server *apiServer) handleUpdateRules(writer http.ResponseWriter, request *http.Request) {
-	lanID, valid := server.readPathID(writer, request)
-	if !valid {
-		return
-	}
-	// What a body leaves out goes back to its default. Use PATCH to change single rules.
-	body := rules.DefaultRules()
-	if !server.readJSON(writer, request, &body) {
-		return
-	}
-	err := server.Store.UpdateLANRules(request.Context(), lanID, body, server.currentMillis())
-	server.writeOutcome(writer, request, body, err)
-}
-
 // handleListEventCodes returns the event codes of a LAN.
 func (server *apiServer) handleListEventCodes(writer http.ResponseWriter, request *http.Request) {
 	lanID, valid := server.readPathID(writer, request)
@@ -381,7 +348,7 @@ func (server *apiServer) handleImportMap(writer http.ResponseWriter, request *ht
 		})
 		return
 	}
-	if request.URL.Query().Get(queryDryRun) == "true" {
+	if isQueryFlagSet(request, queryDryRun) {
 		preview, previewErr := server.Store.PreviewMap(request.Context(), lanID, roomMap)
 		server.writeOutcome(writer, request, preview, previewErr)
 		return

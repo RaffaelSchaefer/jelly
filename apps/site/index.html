@@ -8,7 +8,7 @@
     <title data-i18n="meta.title">Jelly · Dein Begleiter für deine LAN</title>
     <meta
       name="description"
-      content="Jelly ist ein kleiner Desktop-Begleiter für LAN-Partys: dein eigenes 3D-Jelly, die Halle mit allen anderen, XP, Level und ein Zauberladen. Für Windows, macOS und Linux."
+      content="Jelly ist ein kleiner Desktop-Begleiter für LAN-Partys: dein eigenes 3D-Jelly, die Halle mit allen anderen, XP, Level, ein Zauberladen und die Jelly-News. Für Windows, macOS und Linux."
       data-i18n-attrs="content:meta.description"
     />
     <meta property="og:title" content="Jelly · Dein Begleiter für deine LAN" />
@@ -207,6 +207,70 @@
             </div>
           </article>
 
+          <article class="place place-news" aria-labelledby="place-news-title">
+            <div class="place-copy">
+              <h3 id="place-news-title" data-i18n="news.title">In den Jelly-News</h3>
+              <p data-i18n="news.text">Setzt die Orga sie an, läuft auf der Bühne eine kurze Nachrichtensendung über die letzte Stunde. Der Ton ist ernst, die Meldungen sind es nicht.</p>
+              <ol class="legend">
+                <li>
+                  <strong data-i18n="news.presenter">Ein Jelly moderiert</strong>
+                  <span data-i18n="news.presenterText">Der Server lost es unter allen in der Halle aus. Es geht an den Nachrichtentisch, alle anderen stellen sich vor die Bühne.</span>
+                </li>
+                <li>
+                  <strong data-i18n="news.reports">Die Meldungen</strong>
+                  <span data-i18n="news.reportsText">Die meisten XP, neue Erfolge, der höchste Turm und der nächste Punkt im Programm, dazu Vermischtes aus der Halle. Jede Rubrik hat ihr eigenes Bild.</span>
+                </li>
+                <li>
+                  <strong data-i18n="news.watch">Zusehen</strong>
+                  <span data-i18n="news.watchText">Auf der Karte bringt dich der Knopf oben oder die Taste N zur News-Kamera. Derselbe Knopf, Escape oder ein Klick ins Bild führt zurück.</span>
+                </li>
+              </ol>
+              <p data-i18n="news.sound">Auf deinem Desktop erklingt zu Beginn der Jingle, danach brabbelt das moderierende Jelly jede Meldung im Ton eines Nachrichtensprechers, mit leiser Musik darunter. Kommt dein Jelly in den News vor, hüpft es.</p>
+            </div>
+            <div class="news-shots">
+              <figure class="shot shot-window">
+                <img
+                  src="./src/assets/shot-news.webp"
+                  alt="Die Jelly-News auf der Karte: Ein Jelly mit Headset moderiert am Nachrichtentisch und zeigt auf eine Leinwand mit Medaille. Darunter die Schlagzeile „Wasserwerke schlagen Alarm: Jelly 4 ist gut hydriert.“"
+                  data-i18n-attrs="alt:news.alt"
+                  width="1600"
+                  height="900"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="pin" style="--x: 22%; --y: 33%" aria-hidden="true">1</span>
+                <span class="pin" style="--x: 80.5%; --y: 8%" aria-hidden="true">2</span>
+                <span class="pin" style="--x: 41%; --y: 3.5%" aria-hidden="true">3</span>
+              </figure>
+              <div class="news-stills">
+                <figure class="shot shot-window">
+                  <img
+                    src="./src/assets/shot-news-title.webp"
+                    alt="Der Vorspann: ein Globus mit Umlaufringen über dem Logo „Jelly News“."
+                    data-i18n-attrs="alt:news.titleAlt"
+                    width="960"
+                    height="540"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <figcaption data-i18n="news.titleCaption">Vorspann</figcaption>
+                </figure>
+                <figure class="shot shot-window">
+                  <img
+                    src="./src/assets/shot-news-voice.webp"
+                    alt="Nahaufnahme in der Halle: ein lila Jelly mit Headset und Huhn im Arm, darunter „Hauptsache Gulasch.“"
+                    data-i18n-attrs="alt:news.voiceAlt"
+                    width="960"
+                    height="540"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <figcaption data-i18n="news.voiceCaption">Stimmen aus der Halle</figcaption>
+                </figure>
+              </div>
+            </div>
+          </article>
+
           <div class="more">
             <h3 class="more-title" data-i18n="more.title">Und außerdem</h3>
             <ul class="more-list">
@@ -259,6 +323,29 @@
                 </svg>
                 <strong data-i18n="more.schedule">Zeitplan</strong>
                 <span data-i18n="more.scheduleText">Der Ablauf der LAN im Dock. Jelly erinnert zehn Minuten vorher.</span>
+              </li>
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M9.5 5a2.5 2.5 0 1 0 5 0 2.5 2.5 0 1 0-5 0ZM8 11.5a4 3 0 1 0 8 0 4 3 0 1 0-8 0Zm-1.5 7a5.5 3.5 0 1 0 11 0 5.5 3.5 0 1 0-11 0Z"
+                  />
+                </svg>
+                <strong data-i18n="more.stacks">Türme</strong>
+                <span data-i18n="more.stacksText">Auf der Karte stapelt ihr eure Jellies, bis der Turm nach einer Weile zerfällt.</span>
+              </li>
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 21a8 8 0 0 1 16 0M9.5 16h.01m4.99 0h.01M12 18.5h.01M8 7c2.5-1.5 5.5-1.5 8 0m-6-3.5c1.3-.6 2.7-.6 4 0" />
+                </svg>
+                <strong data-i18n="more.touch">Stupsen</strong>
+                <span data-i18n="more.touchText">Stups dein Jelly an der Nase oder streichel ihm über den Kopf.</span>
+              </li>
+              <li>
+                <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2.5 6.5 17m5.5-14.5 5.5 14.5M3 20c2.5-2 5.5-3 9-3s6.5 1 9 3H3Zm8-10h.01m2 3h.01" />
+                </svg>
+                <strong data-i18n="more.hat">Zauberhut</strong>
+                <span data-i18n="more.hatText">Nerv Funkelbart im Laden, bis er seinen Hut verliert. Dann trägt ihn dein Jelly ein paar Minuten.</span>
               </li>
             </ul>
           </div>

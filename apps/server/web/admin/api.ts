@@ -115,9 +115,13 @@ export function createLAN(lan: NewLAN): Promise<unknown> {
   return sendRequest("POST", "/lans", lan);
 }
 
-/** Changes single rules and returns all of them as they are now. */
-export function patchRules(lanID: number, changes: GameRules): Promise<GameRules> {
-  return sendRequest("PATCH", `/lans/${lanID}/rules`, changes);
+/**
+ * Changes single rules and returns all of them as they are now. With `relevel` the level rules
+ * also change after the start, and the server pays the level coins the new curve owes.
+ */
+export function patchRules(lanID: number, changes: GameRules, relevel = false): Promise<GameRules> {
+  const query = relevel ? "?relevel=true" : "";
+  return sendRequest("PATCH", `/lans/${lanID}/rules${query}`, changes);
 }
 
 /** One row of the level curve. */

@@ -42,7 +42,7 @@ import {
 import { updateRoomMarks } from "./roomMarks.ts";
 import { findViewer, isInFront, projectToScreen, resizeStageScene } from "./scene.ts";
 import { updateVenue } from "./venue.ts";
-import { reload } from "./viewData.ts";
+import { readMoves, reload } from "./viewData.ts";
 import { createMemory, type StageMemory, type StageViewOptions } from "./viewMemory.ts";
 import { findSnackRunners } from "./walking.ts";
 
@@ -77,34 +77,40 @@ export interface StageView extends CameraControls {
   readStacks: () => StageStack[];
 }
 
-/** What the jellies need in a frame besides the view. */
-interface JellyStep {
-  /** Where the moves put every jelly, by player ID. */
+/** What everything in a frame plays from besides the view. */
+interface FrameStep {
+  /** The moves as the stage plays them in this frame, see `readMoves`. */
+  moves: ReadonlyMap<number, StageMove>;
+  /** Where these moves put every jelly, by player ID. */
   positions: Map<number, FloorPoint>;
-  /** Where they look while the news are filmed, null: into the camera. */
-  gaze: NewsGaze | null;
   seconds: number;
   now: number;
+}
+
+/** What the jellies need in a frame besides the view. */
+interface JellyStep extends FrameStep {
+  /** Where they look while the news are filmed, null: into the camera. */
+  gaze: NewsGaze | null;
 }
 
 /** Moves every jelly one frame on and returns where they stand now. */
 function moveJellies(memory: StageMemory, step: JellyStep): JellySpot[] {
   const time = performance.now() / 1000;
-  const { positions, seconds, now } = step;
+  const { moves, positions, seconds, now } = step;
   const serverTime = now + memory.clockOffset;
   const { size, platforms } = memory.hall;
   const { ownId, highlight } = memory.marks;
   memory.highlighted = highlight ? listHighlighted(positions, ownId, highlight, size) : new Set();
   const spots = updateJellies(memory.cast, {
     positions,
-    moves: memory.moves,
+    moves,
     stacks: memory.state?.stacks ?? [],
     serverTime,
     viewer: findViewer(memory.stage.camera),
     gaze: step.gaze,
     camera: memory.stage.camera.position,
     effects: memory.effects,
-    visitors: findSnackRunners(memory.moves),
+    visitors: findSnackRunners(moves),
     platforms,
     winnerId: findWinner(memory.state?.gathering ?? null, serverTime),
     presenterId: findPresenter(memory.state?.gathering ?? null, serverTime),
@@ -120,12 +126,13 @@ function moveJellies(memory: StageMemory, step: JellyStep): JellySpot[] {
 }
 
 /** Moves the marks in the room: lights, rings and the pointer at the own goal. */
-function moveRoomMarks(memory: StageMemory, spots: JellySpot[], seconds: number, now: number) {
+function moveRoomMarks(memory: StageMemory, spots: JellySpot[], step: FrameStep) {
+  const { moves, seconds, now } = step;
   const { ownId, destination = null } = memory.marks;
   updateRoomMarks(memory.roomMarks, {
     spots,
     effects: memory.effects,
-    moves: memory.moves,
+    moves,
     stacks: memory.state?.stacks ?? [],
     platforms: memory.hall.platforms,
     room: memory.hall.size,
@@ -141,17 +148,17 @@ function moveRoomMarks(memory: StageMemory, spots: JellySpot[], seconds: number,
 }
 
 /** Puts up the studio of the news on air: the desk in front of the presenter, the screens. */
-function dressStudio(memory: StageMemory, spots: JellySpot[], now: number): void {
+function dressStudio(memory: StageMemory, spots: JellySpot[], step: FrameStep): void {
   const { state, hall } = memory;
   updateNewsSet(memory.newsSet, {
     live: memory.news.live,
     gathering: state?.gathering ?? null,
     players: state?.players ?? [],
-    moves: memory.moves,
+    moves: step.moves,
     platforms: hall.platforms,
     room: hall.size,
     spots,
-    serverTime: now + memory.clockOffset,
+    serverTime: step.now + memory.clockOffset,
     reducedMotion: memory.reducedMotion,
   });
 }
@@ -168,7 +175,7 @@ function directNews(memory: StageMemory, now: number): StageEffect[] {
 }
 
 /** What the news camera films in a frame: the report on air and, only while it films, the cast. */
-function readNewsFrame(memory: StageMemory, positions: Map<number, FloorPoint>): NewsCameraFrame {
+function readNewsFrame(memory: StageMemory, step: FrameStep): NewsCameraFrame {
   const { state, news, hall } = memory;
   return {
     live: news.live,
@@ -176,12 +183,12 @@ function readNewsFrame(memory: StageMemory, positions: Map<number, FloorPoint>):
     readCast: () =>
       castNews({
         players: state?.players ?? [],
-        moves: memory.moves,
+        moves: step.moves,
         stacks: state?.stacks ?? [],
         areas: state?.areas ?? [],
         platforms: hall.platforms,
         room: hall.size,
-        positions,
+        positions: step.positions,
         presenterId: news.live?.show.presenterId ?? null,
         sizes: { jellyHeight: JELLY_HEIGHT, presenterScale: WINNER_SCALE },
       }),
@@ -200,13 +207,15 @@ function paintFrame(
   memory.effects = updateEffects(memory.effects, directNews(memory, now), now);
   const serverTime = now + memory.clockOffset;
   const players = memory.state?.players ?? [];
-  const positions = findPositions(players, memory.moves, serverTime, memory.hall.size);
+  const moves = readMoves(memory, now);
+  const positions = findPositions(players, moves, serverTime, memory.hall.size);
+  const step = { moves, positions, seconds, now };
   // The news camera goes first, so the jellies sort and turn by the camera of this very frame.
-  const gaze = memory.camera.film(readNewsFrame(memory, positions));
-  const spots = moveJellies(memory, { positions, gaze, seconds, now });
-  moveRoomMarks(memory, spots, seconds, now);
+  const gaze = memory.camera.film(readNewsFrame(memory, step));
+  const spots = moveJellies(memory, { ...step, gaze });
+  moveRoomMarks(memory, spots, step);
   // After the jellies are sorted: the desk draws right after the presenter.
-  dressStudio(memory, spots, now);
+  dressStudio(memory, spots, step);
   const { ownId } = memory.marks;
   memory.camera.update({ seconds, spots, ownId, reducedMotion: memory.reducedMotion });
   const size = fitCanvas(context.canvas, context, density);
@@ -276,7 +285,7 @@ export function createStageView(options: StageViewOptions): StageView {
     setFrameLimit,
     locate: (playerId) => locateJelly(memory.anchors, playerId),
     hintAt: (point) => pickEdgeHint(memory.hints, point),
-    readMove: (playerId) => memory.moves.get(playerId) ?? null,
+    readMove: (playerId) => readMoves(memory, Date.now()).get(playerId) ?? null,
     readStacks: () => memory.state?.stacks ?? [],
     ...memory.camera.controls,
   };
