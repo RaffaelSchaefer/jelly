@@ -8,6 +8,7 @@ import { measureJump } from "./leaping.ts";
 import {
   beginStacking,
   createStacking,
+  forgetPerch,
   STACK_STEP,
   stepPerch,
   type PerchPose,
@@ -168,6 +169,27 @@ test("when one below leaves, the jellies above drop and bounce, it hops off", ()
   );
   assert.ok(hop > STEP + 0.05, "the one that leaves hops up first");
   assert.ok(riseOf(stage, 2) < 0.01, "and lands on the floor");
+});
+
+test("the presenter on a tower is put on the stage standing, while the stack still lists it", () => {
+  const { stage } = buildTower(3);
+  assert.ok(riseOf(stage, 3) > 1.5 * STEP);
+  // Its news move as the stage plays it during the show, see `playMoves` in `moves.ts`.
+  const onStage = { x: 50, y: 8.5, t: 0 };
+  const news = { ...stackMove(3, 0, -Infinity), kind: "news", points: [onStage] };
+  stage.moves.set(3, news);
+  const stageSpot = new Map([[3, { x: 0, z: -20 }]]);
+  // Kept, its perch would fall from the old height onto the stage.
+  const falling = buildTower(3).stage;
+  falling.moves.set(3, news);
+  falling.step([1, 2, 3], stageSpot);
+  assert.ok(riseOf(falling, 3) > STEP, "falls from up there");
+  // Put somewhere else, `jellies.ts` forgets its perch: it stands on its floor at once.
+  forgetPerch(stage.stacking, 3);
+  for (let frame = 0; frame < 30; frame++) {
+    stage.step([1, 2, 3], stageSpot);
+    assert.ok(riseOf(stage, 3) < 1e-9, `on the floor in frame ${frame}`);
+  }
 });
 
 test("the jellies above a leaver wait on their level until their new move starts", () => {

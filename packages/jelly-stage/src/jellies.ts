@@ -83,6 +83,8 @@ const STEP_RATE = 10;
 /** The winner of a ceremony and the presenter of the news grow to this size, and this fast per second. */
 export const WINNER_SCALE = 1.8;
 const GROW_RATE = 2;
+/** Put on the stage to grow there, a jelly pops up from this size instead of blinking over. */
+const POP_SCALE = 0.1;
 /** Higher than this over its floor a jelly is in the air or on a tower. */
 const STEP_LIFT = 0.05;
 /** With reduced motion a jelly glides along its move, without hopping or leaning. */
@@ -310,25 +312,37 @@ function keepHandsFree(shown: StageJelly, bareHands: boolean): void {
   dressJelly(shown);
 }
 
+/**
+ * Grows a jelly toward its size, the winner and the presenter large. Put somewhere to grow there,
+ * like the presenter on the stage, it pops up out of nothing, except with reduced motion.
+ */
+function growJelly(shown: StageJelly, frame: JellyFrame, isPlaced: boolean): void {
+  const wanted = frame.winnerId === shown.player.id ? WINNER_SCALE : 1;
+  if (isPlaced && wanted > 1 && !frame.reducedMotion) shown.scale = POP_SCALE;
+  shown.scale += (wanted - shown.scale) * (1 - Math.exp(-GROW_RATE * frame.seconds));
+}
+
 /** Walks, poses and animates one jelly. */
 function updateJelly(cast: JellyCast, shown: StageJelly, frame: JellyFrame): void {
   const { walker } = shown;
   const playerId = shown.player.id;
-  stepWalker(walker, {
+  const isPlaced = stepWalker(walker, {
     target: frame.positions.get(playerId) ?? walker.position,
     viewer: findLook(frame, playerId),
     seconds: frame.seconds,
   });
   const floor = findFloorHeight(walker.position, frame.platforms);
-  shown.elevation += (floor - shown.elevation) * (1 - Math.exp(-STEP_RATE * frame.seconds));
+  // Put somewhere else, it stands on that floor at once and no longer up on its old tower.
+  const step = isPlaced ? 1 : 1 - Math.exp(-STEP_RATE * frame.seconds);
+  shown.elevation += (floor - shown.elevation) * step;
+  if (isPlaced) forgetPerch(cast.stacking, playerId);
   shown.perch = stepPerch(cast.stacking, playerId, frame.moves.get(playerId), walker.position);
   const pose = shown.perch ?? STANDING;
   // In the air or on a tower it does not hop along its move.
   const isPerched = frame.reducedMotion || pose.rise > STEP_LIFT;
   const walk = isPerched ? STILL_WALK : calculateWalkPose(walker);
   const motion = findMotionPose(frame.reducedMotion ? [] : frame.effects, playerId, frame.now);
-  const wantedScale = frame.winnerId === playerId ? WINNER_SCALE : 1;
-  shown.scale += (wantedScale - shown.scale) * (1 - Math.exp(-GROW_RATE * frame.seconds));
+  growJelly(shown, frame, isPlaced);
   placeJelly(shown, pose, walk, motion);
   keepHandsFree(shown, frame.presenterId === playerId);
   // On a snack run it carries the snack like a board; a held cosmetic the way that one wants.
