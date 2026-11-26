@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.5**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.46.0  | Admin: `?relevel=true` an `PATCH` und `PUT /admin/api/lans/{id}/rules` ändert Level-Kurve und `coins_per_level` auch nach dem Start, rechnet die Level neu und zahlt fehlende Level-Münzen |
 | 1.45.0  | XP für Achievements: Regel `achievement_xp` (Standard 25, 0 schaltet ab), jedes neu verdiente Achievement zahlt sie mit `xp.gained` und `source: achievement`. Lässt sich auch während der LAN ändern |
 | 1.44.0  | Wiederholte Programmpunkte: Ein Punkt in `PUT /admin/api/lans/{id}/schedule` kann `repeat: {every_minutes, until}` tragen. `GET /lans/current/schedule` listet jeden Termin einzeln, Apps sehen kein `repeat`. Die Jelly-News zählen die Zeit seit den News davor, die ersten weiter eine Stunde |
 | 1.43.0  | Skins: Ein Cosmetic kann im Katalog `skins` mit `{key, name}` haben, wählbare Looks wie die Flaggen am Flaggenmast. `PUT /cosmetics/equipped` nimmt `skin`, `equipped` nennt ihn je Platz, `null` für das schlichte Aussehen. Fehler `unknown_skin`. Noch hat kein Cosmetic Skins |
@@ -646,7 +647,10 @@ lassen sich über die Admin-Wege steuern, bei echten Spielern antwortet der Serv
 - **`PUT` ersetzt alle Regeln:** Jedes Feld, das im Körper fehlt, fällt auf seinen Standardwert zurück, auch wenn es vorher
   anders eingestellt war. `PUT` mit `{"trip_seconds":60}` setzt also alle anderen Regeln zurück.
 - Beide prüfen die Werte, senden `rules.changed` und antworten mit allen Regeln. Die Regeln der Level-Kurve und
-  `coins_per_level` lassen sich nach dem Start der LAN mit keinem von beiden ändern.
+  `coins_per_level` lassen sich nach dem Start der LAN nur mit `?relevel=true` ändern.
+- **`?relevel=true`** gibt diese Regeln auch nach dem Start frei. Jedes Jelly behält seine XP und bekommt das Level der
+  neuen Kurve, ein höheres mit `level.up`. Fehlende Level-Münzen schreibt der Server mit `coins.gained` und
+  `source: level` gut, schon gezahlte bleiben, auch wenn das Level sinkt. Alles geschieht in einer Transaktion.
 
 Erlaubte Werte, jeweils einschließlich der Grenzen. Dauern stehen in Sekunden, höchstens 30 Tage:
 
