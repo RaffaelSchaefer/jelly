@@ -101,7 +101,7 @@ ausführen, dazu die Prüfungen von Client und Server, denn beide nutzen das Pak
   (`GET /v1/lans/current/schedule`, Befehl `get_schedule`). `src/useSchedule.ts` liest es, auch ohne Konto, und neu
   bei `schedule.changed`, bei einer anderen LAN und nach verworfenen Ereignissen, dazu lässt es das Jelly zehn Minuten
   vor jedem Punkt erinnern. `src/panels/SchedulePanel.tsx` und `src/schedule.css` zeigen ihn hinter dem Kalender im
-  Dock. Ein Punkt vor 5 Uhr steht unter dem Vortag. Die Browser-Vorschau zeigt ein festes Programm
+  Dock. Ein Punkt vor 5 Uhr steht unter dem Vortag. Punkte der Art `news` zeigt er nicht. Die Browser-Vorschau zeigt ein festes Programm
   (`src/pet/previewSchedule.ts`), dort beginnt die LAN am letzten Donnerstag.
 - `src/panels/`, `src/scene/` (Canvas, Kamera, Anker und Glas von Studio, Emotes und Schildern,
   Cosmetics), `src/ui/` (Design-System).
