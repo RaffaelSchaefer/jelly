@@ -46,6 +46,8 @@ interface RulesFormParts {
   save: HTMLButtonElement;
   discard: HTMLButtonElement;
   preview: LevelPreview;
+  /** Unlocks the level rules of a running LAN, `null` before its start. */
+  relevel: HTMLInputElement | null;
 }
 
 /** Names the unit shown inside the field, if the label does not say it already. */
@@ -111,12 +113,50 @@ function createNumberField(rule: RuleText, lan: LANSummary): RuleField {
   return { rule, root: field.root, control: field.input, hint: field.hint, duration };
 }
 
+/** Reports whether the level rules of a LAN are locked, because it has started. */
+function isLevelLocked(lan: LANSummary): boolean {
+  return Date.now() >= lan.starts_at;
+}
+
 /** Creates the field of one rule. */
 function createRuleField(rule: RuleText, lan: LANSummary): RuleField {
   const entry =
     rule.choices === undefined ? createNumberField(rule, lan) : createChoiceField(rule, lan);
-  entry.control.disabled = rule.locked === true && Date.now() >= lan.starts_at;
+  entry.control.disabled = rule.locked === true && isLevelLocked(lan);
   return entry;
+}
+
+/** Locks or unlocks the level rules, as the switch says. */
+function applyRelevel({ entries, relevel }: RulesFormParts): void {
+  if (relevel === null) {
+    return;
+  }
+  for (const { rule, control } of entries) {
+    control.disabled = rule.locked === true && !relevel.checked;
+  }
+}
+
+/** Creates the switch that changes the level rules of a running LAN anyway. */
+function createRelevelSwitch(
+  lan: LANSummary,
+): { root: HTMLElement; input: HTMLInputElement } | null {
+  if (!isLevelLocked(lan)) {
+    return null;
+  }
+  const input = createElement("input", "");
+  input.type = "checkbox";
+  const root = createElement(
+    "div",
+    "relevel",
+    createElement("label", "checkbox", input, "Levelkurve trotz Start ändern"),
+    createElement(
+      "p",
+      "hint",
+      "Alle behalten ihre XP und bekommen das Level der neuen Kurve. Fehlende Level-Münzen " +
+        "schreibt der Server gut, schon gezahlte bleiben.",
+    ),
+  );
+  return { root, input };
 }
 
 /** Shows which fields differ from the saved rules and what can be done about it. */
@@ -140,6 +180,10 @@ function restoreSaved(parts: RulesFormParts): void {
   for (const { rule, control } of parts.entries) {
     control.value = String(parts.lan.rules[rule.key]);
   }
+  if (parts.relevel !== null) {
+    parts.relevel.checked = false;
+  }
+  applyRelevel(parts);
   parts.message.clear();
   refresh(parts);
 }
@@ -168,7 +212,7 @@ function submitRules(parts: RulesFormParts, onFailure: FailureHandler): void {
   }
   const changes = findRuleChanges(lan.rules, edited);
   save.disabled = true;
-  patchRules(lan.id, changes)
+  patchRules(lan.id, changes, parts.relevel?.checked === true)
     .then((saved) => {
       lan.rules = saved;
       restoreSaved(parts);
@@ -185,14 +229,16 @@ function submitRules(parts: RulesFormParts, onFailure: FailureHandler): void {
 function createGroupFold(
   title: string,
   entries: RuleField[],
-  preview: HTMLElement | null,
+  extras: HTMLElement[],
 ): HTMLDetailsElement {
   const fields = createElement("div", "rule-fields", ...entries.map((entry) => entry.root));
-  const fold = createElement("details", "rule-group", createElement("summary", "", title), fields);
-  if (preview !== null) {
-    fold.append(preview);
-  }
-  return fold;
+  return createElement(
+    "details",
+    "rule-group",
+    createElement("summary", "", title),
+    ...extras,
+    fields,
+  );
 }
 
 /** Creates the panel with all rules. `lan.rules` follows what the server saved. */
@@ -203,6 +249,7 @@ export function createRulesForm(lan: LANSummary, onFailure: FailureHandler): HTM
   }));
   const discard = createElement("button", "quiet", "Verwerfen");
   discard.type = "button";
+  const relevel = createRelevelSwitch(lan);
   const parts: RulesFormParts = {
     lan,
     entries: groups.flatMap((group) => group.entries),
@@ -210,10 +257,20 @@ export function createRulesForm(lan: LANSummary, onFailure: FailureHandler): HTM
     save: createElement("button", "", "Änderungen speichern"),
     discard,
     preview: createLevelPreview(),
+    relevel: relevel?.input ?? null,
   };
-  const folds = groups.map((group) =>
-    createGroupFold(group.title, group.entries, group.previewsLevels ? parts.preview.root : null),
-  );
+  const levelExtras = relevel === null ? [] : [relevel.root];
+  const folds = groups.map((group) => {
+    const fold = createGroupFold(
+      group.title,
+      group.entries,
+      group.previewsLevels ? levelExtras : [],
+    );
+    if (group.previewsLevels) {
+      fold.append(parts.preview.root);
+    }
+    return fold;
+  });
   // Only the first group is open, the others wait folded until someone needs them.
   folds[0]?.setAttribute("open", "");
   const form = createElement(
@@ -225,6 +282,7 @@ export function createRulesForm(lan: LANSummary, onFailure: FailureHandler): HTM
     createElement("div", "actions", parts.save, discard),
   );
   discard.addEventListener("click", () => restoreSaved(parts));
+  relevel?.input.addEventListener("change", () => applyRelevel(parts));
   form.addEventListener("input", () => refresh(parts));
   form.addEventListener("submit", (event) => {
     event.preventDefault();
