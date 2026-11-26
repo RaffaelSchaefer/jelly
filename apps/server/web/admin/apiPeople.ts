@@ -54,6 +54,11 @@ export function resetPlayerName(playerID: number): Promise<unknown> {
   return sendRequest("POST", `/players/${playerID}/reset-name`);
 }
 
+/** Sends one account of a LAN back to a freshly joined jelly: XP, coins, LAN purchases, cosmetics. */
+export function resetPlayerProgress(lanID: number, playerID: number): Promise<unknown> {
+  return sendRequest("POST", `/lans/${lanID}/players/${playerID}/reset`);
+}
+
 /** Gives an account XP in its current LAN, as if it had earned it. XP is never taken away. */
 export function giveXP(playerID: number, xp: number): Promise<unknown> {
   return sendRequest("POST", `/players/${playerID}/xp`, { xp });

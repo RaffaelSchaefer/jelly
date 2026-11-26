@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.6**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.47.0  | Admin: `POST /admin/api/lans/{id}/players/{player}/reset` und `POST /admin/api/lans/{id}/reset` setzen den Fortschritt eines oder aller Konten einer LAN zurück. Der Vertrag unter `/v1` bleibt gleich, Apps hören `player.updated` |
 | 1.46.0  | Admin: `?relevel=true` an `PATCH` und `PUT /admin/api/lans/{id}/rules` ändert Level-Kurve und `coins_per_level` auch nach dem Start, rechnet die Level neu und zahlt fehlende Level-Münzen |
 | 1.45.0  | XP für Achievements: Regel `achievement_xp` (Standard 25, 0 schaltet ab), jedes neu verdiente Achievement zahlt sie mit `xp.gained` und `source: achievement`. Lässt sich auch während der LAN ändern |
 | 1.44.0  | Wiederholte Programmpunkte: Ein Punkt in `PUT /admin/api/lans/{id}/schedule` kann `repeat: {every_minutes, until}` tragen. `GET /lans/current/schedule` listet jeden Termin einzeln, Apps sehen kein `repeat`. Die Jelly-News zählen die Zeit seit den News davor, die ersten weiter eine Stunde |
@@ -589,6 +590,8 @@ Minuten und verlängert sich mit jeder Anfrage. `POST /admin/api/logout` löscht
 | `POST /admin/api/players/{id}/xp`                | `{"xp"}` von 1 bis 10000 in der laufenden LAN, wie verdient, mit Ereignis `xp.gained`. XP werden nie abgezogen. Ohne Teilnahme `409 not_joined` |
 | `POST /admin/api/players/{id}/coins`             | `{"coins"}` von 1 bis 1000 in der laufenden LAN, mit Ereignis `coins.gained` und `source: admin`. Ohne Teilnahme `409 not_joined` |
 | `DELETE /admin/api/players/{id}/purchases/{purchase}` | Nimmt genau diesen Kauf zurück (die `id` aus der Spielerliste), erstattet seinen Preis per `coins.gained` mit `source: refund` und legt das Cosmetic ab, falls getragen. Nicht gekauft: `404 purchase_not_found` |
+| `POST /admin/api/lans/{id}/players/{player}/reset` | Setzt das Konto in dieser LAN auf ein frisch beigetretenes Jelly zurück: XP und Verlauf, Münzen und Buchungen, Käufe dieser LAN, Erfolge dieser LAN und getragene Cosmetics. Konto, Name, Farbe, Token, Eintrag, Platz, dauerhafte Käufe, Preise und lebenslange Erfolge bleiben. Ereignis `player.updated`. Unbekannt: `404 lan_not_found`, `player_not_found` |
+| `POST /admin/api/lans/{id}/reset`                | Dasselbe für alle Konten der LAN in einer Transaktion |
 | `POST /admin/api/players/{id}/achievements`      | `{"key"}` aus dem Katalog, auch geheime, für die laufende LAN wie verdient. Ein vorhandenes bleibt, wie es ist |
 | `GET /admin/api/achievements`                    | Alle Achievements mit `key`, `title`, `description`, auch die geheimen |
 | `GET /admin/api/stage-link`                      | `path` der Bühne mit Schlüssel, für einen Knopf auf der Admin-Seite |

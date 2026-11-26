@@ -162,6 +162,11 @@ export function deleteLAN(lanID: number): Promise<unknown> {
   return sendRequest("DELETE", `/lans/${lanID}`);
 }
 
+/** Sends every account of a LAN back to a freshly joined jelly. */
+export function resetLANAccounts(lanID: number): Promise<unknown> {
+  return sendRequest("POST", `/lans/${lanID}/reset`);
+}
+
 /** Replaces all rules. Rules that are missing go back to their defaults. */
 export function replaceRules(lanID: number, rules: GameRules): Promise<GameRules> {
   return sendRequest("PUT", `/lans/${lanID}/rules`, rules);
