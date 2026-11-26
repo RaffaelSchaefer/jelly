@@ -42,6 +42,17 @@ describe("Zeitplan", () => {
     expect(day.events.map((event) => event.end)).toEqual([at(13, 14), at(13, 17)]);
   });
 
+  it("lässt die Jelly-News weg", () => {
+    const item = { ends_at: null, detail: null };
+    const [day] = scheduleDays([
+      { ...item, starts_at: at(13, 13), title: "Yoga", kind: "yoga" },
+      { ...item, starts_at: at(13, 14), title: "Jelly-News", kind: "news" },
+      { ...item, starts_at: at(13, 15), title: "Turnier", kind: "tournament" },
+    ]);
+    expect(day.events.map((event) => event.title)).toEqual(["Yoga", "Turnier"]);
+    expect(day.events[0].end).toBe(at(13, 15));
+  });
+
   it("erinnert auch an eine Art, die es noch nicht kennt", () => {
     const [day] = scheduleDays([
       { starts_at: at(13, 15), ends_at: null, title: "Quiz", detail: null, kind: "quiz" },

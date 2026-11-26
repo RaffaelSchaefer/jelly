@@ -7,7 +7,6 @@
 .schedule [data-kind='yoga'] { --kind: #a8c3f5; }
 .schedule [data-kind='tournament'] { --kind: #f7ad86; }
 .schedule [data-kind='together'] { --kind: #f6d97a; }
-.schedule [data-kind='news'] { --kind: #f58a9b; }
 
 /* Oben: was läuft, sonst das Nähere von vorbei und gleich. Klebt am Panel, deckend, denn die Zeitleiste rollt darunter durch. `--spot` rückt die Tagesköpfe darunter. */
 .schedule:has(.schedule-spot) { --spot: 48px; }

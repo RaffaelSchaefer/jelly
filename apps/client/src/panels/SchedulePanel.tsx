@@ -32,7 +32,6 @@ const KIND_ICONS: Record<string, IconName> = {
   yoga: "lotus",
   tournament: "trophy",
   together: "gamepad",
-  news: "bell",
 };
 
 /** Das Symbol einer Art. Eine Art, die ein neuerer Server ergänzt, bekommt den Kalender. */

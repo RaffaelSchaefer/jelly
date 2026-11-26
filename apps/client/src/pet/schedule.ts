@@ -38,7 +38,6 @@ const CUES: Record<string, string> = {
   yoga: "Kurz strecken?",
   tournament: "Bist du dabei?",
   together: "Spielst du mit?",
-  news: "Schaust du zu?",
 };
 
 /** So lange vor einem Programmpunkt erinnert das Jelly daran, in Millisekunden. */
@@ -66,9 +65,14 @@ const NIGHT_MS = 5 * 3_600_000;
 /** Mitternacht des Tags, unter dem ein Punkt mit Beginn `at` im Plan steht. */
 const planDay = (at: number) => midnight(at - NIGHT_MS).getTime();
 
-/** Das Programm des Servers nach Tagen, in Ortszeit. */
+/**
+ * Das Programm des Servers nach Tagen, in Ortszeit. Punkte der Art `news` fehlen: Sie starten nur
+ * die Jelly-News auf der Bühne, die kündigt das Pet selbst an (`src/useNews.ts`).
+ */
 export function scheduleDays(items: StageScheduleItem[]): ScheduleDay[] {
-  const sorted = [...items].sort((first, second) => first.starts_at - second.starts_at);
+  const sorted = items
+    .filter((item) => item.kind !== "news")
+    .sort((first, second) => first.starts_at - second.starts_at);
   const days: ScheduleDay[] = [];
   for (const [index, item] of sorted.entries()) {
     const date = planDay(item.starts_at);
