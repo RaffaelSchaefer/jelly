@@ -55,6 +55,9 @@ type PlayerState struct {
 	LAN         *LANInfo                    `json:"lan"`
 	XP          int                         `json:"xp"`
 	Level       int                         `json:"level"`
+	// XPInLevel and XPForNextLevel show the way to the next level, both 0 without a LAN.
+	XPInLevel      int `json:"xp_in_level"`
+	XPForNextLevel int `json:"xp_for_next_level"`
 	// Coins are the balance in the running LAN, 0 outside of one.
 	Coins        int                 `json:"coins"`
 	TotalXP      int                 `json:"total_xp"`
@@ -184,7 +187,10 @@ func loadProgress(ctx context.Context, database querier, state *PlayerState, now
 	if err != nil {
 		return err
 	}
-	state.Level = rules.CalculateLevel(gameRules, row.xp)
+	progress := rules.CalculateLevelProgress(gameRules, row.xp)
+	state.Level = progress.Level
+	state.XPInLevel = progress.XPInLevel
+	state.XPForNextLevel = progress.XPForNextLevel
 	if !row.info.Active {
 		return nil
 	}

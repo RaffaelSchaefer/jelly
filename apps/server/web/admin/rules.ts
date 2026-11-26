@@ -13,7 +13,15 @@ const SECONDS_PER_DAY = 86_400;
 const OTHER_GROUP_TITLE = "Weitere";
 
 /** What a value counts. */
-export type RuleUnit = "seconds" | "xp" | "count" | "percent" | "units" | "meters" | "speed";
+export type RuleUnit =
+  | "seconds"
+  | "xp"
+  | "count"
+  | "percent"
+  | "units"
+  | "meters"
+  | "speed"
+  | "choice";
 
 /** How the page shows one rule. */
 export interface RuleText {
@@ -21,26 +29,79 @@ export interface RuleText {
   label: string;
   unit: RuleUnit;
   hint?: string;
+  /** The values of a choice, with their text. */
+  choices?: [value: string, text: string][];
+  /** Shows the rule only while another rule has this value. */
+  onlyWith?: { key: string; value: string };
+  /** Fixed once the LAN has started, because levels would jump. */
+  locked?: boolean;
 }
 
 /** Rules that belong together. */
 export interface RuleGroup {
   title: string;
   rules: RuleText[];
+  /** Shows the first levels of the curve below the fields. */
+  previewsLevels?: boolean;
 }
 
-/** The rule that cannot change after the start of a LAN, because levels would jump. */
-export const RULE_XP_PER_LEVEL = "xp_per_level";
+const RULE_XP_CURVE = "xp_curve";
+const CURVE_LINEAR = "linear";
+const CURVE_QUADRATIC = "quadratic";
+const HINT_LOCKED = "Nach dem Start der LAN fest.";
+
+/** Lists the rules of the level curve. */
+function listCurveRules(): RuleText[] {
+  const onlyQuadratic = { key: RULE_XP_CURVE, value: CURVE_QUADRATIC };
+  return [
+    {
+      key: RULE_XP_CURVE,
+      label: "Level-Kurve",
+      unit: "choice",
+      choices: [
+        [CURVE_LINEAR, "Linear: jedes Level gleich"],
+        [CURVE_QUADRATIC, "Wachsend: jedes Level etwas mehr, mit Deckel"],
+      ],
+      hint: HINT_LOCKED,
+      locked: true,
+    },
+    {
+      key: "xp_per_level",
+      label: "XP für das erste Level",
+      unit: "xp",
+      hint: HINT_LOCKED,
+      locked: true,
+    },
+    {
+      key: "xp_per_level_step",
+      label: "Mehr XP je Level",
+      unit: "xp",
+      hint: "So viel mehr kostet jedes weitere Level.",
+      onlyWith: onlyQuadratic,
+      locked: true,
+    },
+    {
+      key: "xp_per_level_max",
+      label: "Höchstens XP je Level",
+      unit: "xp",
+      hint: "Ab hier kostet jedes Level gleich viel.",
+      onlyWith: onlyQuadratic,
+      locked: true,
+    },
+    {
+      key: "coins_per_level",
+      label: "Münzen pro Level",
+      unit: "count",
+      hint: "Für den Shop. " + HINT_LOCKED,
+      locked: true,
+    },
+  ];
+}
 
 /** Lists the rules about XP and levels. */
 function listProgressRules(): RuleText[] {
   return [
-    {
-      key: RULE_XP_PER_LEVEL,
-      label: "XP pro Level",
-      unit: "xp",
-      hint: "Nach dem Start der LAN fest.",
-    },
+    ...listCurveRules(),
     {
       key: "poke_interval",
       label: "Abstand der Stupser",
@@ -213,7 +274,7 @@ function listOperationRules(): RuleText[] {
 /** Lists all known rules in the order of the page. */
 function listRuleGroups(): RuleGroup[] {
   return [
-    { title: "XP und Level", rules: listProgressRules() },
+    { title: "XP und Level", rules: listProgressRules(), previewsLevels: true },
     { title: "Essen und Trinken", rules: listFoodRules() },
     { title: "Auf der Bühne", rules: listStageRules() },
     { title: "Gesten", rules: listGesturesRules() },
@@ -255,6 +316,17 @@ export function formatDuration(seconds: number): string {
 /** Keeps one decimal place, with the comma of German text. */
 function round(value: number): string {
   return String(Math.round(value * 10) / 10).replace(".", ",");
+}
+
+/** Keeps only the rules that are fixed once the LAN has started. */
+export function pickLockedRules(rules: GameRules): GameRules {
+  const locked = new Set(listCurveRules().map((rule) => rule.key));
+  return Object.fromEntries(Object.entries(rules).filter(([key]) => locked.has(key)));
+}
+
+/** Whether a rule is shown next to the values the form holds right now. */
+export function isRuleShown(rule: RuleText, rules: GameRules): boolean {
+  return rule.onlyWith === undefined || rules[rule.onlyWith.key] === rule.onlyWith.value;
 }
 
 /** Whether a rule takes values like `1.5`. */

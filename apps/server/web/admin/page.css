@@ -259,6 +259,21 @@ button:focus-visible {
   padding-top: 0.85rem;
 }
 
+.level-preview {
+  padding-top: 0.85rem;
+}
+
+.level-preview h4 {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.level-preview-table {
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
 button.is-armed {
   border-color: var(--bad);
   background: var(--bad-soft);

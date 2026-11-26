@@ -19,8 +19,10 @@ type contractCases struct {
 		XP             int          `json:"xp"`
 	} `json:"poke"`
 	Level []struct {
-		XP    int `json:"xp"`
-		Level int `json:"level"`
+		Name  string       `json:"name"`
+		Rules *rules.Rules `json:"rules"`
+		XP    int          `json:"xp"`
+		rules.LevelProgress
 	} `json:"level"`
 	Name []struct {
 		Input  string `json:"input"`
@@ -93,9 +95,22 @@ func TestCalculateNextPokeTime(t *testing.T) {
 }
 
 func TestCalculateLevel(t *testing.T) {
-	for _, testCase := range loadContractCases(t).Level {
-		if got := rules.CalculateLevel(rules.DefaultRules(), testCase.XP); got != testCase.Level {
-			t.Errorf("CalculateLevel(%d) = %d, want %d", testCase.XP, got, testCase.Level)
+	cases := loadContractCases(t)
+	for _, testCase := range cases.Level {
+		gameRules := cases.Rules
+		if testCase.Rules != nil {
+			gameRules = *testCase.Rules
+		}
+		if got := rules.CalculateLevelProgress(
+			gameRules,
+			testCase.XP,
+		); got != testCase.LevelProgress {
+			t.Errorf("%s: CalculateLevelProgress(%d) = %+v, want %+v",
+				testCase.Name, testCase.XP, got, testCase.LevelProgress)
+		}
+		if got := rules.CalculateLevel(gameRules, testCase.XP); got != testCase.Level {
+			t.Errorf("%s: CalculateLevel(%d) = %d, want %d",
+				testCase.Name, testCase.XP, got, testCase.Level)
 		}
 	}
 }

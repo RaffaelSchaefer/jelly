@@ -81,9 +81,9 @@ func TestALevelUpPaysCoins(t *testing.T) {
 	token := testFixture.registerPlayer("Steigt")
 	playerID := testFixture.loadMe(token).ID
 
-	// Two levels at once, from 1 to 3 with 250 XP.
+	// Two levels at once, from 1 to 3 with 125 XP.
 	admin := testFixture.callAdmin(
-		"POST", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/xp", `{"xp":250}`,
+		"POST", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/xp", `{"xp":125}`,
 	)
 	if admin.status != 200 {
 		t.Fatalf("give XP: %d %s", admin.status, admin.body)
@@ -135,7 +135,7 @@ func TestWithoutCoinsPerLevelALevelUpPaysNothing(t *testing.T) {
 	// Two levels at once, and the balance stays silent.
 	playerID := testFixture.loadMe(token).ID
 	admin := testFixture.callAdmin(
-		"POST", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/xp", `{"xp":250}`,
+		"POST", "/admin/api/players/"+strconv.FormatInt(playerID, 10)+"/xp", `{"xp":125}`,
 	)
 	if admin.status != 200 {
 		t.Fatalf("give XP: %d %s", admin.status, admin.body)

@@ -363,7 +363,7 @@ func TestProfilesNeedASecretAndHideHiddenPlayers(t *testing.T) {
 		http.StatusUnauthorized, "unauthorized")
 	response := testFixture.callAPI("GET", "/v1/players/"+shownID, reader, "")
 	profile := decodeBody[store.PlayerProfile](t, response)
-	if profile.Name != "Glibber" || profile.XP != 3 || len(profile.Achievements) == 0 {
+	if profile.Name != "Glibber" || profile.XP != 6 || len(profile.Achievements) == 0 {
 		t.Fatalf("profile: %s", response.body)
 	}
 

@@ -78,8 +78,8 @@ export function logOut(): Promise<unknown> {
   return sendRequest("POST", "/logout");
 }
 
-/** The values of a LAN's rules by their name in the API. */
-export type GameRules = Record<string, number>;
+/** The values of a LAN's rules by their name in the API. Most are numbers, a choice is a text. */
+export type GameRules = Record<string, number | string>;
 
 /** A LAN as the server lists it. */
 export interface LANSummary {
@@ -118,6 +118,20 @@ export function createLAN(lan: NewLAN): Promise<unknown> {
 /** Changes single rules and returns all of them as they are now. */
 export function patchRules(lanID: number, changes: GameRules): Promise<GameRules> {
   return sendRequest("PATCH", `/lans/${lanID}/rules`, changes);
+}
+
+/** One row of the level curve. */
+export interface LevelStep {
+  level: number;
+  /** The total XP that reaches this level. */
+  start_xp: number;
+  /** What this level takes up to the next one. */
+  xp: number;
+}
+
+/** Lets the server sum up the first levels of rules that are not saved yet. */
+export function previewLevels(rules: GameRules): Promise<{ levels: LevelStep[] }> {
+  return sendRequest("POST", "/level-preview", rules);
 }
 
 /** Replaces the code that players join a LAN with. */
