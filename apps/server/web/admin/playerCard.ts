@@ -9,6 +9,7 @@ import {
   createRecoveryCode,
   deletePlayer,
   resetPlayerName,
+  resetPlayerProgress,
   setPlayerHidden,
   type PlayerSummary,
 } from "./apiPeople.ts";
@@ -112,7 +113,7 @@ function createSeatGroup(tools: PlayerTools): HTMLElement {
 
 /** Creates the group with recovery, visibility and name. */
 function createAccountGroup(tools: PlayerTools): HTMLElement {
-  const { player } = tools;
+  const { player, lan } = tools;
   const recover = createButton("Wiederherstellungs-Code", "quiet", () => {
     createRecoveryCode(player.id)
       .then((recovery) =>
@@ -132,10 +133,19 @@ function createAccountGroup(tools: PlayerTools): HTMLElement {
   const rename = createConfirmButton("Name zurücksetzen", "Wirklich zurücksetzen?", () =>
     tools.run(resetPlayerName(player.id), `Der Name von ${player.name} ist zurückgesetzt.`),
   );
+  const progress = createConfirmButton(
+    "Fortschritt zurücksetzen",
+    `${player.name} in ${lan.name} wirklich zurücksetzen?`,
+    () =>
+      tools.run(
+        resetPlayerProgress(lan.id, player.id),
+        `${player.name} fängt in ${lan.name} wieder bei null an.`,
+      ),
+  );
   return createToolGroup(
     "Konto",
     "",
-    createElement("div", "actions", recover, visibility, rename),
+    createElement("div", "actions", recover, visibility, rename, progress),
     createElement("p", "hint", "Ausblenden nimmt das Jelly von Bühne und Karte, das Konto bleibt."),
   );
 }
