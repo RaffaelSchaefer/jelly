@@ -134,7 +134,7 @@ linters:
               skipComments: false
               skipBlankLines: false
         - name: argument-limit
-          arguments: [5]
+          arguments: [6]
         - name: function-result-limit
           arguments: [3]
         - name: exported

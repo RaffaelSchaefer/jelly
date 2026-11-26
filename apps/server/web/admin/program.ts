@@ -10,6 +10,7 @@ import { loadProgram, saveProgram, type ProgramItem } from "./apiEvents.ts";
 import { createButton, createElement, createMessage, createSelect } from "./dom.ts";
 import type { FailureHandler } from "./failure.ts";
 import { readLocalDateTime, toLocalDateTimeValue } from "./format.ts";
+import { createRepeatInputs } from "./programRepeat.ts";
 
 const KIND_ORGA = "orga";
 const TEXT_EMPTY = "Noch kein Programm. Füge den ersten Punkt hinzu.";
@@ -55,7 +56,18 @@ function createProgramRow(item: ProgramItem, onRemove: (row: ProgramRow) => void
   const detail = createRowInput("text", "Detail (optional)", item.detail ?? "");
   const kind = createSelect("", listProgramKinds(), item.kind);
   kind.setAttribute("aria-label", "Art");
-  const root = createElement("div", "program-row", startsAt, endsAt, kind, title, detail);
+  const repeat = createRepeatInputs(item.repeat, createRowInput);
+  const root = createElement(
+    "div",
+    "program-row",
+    startsAt,
+    endsAt,
+    kind,
+    title,
+    detail,
+    repeat.every,
+    repeat.until,
+  );
   const row: ProgramRow = {
     root,
     read: () => ({
@@ -64,6 +76,7 @@ function createProgramRow(item: ProgramItem, onRemove: (row: ProgramRow) => void
       title: title.value,
       detail: detail.value === "" ? null : detail.value,
       kind: kind.value,
+      repeat: repeat.read(),
     }),
   };
   root.append(createButton("Entfernen", "quiet", () => onRemove(row)));
@@ -128,7 +141,8 @@ export function createProgramPanel(lan: LANSummary, onFailure: FailureHandler): 
       "p",
       "hint",
       "Ohne Ende dauert ein Punkt bis zum nächsten. Die App erinnert zehn Minuten vorher. " +
-        "Gespeichert wird nach Beginn sortiert.",
+        "Gespeichert wird nach Beginn sortiert. Ein Punkt mit Wiederholung kommt alle paar Minuten " +
+        "bis zum letzten Beginn wieder, jeder Termin so lang wie der erste.",
     ),
     list,
     message.root,

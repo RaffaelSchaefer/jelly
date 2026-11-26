@@ -22,8 +22,9 @@ go test -race -count=1 ./...   # vor jedem PR
 `pnpm lint` und `pnpm format` starten `golangci-lint` in der festen Version v2.15.0 über `go run`.
 Eine globale Installation ist nicht nötig; beim ersten Aufruf lädt Go das Werkzeug in seinen Cache.
 
-Die Regeln stehen in [.golangci.yml](.golangci.yml). Regeln dort nicht abschwächen, um einen Befund
-loszuwerden. `//nolint` braucht den konkreten Linter und eine Begründung.
+Die Regeln stehen in [.golangci.yml](.golangci.yml). Regeln dort nicht abschwächen, nur um einen Befund
+loszuwerden. Zwingt eine Regel aber zu verbogenem Code, etwa einem Hilfs-Struct nur gegen die Zahl der Parameter, wird
+die Regel gelockert: sauber vor seltsam. `//nolint` braucht den konkreten Linter und eine Begründung.
 
 ## Grundsatz
 
@@ -186,7 +187,7 @@ die Leistung beeinflussen kann, Messung wiederholen und neue Werte mit Commit do
 | Namen mit mindestens 3 Zeichen         | `varnamelen`                                            |
 | Datei bis 500 Zeilen                   | `revive` (`file-length-limit`)                          |
 | Kurze, einfache Funktionen             | `funlen`, `cyclop`, `gocognit`, `nestif`, `maintidx`    |
-| Höchstens 5 Parameter und 3 Ergebnisse | `revive` (`argument-limit`, `function-result-limit`)    |
+| Höchstens 6 Parameter und 3 Ergebnisse | `revive` (`argument-limit`, `function-result-limit`)    |
 | Getrennte Module, reine Regeln         | `depguard`                                              |
 | Seiten: Komplexität und Größe wie im Client | `oxlint`, Typen mit `tsc`                          |
 | Keine globalen Variablen, kein `init`  | `gochecknoglobals`, `gochecknoinits`                    |

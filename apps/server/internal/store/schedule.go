@@ -10,7 +10,7 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
 
-// LoadLANSchedule returns the program of a LAN, sorted by start.
+// LoadLANSchedule returns the program of a LAN as the orga stores it, with its repeats.
 func (store *Store) LoadLANSchedule(
 	ctx context.Context,
 	lanID int64,
@@ -24,14 +24,18 @@ func (store *Store) LoadLANSchedule(
 }
 
 // LoadCurrentSchedule returns the program of the running LAN, otherwise of the next one, the same
-// LAN whose rules `GET /lans/current` names. Without a LAN, the program is empty.
+// LAN whose rules `GET /lans/current` names, with every repeat written out. Without a LAN, the
+// program is empty.
 func (store *Store) LoadCurrentSchedule(
 	ctx context.Context, now int64,
 ) ([]rules.ScheduleItem, error) {
 	const selectCurrentScheduleSQL = `SELECT schedule FROM lans WHERE ends_at > ?1
 		ORDER BY (starts_at <= ?1) DESC, starts_at LIMIT 1`
 	items, _, err := store.loadSchedule(ctx, selectCurrentScheduleSQL, now)
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	return rules.ExpandSchedule(items), nil
 }
 
 // loadSchedule reads the program of the one LAN a query finds. Without a LAN it is empty.

@@ -67,7 +67,15 @@
         "ends_at": "End in Unix milliseconds, or null: then the point lasts until the next one starts.",
         "title": "Short title, at most 80 characters.",
         "detail": "Game, dish or note, at most 200 characters, or null.",
-        "kind": "`orga`, `food`, `yoga`, `tournament`, `together` or `news`. A `news` point starts the Jelly-News on the stage once it begins, for its own time or `news_seconds`. Other values can be added in any version and are drawn neutrally."
+        "kind": "`orga`, `food`, `yoga`, `tournament`, `together` or `news`. A `news` point starts the Jelly-News on the stage once it begins, for its own time or `news_seconds`. Other values can be added in any version and are drawn neutrally.",
+        "repeat": "Only on the admin page: brings the point back. This program always lists every single time, so apps never see it."
+      }
+    },
+    "ScheduleRepeat": {
+      "description": "How a point of the program comes back.",
+      "fields": {
+        "every_minutes": "Minutes from one start to the next, 5 to 1440.",
+        "until": "The last start, in Unix milliseconds. Every repeat has to end within the LAN."
       }
     },
     "Catalog": {
