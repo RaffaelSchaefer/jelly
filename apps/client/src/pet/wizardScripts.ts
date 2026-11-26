@@ -13,6 +13,7 @@
 
 import type { EmoteKey } from "@jelly/scene/emotes";
 
+import type { LevelProgress } from "./progress";
 import type { ShopItem } from "./shop";
 import type { PurchaseTimeline } from "./shopTimeline";
 import type { ServerEvent } from "./types";
@@ -227,8 +228,8 @@ export interface WizardContext {
   coins: number | null;
   /** Münzen je Level-Aufstieg. */
   perLevel: number | null;
-  xp: number | null;
-  xpPerLevel: number | null;
+  /** Der Fortschritt zum nächsten Level. */
+  progress: LevelProgress | null;
   /** Ob eine LAN läuft und der Laden verkauft. */
   open: boolean | null;
   items: readonly ShopItem[] | null;
@@ -249,8 +250,7 @@ export const UNKNOWN_CONTEXT: WizardContext = {
   name: null,
   coins: null,
   perLevel: null,
-  xp: null,
-  xpPerLevel: null,
+  progress: null,
   open: null,
   items: null,
   worn: null,

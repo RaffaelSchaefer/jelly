@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import {
   coinLabel,
+  levelProgress,
   pokeWaitMinutes,
   REPORTS,
   reportStatus,
@@ -106,8 +107,7 @@ export default function OverviewTab({
     <div className="xp-sections">
       <XpProgress
         name={me.name}
-        xp={me.xp}
-        xpPerLevel={rules.xp_per_level}
+        progress={levelProgress(me)}
         coins={perLevel > 0 ? `${coinLabel(me.coins)} · +${perLevel} je Level` : undefined}
       />
       <p className="panel-hint">

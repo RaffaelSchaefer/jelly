@@ -157,6 +157,10 @@ export interface Me {
   /** XP in der jüngsten LAN. */
   xp: number;
   level: number;
+  /** XP seit Beginn des Levels. Ohne LAN 0. */
+  xp_in_level: number;
+  /** So viel kostet das ganze laufende Level, je nach Kurve der LAN. Ohne LAN 0. */
+  xp_for_next_level: number;
   /** Münzen für den Shop in der laufenden LAN, sonst 0. Jeder Aufstieg bringt `coins_per_level`. */
   coins: number;
   /** XP über alle LANs. */

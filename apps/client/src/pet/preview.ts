@@ -50,6 +50,8 @@ export const PREVIEW_ME: Me = {
   lan: { slug: "vorschau", name: "Vorschau-LAN", active: true },
   xp: 235,
   level: 3,
+  xp_in_level: 35,
+  xp_for_next_level: 100,
   coins: 3,
   total_xp: 235,
   next_poke_at: 0,

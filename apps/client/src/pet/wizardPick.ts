@@ -14,7 +14,6 @@ import type { ShopItem } from "./shop";
 import type { ScriptKit, WizardContext, WizardGesture, WizardLook } from "./wizardScripts";
 
 import { coinLabel, COSMETICS } from "./cosmetics";
-import { levelProgress } from "./progress";
 import {
   fallbackLine,
   fillLine,
@@ -264,9 +263,9 @@ export function prophecy(ctx: WizardContext): Prophecy {
   if (cheapest && ctx.perLevel && cheapest.missing <= ctx.perLevel) {
     return { topic: "prophecy.reach", slots: slotsFor(ctx, cheapest) };
   }
-  if (ctx.xp !== null && ctx.xpPerLevel) {
-    const { level, remaining } = levelProgress(ctx.xp, ctx.xpPerLevel);
-    if (remaining <= 0.3 * ctx.xpPerLevel) {
+  if (ctx.progress && ctx.progress.cost > 0) {
+    const { level, remaining, cost } = ctx.progress;
+    if (remaining <= 0.3 * cost) {
       return {
         topic: "prophecy.xp",
         slots: { remaining: String(remaining), next: String(level + 1) },

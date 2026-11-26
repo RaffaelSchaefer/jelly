@@ -168,16 +168,18 @@ describe("achievements", () => {
 });
 
 describe("level progress", () => {
-  it("starts at level one with the full next level ahead", () => {
-    expect(levelProgress(0, 100)).toEqual({ level: 1, current: 0, remaining: 100 });
+  const at = (level: number, xp_in_level: number, xp_for_next_level: number) =>
+    levelProgress({ level, xp_in_level, xp_for_next_level });
+  it("takes level and cost from the server instead of dividing XP", () => {
+    // Quadratische Kurve 50 / 25: Level 3 kostet 100, erreicht mit 125 XP.
+    expect(at(3, 40, 100)).toEqual({ level: 3, current: 40, cost: 100, remaining: 60, fill: 0.4 });
+    expect(at(1, 0, 50)).toEqual({ level: 1, current: 0, cost: 50, remaining: 50, fill: 0 });
   });
-  it("carries excess XP across level boundaries", () => {
-    expect(levelProgress(99, 100)).toEqual({ level: 1, current: 99, remaining: 1 });
-    expect(levelProgress(100, 100)).toEqual({ level: 2, current: 0, remaining: 100 });
-    expect(levelProgress(235, 100)).toEqual({ level: 3, current: 35, remaining: 65 });
+  it("stays empty without a LAN", () => {
+    expect(at(1, 0, 0)).toEqual({ level: 1, current: 0, cost: 0, remaining: 0, fill: 0 });
   });
-  it("follows the rule of the LAN", () => {
-    expect(levelProgress(235, 50)).toEqual({ level: 5, current: 35, remaining: 15 });
+  it("never overfills", () => {
+    expect(at(2, 90, 75).fill).toBe(1);
   });
 });
 

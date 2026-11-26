@@ -7,23 +7,40 @@
  * @module
  */
 
-import type { Report, Reports } from "./types";
+import type { Me, Report, Reports } from "./types";
 
 /** Millisekunden pro Minute. */
 const MINUTE_MS = 60_000;
 
+/** Der Fortschritt zum nächsten Level, siehe {@link levelProgress}. */
+export interface LevelProgress {
+  /** Level ab 1. */
+  level: number;
+  /** XP im laufenden Level. */
+  current: number;
+  /** So viel kostet das laufende Level, 0 ohne LAN. */
+  cost: number;
+  /** XP bis zum nächsten Level. */
+  remaining: number;
+  /** Anteil des laufenden Levels von 0 bis 1, 0 ohne LAN. */
+  fill: number;
+}
+
 /**
- * Level und Fortschritt zum nächsten Level, wie `CalculateLevel` beim Server.
- *
- * @param xpPerLevel - Die Regel `xp_per_level` der LAN.
- * @returns `level` (ab 1), `current` (XP im laufenden Level) und `remaining` (XP bis zum nächsten).
+ * Level und Fortschritt zum nächsten Level. Der Server rechnet beides fertig: Ein Level kostet je
+ * nach Kurve der LAN (`xp_curve`) verschieden viel, die App rechnet darum nie selbst aus `xp`.
  */
-export function levelProgress(xp: number, xpPerLevel: number) {
-  const current = xp % xpPerLevel;
+export function levelProgress(
+  me: Pick<Me, "level" | "xp_in_level" | "xp_for_next_level">,
+): LevelProgress {
+  const cost = Math.max(0, me.xp_for_next_level);
+  const current = Math.min(cost, Math.max(0, me.xp_in_level));
   return {
-    level: Math.floor(xp / xpPerLevel) + 1,
+    level: me.level,
     current,
-    remaining: xpPerLevel - current,
+    cost,
+    remaining: cost - current,
+    fill: cost > 0 ? current / cost : 0,
   };
 }
 
