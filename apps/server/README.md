@@ -175,6 +175,11 @@ Volume bestehen bleiben muss. SIGINT und SIGTERM beenden den Server geordnet, of
 Sekunden und damit weniger als die 10 Sekunden von `docker stop`. Die Datenbank darf nicht im
 laufenden Betrieb einfach kopiert werden. Backups entstehen mit `sqlite3 jelly.db "VACUUM INTO 'backup.db'"` und gehören auf ein anderes System.
 
+Gebaut wird nur auf der Forge. Was auf GitHub landet, holt `.forgejo/workflows/mirror-github.yml` alle 5 Minuten
+herüber: erst `main`, nur vorgespult, dann neue Tags `server-v*` auf `main`. Ein Tag, den die Forge schon hat, bleibt
+unverändert. Der Workflow pusht mit dem persönlichen Token aus dem Forge-Secret `MIRROR_TOKEN` (Rechte zum Schreiben ins
+Repository), denn Pushes mit dem Token des Jobs starten keinen Image-Build.
+
 Beim Start loggt der Server Version, Commit, API-Version und Log-Level. Version und Commit setzt der Image-Workflow per
 `--build-arg SERVER_VERSION=… --build-arg SERVER_REVISION=…`, ein eigener Build ohne sie meldet `dev` und `unknown`.
 
