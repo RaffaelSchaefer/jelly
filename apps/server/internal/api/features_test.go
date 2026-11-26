@@ -197,11 +197,14 @@ func TestCosmeticsRequireUnlock(t *testing.T) {
 	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
 		`{"slot":"head","key":"sprout","color":"#ffffff"}`),
 		http.StatusBadRequest, "invalid_cosmetic_color")
+	requireProblem(t, testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
+		`{"slot":"head","key":"party-hat","skin":"ucb"}`),
+		http.StatusBadRequest, "unknown_skin")
 	response = testFixture.callAPI("PUT", "/v1/cosmetics/equipped", token,
 		`{"slot":"head","key":"party-hat","color":"#ffd45c"}`)
-	tinted := decodeBody[store.PlayerState](t, response).Equipped["head"].Color
-	if tinted == nil || *tinted != "#ffd45c" {
-		t.Fatalf("color: %s", response.body)
+	worn := decodeBody[store.PlayerState](t, response).Equipped["head"]
+	if worn.Color == nil || *worn.Color != "#ffd45c" || worn.Skin != nil {
+		t.Fatalf("color and skin: %s", response.body)
 	}
 }
 

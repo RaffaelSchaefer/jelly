@@ -108,7 +108,7 @@ func wearWizardHat(equipped map[string]EquippedCosmetic) map[string]EquippedCosm
 	if equipped == nil {
 		equipped = map[string]EquippedCosmetic{}
 	}
-	equipped[rules.SlotHead] = EquippedCosmetic{Key: rules.CosmeticWizardHat, Color: nil}
+	equipped[rules.SlotHead] = EquippedCosmetic{Key: rules.CosmeticWizardHat, Color: nil, Skin: nil}
 	return equipped
 }
 

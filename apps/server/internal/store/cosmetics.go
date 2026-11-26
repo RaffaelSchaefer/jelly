@@ -9,10 +9,12 @@ import (
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
 )
 
-// EquippedCosmetic is what a jelly wears in one slot. Only colorable cosmetics have a color.
+// EquippedCosmetic is what a jelly wears in one slot. Only colorable cosmetics have a color, only
+// cosmetics with skins a skin.
 type EquippedCosmetic struct {
 	Key   string  `json:"key"`
 	Color *string `json:"color"`
+	Skin  *string `json:"skin"`
 }
 
 // CosmeticChoice is a change to one slot. An empty key takes off what is in that slot.
@@ -20,13 +22,14 @@ type CosmeticChoice struct {
 	Slot  string
 	Key   string
 	Color *string
+	Skin  *string
 }
 
 // EquipCosmetic puts an unlocked cosmetic into its slot or empties the slot.
 func (store *Store) EquipCosmetic(
 	ctx context.Context, playerID int64, choice CosmeticChoice, now int64,
 ) (PlayerState, error) {
-	err := rules.ValidateEquip(choice.Slot, choice.Key, choice.Color)
+	err := rules.ValidateEquip(choice.Slot, choice.Key, choice.Color, choice.Skin)
 	if err != nil {
 		return PlayerState{}, fmt.Errorf("validate cosmetic: %w", err)
 	}
@@ -63,12 +66,12 @@ func writeCosmeticChoice(
 	if !slices.Contains(unlocked, choice.Key) {
 		return ErrCosmeticLocked
 	}
-	const upsertCosmeticSQL = `INSERT INTO player_cosmetics (player_id, slot, cosmetic_key, color)
-		VALUES (?, ?, ?, ?)
+	const upsertCosmeticSQL = `INSERT INTO player_cosmetics
+		(player_id, slot, cosmetic_key, color, skin) VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT (player_id, slot) DO UPDATE
-		SET cosmetic_key = excluded.cosmetic_key, color = excluded.color`
+		SET cosmetic_key = excluded.cosmetic_key, color = excluded.color, skin = excluded.skin`
 	_, err = transaction.ExecContext(ctx, upsertCosmeticSQL,
-		playerID, choice.Slot, choice.Key, choice.Color)
+		playerID, choice.Slot, choice.Key, choice.Color, choice.Skin)
 	if err != nil {
 		return fmt.Errorf("equip cosmetic: %w", err)
 	}
@@ -123,7 +126,7 @@ func removeLockedCosmetics(
 func loadEquipped(
 	ctx context.Context, database querier, playerID int64,
 ) (map[string]EquippedCosmetic, error) {
-	const selectEquippedSQL = `SELECT player_id, slot, cosmetic_key, color
+	const selectEquippedSQL = `SELECT player_id, slot, cosmetic_key, color, skin
 		FROM player_cosmetics WHERE player_id = ?`
 	rows, err := database.QueryContext(ctx, selectEquippedSQL, playerID)
 	if err != nil {
@@ -163,7 +166,7 @@ func loadEquippedInLAN(
 func loadStoredEquippedInLAN(
 	ctx context.Context, database querier, lanID int64,
 ) (map[int64]map[string]EquippedCosmetic, error) {
-	const selectLANEquippedSQL = `SELECT c.player_id, c.slot, c.cosmetic_key, c.color
+	const selectLANEquippedSQL = `SELECT c.player_id, c.slot, c.cosmetic_key, c.color, c.skin
 		FROM player_cosmetics c JOIN lan_entries e ON e.player_id = c.player_id
 		WHERE e.lan_id = ?`
 	rows, err := database.QueryContext(ctx, selectLANEquippedSQL, lanID)
@@ -181,7 +184,7 @@ func readEquippedRows(rows *sql.Rows) (map[int64]map[string]EquippedCosmetic, er
 		var playerID int64
 		var slot string
 		var cosmetic EquippedCosmetic
-		err := rows.Scan(&playerID, &slot, &cosmetic.Key, &cosmetic.Color)
+		err := rows.Scan(&playerID, &slot, &cosmetic.Key, &cosmetic.Color, &cosmetic.Skin)
 		if err != nil {
 			return nil, fmt.Errorf("read cosmetic: %w", err)
 		}
