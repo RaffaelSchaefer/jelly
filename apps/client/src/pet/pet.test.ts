@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   achievementRows,
+  coinBalanceLabel,
   coinLabel,
   isUnlocked,
   levelProgress,
@@ -127,6 +128,13 @@ describe("unlocks", () => {
     expect(coinLabel(0)).toBe("0 Münzen");
     expect(coinLabel(1)).toBe("1 Münze");
     expect(coinLabel(6)).toBe("6 Münzen");
+  });
+  it("shows the coin balance even without coins per level", () => {
+    expect(coinBalanceLabel(0, 3)).toBe("0 Münzen · +3 je Level");
+    expect(coinBalanceLabel(5, 3)).toBe("5 Münzen · +3 je Level");
+    expect(coinBalanceLabel(5, 0)).toBe("5 Münzen");
+    expect(coinBalanceLabel(1, 0)).toBe("1 Münze");
+    expect(coinBalanceLabel(0, 0)).toBeUndefined();
   });
 });
 

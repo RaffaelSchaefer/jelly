@@ -119,6 +119,15 @@ export function coinLabel(count: number) {
   return count === 1 ? "1 Münze" : `${count} Münzen`;
 }
 
+/**
+ * Kontostand für den Levelbalken (`"5 Münzen · +3 je Level"`), ohne Münzen und ohne Satz nichts.
+ * Auch ohne Münzen je Level kann die Orga welche schenken, dann fehlt nur der Zusatz.
+ */
+export function coinBalanceLabel(coins: number, perLevel: number) {
+  if (perLevel > 0) return `${coinLabel(coins)} · +${perLevel} je Level`;
+  return coins > 0 ? coinLabel(coins) : undefined;
+}
+
 /** Wie man das Cosmetic freischaltet, in wenigen Worten (`"3 Münzen"`). Unbekanntes gilt wie `none`. */
 export function unlockLabel(id: string, catalog: Catalog) {
   const entry = catalog.cosmetics.find((item) => item.key === id);

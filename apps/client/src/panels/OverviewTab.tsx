@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 
 import {
-  coinLabel,
+  coinBalanceLabel,
   levelProgress,
   pokeWaitMinutes,
   REPORTS,
@@ -102,13 +102,12 @@ export default function OverviewTab({
 }) {
   const now = useServerNow(offset, me);
   const locked = disabled || !me.lan?.active;
-  const perLevel = rules.coins_per_level;
   return (
     <div className="xp-sections">
       <XpProgress
         name={me.name}
         progress={levelProgress(me)}
-        coins={perLevel > 0 ? `${coinLabel(me.coins)} · +${perLevel} je Level` : undefined}
+        coins={coinBalanceLabel(me.coins, rules.coins_per_level)}
       />
       <p className="panel-hint">
         {pokeHint(me, now)} Insgesamt {me.total_xp} XP auf {me.lans_attended}{" "}
