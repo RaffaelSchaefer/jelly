@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/RaffaelSchaefer/jelly/apps/server/internal/rules"
@@ -75,17 +76,20 @@ func (store *Store) ListPlayers(ctx context.Context, search string) ([]PlayerSum
 	return players, nil
 }
 
-// searchPlayers reads the player rows whose name contains `search`, newest first.
+// searchPlayers reads the player rows whose name contains `search` or whose number it is, newest
+// first.
 func searchPlayers(ctx context.Context, database querier, search string) ([]PlayerSummary, error) {
 	escaper := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	pattern := "%" + escaper.Replace(rules.BuildNameKey(strings.TrimSpace(search))) + "%"
+	playerID := parsePlayerNumber(search)
 	const searchPlayersSQL = `SELECT p.id, p.name, p.color, p.is_bot, p.hidden_at,
 			COALESCE(SUM(e.xp), 0), COUNT(e.lan_id), COALESCE(MAX(e.last_seen_at), 0),
 			COALESCE((SELECT e2.coins FROM lan_entries e2 JOIN lans l2 ON l2.id = e2.lan_id
 				WHERE e2.player_id = p.id ORDER BY l2.starts_at DESC LIMIT 1), 0)
 		FROM players p LEFT JOIN lan_entries e ON e.player_id = p.id
-		WHERE p.name_key LIKE ? ESCAPE '\' GROUP BY p.id ORDER BY p.id DESC LIMIT ?`
-	rows, err := database.QueryContext(ctx, searchPlayersSQL, pattern, maxPlayerListRows)
+		WHERE p.name_key LIKE ? ESCAPE '\' OR p.id = ? GROUP BY p.id ORDER BY p.id DESC LIMIT ?`
+	rows, err := database.QueryContext(ctx, searchPlayersSQL, pattern, playerID,
+		maxPlayerListRows)
 	if err != nil {
 		return nil, fmt.Errorf("list players: %w", err)
 	}
@@ -107,6 +111,19 @@ func searchPlayers(ctx context.Context, database querier, search string) ([]Play
 		return nil, fmt.Errorf("list players: %w", rowsErr)
 	}
 	return players, nil
+}
+
+// parsePlayerNumber reads a search like `12`, `#12` or `Nr. 12` as a player number. Anything else
+// gives null, which matches no row.
+func parsePlayerNumber(search string) sql.NullInt64 {
+	text := strings.TrimSpace(search)
+	text = strings.TrimPrefix(text, "#")
+	text = strings.TrimSpace(strings.TrimPrefix(text, "Nr."))
+	number, err := strconv.ParseInt(text, 10, 64)
+	if err != nil || number <= 0 {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: number, Valid: true}
 }
 
 // loadPurchasesOfPlayers fills the purchases of every listed player with one query.

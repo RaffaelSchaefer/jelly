@@ -13,6 +13,11 @@ export function formatMeters(meters: number): string {
   return meterFormat.format(meters);
 }
 
+/** Writes the number of an account the way the players search reads it back. */
+export function writePlayerNumber(playerID: number): string {
+  return `Nr. ${playerID}`;
+}
+
 /** Formats a time of the API for reading, in the time zone of this browser. */
 export function formatDateTime(millis: number): string {
   return dateFormat.format(millis);

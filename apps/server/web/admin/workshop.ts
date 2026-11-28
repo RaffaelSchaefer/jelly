@@ -22,6 +22,6 @@ export function createWorkshop(context: SectionContext): HTMLElement {
     ),
     createTestRulesPanel(context.lan, context),
     createBotsTab(context.lan, context.onFailure),
-    createActionLogSection(context.onFailure),
+    createActionLogSection(context),
   );
 }

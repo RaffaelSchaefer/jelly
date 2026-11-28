@@ -57,7 +57,7 @@ function createJoinCodeCard(context: SectionContext): HTMLElement {
 function createSearchCard(context: SectionContext): HTMLElement {
   const search = createField({
     id: "overview-search",
-    label: "Name",
+    label: "Name oder Nummer",
     hint: "Für Wiederherstellungs-Code, Platz, XP oder Moderation.",
   });
   const form = createElement(
@@ -94,7 +94,7 @@ export function createOverview(context: SectionContext): HTMLElement {
     createCard(
       "Letzte Aktionen",
       createButton("Ganzes Protokoll", "quiet", () => open("workshop")),
-      createRecentActions(onFailure, RECENT_ACTIONS),
+      createRecentActions(context, RECENT_ACTIONS),
     ),
   );
 }

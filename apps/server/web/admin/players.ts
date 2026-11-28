@@ -78,7 +78,7 @@ function renderList(
 export function createPlayersSection(context: SectionContext, search: string): HTMLElement {
   const field = createField({
     id: "player-search",
-    label: "Name",
+    label: "Name oder Nummer",
     hint: "Leer lassen zeigt die neuesten Konten. Eine Zeile anklicken zeigt alle Aktionen.",
   });
   field.input.value = search;

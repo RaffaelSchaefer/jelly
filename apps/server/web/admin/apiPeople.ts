@@ -26,15 +26,19 @@ export interface RecoveryCode {
   expires_at: number;
 }
 
-/** One entry of the admin log. What `target_id` names depends on the action. */
+/**
+ * One entry of the admin log. What `target_id` names depends on the action. `target_name` is the
+ * current name of a target player, null for other targets and deleted accounts.
+ */
 export interface AdminAction {
   id: number;
   action: string;
   target_id: number | null;
+  target_name: string | null;
   created_at: number;
 }
 
-/** Finds accounts by name. An empty search lists the newest ones. */
+/** Finds accounts by name or number (`12`, `#12`, `Nr. 12`). An empty search lists the newest ones. */
 export function searchPlayers(search: string): Promise<PlayerSummary[]> {
   return sendRequest("GET", `/players?search=${encodeURIComponent(search)}`);
 }

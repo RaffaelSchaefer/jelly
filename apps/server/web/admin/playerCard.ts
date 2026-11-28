@@ -24,7 +24,7 @@ import {
   type Message,
 } from "./dom.ts";
 import type { FailureHandler } from "./failure.ts";
-import { formatDateTime } from "./format.ts";
+import { formatDateTime, writePlayerNumber } from "./format.ts";
 import { createRewardGroup } from "./playerRewards.ts";
 import { createShopGroup } from "./playerShop.ts";
 import { createToolGroup, makeToolID, type Catalogs, type PlayerTools } from "./playerTools.ts";
@@ -56,6 +56,7 @@ function findSeat(player: PlayerSummary, catalogs: Catalogs): string | null {
 function createHead(player: PlayerSummary, view: CardView): HTMLElement {
   const seat = findSeat(player, view.catalogs);
   const facts = [
+    writePlayerNumber(player.id),
     `${player.total_xp} XP`,
     `${player.coins} Münzen`,
     player.last_seen_at > 0 ? `zuletzt ${formatDateTime(player.last_seen_at)}` : "nie aktiv",
@@ -79,7 +80,8 @@ function createHead(player: PlayerSummary, view: CardView): HTMLElement {
 /** Creates the group that puts the player in a zone of the chosen LAN. */
 function createSeatGroup(tools: PlayerTools): HTMLElement {
   const { player, lan, catalogs } = tools;
-  const isInLAN = catalogs.areas.assignments.some((entry) => entry.player_id === player.id);
+  const assignment = catalogs.areas.assignments.find((entry) => entry.player_id === player.id);
+  const isInLAN = assignment !== undefined;
   const zones = catalogs.areas.areas.filter((area) => isStandingKind(area.kind));
   if (!isInLAN || zones.length === 0) {
     const reason = isInLAN
@@ -88,9 +90,11 @@ function createSeatGroup(tools: PlayerTools): HTMLElement {
     return createToolGroup("Platz", "", createElement("p", "hint", reason));
   }
   const id = makeToolID(tools, "seat");
+  // The current zone stays chosen, so that the form shows where the player stands now.
   const zone = createSelect(
     id,
     zones.map((area) => [String(area.id), nameZone(area)]),
+    assignment.area_id === null ? undefined : String(assignment.area_id),
   );
   const send = (areaID: number | null, done: string) =>
     tools.run(assignArea(lan.id, player.id, areaID), done);

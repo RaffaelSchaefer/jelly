@@ -27,6 +27,7 @@ Aktuelle Version: **1.41.6**
 
 | Version | Änderung |
 | ------- | -------- |
+| 1.48.0  | Admin: `GET /admin/api/players?search=` findet Konten auch per Nummer (`12`, `#12`, `Nr. 12`), `GET /admin/api/actions` nennt bei Konten `target_name`, solange das Konto besteht. Die Platzwahl zeigt die aktuelle Zone. Der Vertrag unter `/v1` bleibt gleich |
 | 1.47.0  | Admin: `POST /admin/api/lans/{id}/players/{player}/reset` und `POST /admin/api/lans/{id}/reset` setzen den Fortschritt eines oder aller Konten einer LAN zurück. Der Vertrag unter `/v1` bleibt gleich, Apps hören `player.updated` |
 | 1.46.0  | Admin: `?relevel=true` an `PATCH` und `PUT /admin/api/lans/{id}/rules` ändert Level-Kurve und `coins_per_level` auch nach dem Start, rechnet die Level neu und zahlt fehlende Level-Münzen |
 | 1.45.0  | XP für Achievements: Regel `achievement_xp` (Standard 25, 0 schaltet ab), jedes neu verdiente Achievement zahlt sie mit `xp.gained` und `source: achievement`. Lässt sich auch während der LAN ändern |

@@ -11,7 +11,7 @@ import type { FailureHandler } from "./failure.ts";
 
 const MAX_RESULTS = 8;
 const TEXT_NONE = "Noch niemand gewählt.";
-const TEXT_NO_MATCH = "Niemand mit diesem Namen gefunden.";
+const TEXT_NO_MATCH = "Niemand mit diesem Namen oder dieser Nummer gefunden.";
 
 /** A search with the chosen account. */
 export interface PlayerPicker {
